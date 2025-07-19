@@ -1,0 +1,72 @@
+body {
+  font-family: "Inter", sans-serif;
+  background-image: radial-gradient(circle at 25% 25%, rgba(120, 119, 198, 0.1) 0%, transparent 50%),
+    radial-gradient(circle at 75% 75%, rgba(236, 72, 153, 0.1) 0%, transparent 50%),
+    linear-gradient(135deg, #1f2937 0%, #111827 100%);
+  background-attachment: fixed;
+}
+
+.gradient-button {
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+}
+
+.gradient-button:hover {
+  background: linear-gradient(135deg, #7c3aed 0%, #2563eb 100%);
+}
+
+.tab-active {
+  background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
+  color: white;
+}
+
+.tab-inactive {
+  background: rgba(75, 85, 99, 0.3);
+  color: #9ca3af;
+}
+
+.tab-inactive:hover {
+  background: rgba(75, 85, 99, 0.5);
+  color: #d1d5db;
+}
+
+.file-drop-zone {
+  border: 2px dashed #6b7280;
+  transition: all 0.3s ease;
+}
+
+.file-drop-zone:hover {
+  border-color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.05);
+}
+
+.file-drop-zone.drag-over {
+  border-color: #8b5cf6;
+  background-color: rgba(139, 92, 246, 0.1);
+}
+
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.pulse-icon {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

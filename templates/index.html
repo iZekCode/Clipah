@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clipah - AI-powered video clipping</title>
+    <link rel="icon" href="{{ url_for('static', filename='clipah_logo.png') }}">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        /* Fix autofill styling to maintain consistent colors */
+        input:-webkit-autofill,
+        input:-webkit-autofill:hover,
+        input:-webkit-autofill:focus,
+        input:-webkit-autofill:active {
+            -webkit-box-shadow: 0 0 0 30px #374151 inset !important;
+            -webkit-text-fill-color: #ffffff !important;
+            caret-color: #ffffff !important;
+        }
+        
+        /* Fix autofill focus outline to stay purple */
+        input:-webkit-autofill:focus {
+            outline: 2px solid #a855f7 !important;
+            outline-offset: -2px !important;
+            border-color: transparent !important;
+        }
+        
+        /* For Firefox autofill */
+        input:-moz-autofill {
+            background-color: #374151 !important;
+            color: #ffffff !important;
+        }
+        
+        input:-moz-autofill:focus {
+            outline: 2px solid #a855f7 !important;
+            outline-offset: -2px !important;
+            border-color: transparent !important;
+        }
+        
+        /* For other browsers */
+        input:autofill {
+            background-color: #374151 !important;
+            color: #ffffff !important;
+        }
+        
+        input:autofill:focus {
+            outline: 2px solid #a855f7 !important;
+            outline-offset: -2px !important;
+            border-color: transparent !important;
+        }
+    </style>
+</head>
+<body class="min-h-screen py-8 px-4">
+    <div class="max-w-2xl mx-auto">
+        <!-- Main Card -->
+        <div class="bg-gray-800/50 backdrop-blur-sm border border-gray-700 rounded-2xl p-8 shadow-2xl">
+            <!-- Header -->
+            <div class="text-center mb-8">
+                <div class="flex items-center justify-center space-x-3 mb-2">
+                    <div class="w-10 h-10 flex items-center justify-center">
+                        <img src="{{ url_for('static', filename='clipah_logo.png') }}" alt="Clipah Logo" class="w-10 h-10 object-contain">
+                    </div>
+                    <h1 class="text-4xl font-bold text-white">Clipah</h1>
+                </div>
+                <p class="text-gray-400 text-lg">AI-powered video clipping, made simple.</p>
+            </div>
+
+            <!-- Main Form -->
+            <form id="clipForm" class="space-y-6">
+                <!-- Video Source Section -->
+                <div class="space-y-4">
+                    <!-- Tabs -->
+                    <div class="flex rounded-lg overflow-hidden border border-gray-600">
+                        <button type="button" id="youtubeTab" class="flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 tab-active">
+                            YouTube URL
+                        </button>
+                        <button type="button" id="uploadTab" class="flex-1 px-4 py-3 text-sm font-medium transition-all duration-200 tab-inactive">
+                            Upload File
+                        </button>
+                    </div>
+
+                    <!-- YouTube URL Tab Content -->
+                    <div id="youtubeContent" class="space-y-2">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i data-lucide="link" class="h-5 w-5 text-gray-400"></i>
+                            </div>
+                            <input type="url" id="youtubeUrl" class="block w-full pl-10 pr-3 py-3 border border-gray-600 rounded-lg bg-gray-700/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="Paste your YouTube video link here...">
+                        </div>
+                    </div>
+
+                    <!-- Upload File Tab Content -->
+                    <div id="uploadContent" class="space-y-2 hidden">
+                        <div class="file-drop-zone rounded-lg p-8 text-center cursor-pointer" id="fileDropZone">
+                            <input type="file" id="fileInput" class="hidden" accept="video/*">
+                            <div class="space-y-3">
+                                <i data-lucide="upload-cloud" class="h-12 w-12 text-gray-400 mx-auto"></i>
+                                <div>
+                                    <p class="text-white font-medium">Drag & drop your video file here</p>
+                                    <p class="text-gray-400 text-sm">or click to browse</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="selectedFile" class="hidden bg-gray-700/50 rounded-lg p-3 flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <i data-lucide="file-video" class="h-5 w-5 text-purple-400"></i>
+                                <span id="fileName" class="text-white text-sm"></span>
+                            </div>
+                            <button type="button" id="removeFile" class="text-gray-400 hover:text-red-400 transition-colors">
+                                <i data-lucide="x" class="h-4 w-4"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Language Selection -->
+                <div class="space-y-2">
+                    <label class="block text-sm font-medium text-gray-300">Video Language</label>
+                    <div class="relative">
+                        <select id="language" class="block w-full px-4 py-3 pr-10 border border-gray-600 rounded-lg bg-gray-700/50 text-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent appearance-none cursor-pointer">
+                            <option value="Indonesian">🇮🇩 Indonesian</option>
+                            <option value="English">🇺🇸 English</option>
+                        </select>
+                        <div class="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                            <i data-lucide="chevron-down" class="h-5 w-5 text-gray-400"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Customization Options -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-white">Clip Customization</h3>
+                    
+                    <!-- Generate Subtitles -->
+                    <div class="flex items-center space-x-3">
+                        <input type="checkbox" id="generateSubtitles" class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2">
+                        <label for="generateSubtitles" class="text-gray-300">Generate Subtitles</label>
+                    </div>
+
+                    <!-- Add Watermark -->
+                    <div class="space-y-3">
+                        <div class="flex items-center space-x-3">
+                            <input type="checkbox" id="addWatermark" class="w-4 h-4 text-purple-600 bg-gray-700 border-gray-600 rounded focus:ring-purple-500 focus:ring-2">
+                            <label for="addWatermark" class="text-gray-300">Add Watermark</label>
+                        </div>
+                        
+                        <!-- Watermark Text Input (Conditional) -->
+                        <div id="watermarkInput" class="hidden ml-7">
+                            <input type="text" id="watermarkText" class="block w-full px-3 py-2 border border-gray-600 rounded-lg bg-gray-700/50 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent" placeholder="@clipah.com">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aspect Ratio Selection -->
+                <div class="space-y-3">
+                    <label class="block text-sm font-medium text-gray-300">Aspect Ratio</label>
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="relative">
+                            <input type="radio" name="aspectRatio" value="9:16" class="sr-only peer" checked>
+                            <div class="border-2 border-gray-600 rounded-lg p-4 text-center cursor-pointer transition-all peer-checked:border-purple-500 peer-checked:bg-purple-500/10 h-28 flex flex-col justify-center">
+                                <div class="w-8 h-12 bg-gray-600 rounded mx-auto mb-2 peer-checked:bg-purple-400"></div>
+                                <span class="text-sm font-medium text-gray-300 peer-checked:text-purple-300">9:16</span>
+                                <p class="text-xs text-gray-500 mt-1">Portrait</p>
+                            </div>
+                        </label>
+                        <label class="relative">
+                            <input type="radio" name="aspectRatio" value="16:9" class="sr-only peer">
+                            <div class="border-2 border-gray-600 rounded-lg p-4 text-center cursor-pointer transition-all peer-checked:border-purple-500 peer-checked:bg-purple-500/10 h-28 flex flex-col justify-center">
+                                <div class="w-12 h-8 bg-gray-600 rounded mx-auto mb-2 peer-checked:bg-purple-400"></div>
+                                <span class="text-sm font-medium text-gray-300 peer-checked:text-purple-300">16:9</span>
+                                <p class="text-xs text-gray-500 mt-1">Landscape</p>
+                            </div>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Action Button -->
+                <button type="submit" id="generateButton" class="w-full gradient-button text-white font-semibold py-4 px-6 rounded-lg transition-all duration-200 hover:shadow-lg flex items-center justify-center space-x-2">
+                    <i data-lucide="sparkles" class="h-5 w-5"></i>
+                    <span>Generate My Clips</span>
+                </button>
+            </form>
+
+            <!-- Dynamic Status Section -->
+            <div id="statusSection" class="hidden mt-8 text-center space-y-4">
+                <div class="flex justify-center">
+                    <div class="loading-spinner">
+                        <i data-lucide="loader-2" class="h-8 w-8 text-purple-400"></i>
+                    </div>
+                </div>
+                <p id="statusText" class="text-gray-300 font-medium">Status: Starting process...</p>
+                <div class="w-full bg-gray-700 rounded-full h-2">
+                    <div id="progressBar" class="bg-gradient-to-r from-purple-500 to-blue-500 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                </div>
+                <p id="progressText" class="text-gray-400 text-sm">0%</p>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsSection" class="hidden mt-8 space-y-8">
+                <!-- Success Header -->
+                <div class="text-center space-y-4">
+                    <div class="flex justify-center">
+                        <i data-lucide="check-circle" class="h-16 w-16 text-green-400"></i>
+                    </div>
+                    <div class="space-y-2">
+                        <h3 class="text-2xl font-bold text-white">Clips are ready!</h3>
+                        <p class="text-gray-400">Your video has been processed and viral clips have been generated.</p>
+                    </div>
+                </div>
+
+                <!-- Clips Preview Section -->
+                <div class="space-y-6">
+                    <h4 class="text-xl font-semibold text-white flex items-center space-x-2">
+                        <i data-lucide="play-circle" class="h-6 w-6 text-purple-400"></i>
+                        <span>Generated Clips</span>
+                    </h4>
+                    
+                    <div id="clipsContainer" class="space-y-4">
+                        <!-- Clips will be dynamically inserted here -->
+                    </div>
+                </div>
+
+                <!-- Download Section -->
+                <div class="text-center space-y-4 pt-6 border-t border-gray-700">
+                    <p class="text-gray-400">Download all clips as a .zip file</p>
+                    <button type="button" id="downloadButton" class="gradient-button text-white font-semibold py-3 px-6 rounded-lg transition-all duration-200 hover:shadow-lg flex items-center justify-center space-x-2 mx-auto">
+                        <i data-lucide="download" class="h-5 w-5"></i>
+                        <span>Download All Clips (.zip)</span>
+                    </button>
+                </div>
+                
+                <!-- Process Another Video Section -->
+                <div class="text-center space-y-4 pt-6 border-t border-gray-700">
+                    <p class="text-gray-400">Want to create more clips?</p>
+                    <button type="button" id="processAnotherButton" class="bg-gray-600 hover:bg-gray-500 text-white font-medium py-3 px-6 rounded-lg transition-colors flex items-center justify-center space-x-2 mx-auto">
+                        <i data-lucide="refresh-cw" class="h-5 w-5"></i>
+                        <span>Process Another Video</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Error Section -->
+            <div id="errorSection" class="hidden mt-8 bg-red-900/20 border border-red-700/50 rounded-lg p-6">
+                <div class="flex items-start space-x-3">
+                    <i data-lucide="alert-triangle" class="h-6 w-6 text-red-400 flex-shrink-0 mt-0.5"></i>
+                    <div class="space-y-2">
+                        <h3 class="text-lg font-semibold text-red-400">An Error Occurred</h3>
+                        <p id="errorMessage" class="text-red-300">Something went wrong while processing your video. Please try again.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
