@@ -49,7 +49,6 @@ def cleanup_previous_output():
         'main_video.webm',
         'raw_transcript.vtt',
         'clipah_clips.zip',
-        'cookies.txt',
         'main_video.mhtml',
         'main_video.mkv',
         'temp-audio.m4a',
@@ -138,6 +137,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         current_step += 1
         log_progress("Downloading video", f"Downloading video from: {video_url}", current_step, total_steps)
         ydl_opts = {
+            'cookiefile': './cookies.txt',
             'outtmpl': 'main_video.%(ext)s',
             'format': 'bestvideo+bestaudio/best'
         }
