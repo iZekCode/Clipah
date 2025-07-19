@@ -3,6 +3,6 @@
 pkgs.mkShell {
   buildInputs = [
     pkgs.ffmpeg
-    # Add other dependencies here (e.g., pkgs.nodejs)
+    pkgs.python313
   ];
 }
