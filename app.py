@@ -18,9 +18,9 @@ import assemblyai as aai
 # from google import genai
 import google.generativeai as genai
 from moviepy import VideoFileClip
-from moviepy.video.fx.crop import crop
-from moviepy.video.fx.fadein import fadein
-from moviepy.video.fx.fadeout import fadeout
+from moviepy.video.fx.Crop import Crop
+from moviepy.video.fx.FadeIn import FadeIn
+from moviepy.video.fx.FadeOut import FadeOut
 
 app = Flask(__name__)
 
@@ -431,7 +431,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             x_center = w // 2
                             x1 = max(0, x_center - target_width // 2)
                             x2 = min(w, x_center + target_width // 2)
-                            final_clip = crop(original_clip, x1=x1, x2=x2)
+                            final_clip = Crop(original_clip, x1=x1, x2=x2)
                     elif aspect_ratio == "16:9":
                         target_height = int(w * 9 / 16)
                         if target_height > h:
@@ -441,7 +441,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             y_center = h // 2
                             y1 = max(0, y_center - target_height // 2)
                             y2 = min(h, y_center + target_height // 2)
-                            final_clip = crop(original_clip, y1=y1, y2=y2)
+                            final_clip = Crop(original_clip, y1=y1, y2=y2)
                     else:
                         final_clip = original_clip
                     
@@ -452,8 +452,8 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                         if final_clip.duration > 1.0:  # Only add fades if clip is long enough
                             fade_duration = min(0.5, final_clip.duration / 4)  # Max 25% of clip duration
                             print(f"[DEBUG] Adding fade effects with duration: {fade_duration}")
-                            final_clip = fadein(final_clip, duration=fade_duration)
-                            final_clip = fadeout(final_clip, duration=fade_duration)
+                            final_clip = FadeIn(final_clip, duration=fade_duration)
+                            final_clip = FadeOut(final_clip, duration=fade_duration)
                         else:
                             print(f"[DEBUG] Clip too short for fade effects, skipping fades")
                     except Exception as fade_error:
