@@ -17,7 +17,7 @@ import yt_dlp
 import assemblyai as aai
 # from google import genai
 import google.generativeai as genai
-from moviepy.editor import VideoFileClip
+from moviepy import VideoFileClip
 from moviepy.video.fx.crop import crop
 from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
