@@ -7,6 +7,10 @@ from datetime import datetime
 import zipfile
 import shutil
 import subprocess
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 # Import your video processing function
 import yt_dlp
@@ -19,6 +23,10 @@ from moviepy.video.fx.fadein import fadein
 from moviepy.video.fx.fadeout import fadeout
 
 app = Flask(__name__)
+
+# Configure Flask from environment variables
+app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
+app.config['ENV'] = os.getenv('FLASK_ENV', 'production')
 
 # Global variable to track processing status
 processing_status = {
@@ -105,9 +113,17 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         language_code = "en_us" if language.lower() == "english" else "id"
         
         # Initialize API clients
-        aai.settings.api_key = "3b9536b903824ba6b341b2865ac54f96"
-        # client = genai.Client(api_key="AIzaSyCB1V2SZTUxuz7NNQS3VHOlg8o51RDJlLE")
-        genai.configure(api_key="AIzaSyCB1V2SZTUxuz7NNQS3VHOlg8o51RDJlLE")
+        assemblyai_api_key = os.getenv('ASSEMBLYAI_API_KEY')
+        google_gemini_api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
+        
+        if not assemblyai_api_key:
+            raise RuntimeError("ASSEMBLYAI_API_KEY not found in environment variables")
+        if not google_gemini_api_key:
+            raise RuntimeError("GOOGLE_GEMINI_API_KEY not found in environment variables")
+        
+        aai.settings.api_key = assemblyai_api_key
+        # client = genai.Client(api_key=google_gemini_api_key)
+        genai.configure(api_key=google_gemini_api_key)
         
         # Step counter
         total_steps = 7  # Base steps
@@ -941,4 +957,9 @@ def serve_final_clip(filename):
         return jsonify({'error': 'File not found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    # Get configuration from environment variables with defaults
+    debug = os.getenv('FLASK_DEBUG', 'True').lower() == 'true'
+    host = os.getenv('FLASK_HOST', '0.0.0.0')
+    port = int(os.getenv('FLASK_PORT', '5000'))
+    
+    app.run(debug=debug, host=host, port=port)
