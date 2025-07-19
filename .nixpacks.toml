@@ -1,3 +1,2 @@
 [providers]
-python = true
 nix = true
