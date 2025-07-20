@@ -477,10 +477,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             codec="libx264", 
                             preset="medium", 
                             logger=None,
-                            threads=2,
-                            audio_codec='aac',              # Primary choice for MoviePy 2.2.1
-                            temp_audiofile='temp-audio.m4a', # Use .m4a for AAC
-                            remove_temp=True 
+                            threads=2 
                         )
                         print(f"[SUCCESS] Clip {i+1} created successfully: {output_path}")
                     except Exception as write_error:
@@ -493,10 +490,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                                 codec="libx264", 
                                 preset="fast",
                                 logger=None,
-                                threads=2,
-                                audio_codec='libmp3lame',       # Fallback for 2.2.1
-                                temp_audiofile='temp-audio.mp3', # Use .mp3 for libmp3lame
-                                remove_temp=True
+                                threads=2 
                             )
                             print(f"[SUCCESS] Clip {i+1} created successfully on retry: {output_path}")
                         except Exception as retry_error:
