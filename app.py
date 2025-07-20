@@ -846,7 +846,7 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
         clip_data_summary.append("=" * 80)
         clip_data_summary.append("CLIPAH VIDEO PROCESSING SUMMARY")
         clip_data_summary.append("=" * 80)
-        clip_data_summary.append(f"Video URL: {video_url}")
+        clip_data_summary.append(f"Video Source: {video_source}")
         clip_data_summary.append(f"Processing Date: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         clip_data_summary.append(f"Language: {language} ({language_code})")
         clip_data_summary.append(f"Aspect Ratio: {aspect_ratio}")
