@@ -477,10 +477,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             codec="libx264", 
                             preset="ultrafast", 
                             logger=None,
-                            bitrate="2000k",
                             threads=2 
-                            # temp_audiofile='temp-audio.m4a',  
-                            # remove_temp=True  
                         )
                         print(f"[SUCCESS] Clip {i+1} created successfully: {output_path}")
                     except Exception as write_error:
@@ -493,8 +490,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                                 codec="libx264", 
                                 preset="fast",
                                 logger=None,
-                                # audio_codec='aac',
-                                bitrate="2000k",
                                 threads=2 
                             )
                             print(f"[SUCCESS] Clip {i+1} created successfully on retry: {output_path}")
