@@ -955,8 +955,8 @@ def process_video():
         
         # Extract other parameters
         language = data.get('language', 'Indonesian')
-        include_subtitles = data.get('include_subtitles', 'false').lower() == 'true'
-        include_watermark = data.get('include_watermark', 'false').lower() == 'true'
+        include_subtitles = data.get('include_subtitles', False)
+        include_watermark = data.get('include_watermark', False)
         watermark_text = data.get('watermark_text', '@clipah.com')
         aspect_ratio = data.get('aspect_ratio', '9:16')
         
