@@ -5,9 +5,7 @@
 
 *Transform long-form videos into viral-ready clips with the power of AI*
 
-<div align="center">
-<a href="https://your-demo-url.com" target="_blank">🚀 <strong>Try Live Demo</strong></a>
-</div>
+[🚀 **Try Live Demo**](https://clipah.up.railway.app/)
 
 ---
 
