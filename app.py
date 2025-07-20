@@ -471,9 +471,9 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             verbose=False, 
                             logger=None,
                             bitrate="2000k",
-                            threads=2 
-                            # temp_audiofile='temp-audio.m4a',  
-                            # remove_temp=True  
+                            threads=2, 
+                            temp_audiofile='temp-audio.m4a',  
+                            remove_temp=True  
                         )
                         print(f"[SUCCESS] Clip {i+1} created successfully: {output_path}")
                     except Exception as write_error:
@@ -487,9 +487,11 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                                 preset="fast",
                                 verbose=False, 
                                 logger=None,
-                                audio_codec='aac',
+                                # audio_codec='aac',
                                 bitrate="2000k",
-                                threads=2 
+                                threads=2,
+                                temp_audiofile='temp-audio.m4a',  
+                                remove_temp=True   
                             )
                             print(f"[SUCCESS] Clip {i+1} created successfully on retry: {output_path}")
                         except Exception as retry_error:
