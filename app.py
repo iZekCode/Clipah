@@ -140,7 +140,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         ydl_opts = {
             'cookiefile': './cookies.txt',
             'outtmpl': 'main_video.%(ext)s',
-            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
+            'format': 'best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best'
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
@@ -670,13 +670,26 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
 
             subtitle_files = [f for f in os.listdir(output_subtitle_folder) if f.endswith('.ass')]
 
+            print(f"[DEBUG] Found {len(subtitle_files)} subtitle files: {subtitle_files}")
+            print(f"[DEBUG] Looking for clips in: {output_folder_clips}")
+            if os.path.exists(output_folder_clips):
+                clip_files = [f for f in os.listdir(output_folder_clips) if f.endswith('.mp4')]
+                print(f"[DEBUG] Found {len(clip_files)} clip files: {clip_files}")
+            else:
+                print(f"[DEBUG] Clips folder doesn't exist: {output_folder_clips}")
+
             for i, subtitle_file in enumerate(subtitle_files):
                 base_filename = subtitle_file.replace('.ass', '')
                 input_video_path = os.path.join(output_folder_clips, f"{base_filename}.mp4")
                 input_subtitle_path = os.path.join(output_subtitle_folder, subtitle_file)
                 output_video_path = os.path.join(output_folder_final, f"{base_filename}_final.mp4")
 
+                print(f"[DEBUG] Processing subtitle file: {subtitle_file}")
+                print(f"[DEBUG] Looking for video file: {input_video_path}")
+                print(f"[DEBUG] Video file exists: {os.path.exists(input_video_path)}")
+
                 if not os.path.exists(input_video_path):
+                    print(f"[DEBUG] Skipping {subtitle_file} - no matching video file")
                     continue
 
                 print(f"   Finalizing clip {i+1}/{len(subtitle_files)}: {base_filename}")
