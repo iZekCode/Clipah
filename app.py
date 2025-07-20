@@ -476,7 +476,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             output_path, 
                             codec="libx264", 
                             preset="ultrafast", 
-                            verbose=False, 
                             logger=None,
                             bitrate="2000k",
                             threads=2 
@@ -493,7 +492,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                                 output_path, 
                                 codec="libx264", 
                                 preset="fast",
-                                verbose=False, 
                                 logger=None,
                                 # audio_codec='aac',
                                 bitrate="2000k",
