@@ -47,6 +47,7 @@ def cleanup_previous_output():
         'main_audio.mp3',
         'main_transcript.vtt',
         'main_video.webm',
+        'main_video.mp4', 
         'raw_transcript.vtt',
         'clipah_clips.zip',
         'main_video.mhtml',
@@ -139,7 +140,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         ydl_opts = {
             'cookiefile': './cookies.txt',
             'outtmpl': 'main_video.%(ext)s',
-            'format': 'bestvideo+bestaudio/best'
+            'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best'
         }
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             ydl.download([video_url])
@@ -151,7 +152,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         try:
             # Use subprocess for better error handling
             result = subprocess.run([
-                'ffmpeg', '-i', 'main_video.webm', '-y', 'main_audio.mp3'
+                'ffmpeg', '-i', 'main_video.mp4', '-y', 'main_audio.mp3'
             ], capture_output=True, text=True, check=True)
             
             if not os.path.exists('main_audio.mp3'):
@@ -513,7 +514,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
             
             source_video.close()
         
-        create_video_clips('main_video.webm', clips)
+        create_video_clips('main_video.mp4', clips)
         
         # Handle subtitles
         if include_subtitles:
