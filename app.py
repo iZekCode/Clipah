@@ -68,7 +68,6 @@ def cleanup_previous_output():
         'main_video.mhtml',
         'main_video.mkv',
         'temp-audio.m4a',
-        'uploads', 
     ]
     
     print("🧹 Cleaning up previous output...")
