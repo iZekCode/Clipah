@@ -470,6 +470,8 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             preset="ultrafast", 
                             verbose=False, 
                             logger=None,
+                            bitrate="2000k",
+                            threads=2 
                             # temp_audiofile='temp-audio.m4a',  
                             # remove_temp=True  
                         )
@@ -485,7 +487,9 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                                 preset="fast",
                                 verbose=False, 
                                 logger=None,
-                                audio_codec='aac'
+                                audio_codec='aac',
+                                bitrate="2000k",
+                                threads=2 
                             )
                             print(f"[SUCCESS] Clip {i+1} created successfully on retry: {output_path}")
                         except Exception as retry_error:
@@ -702,20 +706,22 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
 
                     if include_watermark:
                         subprocess.run([
-                            'ffmpeg', '-i', input_video_path,
+                            'ffmpeg', '-threads', '2', '-i', input_video_path,
                             '-vf', f"ass='{escaped_subtitle_path}',drawtext=text='{watermark_text}':fontfile='{font_path}':fontcolor=white@0.5:fontsize=24:x=(w-text_w)/2:y=h-text_h-60",
                             '-c:a', 'copy',
+                            '-preset', 'fast', 
                             '-y',
                             output_video_path
-                        ], capture_output=True, text=True, check=True)
+                        ], capture_output=True, text=True, check=True, timeout=600)
                     else:
                         subprocess.run([
-                            'ffmpeg', '-i', input_video_path,
+                            'ffmpeg', '-threads', '2', '-i', input_video_path,
                             '-vf', f"ass='{escaped_subtitle_path}'",
                             '-c:a', 'copy', 
+                            '-preset', 'fast', 
                             '-y',
                             output_video_path
-                        ], capture_output=True, text=True, check=True)
+                        ], capture_output=True, text=True, check=True, timeout=600)
                         
                     if not os.path.exists(output_video_path):
                         raise RuntimeError(f"Failed to create final video: {output_video_path}")
@@ -759,7 +765,7 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                             '-c:a', 'copy',
                             '-y',
                             output_video_path
-                        ], capture_output=True, text=True, check=True)
+                        ], capture_output=True, text=True, check=True, timeout=600)
                         
                         if not os.path.exists(output_video_path):
                             raise RuntimeError(f"Failed to create watermarked video: {output_video_path}")
