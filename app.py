@@ -21,7 +21,6 @@ from moviepy import VideoFileClip
 from moviepy.video.fx.Crop import Crop
 from moviepy.video.fx.FadeIn import FadeIn
 from moviepy.video.fx.FadeOut import FadeOut
-from moviepy.video.fx.SubClipped import SubClipped
 
 app = Flask(__name__)
 
