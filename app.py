@@ -12,7 +12,6 @@ from dotenv import load_dotenv
 # Load environment variables from .env file
 load_dotenv()
 
-# Import your video processing function
 import yt_dlp
 import assemblyai as aai
 # from google import genai
@@ -126,12 +125,12 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         genai.configure(api_key=google_gemini_api_key)
         
         # Step counter
-        total_steps = 7  # Base steps
+        total_steps = 7  
         if include_subtitles:
-            total_steps += 2  # Add: subtitle creation (step 8) + finalization with subtitles/watermark (step 9)
-        elif include_watermark:  # Only watermark, no subtitles
-            total_steps += 1  # Add: watermark only (step 8)
-        # If neither subtitles nor watermark: total_steps remains 7
+            total_steps += 2 
+        elif include_watermark:  
+            total_steps += 1 
+        
         current_step = 0
         
         # Step 1: Download Video
@@ -150,7 +149,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         log_progress("Converting audio", "Converting video to MP3 format", current_step, total_steps)
         
         try:
-            # Use subprocess for better error handling
             result = subprocess.run([
                 'ffmpeg', '-i', 'main_video.mp4', '-y', 'main_audio.mp3'
             ], capture_output=True, text=True, check=True)
@@ -347,7 +345,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
 
                 cleaned_response_text = response.text.strip()
                 
-                # Remove markdown code blocks if present
                 if "```json" in cleaned_response_text:
                     cleaned_response_text = cleaned_response_text.split("```json")[1].split("```")[0].strip()
                 elif "```" in cleaned_response_text:
@@ -386,7 +383,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                 start_time_str = clip_info.get("start_time")
                 end_time_str = clip_info.get("end_time")
 
-                # Convert time strings to seconds
                 start = time_to_seconds(start_time_str)
                 end = time_to_seconds(end_time_str)
                 
@@ -452,10 +448,10 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                     
                     print(f"[DEBUG] Final clip size: {final_clip.size}, duration: {final_clip.duration}")
                     
-                    # Apply fade effects with validation
+                    # Apply fade effects 
                     try:
-                        if final_clip.duration > 1.0:  # Only add fades if clip is long enough
-                            fade_duration = min(0.5, final_clip.duration / 4)  # Max 25% of clip duration
+                        if final_clip.duration > 1.0:  
+                            fade_duration = min(0.5, final_clip.duration / 4)  
                             print(f"[DEBUG] Adding fade effects with duration: {fade_duration}")
                             # final_clip = FadeIn(final_clip, duration=fade_duration)
                             # final_clip = FadeOut(final_clip, duration=fade_duration)
@@ -470,7 +466,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                     
                     print(f"[DEBUG] Writing video file: {output_path}")
                     
-                    # Use more conservative write settings
+                    # first attempt
                     try:
                         final_clip.write_videofile(
                             output_path, 
@@ -482,7 +478,8 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                         print(f"[SUCCESS] Clip {i+1} created successfully: {output_path}")
                     except Exception as write_error:
                         print(f"[ERROR] Failed to write video file: {write_error}")
-                        # Try with different settings
+
+                        # second attempt
                         try:
                             print(f"[DEBUG] Retrying with different codec settings...")
                             final_clip.write_videofile(
@@ -497,7 +494,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                             print(f"[ERROR] Retry also failed: {retry_error}")
                             raise retry_error
                     
-                    # Close clips to free memory
                     final_clip.close()
                     original_clip.close()
                     
@@ -700,7 +696,6 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                 print(f"   Finalizing clip {i+1}/{len(subtitle_files)}: {base_filename}")
 
                 try:
-                    # Escape backslashes for FFmpeg on Windows
                     escaped_subtitle_path = input_subtitle_path.replace('\\', '/').replace('output_subtitles/', './output_subtitles/')
                     
                     font_path = "styles/arial.ttf"
@@ -727,15 +722,12 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                         
                 except subprocess.CalledProcessError as e:
                     print(f"FFmpeg finalization failed for {base_filename}: {e.stderr}")
-                    # Fallback: copy original file without subtitles
                     shutil.copy2(input_video_path, output_video_path)
                 except FileNotFoundError:
                     print("FFmpeg not found for finalization. Copying original files.")
-                    # Fallback: copy original file without subtitles
                     shutil.copy2(input_video_path, output_video_path)
                 except Exception as e:
                     print(f"Unexpected error during finalization {base_filename}: {e}")
-                    # Fallback: copy original file without subtitles
                     shutil.copy2(input_video_path, output_video_path)
 
         else:
@@ -771,15 +763,12 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                             
                     except subprocess.CalledProcessError as e:
                         print(f"FFmpeg watermark failed for {clip_file}: {e.stderr}")
-                        # Fallback: copy original file without watermark
                         shutil.copy2(input_video_path, output_video_path)
                     except FileNotFoundError:
                         print("FFmpeg not found for watermarking. Copying original files.")
-                        # Fallback: copy original file without watermark
                         shutil.copy2(input_video_path, output_video_path)
                     except Exception as e:
                         print(f"Unexpected error during watermarking {clip_file}: {e}")
-                        # Fallback: copy original file without watermark
                         shutil.copy2(input_video_path, output_video_path)
             else:
                 # Copy clips to final folder

@@ -12,7 +12,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <style>
-        /* Fix autofill styling to maintain consistent colors */
         input:-webkit-autofill,
         input:-webkit-autofill:hover,
         input:-webkit-autofill:focus,
@@ -22,14 +21,12 @@
             caret-color: #ffffff !important;
         }
         
-        /* Fix autofill focus outline to stay purple */
         input:-webkit-autofill:focus {
             outline: 2px solid #a855f7 !important;
             outline-offset: -2px !important;
             border-color: transparent !important;
         }
         
-        /* For Firefox autofill */
         input:-moz-autofill {
             background-color: #374151 !important;
             color: #ffffff !important;
@@ -41,7 +38,6 @@
             border-color: transparent !important;
         }
         
-        /* For other browsers */
         input:autofill {
             background-color: #374151 !important;
             color: #ffffff !important;
@@ -162,7 +158,7 @@
                         <label class="relative">
                             <input type="radio" name="aspectRatio" value="9:16" class="sr-only peer" checked>
                             <div class="border-2 border-gray-600 rounded-lg p-4 text-center cursor-pointer transition-all peer-checked:border-purple-500 peer-checked:bg-purple-500/10 h-28 flex flex-col justify-center">
-                                <div class="w-8 h-12 bg-gray-600 rounded mx-auto mb-2 peer-checked:bg-purple-400"></div>
+                                <div class="w-8 h-5 bg-gray-600 rounded mx-auto mb-2 peer-checked:bg-purple-400"></div>
                                 <span class="text-sm font-medium text-gray-300 peer-checked:text-purple-300">9:16</span>
                                 <p class="text-xs text-gray-500 mt-1">Portrait</p>
                             </div>
@@ -220,7 +216,7 @@
                     </h4>
                     
                     <div id="clipsContainer" class="space-y-4">
-                        <!-- Clips will be dynamically inserted here -->
+                        <!-- Clips will be inserted here -->
                     </div>
                 </div>
 

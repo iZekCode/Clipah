@@ -1,6 +1,4 @@
-// Initialize Lucide icons when DOM is loaded
 document.addEventListener("DOMContentLoaded", () => {
-  // Initialize Lucide icons
   if (typeof lucide !== "undefined") {
     lucide.createIcons()
   }
@@ -232,7 +230,7 @@ function isValidYouTubeUrl(url) {
 }
 
 function startStatusCheck() {
-  statusCheckInterval = setInterval(checkStatus, 2000) // Check every 2 seconds
+  statusCheckInterval = setInterval(checkStatus, 2000) 
 }
 
 function checkStatus() {
@@ -264,7 +262,7 @@ function updateStatus(data) {
 }
 
 function showResults(clips) {
-  console.log("showResults called with clips:", clips) // Debug log
+  console.log("showResults called with clips:", clips) 
   hideAllSections()
   generateClipsPreview(clips)
   resultsSection.classList.remove("hidden")
@@ -278,7 +276,7 @@ function generateClipsPreview(clips) {
   const clipsContainer = document.getElementById("clipsContainer")
   const selectedAspectRatio = document.querySelector('input[name="aspectRatio"]:checked').value
 
-  console.log("Generating clips preview with data:", clips) // Debug log
+  console.log("Generating clips preview with data:", clips) 
 
   if (!clips || clips.length === 0) {
     clipsContainer.innerHTML = '<p class="text-gray-400 text-center">No clips were generated.</p>'
@@ -418,7 +416,7 @@ function previewClip(clipIndex, clipTitle) {
   const includeWatermark = document.getElementById("addWatermark").checked
   const folderPath = includeWatermark ? "output_clips_final" : "output_clips"
   
-  // Generate filename (this should match your backend naming convention)
+  // Generate filename 
   const safeTitle = clipTitle.replace(/[^a-zA-Z0-9 _]/g, '').replace(/\s+/g, ' ').trim()
   const filename = `${parseInt(clipIndex) + 1}_${safeTitle}${includeWatermark ? '_final' : ''}.mp4`
   const videoUrl = `/${folderPath}/${filename}`
