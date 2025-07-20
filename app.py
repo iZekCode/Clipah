@@ -128,10 +128,10 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         # Step counter
         total_steps = 7  # Base steps
         if include_subtitles:
-            total_steps += 2  # Add subtitle creation and finalization steps
-        if include_watermark and not include_subtitles:
-            total_steps += 1  # Add watermark step only if not already handled in subtitle finalization
-        
+            total_steps += 2  # Add: subtitle creation (step 8) + finalization with subtitles/watermark (step 9)
+        elif include_watermark:  # Only watermark, no subtitles
+            total_steps += 1  # Add: watermark only (step 8)
+        # If neither subtitles nor watermark: total_steps remains 7
         current_step = 0
         
         # Step 1: Download Video
@@ -475,7 +475,7 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
                         final_clip.write_videofile(
                             output_path, 
                             codec="libx264", 
-                            preset="ultrafast", 
+                            preset="medium", 
                             logger=None,
                             threads=2 
                         )
@@ -708,9 +708,8 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                     if include_watermark:
                         subprocess.run([
                             'ffmpeg', '-threads', '2', '-i', input_video_path,
-                            '-vf', f"ass='{escaped_subtitle_path}',drawtext=text='{watermark_text}':fontfile='{font_path}':fontcolor=white@0.5:fontsize=24:x=(w-text_w)/2:y=h-text_h-60",
+                            '-vf', f"ass='{escaped_subtitle_path}',drawtext=text='{watermark_text}':fontfile='{font_path}':fontcolor=white@0.5:fontsize=10:x=(w-text_w)/2:y=h-text_h-15",
                             '-c:a', 'copy',
-                            '-preset', 'fast', 
                             '-y',
                             output_video_path
                         ], capture_output=True, text=True, check=True, timeout=600)
@@ -719,7 +718,6 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                             'ffmpeg', '-threads', '2', '-i', input_video_path,
                             '-vf', f"ass='{escaped_subtitle_path}'",
                             '-c:a', 'copy', 
-                            '-preset', 'fast', 
                             '-y',
                             output_video_path
                         ], capture_output=True, text=True, check=True, timeout=600)
@@ -762,7 +760,7 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
                     try:
                         result = subprocess.run([
                             'ffmpeg', '-i', input_video_path,
-                            '-vf', f"drawtext=text='{watermark_text}':fontfile='{font_path}':fontcolor=white@0.5:fontsize=24:x=(w-text_w)/2:y=h-text_h-60",
+                            '-vf', f"drawtext=text='{watermark_text}':fontfile='{font_path}':fontcolor=white@0.5:fontsize=10:x=(w-text_w)/2:y=h-text_h-15",
                             '-c:a', 'copy',
                             '-y',
                             output_video_path
@@ -928,7 +926,7 @@ def download_clips():
         if not os.path.exists(output_folder):
             return jsonify({'error': 'No clips available for download'}), 404
         
-        clip_files = [f for f in os.listdir(output_folder) if f.endswith('.mp4')]
+        clip_files = [f for f in os.listdir(output_folder) if f.endswith(('.mp4', '.txt'))]
         if not clip_files:
             return jsonify({'error': 'No video clips found'}), 404
         
