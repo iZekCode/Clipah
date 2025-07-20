@@ -164,22 +164,48 @@ function showNotification(message, type = "blue") {
 }
 
 function startProcessing() {
-  // Get form data
-  const videoUrl = document.getElementById("youtubeUrl").value.trim()
-  const language = document.getElementById("language").value
-  const includeSubtitles = document.getElementById("generateSubtitles").checked
-  const includeWatermark = document.getElementById("addWatermark").checked
-  const watermarkText = document.getElementById("watermarkText").value || "@clipah.com"
-  const aspectRatio = document.querySelector('input[name="aspectRatio"]:checked').value
-
-  // Validate input
-  if (!videoUrl && !fileInput.files.length) {
-    showNotification("Please provide a YouTube URL or upload a video file.", "red")
-    return
+  // Get current tab
+  const isUploadTab = !uploadContent.classList.contains("hidden")
+  
+  let formData, isFileUpload = false
+  
+  if (isUploadTab && fileInput.files.length > 0) {
+    // File upload processing
+    isFileUpload = true
+    formData = new FormData()
+    formData.append('video_file', fileInput.files[0])
+    formData.append('language', document.getElementById("language").value)
+    formData.append('include_subtitles', document.getElementById("generateSubtitles").checked)
+    formData.append('include_watermark', document.getElementById("addWatermark").checked)
+    formData.append('watermark_text', document.getElementById("watermarkText").value || "@clipah.com")
+    formData.append('aspect_ratio', document.querySelector('input[name="aspectRatio"]:checked').value)
+  } else {
+    // YouTube URL processing (existing)
+    const videoUrl = document.getElementById("youtubeUrl").value.trim()
+    
+    if (!videoUrl) {
+      showNotification("Please provide a YouTube URL or upload a video file.", "red")
+      return
+    }
+    
+    if (!isValidYouTubeUrl(videoUrl)) {
+      showNotification("Please provide a valid YouTube URL.", "red")
+      return
+    }
+    
+    formData = JSON.stringify({
+      video_url: videoUrl,
+      language: document.getElementById("language").value,
+      include_subtitles: document.getElementById("generateSubtitles").checked,
+      include_watermark: document.getElementById("addWatermark").checked,
+      watermark_text: document.getElementById("watermarkText").value || "@clipah.com",
+      aspect_ratio: document.querySelector('input[name="aspectRatio"]:checked').value,
+    })
   }
 
-  if (videoUrl && !isValidYouTubeUrl(videoUrl)) {
-    showNotification("Please provide a valid YouTube URL.", "red")
+  // Validate input
+  if (isFileUpload && !fileInput.files.length) {
+    showNotification("Please select a video file to upload.", "red")
     return
   }
 
@@ -192,24 +218,29 @@ function startProcessing() {
   // Show status section
   statusSection.classList.remove("hidden")
 
-  // Prepare data for backend
-  const data = {
-    video_url: videoUrl,
-    language: language,
-    include_subtitles: includeSubtitles,
-    include_watermark: includeWatermark,
-    watermark_text: watermarkText,
-    aspect_ratio: aspectRatio,
+  // Prepare fetch options
+  const fetchOptions = {
+    method: "POST",
+    body: formData,
+  }
+
+  // Add content type header only for JSON requests
+  if (!isFileUpload) {
+    fetchOptions.headers = {
+      "Content-Type": "application/json",
+    }
+  }
+
+  // Show appropriate processing message
+  if (isFileUpload) {
+    showNotification("Uploading and processing video file...", "blue")
+    statusText.textContent = "Uploading video file..."
+  } else {
+    showNotification("Processing YouTube video...", "blue")
   }
 
   // Send request to backend
-  fetch("/process", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(data),
-  })
+  fetch("/process", fetchOptions)
     .then((response) => response.json())
     .then((data) => {
       if (data.error) {

@@ -20,12 +20,28 @@ from moviepy import VideoFileClip
 from moviepy.video.fx.Crop import Crop
 from moviepy.video.fx.FadeIn import FadeIn
 from moviepy.video.fx.FadeOut import FadeOut
+from werkzeug.utils import secure_filename
+import uuid
 
 app = Flask(__name__)
 
 # Configure Flask from environment variables
 app.config['DEBUG'] = os.getenv('FLASK_DEBUG', 'False').lower() == 'true'
 app.config['ENV'] = os.getenv('FLASK_ENV', 'production')
+
+# Add file upload configuration
+app.config['UPLOAD_FOLDER'] = 'uploads'
+app.config['MAX_CONTENT_LENGTH'] = 500 * 1024 * 1024  # 500MB max file size
+
+# Ensure upload folder exists
+os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# Allowed file extensions
+ALLOWED_EXTENSIONS = {'mp4', 'avi', 'mov', 'mkv', 'webm', 'm4v', 'flv', '3gp'}
+
+def allowed_file(filename):
+    return '.' in filename and \
+           filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 # Global variable to track processing status
 processing_status = {
@@ -52,6 +68,7 @@ def cleanup_previous_output():
         'main_video.mhtml',
         'main_video.mkv',
         'temp-audio.m4a',
+        'uploads', 
     ]
     
     print("🧹 Cleaning up previous output...")
@@ -69,6 +86,9 @@ def cleanup_previous_output():
                 print(f" ❌ Error removing {item}: {e}")
         else:
             print(f" ℹ️ Item not found, skipping: {item}")
+    
+    # Recreate uploads folder
+    os.makedirs('uploads', exist_ok=True)
     
     print("✅ Cleanup complete!")
 
@@ -97,10 +117,10 @@ def time_to_seconds(time_str):
     except:
         return 0
 
-def process_video_complete(video_url, language="Indonesian", include_subtitles=True, 
+def process_video_complete(video_source, source_type='url', language="Indonesian", include_subtitles=True, 
                          include_watermark=True, watermark_text="@clipah.com", aspect_ratio="9:16"):
     """
-    Complete video processing pipeline from download to final clips
+    Complete video processing pipeline from source to final clips
     """
     global processing_status
     
@@ -121,7 +141,6 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
             raise RuntimeError("GOOGLE_GEMINI_API_KEY not found in environment variables")
         
         aai.settings.api_key = assemblyai_api_key
-        # client = genai.Client(api_key=google_gemini_api_key)
         genai.configure(api_key=google_gemini_api_key)
         
         # Step counter
@@ -133,16 +152,53 @@ def process_video_complete(video_url, language="Indonesian", include_subtitles=T
         
         current_step = 0
         
-        # Step 1: Download Video
+        # Step 1: Handle Video Source
         current_step += 1
-        log_progress("Downloading video", f"Downloading video from: {video_url}", current_step, total_steps)
-        ydl_opts = {
-            'cookiefile': './cookies.txt',
-            'outtmpl': 'main_video.%(ext)s',
-            'format': 'best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best'
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([video_url])
+        
+        if source_type == 'url':
+            # Download from YouTube (existing logic)
+            log_progress("Downloading video", f"Downloading video from: {video_source}", current_step, total_steps)
+            ydl_opts = {
+                'cookiefile': './cookies.txt',
+                'outtmpl': 'main_video.%(ext)s',
+                'format': 'best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best'
+            }
+            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                ydl.download([video_source])
+        else:
+            # Handle uploaded file
+            log_progress("Processing uploaded video", f"Processing uploaded file: {os.path.basename(video_source)}", current_step, total_steps)
+            
+            # Copy uploaded file to main_video.mp4 and convert if necessary
+            file_extension = os.path.splitext(video_source)[1].lower()
+            
+            if file_extension == '.mp4':
+                # If it's already MP4, just copy it
+                shutil.copy2(video_source, 'main_video.mp4')
+            else:
+                # Convert to MP4 using FFmpeg
+                try:
+                    log_progress("Converting video format", f"Converting {file_extension} to MP4", current_step, total_steps)
+                    result = subprocess.run([
+                        'ffmpeg', '-i', video_source, 
+                        '-c:v', 'libx264', '-c:a', 'aac',
+                        '-preset', 'fast', '-crf', '23',
+                        '-y', 'main_video.mp4'
+                    ], capture_output=True, text=True, check=True, timeout=600)
+                    
+                    if not os.path.exists('main_video.mp4'):
+                        raise RuntimeError("Failed to convert video to MP4")
+                        
+                except subprocess.CalledProcessError as e:
+                    raise RuntimeError(f"Video conversion failed: {e.stderr}")
+                except subprocess.TimeoutExpired:
+                    raise RuntimeError("Video conversion timed out (file too large or corrupt)")
+                except FileNotFoundError:
+                    raise RuntimeError("FFmpeg not found. Please install FFmpeg for video conversion.")
+        
+        # Verify main video file exists
+        if not os.path.exists('main_video.mp4'):
+            raise RuntimeError("Failed to create main_video.mp4")
         
         # Step 2: Convert to MP3
         current_step += 1
@@ -833,6 +889,14 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
         processing_status['message'] = 'Processing completed successfully!'
         processing_status['progress'] = 100
         
+        # Clean up uploaded file after processing
+        if source_type == 'file' and os.path.exists(video_source):
+            try:
+                os.remove(video_source)
+                print(f"✅ Cleaned up uploaded file: {video_source}")
+            except Exception as e:
+                print(f"⚠️ Could not clean up uploaded file: {e}")
+        
         return True
         
     except Exception as e:
@@ -840,6 +904,14 @@ Style: Default,Montserrat,16,&H00FFFFFF,&H000000FF,&H00000000,&H64000000,-1,0,0,
         processing_status['error'] = str(e)
         processing_status['message'] = f'Error: {str(e)}'
         print(f"ERROR: {str(e)}")
+        
+        # Clean up uploaded file on error
+        if 'video_source' in locals() and source_type == 'file' and os.path.exists(video_source):
+            try:
+                os.remove(video_source)
+            except:
+                pass
+        
         return False
 
 @app.route('/')
@@ -851,18 +923,45 @@ def process_video():
     global processing_status
     
     try:
-        data = request.get_json()
+        # Handle both JSON and form data
+        if request.is_json:
+            # YouTube URL processing (existing)
+            data = request.get_json()
+            video_source = data.get('video_url')
+            source_type = 'url'
+        else:
+            # File upload processing (new)
+            data = request.form.to_dict()
+            
+            # Check if file was uploaded
+            if 'video_file' not in request.files:
+                return jsonify({'error': 'No video file uploaded'}), 400
+            
+            file = request.files['video_file']
+            if file.filename == '' or not file:
+                return jsonify({'error': 'No video file selected'}), 400
+            
+            if not allowed_file(file.filename):
+                return jsonify({'error': 'File type not supported. Please upload MP4, AVI, MOV, MKV, WEBM, M4V, FLV, or 3GP files.'}), 400
+            
+            # Save uploaded file
+            filename = secure_filename(file.filename)
+            unique_filename = f"{uuid.uuid4().hex}_{filename}"
+            file_path = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+            file.save(file_path)
+            
+            video_source = file_path
+            source_type = 'file'
         
-        # Extract parameters from frontend
-        video_url = data.get('video_url')
+        # Extract other parameters
         language = data.get('language', 'Indonesian')
-        include_subtitles = data.get('include_subtitles', False)
-        include_watermark = data.get('include_watermark', False)
+        include_subtitles = data.get('include_subtitles', 'false').lower() == 'true'
+        include_watermark = data.get('include_watermark', 'false').lower() == 'true'
         watermark_text = data.get('watermark_text', '@clipah.com')
         aspect_ratio = data.get('aspect_ratio', '9:16')
         
-        if not video_url:
-            return jsonify({'error': 'Video URL is required'}), 400
+        if not video_source:
+            return jsonify({'error': 'Video source is required (URL or file)'}), 400
         
         # Clean up previous files before starting
         cleanup_previous_output()
@@ -879,7 +978,8 @@ def process_video():
         # Start processing in background thread
         def process_in_background():
             process_video_complete(
-                video_url=video_url,
+                video_source=video_source,
+                source_type=source_type,
                 language=language,
                 include_subtitles=include_subtitles,
                 include_watermark=include_watermark,
