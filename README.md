@@ -7,6 +7,9 @@
 
 [🚀 **Try Live Demo**](https://clipah.up.railway.app/)
 
+🌐 See real content generated with Clipah:  
+[🎬 **Clipah TikTok Showcase**](https://www.tiktok.com/@clipah.clips)
+
 ---
 
 </div>
