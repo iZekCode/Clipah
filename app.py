@@ -68,6 +68,7 @@ def cleanup_previous_output():
         'main_video.mhtml',
         'main_video.mkv',
         'temp-audio.m4a',
+        'cookies.txt'
     ]
     
     print("🧹 Cleaning up previous output...")
@@ -320,7 +321,7 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
             #     contents=[prompt, audio_file]
             # )
 
-            model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+            model = genai.GenerativeModel()
             response = model.generate_content([prompt, audio_file])
             
             output_filename = "main_transcript.vtt"
@@ -395,7 +396,7 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
                 #     model="gemini-2.5-pro", contents=prompt
                 # )
 
-                model = genai.GenerativeModel(model_name="gemini-2.5-pro")
+                model = genai.GenerativeModel()
                 response = model.generate_content(prompt)
 
                 cleaned_response_text = response.text.strip()
