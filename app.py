@@ -156,15 +156,39 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
         current_step += 1
         
         if source_type == 'url':
-            # Download from YouTube (existing logic)
             log_progress("Downloading video", f"Downloading video from: {video_source}", current_step, total_steps)
             ydl_opts = {
-                'cookiefile': './cookies.txt',
+                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # More flexible format selection
+                'merge_output_format': 'mp4',
                 'outtmpl': 'main_video.%(ext)s',
-                'format': 'best[height<=1080][ext=mp4]/best[height<=1080]/best[ext=mp4]/best'
+                'cookiefile': './cookies.txt',
+                'nocheckcertificate': True,
+                'ignoreerrors': False,
+                'no_warnings': False,
+                'verbose': True,
+                'postprocessors': [{
+                    'key': 'FFmpegVideoConvertor',
+                    'preferedformat': 'mp4'
+                }]
             }
-            with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                ydl.download([video_source])
+            try:
+                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                    try:
+                        # First attempt with best quality
+                        ydl.download([video_source])
+                    except Exception as e:
+                        print(f"[WARNING] First download attempt failed: {e}")
+                        # Second attempt with fallback format
+                        ydl_opts['format'] = 'best[ext=mp4]/best'  # Simpler format selection
+                        with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
+                            try:
+                                ydl2.download([video_source])
+                            except Exception as e2:
+                                print(f"[ERROR] Both download attempts failed.")
+                                raise RuntimeError(f"Could not download video: {str(e2)}")
+                        
+            except Exception as e:
+                raise RuntimeError(f"YouTube download failed: {str(e)}")
         else:
             # Handle uploaded file
             log_progress("Processing uploaded video", f"Processing uploaded file: {os.path.basename(video_source)}", current_step, total_steps)
