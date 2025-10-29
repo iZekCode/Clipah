@@ -171,24 +171,41 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
                     'preferedformat': 'mp4'
                 }]
             }
-            try:
-                with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                    try:
-                        # First attempt with best quality
+            def try_download_with_format(ydl_opts, format_spec, attempt_num):
+                ydl_opts['format'] = format_spec
+                try:
+                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+                        print(f"[INFO] Attempt {attempt_num}: Trying format: {format_spec}")
                         ydl.download([video_source])
-                    except Exception as e:
-                        print(f"[WARNING] First download attempt failed: {e}")
-                        # Second attempt with fallback format
-                        ydl_opts['format'] = 'best[ext=mp4]/best'  # Simpler format selection
-                        with yt_dlp.YoutubeDL(ydl_opts) as ydl2:
-                            try:
-                                ydl2.download([video_source])
-                            except Exception as e2:
-                                print(f"[ERROR] Both download attempts failed.")
-                                raise RuntimeError(f"Could not download video: {str(e2)}")
-                        
-            except Exception as e:
-                raise RuntimeError(f"YouTube download failed: {str(e)}")
+                        return True
+                except Exception as e:
+                    print(f"[WARNING] Attempt {attempt_num} failed with format {format_spec}: {str(e)}")
+                    return False
+
+            # List of format specifications to try, from best to worst
+            format_specs = [
+                'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Original best quality
+                'best[ext=mp4]/best',  # Simpler format selection
+                'worstvideo[ext=mp4]+worstaudio[ext=m4a]',  # Lowest quality as last resort
+                'worst'  # Absolute worst quality if nothing else works
+            ]
+
+            success = False
+            last_error = None
+            
+            for i, format_spec in enumerate(format_specs, 1):
+                try:
+                    if try_download_with_format(ydl_opts, format_spec, i):
+                        success = True
+                        break
+                except Exception as e:
+                    last_error = e
+                    continue
+
+            if not success:
+                error_msg = f"All download attempts failed. Last error: {str(last_error)}"
+                print(f"[ERROR] {error_msg}")
+                raise RuntimeError(f"YouTube download failed: {error_msg}")
         else:
             # Handle uploaded file
             log_progress("Processing uploaded video", f"Processing uploaded file: {os.path.basename(video_source)}", current_step, total_steps)
