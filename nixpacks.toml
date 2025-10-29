@@ -1,5 +1,4 @@
+providers = ["python"]
+
 [phases.setup]
 nixPkgs = ['...', 'ffmpeg']
-
-[phases.start]
-cmd = 'python3 app.py'
