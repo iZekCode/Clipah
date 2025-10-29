@@ -12,7 +12,7 @@ This application requires API keys from two services:
 ### 2. Google Gemini AI API Key
 - **Purpose**: Video content analysis and clip generation
 - **Get your key**: Visit [Google AI Studio](https://aistudio.google.com/app/apikey)
-- **Environment variable**: `GOOGLE_GEMINI_API_KEY`
+- **Environment variable**: `GROQ_API_KEY`
 
 ## Setup Instructions
 
@@ -58,7 +58,7 @@ deactivate
 2. **Edit the `.env` file** and replace the placeholder values with your actual API keys:
    ```env
    ASSEMBLYAI_API_KEY=your_actual_assemblyai_key_here
-   GOOGLE_GEMINI_API_KEY=your_actual_google_gemini_key_here
+   GROQ_API_KEY=your_actual_groq_api_key_here
    ```
 
 ### Step 3: Install Python Dependencies
@@ -82,7 +82,7 @@ The application will start on `http://localhost:5000` by default.
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `ASSEMBLYAI_API_KEY` | ✅ Yes | - | AssemblyAI API key for transcription |
-| `GOOGLE_GEMINI_API_KEY` | ✅ Yes | - | Google Gemini AI API key |
+| `GROQ_API_KEY` | ✅ Yes | - | Groq API key |
 | `FLASK_DEBUG` | No | True | Enable/disable Flask debug mode |
 | `FLASK_ENV` | No | development | Flask environment (development/production) |
 | `FLASK_HOST` | No | 0.0.0.0 | Flask server host |

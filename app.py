@@ -14,8 +14,7 @@ load_dotenv()
 
 import yt_dlp
 import assemblyai as aai
-# from google import genai
-import google.generativeai as genai
+from openai import OpenAI
 from moviepy import VideoFileClip
 from moviepy.video.fx.Crop import Crop
 from moviepy.video.fx.FadeIn import FadeIn
@@ -133,15 +132,20 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
         
         # Initialize API clients
         assemblyai_api_key = os.getenv('ASSEMBLYAI_API_KEY')
-        google_gemini_api_key = os.getenv('GOOGLE_GEMINI_API_KEY')
+        groq_api_key = os.getenv('GROQ_API_KEY')
         
         if not assemblyai_api_key:
             raise RuntimeError("ASSEMBLYAI_API_KEY not found in environment variables")
-        if not google_gemini_api_key:
-            raise RuntimeError("GOOGLE_GEMINI_API_KEY not found in environment variables")
+        if not groq_api_key:
+            raise RuntimeError("GROQ_API_KEY not found in environment variables")
         
         aai.settings.api_key = assemblyai_api_key
-        genai.configure(api_key=google_gemini_api_key)
+        
+        # Initialize Groq client
+        groq_client = OpenAI(
+            api_key=groq_api_key,
+            base_url="https://api.groq.com/openai/v1"
+        )
         
         # Step counter
         total_steps = 7  
@@ -157,54 +161,100 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
         
         if source_type == 'url':
             log_progress("Downloading video", f"Downloading video from: {video_source}", current_step, total_steps)
-            ydl_opts = {
-                'format': 'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # More flexible format selection
-                'merge_output_format': 'mp4',
-                'outtmpl': 'main_video.%(ext)s',
-                'cookiefile': './cookies.txt',
-                'nocheckcertificate': True,
-                'ignoreerrors': False,
-                'no_warnings': False,
-                'verbose': True,
-                'postprocessors': [{
-                    'key': 'FFmpegVideoConvertor',
-                    'preferedformat': 'mp4'
-                }]
-            }
-            def try_download_with_format(ydl_opts, format_spec, attempt_num):
-                ydl_opts['format'] = format_spec
-                try:
-                    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                        print(f"[INFO] Attempt {attempt_num}: Trying format: {format_spec}")
-                        ydl.download([video_source])
-                        return True
-                except Exception as e:
-                    print(f"[WARNING] Attempt {attempt_num} failed with format {format_spec}: {str(e)}")
-                    return False
-
-            # List of format specifications to try, from best to worst
-            format_specs = [
-                'bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best',  # Original best quality
-                'best[ext=mp4]/best',  # Simpler format selection
-                'worstvideo[ext=mp4]+worstaudio[ext=m4a]',  # Lowest quality as last resort
-                'worst'  # Absolute worst quality if nothing else works
-            ]
-
-            success = False
-            last_error = None
             
-            for i, format_spec in enumerate(format_specs, 1):
-                try:
-                    if try_download_with_format(ydl_opts, format_spec, i):
-                        success = True
-                        break
-                except Exception as e:
-                    last_error = e
-                    continue
-
-            if not success:
-                error_msg = f"All download attempts failed. Last error: {str(last_error)}"
-                print(f"[ERROR] {error_msg}")
+            # First list available formats
+            list_opts = {
+                'quiet': True,
+                'no_warnings': True,
+                'extract_flat': True
+            }
+            
+            try:
+                with yt_dlp.YoutubeDL(list_opts) as ydl:
+                    print("[INFO] Getting available formats...")
+                    info = ydl.extract_info(video_source, download=False)
+                    
+                    # Get list of formats and print them for debugging
+                    formats = info.get('formats', [])
+                    print("[DEBUG] Available formats:")
+                    for f in formats:
+                        print(f"Format ID: {f.get('format_id')} - "
+                              f"Ext: {f.get('ext')} - "
+                              f"Resolution: {f.get('resolution')} - "
+                              f"Note: {f.get('format_note')} - "
+                              f"vcodec: {f.get('vcodec')} - "
+                              f"acodec: {f.get('acodec')}")
+                    
+                    # Filter for formats that definitely have video
+                    video_formats = [f for f in formats if f.get('vcodec') != 'none']
+                    if not video_formats:
+                        raise RuntimeError("No video formats found")
+                    
+                    # Try to find best format with both video and audio
+                    format_id = None
+                    for f in video_formats:
+                        if (f.get('acodec') != 'none' and 
+                            f.get('ext') == 'mp4' and 
+                            f.get('format_note') in ['medium', 'high', '720p', '1080p']):
+                            format_id = f['format_id']
+                            print(f"[INFO] Selected format: {format_id}")
+                            break
+                    
+                    download_opts = {
+                        'format': '137+140/96/best',  # 1080p MP4 + best audio, fallback to format 96 (1080p), then best available
+                        'merge_output_format': 'mp4',
+                        'outtmpl': 'main_video.%(ext)s',
+                        'cookiefile': './cookies.txt',
+                        'nocheckcertificate': True,
+                        'ignoreerrors': False,
+                        'no_warnings': False,
+                        'verbose': True,
+                        'postprocessor_args': {
+                            'ffmpeg': [
+                                '-c:v', 'copy',  # Copy video stream without re-encoding
+                                '-c:a', 'aac',   # Convert audio to AAC
+                                '-strict', 'experimental'
+                            ]
+                        }
+                    }
+                    print(f"[INFO] Selected format options: {download_opts}")
+                    
+                    # If we found a specific good format, use it
+                    if format_id:
+                        download_opts['format'] = f"{format_id}+bestaudio[ext=m4a]/bestvideo[ext=mp4]+bestaudio[ext=m4a]"
+                    
+                    print(f"[INFO] Using download options: {download_opts}")
+                    
+                    print("[INFO] Starting download...")
+                    with yt_dlp.YoutubeDL(download_opts) as ydl:
+                        ydl.download([video_source])
+                    
+                    # Verify the downloaded video file
+                    if not os.path.exists('main_video.mp4'):
+                        raise RuntimeError("Download completed but video file not found")
+                    
+                    # Check if the video file has video streams
+                    try:
+                        result = subprocess.run([
+                            'ffmpeg', '-i', 'main_video.mp4'
+                        ], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                        
+                        if result.stderr and 'Video: ' in result.stderr:
+                            print("[INFO] Successfully verified video file contains video streams")
+                            print("[INFO] FFmpeg output:", result.stderr)
+                        else:
+                            raise RuntimeError("Downloaded file contains no video streams")
+                    except subprocess.CalledProcessError as e:
+                        print(f"[ERROR] FFmpeg error output: {e.stderr}")
+                        raise RuntimeError(f"Failed to verify video file: FFmpeg error")
+                
+            except Exception as e:
+                error_msg = str(e)
+                print(f"[ERROR] Download failed: {error_msg}")
+                if "Sign in to confirm your age" in error_msg:
+                    raise RuntimeError("Age-restricted video. Please provide a URL that doesn't require age verification.")
+                if os.path.exists('main_video.mp4'):
+                    os.remove('main_video.mp4')  # Clean up potentially corrupt file
                 raise RuntimeError(f"YouTube download failed: {error_msg}")
         else:
             # Handle uploaded file
@@ -312,65 +362,56 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
         
         def diarize_audio(audio_file_path, transcript_file_path):
             try:
-                # audio_file = client.files.upload(path=audio_file_path)
-                audio_file = genai.upload_file(path=audio_file_path)
+                # Note: Groq doesn't directly support audio file uploads, so we'll work with the transcript only
+                transcript_content = read_file(transcript_file_path)
+                if not transcript_content:
+                    return None
+                
+                prompt = f"""You are an AI audio analysis expert specializing in speaker diarization.
+
+                Your task is to analyze the provided VTT transcript to determine who is speaking for each line of dialogue.
+
+                **Follow these rules:**
+                1.  Analyze the content to identify the distinct speakers.
+                2.  Label them sequentially as "Speaker A," "Speaker B," and so on.
+                3.  Modify the input VTT content by adding the correct speaker label before each line of text. For example: `Gue yakin, hidup itu seperti matahari.` should become `Speaker A: Gue yakin, hidup itu seperti matahari.`
+                4.  Do not modify the timestamps or any other part of the VTT file. Your only job is to insert the speaker labels.
+                5.  Your final output should be the full, modified VTT content as a single block of text.
+
+                Here is the transcript:
+                ---
+                {transcript_content}
+                ---
+
+                **Example Output:**
+                ```vtt
+                WEBVTT
+
+                00:00:00.008 --> 00:00:03.228
+                Speaker A: Gue yakin, hidup itu seperti matahari.
+
+                00:00:03.228 --> 00:00:07.008
+                Speaker A: Ya, kadang terbit, kadang juga terbenam.
+
+                00:00:07.008 --> 00:00:10.247
+                Speaker B: Dan bagaimana kamu menyikapi hal itu?
+                ```"""
+
+                response = groq_client.responses.create(
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    input=[{"role": "user", "content": prompt}]
+                )
+                
+                output_filename = "main_transcript.vtt"
+                try:
+                    with open(output_filename, "w", encoding="utf-8") as f:
+                        f.write(response.output_text)
+                except Exception as e:
+                    print(f"Error saving file: {e}")
+                    
             except Exception as e:
-                print(f"Error uploading audio file: {e}")
+                print(f"Error in diarization: {e}")
                 return None
-            
-            transcript_content = read_file(transcript_file_path)
-            if not transcript_content:
-                return None
-            
-            prompt = f"""
-            You are an AI audio analysis expert specializing in speaker diarization.
-
-            Your task is to analyze the provided audio file and its corresponding VTT transcript to determine who is speaking for each line of dialogue.
-
-            **Follow these rules:**
-            1.  Analyze the entire audio to identify the distinct speakers.
-            2.  Label them sequentially as "Speaker A," "Speaker B," and so on.
-            3.  Modify the input VTT content by adding the correct speaker label before each line of text. For example: `Gue yakin, hidup itu seperti matahari.` should become `Speaker A: Gue yakin, hidup itu seperti matahari.`
-            4.  Do not modify the timestamps or any other part of the VTT file. Your only job is to insert the speaker labels.
-            5.  Your final output should be the full, modified VTT content as a single block of text.
-
-            **Input:**
-            1.  The audio file.
-            2.  The original VTT transcript content.
-
-            Here is the transcript:
-            ---
-            {transcript_content}
-            ---
-
-            **Example Output:**
-            ```vtt
-            WEBVTT
-
-            00:00:00.008 --> 00:00:03.228
-            Speaker A: Gue yakin, hidup itu seperti matahari.
-
-            00:00:03.228 --> 00:00:07.008
-            Speaker A: Ya, kadang terbit, kadang juga terbenam.
-
-            00:00:07.008 --> 00:00:10.247
-            Speaker B: Dan bagaimana kamu menyikapi hal itu?
-            """
-            
-            # response = client.models.generate_content(
-            #     model="gemini-2.5-pro",
-            #     contents=[prompt, audio_file]
-            # )
-
-            model = genai.GenerativeModel()
-            response = model.generate_content([prompt, audio_file])
-            
-            output_filename = "main_transcript.vtt"
-            try:
-                with open(output_filename, "w", encoding="utf-8") as f:
-                    f.write(response.text)
-            except Exception as e:
-                print(f"Error saving file: {e}")
         
         diarize_audio("main_audio.mp3", "raw_transcript.vtt")
         
@@ -416,11 +457,19 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
             6.  **Language Consistency:** The clip_title and summary values must be written in the same language as the source transcript. Do not translate them. If the transcript is in Indonesian, the title and summary must also be in Indonesian.
 
             7.  **Point of View (Conditional & Intelligent):** The summary's point of view depends on the number of unique speakers identified *within that specific clip*:
-                * **If a clip contains only one speaker:** Write the summary in the **first-person** from that speaker's perspective (e.g., "I explain why..." or "Menurut saya...").
+                * **If a clip contains only one speaker:** Write a detailed summary in the **first-person** from that speaker's perspective. The summary should be 2-3 sentences long and include:
+                    - The main topic or argument being discussed
+                    - Any key examples or analogies used
+                    - The conclusion or main takeaway
+                    Example: "Saya menjelaskan mengapa Samsung Galaxy S25 FE adalah flagship terjangkau yang menarik. Dengan berbagai fitur premium seperti kamera 50MP dan layar AMOLED 120Hz, ponsel ini menawarkan pengalaman flagship pada harga yang lebih terjangkau. Saya juga membandingkannya dengan kompetitor di kelas yang sama untuk menunjukkan value propositionnya."
+
                 * **If a clip contains multiple speakers:**
-                    * First, try to identify the speakers' actual names from the context of the full transcript (e.g., if Speaker A says "My name is Fuji").
-                    * Write the summary in the **third-person** using their identified names (e.g., "Fuji asks about X, and Budi responds...").
-                    * **If you cannot confidently identify their names,** fall back to using the provided labels (e.g., "Speaker A asks about X, and Speaker B responds...").
+                    - First, try to identify the speakers' actual names from the context of the full transcript (e.g., if Speaker A says "My name is Fuji").
+                    - Write a detailed 2-3 sentence summary in the **third-person** using their identified names (e.g., "Fuji asks about X, and Budi responds...") describing:
+                        - The topic of discussion
+                        - Each speaker's main points or perspectives
+                        - Any conclusions or agreements reached
+                    - If you cannot confidently identify their names,** fall back to using the provided labels (e.g., "Speaker A asks about X, and Speaker B responds...").
 
             8.  **Final Quality Check:** Before finalizing your JSON output, review each suggested clip. Ask yourself: "If I were a user, would this clip feel abrupt or incomplete?" If the answer is yes, adjust the timestamps to include the necessary context.
 
@@ -433,21 +482,19 @@ def process_video_complete(video_source, source_type='url', language="Indonesian
             """
             
             try:
-                # response = client.models.generate_content(
-                #     model="gemini-2.5-pro", contents=prompt
-                # )
+                response = groq_client.responses.create(
+                    model="meta-llama/llama-4-scout-17b-16e-instruct",
+                    input=[{"role": "user", "content": prompt}]
+                )
 
-                model = genai.GenerativeModel()
-                response = model.generate_content(prompt)
-
-                cleaned_response_text = response.text.strip()
+                # Extract JSON from the response
+                response_text = response.output_text.strip()
+                if "```json" in response_text:
+                    response_text = response_text.split("```json")[1].split("```")[0].strip()
+                elif "```" in response_text:
+                    response_text = response_text.split("```")[1].strip()
                 
-                if "```json" in cleaned_response_text:
-                    cleaned_response_text = cleaned_response_text.split("```json")[1].split("```")[0].strip()
-                elif "```" in cleaned_response_text:
-                    cleaned_response_text = cleaned_response_text.split("```")[1].strip()
-                
-                suggested_clips = json.loads(cleaned_response_text)
+                suggested_clips = json.loads(response_text)
                 return suggested_clips
             except Exception as e:
                 print(f"An error occurred during the API call or JSON parsing: {e}")
