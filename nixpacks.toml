@@ -1,2 +1,5 @@
 [phases.setup]
-    nixPkgs = ['python311', 'ffmpeg']
+    nixPkgs = ['...', 'ffmpeg']
+
+[tools]
+pnpm = true
