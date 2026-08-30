@@ -91,6 +91,13 @@ def _set_transaction_context(
     )
 
 
+def set_actor_context(session: Session, *, user_id: UUID) -> None:
+    """Bind the authenticated actor to the open transaction once a Session is verified."""
+    session.execute(
+        text("SELECT set_config('clipah.user_id', :user_id, true)"), {"user_id": str(user_id)}
+    )
+
+
 def authorize_retention_mutation(session: Session | Connection) -> None:
     """Open the retention delete path for the caller's active transaction only.
 

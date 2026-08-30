@@ -4,10 +4,13 @@ from __future__ import annotations
 
 from enum import StrEnum
 from typing import Any, Literal, Self
+from urllib.parse import urlsplit
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy.engine import make_url
+
+HOST_COOKIE_PREFIX = "__Host-"
 
 
 class Environment(StrEnum):
@@ -50,8 +53,11 @@ class Settings(BaseSettings):
     object_store_access_key_id: SecretStr | None = None
     object_store_secret_access_key: SecretStr | None = None
 
+    frontend_origin: str | None = None
+
     google_oidc_client_id: str | None = None
     google_oidc_client_secret: SecretStr | None = None
+    google_oidc_redirect_uri: str | None = None
 
     assemblyai_api_key: SecretStr | None = None
     groq_api_key: SecretStr | None = None
@@ -62,6 +68,9 @@ class Settings(BaseSettings):
     session_cookie_name: str = "clipah_session"
     session_cookie_secure: bool = False
     session_cookie_samesite: Literal["lax", "strict", "none"] = "lax"
+    session_idle_ttl_minutes: int = 60 * 24 * 7
+    session_absolute_ttl_minutes: int = 60 * 24 * 30
+    session_recent_auth_ttl_minutes: int = 10
 
     secret_encryption_key: SecretStr | None = None
     secret_manager_key_name: str | None = None
@@ -105,6 +114,22 @@ class Settings(BaseSettings):
         if _is_local_profile(source_profile):
             return init_settings, env_settings, dotenv_settings
         return init_settings, env_settings
+
+    @property
+    def csrf_cookie_name(self) -> str:
+        """Name the JavaScript-readable double-submit cookie."""
+        return self._companion_cookie_name("clipah_csrf")
+
+    @property
+    def oidc_state_cookie_name(self) -> str:
+        """Name the short-lived cookie that carries one pending login ceremony."""
+        return self._companion_cookie_name("clipah_oidc")
+
+    def _companion_cookie_name(self, stem: str) -> str:
+        """Give companion cookies the host-locking prefix the Session cookie uses."""
+        if self.session_cookie_name.startswith(HOST_COOKIE_PREFIX):
+            return f"{HOST_COOKIE_PREFIX}{stem}"
+        return stem
 
     @property
     def gpt_oss_extraction_model(self) -> str:
@@ -157,8 +182,10 @@ class Settings(BaseSettings):
             "CLIPAH_OBJECT_STORE_BUCKET": self.object_store_bucket,
             "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID": self.object_store_access_key_id,
             "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY": self.object_store_secret_access_key,
+            "CLIPAH_FRONTEND_ORIGIN": self.frontend_origin,
             "CLIPAH_GOOGLE_OIDC_CLIENT_ID": self.google_oidc_client_id,
             "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET": self.google_oidc_client_secret,
+            "CLIPAH_GOOGLE_OIDC_REDIRECT_URI": self.google_oidc_redirect_uri,
             "CLIPAH_ASSEMBLYAI_API_KEY": self.assemblyai_api_key,
             "CLIPAH_GROQ_API_KEY": self.groq_api_key,
             "CLIPAH_SESSION_SECRET": self.session_secret,
@@ -218,6 +245,10 @@ class Settings(BaseSettings):
             raise ValueError("production session cookies must require HTTPS")
         if not self.secret_encryption_enabled:
             raise ValueError("production secret encryption must be enabled")
+        if not _is_https_origin(self.frontend_origin):
+            raise ValueError("CLIPAH_FRONTEND_ORIGIN must be an https origin without a path")
+        if not str(self.google_oidc_redirect_uri).startswith("https://"):
+            raise ValueError("CLIPAH_GOOGLE_OIDC_REDIRECT_URI must use HTTPS")
 
     def _validate_provider_versions(self) -> None:
         retired_models = {
@@ -276,6 +307,20 @@ def _is_local_profile(value: object | None) -> bool:
     if isinstance(value, Environment):
         return value is Environment.LOCAL
     return isinstance(value, str) and value.strip().lower() == Environment.LOCAL.value
+
+
+def _is_https_origin(value: str | None) -> bool:
+    """Return whether a value is a bare https origin carrying no path, query, or fragment."""
+    if value is None:
+        return False
+    parts = urlsplit(value)
+    return (
+        parts.scheme == "https"
+        and bool(parts.netloc)
+        and not parts.path
+        and not parts.query
+        and not parts.fragment
+    )
 
 
 def _is_blank(value: object | None) -> bool:

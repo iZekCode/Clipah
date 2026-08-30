@@ -210,8 +210,10 @@ def test_production_rejects_retired_provider_api_configuration(
         "CLIPAH_OBJECT_STORE_BUCKET",
         "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID",
         "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY",
+        "CLIPAH_FRONTEND_ORIGIN",
         "CLIPAH_GOOGLE_OIDC_CLIENT_ID",
         "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET",
+        "CLIPAH_GOOGLE_OIDC_REDIRECT_URI",
         "CLIPAH_ASSEMBLYAI_API_KEY",
         "CLIPAH_GROQ_API_KEY",
         "CLIPAH_SESSION_SECRET",
@@ -432,6 +434,57 @@ def test_gpt_oss_aliases_follow_the_configured_groq_models(monkeypatch: pytest.M
     assert settings.gpt_oss_reranking_model == "openai/gpt-oss-120b"
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "origin",
+    ["http://app.clipah.test", "https://app.clipah.test/", "https://app.clipah.test/app"],
+)
+def test_production_requires_a_bare_https_frontend_origin(
+    monkeypatch: pytest.MonkeyPatch, origin: str
+) -> None:
+    """Only a scheme-and-host https origin can be compared against a browser Origin header."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_FRONTEND_ORIGIN", origin)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+def test_production_requires_an_https_oidc_redirect_uri(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An authorization code must never be returned over plaintext HTTP."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv(
+        "CLIPAH_GOOGLE_OIDC_REDIRECT_URI", "http://api.clipah.test/api/v1/auth/google/callback"
+    )
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+def test_production_companion_cookies_inherit_the_host_prefix(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """CSRF and login-ceremony cookies are host-locked wherever the Session cookie is."""
+    production_environment(monkeypatch)
+
+    settings = Settings()
+
+    assert settings.session_cookie_name == "__Host-clipah_session"
+    assert settings.csrf_cookie_name == "__Host-clipah_csrf"
+    assert settings.oidc_state_cookie_name == "__Host-clipah_oidc"
+
+
+@pytest.mark.unit
+def test_local_companion_cookies_drop_the_host_prefix() -> None:
+    """Local development over plain HTTP cannot satisfy the __Host- prefix rules."""
+    settings = Settings(environment=Environment.TEST)
+
+    assert settings.csrf_cookie_name == "clipah_csrf"
+    assert settings.oidc_state_cookie_name == "clipah_oidc"
+
+
 def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Populate the smallest complete, intentionally provider-disabled production environment."""
     for name, value in production_environment_values().items():
@@ -449,8 +502,10 @@ def production_environment_values() -> dict[str, str]:
         "CLIPAH_OBJECT_STORE_BUCKET": "clipah-production",
         "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID": "access-key",
         "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY": "secret-key",
+        "CLIPAH_FRONTEND_ORIGIN": "https://app.clipah.test",
         "CLIPAH_GOOGLE_OIDC_CLIENT_ID": "google-client-id",
         "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET": "google-client-secret",
+        "CLIPAH_GOOGLE_OIDC_REDIRECT_URI": "https://api.clipah.test/api/v1/auth/google/callback",
         "CLIPAH_ASSEMBLYAI_API_KEY": "assemblyai-key",
         "CLIPAH_GROQ_API_KEY": "groq-key",
         "CLIPAH_SESSION_SECRET": "s" * 32,

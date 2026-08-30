@@ -11,8 +11,10 @@ from fastapi.exceptions import RequestValidationError
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 
+from clipah.api.dependencies import AuthComponents, default_auth_components
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
+from clipah.api.routes import auth as auth_routes
 from clipah.config import Settings
 
 VERSION = "0.1.0"
@@ -41,12 +43,14 @@ def create_app(
     settings: Settings,
     *,
     readiness_probes: ReadinessProbes | None = None,
+    auth_components: AuthComponents | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
     # Public error responses stay sanitized even when local configuration enables debugging.
     app = FastAPI(title="Clipah API", version=VERSION, debug=False)
     app.state.settings = settings
+    app.state.auth_components = auth_components or default_auth_components(settings)
 
     @app.middleware("http")
     async def add_request_id(
@@ -109,6 +113,7 @@ def create_app(
             )
         return health_response()
 
+    app.include_router(auth_routes.router)
     return app
 
 

@@ -28,6 +28,11 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "SERVICE_UNAVAILABLE": "A required service is unavailable.",
         "INTERNAL_ERROR": "An unexpected error occurred.",
         "CONFLICT": "The resource changed.",
+        "UNAUTHENTICATED": "Authentication is required.",
+        "AUTHENTICATION_FAILED": "Authentication could not be completed.",
+        "IDENTITY_CONFLICT": "This email address already belongs to another sign-in method.",
+        "ACCOUNT_DISABLED": "This account can no longer sign in.",
+        "CSRF_FAILED": "The request could not be verified.",
     }
 )
 
