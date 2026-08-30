@@ -2,21 +2,25 @@
 
 from __future__ import annotations
 
-import os
-from collections.abc import Iterator
 from datetime import UTC
-from pathlib import Path
 from uuid import UUID, uuid4
 
 import pytest
 from alembic import command
-from alembic.config import Config
 from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
+from support import (
+    API_RUNTIME_DATABASE_URL,
+    DATABASE_URL,
+    RUNTIME_INIT_SQL,
+    alembic_config,
+    provision_identity,
+    runtime_settings,
+)
 
-from clipah.config import Environment, ProcessRole, Settings
+from clipah.config import Environment, Settings
 from clipah.db import (
     RuntimeRole,
     authorize_retention_mutation,
@@ -25,28 +29,6 @@ from clipah.db import (
     session_scope,
 )
 from clipah.models import Base, Job, JobEvent, Project, User, Workspace
-
-DATABASE_URL = os.getenv(
-    "CLIPAH_TEST_DATABASE_URL",
-    "postgresql+psycopg://clipah_migrator:clipah_migrator_local@localhost:55433/"
-    "clipah_rebuild_foundation",
-)
-API_RUNTIME_DATABASE_URL = os.getenv(
-    "CLIPAH_TEST_API_RUNTIME_DATABASE_URL",
-    "postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@localhost:55433/"
-    "clipah_rebuild_foundation",
-)
-WORKER_RUNTIME_DATABASE_URL = os.getenv(
-    "CLIPAH_TEST_WORKER_RUNTIME_DATABASE_URL",
-    "postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/"
-    "clipah_rebuild_foundation",
-)
-RUNTIME_LOGINS = {
-    RuntimeRole.API: ("clipah_api_runtime", API_RUNTIME_DATABASE_URL),
-    RuntimeRole.WORKER: ("clipah_worker_runtime", WORKER_RUNTIME_DATABASE_URL),
-}
-BACKEND_ROOT = Path(__file__).resolve().parents[2]
-RUNTIME_INIT_SQL = BACKEND_ROOT.parent / "infra" / "postgres" / "init-runtime.sql"
 
 FOUNDATIONAL_TABLES = {
     "alembic_version",
@@ -172,62 +154,6 @@ EXPECTED_ENUMS = {
     "workspace_role": ("owner", "admin", "editor", "reviewer", "viewer"),
     "workspace_status": ("active", "suspended", "deleted"),
 }
-
-
-def alembic_config() -> Config:
-    """Build Alembic configuration against only this worktree's database."""
-    config = Config(str(BACKEND_ROOT / "alembic.ini"))
-    config.set_main_option("script_location", str(BACKEND_ROOT / "migrations"))
-    config.set_main_option("sqlalchemy.url", DATABASE_URL)
-    return config
-
-
-def runtime_settings(runtime_role: RuntimeRole = RuntimeRole.API, **overrides: object) -> Settings:
-    """Build the settings one deployment process would hold for its own runtime login."""
-    _, database_url = RUNTIME_LOGINS[runtime_role]
-    if runtime_role is RuntimeRole.WORKER:
-        process: dict[str, object] = {
-            "process_role": ProcessRole.WORKER,
-            "worker_database_url": database_url,
-        }
-    else:
-        process = {"process_role": ProcessRole.API, "database_url": database_url}
-    return Settings(environment=Environment.TEST, **{**process, **overrides})  # type: ignore[arg-type]
-
-
-@pytest.fixture(scope="session")
-def engine() -> Iterator[Engine]:
-    """Upgrade the dedicated test database and expose a real SQLAlchemy engine."""
-    command.upgrade(alembic_config(), "head")
-    database_engine = create_engine(DATABASE_URL)
-    yield database_engine
-    database_engine.dispose()
-
-
-@pytest.fixture(autouse=True)
-def clean_database(engine: Engine) -> Iterator[None]:
-    """Keep tests isolated without invoking protected row-delete triggers."""
-    command.upgrade(alembic_config(), "head")
-    table_names = sorted(inspect(engine).get_table_names())
-    application_tables = [name for name in table_names if name != "alembic_version"]
-    if application_tables:
-        quoted = ", ".join(f'"{name}"' for name in application_tables)
-        with engine.begin() as connection:
-            connection.execute(text(f"TRUNCATE TABLE {quoted} CASCADE"))
-    yield
-
-
-def provision_identity(engine: Engine, *, suffix: str) -> tuple[UUID, UUID]:
-    """Create a User and personal Workspace through the production helper."""
-    with Session(engine) as session, session.begin():
-        provisioned = create_user_with_personal_workspace(
-            session,
-            primary_email=f"{suffix}@example.com",
-            display_name=f"User {suffix}",
-            workspace_name=f"{suffix.title()} Workspace",
-            workspace_slug=f"{suffix}-{uuid4().hex[:8]}",
-        )
-        return provisioned.user.id, provisioned.workspace.id
 
 
 def provision_safe_runtime_roles(engine: Engine) -> None:
