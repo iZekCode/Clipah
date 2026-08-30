@@ -1,0 +1,52 @@
+name: clipah-rebuild-foundation
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: clipah_rebuild_foundation
+      POSTGRES_USER: clipah_migrator
+      POSTGRES_PASSWORD: clipah_migrator_local
+    ports:
+      - "55433:5432"
+    volumes:
+      - clipah_rebuild_foundation_postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U clipah_migrator -d clipah_rebuild_foundation"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "no"]
+    ports:
+      - "56380:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+  minio:
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: clipah_local
+      MINIO_ROOT_PASSWORD: clipah_local_secret
+    ports:
+      - "59001:9000"
+      - "59002:9001"
+    volumes:
+      - clipah_rebuild_foundation_minio:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 2s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  clipah_rebuild_foundation_postgres:
+    name: clipah_rebuild_foundation_postgres
+  clipah_rebuild_foundation_minio:
+    name: clipah_rebuild_foundation_minio
