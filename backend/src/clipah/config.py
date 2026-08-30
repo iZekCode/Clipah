@@ -7,6 +7,7 @@ from typing import Any, Literal, Self
 
 from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
+from sqlalchemy.engine import make_url
 
 
 class Environment(StrEnum):
@@ -32,6 +33,7 @@ class Settings(BaseSettings):
     debug: bool = True
 
     database_url: str | None = None
+    migration_database_url: str | None = None
     redis_url: str | None = None
 
     object_store_endpoint: str | None = None
@@ -139,6 +141,7 @@ class Settings(BaseSettings):
     def _validate_production_requirements(self) -> None:
         required_values: dict[str, object | None] = {
             "CLIPAH_DATABASE_URL": self.database_url,
+            "CLIPAH_MIGRATION_DATABASE_URL": self.migration_database_url,
             "CLIPAH_REDIS_URL": self.redis_url,
             "CLIPAH_OBJECT_STORE_ENDPOINT": self.object_store_endpoint,
             "CLIPAH_OBJECT_STORE_BUCKET": self.object_store_bucket,
@@ -155,6 +158,20 @@ class Settings(BaseSettings):
             missing.append("CLIPAH_SECRET_ENCRYPTION_KEY or CLIPAH_SECRET_MANAGER_KEY_NAME")
         if missing:
             raise ValueError(f"missing required production settings: {', '.join(missing)}")
+
+        if self.database_url is None or self.migration_database_url is None:
+            raise ValueError("production database URLs are required")
+        runtime_principal = make_url(self.database_url).username
+        migration_principal = make_url(self.migration_database_url).username
+        if (
+            runtime_principal is None
+            or migration_principal is None
+            or runtime_principal == migration_principal
+        ):
+            raise ValueError(
+                "CLIPAH_DATABASE_URL and CLIPAH_MIGRATION_DATABASE_URL must use separate "
+                "database principals"
+            )
 
         if self.session_secret is not None and len(self.session_secret.get_secret_value()) < 32:
             raise ValueError("CLIPAH_SESSION_SECRET must contain at least 32 characters")

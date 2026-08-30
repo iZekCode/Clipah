@@ -22,6 +22,33 @@ def test_production_rejects_missing_required_service_configuration(
 
 
 @pytest.mark.unit
+def test_production_requires_a_separate_migration_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Removing the admin-only DSN must keep it out of the application runtime pool."""
+    production_environment(monkeypatch)
+    monkeypatch.delenv("CLIPAH_MIGRATION_DATABASE_URL")
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+def test_production_rejects_shared_runtime_and_migration_database_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One database principal must not pass as two credentials through URL differences."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv(
+        "CLIPAH_MIGRATION_DATABASE_URL",
+        "postgresql+psycopg://clipah:different-password@migration-db/other?sslmode=require",
+    )
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
 def test_production_allows_disabled_unapproved_social_integrations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -120,6 +147,7 @@ def test_production_rejects_retired_provider_api_configuration(
     "setting",
     [
         "CLIPAH_DATABASE_URL",
+        "CLIPAH_MIGRATION_DATABASE_URL",
         "CLIPAH_REDIS_URL",
         "CLIPAH_OBJECT_STORE_ENDPOINT",
         "CLIPAH_OBJECT_STORE_BUCKET",
@@ -358,6 +386,7 @@ def production_environment_values() -> dict[str, str]:
     return {
         "CLIPAH_ENVIRONMENT": "production",
         "CLIPAH_DATABASE_URL": "postgresql+psycopg://clipah:clipah@db/clipah",
+        "CLIPAH_MIGRATION_DATABASE_URL": ("postgresql+psycopg://clipah_migrator:admin@db/clipah"),
         "CLIPAH_REDIS_URL": "redis://redis:6379/0",
         "CLIPAH_OBJECT_STORE_ENDPOINT": "https://storage.example.test",
         "CLIPAH_OBJECT_STORE_BUCKET": "clipah-production",

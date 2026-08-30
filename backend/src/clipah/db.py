@@ -69,13 +69,85 @@ def _set_transaction_context(
     )
 
 
+def _assert_safe_runtime_identity(session: Session, *, runtime_role: RuntimeRole) -> None:
+    """Reject owners and cluster-privileged logins even after they assume a runtime role."""
+    identity = session.execute(
+        text(
+            """
+            SELECT
+                session_user,
+                current_user,
+                session_role.rolcanlogin AS session_can_login,
+                session_role.rolinherit AS session_inherits,
+                session_role.rolsuper AS session_is_super,
+                session_role.rolcreatedb AS session_can_create_db,
+                session_role.rolcreaterole AS session_can_create_role,
+                session_role.rolreplication AS session_can_replicate,
+                session_role.rolbypassrls AS session_bypasses_rls,
+                assumed_role.rolcanlogin AS current_can_login,
+                assumed_role.rolinherit AS current_inherits,
+                assumed_role.rolsuper AS current_is_super,
+                assumed_role.rolcreatedb AS current_can_create_db,
+                assumed_role.rolcreaterole AS current_can_create_role,
+                assumed_role.rolreplication AS current_can_replicate,
+                assumed_role.rolbypassrls AS current_bypasses_rls,
+                EXISTS (
+                    SELECT 1
+                    FROM pg_class AS relation
+                    JOIN pg_namespace AS namespace
+                      ON namespace.oid = relation.relnamespace
+                    WHERE namespace.nspname = 'public'
+                      AND relation.relkind IN ('r', 'p')
+                      AND pg_get_userbyid(relation.relowner) IN (session_user, current_user)
+                ) AS owns_public_table,
+                EXISTS (
+                    SELECT 1
+                    FROM pg_class AS relation
+                    JOIN pg_namespace AS namespace ON namespace.oid = relation.relnamespace
+                    CROSS JOIN LATERAL aclexplode(
+                        COALESCE(relation.relacl, acldefault('r', relation.relowner))
+                    ) AS privilege
+                    WHERE namespace.nspname = 'public'
+                      AND relation.relkind IN ('r', 'p')
+                      AND privilege.grantee = session_role.oid
+                ) AS session_has_direct_table_grant
+            FROM pg_roles AS session_role
+            CROSS JOIN pg_roles AS assumed_role
+            WHERE session_role.rolname = session_user
+              AND assumed_role.rolname = current_user
+            """
+        )
+    ).one()
+    is_unsafe = (
+        identity.current_user != runtime_role.value
+        or not identity.session_can_login
+        or identity.session_inherits
+        or identity.session_is_super
+        or identity.session_can_create_db
+        or identity.session_can_create_role
+        or identity.session_can_replicate
+        or identity.session_bypasses_rls
+        or identity.current_can_login
+        or identity.current_inherits
+        or identity.current_is_super
+        or identity.current_can_create_db
+        or identity.current_can_create_role
+        or identity.current_can_replicate
+        or identity.current_bypasses_rls
+        or identity.owns_public_table
+        or identity.session_has_direct_table_grant
+    )
+    if is_unsafe:
+        raise RuntimeError("unsafe database session identity for application runtime")
+
+
 @contextmanager
 def session_scope(
     *,
     settings: Settings | None = None,
     workspace_id: UUID | None = None,
     user_id: UUID | None = None,
-    runtime_role: RuntimeRole | None = None,
+    runtime_role: RuntimeRole = RuntimeRole.API,
 ) -> Iterator[Session]:
     """Commit one unit of work with transaction-local tenant and actor context."""
     for context_name, context_value in (("workspace_id", workspace_id), ("user_id", user_id)):
@@ -83,9 +155,9 @@ def session_scope(
             raise ValueError(f"{context_name} must be a UUID")
 
     with Session(get_engine(settings)) as session, session.begin():
-        if runtime_role is not None:
-            # RuntimeRole is a closed enum, so the identifier cannot contain user input.
-            session.execute(text(f"SET LOCAL ROLE {runtime_role.value}"))
+        # RuntimeRole is a closed enum, so the identifier cannot contain user input.
+        session.execute(text(f"SET LOCAL ROLE {runtime_role.value}"))
+        _assert_safe_runtime_identity(session, runtime_role=runtime_role)
         _set_transaction_context(session, workspace_id=workspace_id, user_id=user_id)
         yield session
 

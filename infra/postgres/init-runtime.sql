@@ -1,0 +1,30 @@
+-- Local-only runtime principals. Alembic validates these roles but never owns them.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clipah_api') THEN
+        CREATE ROLE clipah_api
+            NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+            NOINHERIT NOREPLICATION NOBYPASSRLS;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clipah_worker') THEN
+        CREATE ROLE clipah_worker
+            NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+            NOINHERIT NOREPLICATION NOBYPASSRLS;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'clipah_runtime') THEN
+        CREATE ROLE clipah_runtime
+            LOGIN PASSWORD 'clipah_runtime_local'
+            NOSUPERUSER NOCREATEDB NOCREATEROLE
+            NOINHERIT NOREPLICATION NOBYPASSRLS;
+    END IF;
+END
+$$;
+
+ALTER ROLE clipah_api
+    NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+ALTER ROLE clipah_worker
+    NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+ALTER ROLE clipah_runtime
+    LOGIN PASSWORD 'clipah_runtime_local'
+    NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION NOBYPASSRLS;
+GRANT clipah_api, clipah_worker TO clipah_runtime;

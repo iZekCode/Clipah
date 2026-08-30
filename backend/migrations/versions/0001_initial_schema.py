@@ -4,8 +4,6 @@ Revision ID: 0001
 Revises:
 Create Date: 2026-08-30
 
-``source_imports.connection_id`` is intentionally nullable and has no foreign
-key until Task 27 introduces ``source_connections`` in migration 0002.
 """
 
 from __future__ import annotations
@@ -96,6 +94,86 @@ TENANT_TABLES = (
     "provider_usage",
     "retention_tombstones",
 )
+ALL_TABLES = (
+    "users",
+    "auth_identities",
+    "auth_sessions",
+    "workspaces",
+    *TENANT_TABLES,
+)
+API_GRANTS = {
+    "SELECT": (*ALL_TABLES,),
+    "INSERT": (
+        "users",
+        "auth_identities",
+        "auth_sessions",
+        "workspaces",
+        "workspace_memberships",
+        "workspace_invites",
+        "projects",
+        "assets",
+        "jobs",
+        "source_imports",
+        "multipart_uploads",
+        "clip_edits",
+        "clip_edit_revisions",
+        "audit_events",
+        "retention_tombstones",
+    ),
+    "UPDATE": (
+        "users",
+        "auth_identities",
+        "auth_sessions",
+        "workspaces",
+        "workspace_memberships",
+        "workspace_invites",
+        "projects",
+        "assets",
+        "jobs",
+        "source_imports",
+        "multipart_uploads",
+        "clip_edits",
+    ),
+}
+WORKER_GRANTS = {
+    "SELECT": (
+        "users",
+        "workspaces",
+        "workspace_memberships",
+        "projects",
+        "assets",
+        "jobs",
+        "source_imports",
+        "multipart_uploads",
+        "job_events",
+        "transcripts",
+        "clip_candidates",
+        "clip_edits",
+        "clip_edit_revisions",
+        "render_artifacts",
+        "audit_events",
+        "provider_usage",
+        "retention_tombstones",
+    ),
+    "INSERT": (
+        "assets",
+        "job_events",
+        "transcripts",
+        "clip_candidates",
+        "render_artifacts",
+        "audit_events",
+        "provider_usage",
+    ),
+    "UPDATE": (
+        "projects",
+        "assets",
+        "jobs",
+        "source_imports",
+        "multipart_uploads",
+        "provider_usage",
+        "retention_tombstones",
+    ),
+}
 
 
 def _enum(name: str, *values: str) -> postgresql.ENUM:
@@ -124,7 +202,7 @@ def _tenant_identity_constraints(table: str) -> tuple[sa.UniqueConstraint]:
     return (sa.UniqueConstraint("workspace_id", "id", name=f"uq_{table}_workspace_id_id"),)
 
 
-def _create_runtime_roles() -> None:
+def _validate_runtime_roles() -> None:
     for role in ("clipah_api", "clipah_worker"):
         op.execute(
             sa.text(
@@ -132,8 +210,27 @@ def _create_runtime_roles() -> None:
                 DO $$
                 BEGIN
                     IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
-                        CREATE ROLE {role}
-                            NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOBYPASSRLS;
+                        RAISE EXCEPTION
+                            'required externally provisioned runtime role {role} is missing';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM pg_roles
+                        WHERE rolname = '{role}'
+                          AND (
+                              rolcanlogin OR rolinherit OR rolsuper OR rolcreatedb
+                              OR rolcreaterole OR rolreplication OR rolbypassrls
+                          )
+                    ) THEN
+                        RAISE EXCEPTION 'unsafe attributes on runtime role {role}';
+                    END IF;
+                    IF EXISTS (
+                        SELECT 1
+                        FROM pg_auth_members AS membership
+                        JOIN pg_roles AS member_role ON member_role.oid = membership.member
+                        WHERE member_role.rolname = '{role}'
+                    ) THEN
+                        RAISE EXCEPTION 'runtime role {role} must not inherit another role';
                     END IF;
                 END
                 $$
@@ -145,7 +242,7 @@ def _create_runtime_roles() -> None:
 def _create_enums() -> None:
     bind = op.get_bind()
     for name, values in ENUMS:
-        postgresql.ENUM(*values, name=name).create(bind, checkfirst=True)
+        postgresql.ENUM(*values, name=name).create(bind, checkfirst=False)
 
 
 def _create_tables() -> None:
@@ -406,7 +503,7 @@ def _create_tables() -> None:
         ),
         sa.Column("storage_key", sa.Text(), nullable=False),
         sa.Column("content_type", sa.Text(), nullable=False),
-        sa.Column("size_bytes", sa.Integer(), nullable=False),
+        sa.Column("size_bytes", sa.BigInteger(), nullable=False),
         sa.Column("duration_ms", sa.Integer()),
         sa.Column("width", sa.Integer()),
         sa.Column("height", sa.Integer()),
@@ -503,7 +600,6 @@ def _create_tables() -> None:
         _uuid_primary_key(),
         sa.Column("workspace_id", postgresql.UUID(as_uuid=True), nullable=False),
         sa.Column("project_id", postgresql.UUID(as_uuid=True), nullable=False),
-        sa.Column("connection_id", postgresql.UUID(as_uuid=True)),
         sa.Column("normalized_source_url", sa.Text(), nullable=False),
         sa.Column("source_video_id", sa.Text(), nullable=False),
         sa.Column("authorization_attested_at", sa.DateTime(timezone=True)),
@@ -742,7 +838,7 @@ def _create_tables() -> None:
         sa.Column("preset", sa.String(64), nullable=False),
         sa.Column("composition_hash", sa.LargeBinary(), nullable=False),
         sa.Column("storage_key", sa.Text(), nullable=False),
-        sa.Column("size_bytes", sa.Integer(), nullable=False),
+        sa.Column("size_bytes", sa.BigInteger(), nullable=False),
         sa.Column("duration_ms", sa.Integer(), nullable=False),
         _created_at(),
         *_tenant_identity_constraints("render_artifacts"),
@@ -782,7 +878,7 @@ def _create_tables() -> None:
             "actor_user_id",
             postgresql.UUID(as_uuid=True),
             sa.ForeignKey(
-                "users.id", name="fk_audit_events_actor_user_id_users", ondelete="SET NULL"
+                "users.id", name="fk_audit_events_actor_user_id_users", ondelete="RESTRICT"
             ),
         ),
         sa.Column("action", sa.String(128), nullable=False),
@@ -818,7 +914,6 @@ def _create_tables() -> None:
         ),
         sa.Column("actual_cost_usd", sa.Numeric(14, 6)),
         sa.Column("job_id", postgresql.UUID(as_uuid=True)),
-        sa.Column("publication_id", postgresql.UUID(as_uuid=True)),
         _created_at(),
         *_tenant_identity_constraints("provider_usage"),
         sa.ForeignKeyConstraint(
@@ -885,13 +980,29 @@ def _protect_append_only_history() -> None:
         LANGUAGE plpgsql
         AS $$
         BEGIN
+            IF TG_OP = 'DELETE'
+               AND current_setting('clipah.retention_mutation', true) = 'on'
+               AND current_user = pg_get_userbyid(
+                    (
+                        SELECT relation.relowner
+                        FROM pg_class AS relation
+                        WHERE relation.oid = TG_RELID
+                    )
+               ) THEN
+                RETURN OLD;
+            END IF;
             RAISE EXCEPTION '% is append-only', TG_TABLE_NAME
                 USING ERRCODE = '55000';
         END
         $$
         """
     )
-    for table_name in ("job_events", "audit_events"):
+    for table_name in (
+        "job_events",
+        "clip_edit_revisions",
+        "render_artifacts",
+        "audit_events",
+    ):
         op.execute(
             f"""
             CREATE TRIGGER trg_{table_name}_append_only
@@ -917,24 +1028,17 @@ def _apply_tenant_security() -> None:
             """
         )
 
+    op.execute(f"REVOKE ALL PRIVILEGES ON TABLE {', '.join(ALL_TABLES)} FROM PUBLIC")
     op.execute("GRANT USAGE ON SCHEMA public TO clipah_api, clipah_worker")
-    all_tables = (
-        "users",
-        "auth_identities",
-        "auth_sessions",
-        "workspaces",
-        *TENANT_TABLES,
-    )
-    op.execute(
-        f"GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE {', '.join(all_tables)} "
-        "TO clipah_api, clipah_worker"
-    )
+    for role, grants in (("clipah_api", API_GRANTS), ("clipah_worker", WORKER_GRANTS)):
+        for privilege, table_names in grants.items():
+            op.execute(f"GRANT {privilege} ON TABLE {', '.join(table_names)} TO {role}")
 
 
 def upgrade() -> None:
     """Expand an empty database to the complete Task 3 foundation."""
     op.execute("CREATE EXTENSION IF NOT EXISTS citext")
-    _create_runtime_roles()
+    _validate_runtime_roles()
     _create_enums()
     _create_tables()
     _protect_append_only_history()
@@ -958,10 +1062,8 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     for name, values in reversed(ENUMS):
-        postgresql.ENUM(*values, name=name).drop(bind, checkfirst=True)
+        postgresql.ENUM(*values, name=name).drop(bind, checkfirst=False)
 
     op.execute("REVOKE USAGE ON SCHEMA public FROM clipah_api, clipah_worker")
-    op.execute("DROP ROLE IF EXISTS clipah_api")
-    op.execute("DROP ROLE IF EXISTS clipah_worker")
     # citext is intentionally retained: it is a shared cluster capability and
     # dropping an extension that may predate this migration would be destructive.

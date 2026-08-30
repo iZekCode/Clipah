@@ -8,9 +8,10 @@ services:
       POSTGRES_USER: clipah_migrator
       POSTGRES_PASSWORD: clipah_migrator_local
     ports:
-      - "55433:5432"
+      - "127.0.0.1:55433:5432"
     volumes:
       - clipah_rebuild_foundation_postgres:/var/lib/postgresql/data
+      - ./postgres/init-runtime.sql:/docker-entrypoint-initdb.d/10-runtime-roles.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U clipah_migrator -d clipah_rebuild_foundation"]
       interval: 2s
@@ -21,7 +22,7 @@ services:
     image: redis:7.4-alpine
     command: ["redis-server", "--appendonly", "no"]
     ports:
-      - "56380:6379"
+      - "127.0.0.1:56380:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
@@ -35,8 +36,8 @@ services:
       MINIO_ROOT_USER: clipah_local
       MINIO_ROOT_PASSWORD: clipah_local_secret
     ports:
-      - "59001:9000"
-      - "59002:9001"
+      - "127.0.0.1:59001:9000"
+      - "127.0.0.1:59002:9001"
     volumes:
       - clipah_rebuild_foundation_minio:/data
     healthcheck:

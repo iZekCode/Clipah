@@ -9,6 +9,7 @@ from uuid import UUID, uuid4
 
 from sqlalchemy import (
     ARRAY,
+    BigInteger,
     Boolean,
     CheckConstraint,
     DateTime,
@@ -389,7 +390,7 @@ class Asset(Base):
     )
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     content_type: Mapped[str] = mapped_column(Text, nullable=False)
-    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     duration_ms: Mapped[int | None] = mapped_column(Integer)
     width: Mapped[int | None] = mapped_column(Integer)
     height: Mapped[int | None] = mapped_column(Integer)
@@ -473,8 +474,6 @@ class SourceImport(Base):
     )
     workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    # Task 27 adds source_connections and the composite foreign key.
-    connection_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     normalized_source_url: Mapped[str] = mapped_column(Text, nullable=False)
     source_video_id: Mapped[str] = mapped_column(Text, nullable=False)
     authorization_attested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
@@ -764,7 +763,7 @@ class RenderArtifact(Base):
     preset: Mapped[str] = mapped_column(String(64), nullable=False)
     composition_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
-    size_bytes: Mapped[int] = mapped_column(Integer, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -787,7 +786,7 @@ class AuditEvent(Base):
         PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
     )
     actor_user_id: Mapped[UUID | None] = mapped_column(
-        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
     )
     action: Mapped[str] = mapped_column(String(128), nullable=False)
     target_kind: Mapped[str] = mapped_column(String(64), nullable=False)
@@ -838,7 +837,6 @@ class ProviderUsage(Base):
     )
     actual_cost_usd: Mapped[float | None] = mapped_column(Numeric(14, 6))
     job_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
-    publication_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
