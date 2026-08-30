@@ -25,7 +25,17 @@ from clipah.auth.models import (
 )
 from clipah.auth.sessions import authenticate_session
 from clipah.config import Settings
-from clipah.db import session_scope, set_actor_context
+from clipah.db import session_scope, set_actor_context, set_workspace_context
+from clipah.workspaces.authorization import (
+    DatabaseWorkspaceAuthorizer,
+    requires_recent_authentication,
+)
+from clipah.workspaces.models import (
+    WorkspaceAccess,
+    WorkspaceAction,
+    WorkspaceNotFoundError,
+    WorkspacePermissionError,
+)
 
 CSRF_HEADER = "X-CSRF-Token"
 CSRF_TOKEN_BYTES = 32
@@ -137,6 +147,47 @@ def require_authenticated_user(request: Request, session: DatabaseSession) -> Cu
 
 
 CurrentUserDependency = Annotated[CurrentUser, Depends(require_authenticated_user)]
+
+
+@dataclass(frozen=True, slots=True)
+class CurrentWorkspace:
+    """The tenant behind one request, proven by a live Workspace Membership."""
+
+    access: WorkspaceAccess
+    user: CurrentUser
+
+
+def require_workspace(
+    action: WorkspaceAction,
+) -> Callable[[Request, Session, CurrentUser, UUID], CurrentWorkspace]:
+    """Build the dependency that authorizes one Workspace action and installs its context."""
+
+    def dependency(
+        request: Request,
+        session: DatabaseSession,
+        user: CurrentUserDependency,
+        workspace_id: UUID,
+    ) -> CurrentWorkspace:
+        components = auth_components_for(request)
+        try:
+            access = DatabaseWorkspaceAuthorizer(session).require(
+                user_id=user.user_id, workspace_id=workspace_id, action=action
+            )
+        except WorkspaceNotFoundError as error:
+            raise ApiError(status_code=404, code="NOT_FOUND") from error
+        except WorkspacePermissionError as error:
+            raise ApiError(status_code=403, code="FORBIDDEN") from error
+
+        if requires_recent_authentication(action) and not user.session.has_recent_authentication(
+            policy=components.policy, now=components.now()
+        ):
+            raise ApiError(status_code=403, code="RECENT_AUTHENTICATION_REQUIRED")
+
+        # Every Workspace-scoped statement below runs under this tenant's row policies.
+        set_workspace_context(session, workspace_id=workspace_id)
+        return CurrentWorkspace(access=access, user=user)
+
+    return dependency
 
 
 def require_csrf(request: Request) -> None:

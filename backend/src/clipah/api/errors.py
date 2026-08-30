@@ -33,6 +33,8 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "IDENTITY_CONFLICT": "This email address already belongs to another sign-in method.",
         "ACCOUNT_DISABLED": "This account can no longer sign in.",
         "CSRF_FAILED": "The request could not be verified.",
+        "FORBIDDEN": "This action is not permitted for your role.",
+        "RECENT_AUTHENTICATION_REQUIRED": "Sign in again to complete this action.",
     }
 )
 

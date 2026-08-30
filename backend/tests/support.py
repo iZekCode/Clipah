@@ -32,7 +32,7 @@ RUNTIME_LOGINS = {
     RuntimeRole.API: ("clipah_api_runtime", API_RUNTIME_DATABASE_URL),
     RuntimeRole.WORKER: ("clipah_worker_runtime", WORKER_RUNTIME_DATABASE_URL),
 }
-BACKEND_ROOT = Path(__file__).resolve().parents[2]
+BACKEND_ROOT = Path(__file__).resolve().parents[1]
 RUNTIME_INIT_SQL = BACKEND_ROOT.parent / "infra" / "postgres" / "init-runtime.sql"
 
 

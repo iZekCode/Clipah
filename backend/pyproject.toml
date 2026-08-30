@@ -46,7 +46,7 @@ packages = ["src/clipah"]
 [tool.pytest.ini_options]
 addopts = "--strict-markers"
 testpaths = ["tests"]
-pythonpath = ["src"]
+pythonpath = ["src", "tests"]
 markers = [
     "unit: isolated unit test",
     "integration: test requiring infrastructure or external boundaries",

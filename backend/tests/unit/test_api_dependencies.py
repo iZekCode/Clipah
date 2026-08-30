@@ -3,20 +3,27 @@
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
+from uuid import uuid4
 
 import pytest
 from fastapi import Request
 
 from clipah.api.dependencies import (
     CSRF_HEADER,
+    AuthComponents,
+    CurrentUser,
     default_auth_components,
     require_csrf,
+    require_workspace,
     session_policy,
     session_secret_for,
     utcnow,
 )
 from clipah.api.errors import ApiError
+from clipah.auth.models import AuthenticatedSession
 from clipah.config import Environment, Settings
+from clipah.models import PublishingRolePolicy, WorkspaceRole
+from clipah.workspaces.models import WorkspaceAction
 
 SESSION_SECRET = "a-test-session-secret-of-at-least-32-characters"
 SITE_ORIGIN = "https://app.clipah.test"
@@ -33,7 +40,11 @@ def settings_with(**overrides: object) -> Settings:
 
 
 def build_request(
-    *, method: str = "POST", headers: dict[str, str], settings: Settings | None = None
+    *,
+    method: str = "POST",
+    headers: dict[str, str],
+    settings: Settings | None = None,
+    components: AuthComponents | None = None,
 ) -> Request:
     """Build one ASGI request scope with the application state a dependency reads."""
 
@@ -43,6 +54,7 @@ def build_request(
     app = _App()
     app.state = _App()  # type: ignore[attr-defined]
     app.state.settings = settings or settings_with()  # type: ignore[attr-defined]
+    app.state.auth_components = components  # type: ignore[attr-defined]
     scope = {
         "type": "http",
         "method": method,
@@ -177,6 +189,90 @@ def test_a_request_that_cannot_prove_its_origin_is_refused(headers: dict[str, st
         require_csrf(build_request(headers=headers))
 
     assert failure.value.code == "CSRF_FAILED"
+
+
+class StubMembershipRow:
+    """The one Membership row the authorizer reads for these tests."""
+
+    role = WorkspaceRole.OWNER
+    publishing_role_policy = PublishingRolePolicy.OWNER_ADMIN_EDITOR
+
+
+class StubResult:
+    """A result set holding exactly one Membership."""
+
+    def one_or_none(self) -> StubMembershipRow:
+        """Return the single membership the stubbed query matched."""
+        return StubMembershipRow()
+
+
+class StubSession:
+    """A database stand-in that answers the authorizer and records tenant context."""
+
+    def __init__(self) -> None:
+        self.statements: list[object] = []
+
+    def execute(self, statement: object, parameters: object = None) -> StubResult:
+        """Record the statement and answer with the one stubbed membership."""
+        self.statements.append(statement)
+        del parameters
+        return StubResult()
+
+
+def workspace_request(now: datetime, recent_auth_at: datetime) -> tuple[Request, CurrentUser]:
+    """Build one request whose Session was last authenticated at a chosen instant."""
+    settings = settings_with()
+    components = AuthComponents(
+        oidc_flow=lambda: pytest.fail("no login ceremony belongs in this test"),
+        open_session=lambda: pytest.fail("the session is supplied directly"),
+        policy=session_policy(settings),
+        now=lambda: now,
+    )
+    user = CurrentUser(
+        user_id=uuid4(),
+        session=AuthenticatedSession(
+            session_id=uuid4(),
+            user_id=uuid4(),
+            recent_auth_at=recent_auth_at,
+            idle_expires_at=now + timedelta(days=1),
+            absolute_expires_at=now + timedelta(days=30),
+        ),
+    )
+    return build_request(headers={}, settings=settings, components=components), user
+
+
+@pytest.mark.unit
+def test_a_sensitive_workspace_action_demands_a_freshly_authenticated_session() -> None:
+    """A live but stale Session must not be enough to manage membership."""
+    now = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
+    request, user = workspace_request(now, now - timedelta(hours=1))
+    dependency = require_workspace(WorkspaceAction.MEMBER_MANAGE)
+
+    with pytest.raises(ApiError) as failure:
+        dependency(request, StubSession(), user, uuid4())  # type: ignore[arg-type]
+
+    assert failure.value.status_code == 403
+    assert failure.value.code == "RECENT_AUTHENTICATION_REQUIRED"
+
+
+@pytest.mark.unit
+def test_an_authorized_workspace_request_installs_its_tenant_context() -> None:
+    """A permitted action must leave the transaction scoped to that one Workspace."""
+    now = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
+    request, user = workspace_request(now, now)
+    session = StubSession()
+    workspace_id = uuid4()
+
+    workspace = require_workspace(WorkspaceAction.MEMBER_MANAGE)(
+        request,
+        session,  # type: ignore[arg-type]
+        user,
+        workspace_id,
+    )
+
+    assert workspace.access.workspace_id == workspace_id
+    assert workspace.access.role is WorkspaceRole.OWNER
+    assert "clipah.workspace_id" in str(session.statements[-1])
 
 
 @pytest.mark.unit

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from datetime import datetime
 from uuid import uuid4
 
@@ -18,13 +17,12 @@ from clipah.auth.models import (
 )
 from clipah.db import create_user_with_personal_workspace
 from clipah.models import AuthIdentity, User, UserStatus
+from clipah.workspaces.use_cases import workspace_slug
 
 PROVIDER_BY_ISSUER = {
     "https://accounts.google.com": "google",
     "accounts.google.com": "google",
 }
-UNSAFE_SLUG_CHARACTERS = re.compile(r"[^a-z0-9]+")
-MAX_SLUG_STEM_LENGTH = 32
 
 
 def resolve_login_identity(
@@ -82,7 +80,7 @@ def _create_identity_with_personal_workspace(
         primary_email=profile.email,
         display_name=profile.display_name,
         workspace_name=f"{profile.display_name}'s Workspace",
-        workspace_slug=personal_workspace_slug(profile.display_name),
+        workspace_slug=workspace_slug(f"{profile.display_name}'s Workspace"),
     )
     provisioned.user.avatar_url = profile.avatar_url
     identity = AuthIdentity(
@@ -104,10 +102,3 @@ def _create_identity_with_personal_workspace(
         workspace_id=provisioned.workspace.id,
         created=True,
     )
-
-
-def personal_workspace_slug(display_name: str) -> str:
-    """Derive a collision-resistant slug that never exposes provider identifiers."""
-    stem = UNSAFE_SLUG_CHARACTERS.sub("-", display_name.lower()).strip("-")
-    stem = stem[:MAX_SLUG_STEM_LENGTH].strip("-") or "workspace"
-    return f"{stem}-{uuid4().hex[:8]}"

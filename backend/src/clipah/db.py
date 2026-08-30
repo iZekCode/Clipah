@@ -98,6 +98,14 @@ def set_actor_context(session: Session, *, user_id: UUID) -> None:
     )
 
 
+def set_workspace_context(session: Session, *, workspace_id: UUID | None) -> None:
+    """Bind the tenant to the open transaction once Membership has been proven."""
+    session.execute(
+        text("SELECT set_config('clipah.workspace_id', :workspace_id, true)"),
+        {"workspace_id": "" if workspace_id is None else str(workspace_id)},
+    )
+
+
 def authorize_retention_mutation(session: Session | Connection) -> None:
     """Open the retention delete path for the caller's active transaction only.
 

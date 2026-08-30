@@ -15,6 +15,7 @@ from clipah.api.dependencies import AuthComponents, default_auth_components
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
 from clipah.api.routes import auth as auth_routes
+from clipah.api.routes import workspaces as workspace_routes
 from clipah.config import Settings
 
 VERSION = "0.1.0"
@@ -114,6 +115,7 @@ def create_app(
         return health_response()
 
     app.include_router(auth_routes.router)
+    app.include_router(workspace_routes.router)
     return app
 
 
