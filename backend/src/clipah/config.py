@@ -19,6 +19,13 @@ class Environment(StrEnum):
     PRODUCTION = "production"
 
 
+class ProcessRole(StrEnum):
+    """Separate deployment processes that receive distinct database credentials."""
+
+    API = "api"
+    WORKER = "worker"
+
+
 class Settings(BaseSettings):
     """Load application configuration from the environment and local ``.env`` files only."""
 
@@ -30,9 +37,11 @@ class Settings(BaseSettings):
     )
 
     environment: Environment = Environment.LOCAL
+    process_role: ProcessRole = ProcessRole.API
     debug: bool = True
 
     database_url: str | None = None
+    worker_database_url: str | None = None
     migration_database_url: str | None = None
     redis_url: str | None = None
 
@@ -139,8 +148,9 @@ class Settings(BaseSettings):
         return self
 
     def _validate_production_requirements(self) -> None:
+        runtime_setting_name, runtime_url = self._runtime_database_configuration()
         required_values: dict[str, object | None] = {
-            "CLIPAH_DATABASE_URL": self.database_url,
+            runtime_setting_name: runtime_url,
             "CLIPAH_MIGRATION_DATABASE_URL": self.migration_database_url,
             "CLIPAH_REDIS_URL": self.redis_url,
             "CLIPAH_OBJECT_STORE_ENDPOINT": self.object_store_endpoint,
@@ -159,9 +169,9 @@ class Settings(BaseSettings):
         if missing:
             raise ValueError(f"missing required production settings: {', '.join(missing)}")
 
-        if self.database_url is None or self.migration_database_url is None:
+        if runtime_url is None or self.migration_database_url is None:
             raise ValueError("production database URLs are required")
-        runtime_principal = make_url(self.database_url).username
+        runtime_principal = make_url(runtime_url).username
         migration_principal = make_url(self.migration_database_url).username
         if (
             runtime_principal is None
@@ -169,8 +179,14 @@ class Settings(BaseSettings):
             or runtime_principal == migration_principal
         ):
             raise ValueError(
-                "CLIPAH_DATABASE_URL and CLIPAH_MIGRATION_DATABASE_URL must use separate "
-                "database principals"
+                f"{runtime_setting_name} and CLIPAH_MIGRATION_DATABASE_URL must use "
+                "separate database principals"
+            )
+
+        foreign_setting_name, foreign_url = self._foreign_database_configuration()
+        if foreign_url is not None:
+            raise ValueError(
+                f"{self.process_role.value} processes must not configure {foreign_setting_name}"
             )
 
         if self.session_secret is not None and len(self.session_secret.get_secret_value()) < 32:
@@ -180,6 +196,18 @@ class Settings(BaseSettings):
             and len(self.secret_encryption_key.get_secret_value()) < 32
         ):
             raise ValueError("CLIPAH_SECRET_ENCRYPTION_KEY must contain at least 32 characters")
+
+    def _runtime_database_configuration(self) -> tuple[str, str | None]:
+        """Return the one runtime DSN required by this deployment process."""
+        if self.process_role is ProcessRole.WORKER:
+            return "CLIPAH_WORKER_DATABASE_URL", self.worker_database_url
+        return "CLIPAH_DATABASE_URL", self.database_url
+
+    def _foreign_database_configuration(self) -> tuple[str, str | None]:
+        """Return the runtime DSN this deployment process is never allowed to hold."""
+        if self.process_role is ProcessRole.WORKER:
+            return "CLIPAH_DATABASE_URL", self.database_url
+        return "CLIPAH_WORKER_DATABASE_URL", self.worker_database_url
 
     def _validate_production_security_defaults(self) -> None:
         if self.debug:

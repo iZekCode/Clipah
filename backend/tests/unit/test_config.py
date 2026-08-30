@@ -49,6 +49,63 @@ def test_production_rejects_shared_runtime_and_migration_database_credentials(
 
 
 @pytest.mark.unit
+def test_production_worker_process_requires_its_own_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Selecting the worker process must not silently reuse API credentials."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_PROCESS_ROLE", "worker")
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+def test_production_worker_process_can_omit_the_api_database_url(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A separate worker deployment needs only its own least-privilege runtime DSN."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_PROCESS_ROLE", "worker")
+    monkeypatch.delenv("CLIPAH_DATABASE_URL")
+    monkeypatch.setenv(
+        "CLIPAH_WORKER_DATABASE_URL",
+        "postgresql+psycopg://clipah_worker_runtime:worker@db/clipah",
+    )
+
+    settings = Settings()
+
+    assert settings.process_role == "worker"
+    assert settings.database_url is None
+    assert settings.worker_database_url is not None
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("process_role", "foreign_setting"),
+    (
+        ("api", "CLIPAH_WORKER_DATABASE_URL"),
+        ("worker", "CLIPAH_DATABASE_URL"),
+    ),
+)
+def test_production_rejects_holding_the_other_process_database_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+    process_role: str,
+    foreign_setting: str,
+) -> None:
+    """One process must reach exactly one runtime role group, never both."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_PROCESS_ROLE", process_role)
+    monkeypatch.setenv(
+        "CLIPAH_WORKER_DATABASE_URL",
+        "postgresql+psycopg://clipah_worker_runtime:worker@db/clipah",
+    )
+
+    with pytest.raises(ValidationError, match=foreign_setting):
+        Settings()
+
+
+@pytest.mark.unit
 def test_production_allows_disabled_unapproved_social_integrations(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

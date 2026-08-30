@@ -9,10 +9,10 @@ from enum import StrEnum
 from functools import lru_cache
 from uuid import UUID, uuid4
 
-from sqlalchemy import Engine, create_engine, text
+from sqlalchemy import Connection, Engine, create_engine, text
 from sqlalchemy.orm import Session
 
-from clipah.config import Settings
+from clipah.config import ProcessRole, Settings
 from clipah.models import (
     User,
     Workspace,
@@ -44,12 +44,34 @@ def _engine_for_url(database_url: str) -> Engine:
     return create_engine(database_url, pool_pre_ping=True)
 
 
-def get_engine(settings: Settings | None = None) -> Engine:
-    """Return a pooled engine for an explicitly configured durable Postgres database."""
+def get_engine(
+    settings: Settings | None = None,
+    *,
+    runtime_role: RuntimeRole = RuntimeRole.API,
+) -> Engine:
+    """Return the process-specific pool for one closed runtime role."""
     resolved_settings = settings or Settings()
-    if not resolved_settings.database_url:
-        raise RuntimeError("CLIPAH_DATABASE_URL is required for database access")
-    return _engine_for_url(resolved_settings.database_url)
+    expected_process_role = (
+        ProcessRole.WORKER if runtime_role is RuntimeRole.WORKER else ProcessRole.API
+    )
+    if resolved_settings.process_role is not expected_process_role:
+        raise RuntimeError(
+            f"{runtime_role.value} database access requires a {expected_process_role.value} "
+            "process configuration"
+        )
+    database_url = (
+        resolved_settings.worker_database_url
+        if runtime_role is RuntimeRole.WORKER
+        else resolved_settings.database_url
+    )
+    if not database_url:
+        setting_name = (
+            "CLIPAH_WORKER_DATABASE_URL"
+            if runtime_role is RuntimeRole.WORKER
+            else "CLIPAH_DATABASE_URL"
+        )
+        raise RuntimeError(f"{setting_name} is required for database access")
+    return _engine_for_url(database_url)
 
 
 def _set_transaction_context(
@@ -66,6 +88,17 @@ def _set_transaction_context(
     session.execute(
         text("SELECT set_config('clipah.user_id', :user_id, true)"),
         {"user_id": "" if user_id is None else str(user_id)},
+    )
+
+
+def authorize_retention_mutation(session: Session | Connection) -> None:
+    """Open the retention delete path for the caller's active transaction only.
+
+    The authorization token is the current transaction identifier, so a value left
+    behind on a pooled connection can never authorize a later transaction.
+    """
+    session.execute(
+        text("SELECT set_config('clipah.retention_mutation', pg_current_xact_id()::text, true)")
     )
 
 
@@ -110,7 +143,23 @@ def _assert_safe_runtime_identity(session: Session, *, runtime_role: RuntimeRole
                     WHERE namespace.nspname = 'public'
                       AND relation.relkind IN ('r', 'p')
                       AND privilege.grantee = session_role.oid
-                ) AS session_has_direct_table_grant
+                ) AS session_has_direct_table_grant,
+                ARRAY(
+                    WITH RECURSIVE reachable_roles(role_oid) AS (
+                        SELECT membership.roleid
+                        FROM pg_auth_members AS membership
+                        WHERE membership.member = session_role.oid
+                        UNION
+                        SELECT membership.roleid
+                        FROM pg_auth_members AS membership
+                        JOIN reachable_roles AS reachable
+                          ON membership.member = reachable.role_oid
+                    )
+                    SELECT reachable_role.rolname
+                    FROM reachable_roles AS reachable
+                    JOIN pg_roles AS reachable_role ON reachable_role.oid = reachable.role_oid
+                    ORDER BY reachable_role.rolname
+                ) AS reachable_roles
             FROM pg_roles AS session_role
             CROSS JOIN pg_roles AS assumed_role
             WHERE session_role.rolname = session_user
@@ -136,6 +185,7 @@ def _assert_safe_runtime_identity(session: Session, *, runtime_role: RuntimeRole
         or identity.current_bypasses_rls
         or identity.owns_public_table
         or identity.session_has_direct_table_grant
+        or set(identity.reachable_roles) != {runtime_role.value}
     )
     if is_unsafe:
         raise RuntimeError("unsafe database session identity for application runtime")
@@ -154,7 +204,7 @@ def session_scope(
         if context_value is not None and not isinstance(context_value, UUID):
             raise ValueError(f"{context_name} must be a UUID")
 
-    with Session(get_engine(settings)) as session, session.begin():
+    with Session(get_engine(settings, runtime_role=runtime_role)) as session, session.begin():
         # RuntimeRole is a closed enum, so the identifier cannot contain user input.
         session.execute(text(f"SET LOCAL ROLE {runtime_role.value}"))
         _assert_safe_runtime_identity(session, runtime_role=runtime_role)

@@ -981,7 +981,8 @@ def _protect_append_only_history() -> None:
         AS $$
         BEGIN
             IF TG_OP = 'DELETE'
-               AND current_setting('clipah.retention_mutation', true) = 'on'
+               AND current_setting('clipah.retention_mutation', true)
+                   = pg_current_xact_id()::text
                AND current_user = pg_get_userbyid(
                     (
                         SELECT relation.relowner

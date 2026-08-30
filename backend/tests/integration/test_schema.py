@@ -12,11 +12,18 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from sqlalchemy import Engine, create_engine, inspect, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
 
-from clipah.config import Environment, Settings
-from clipah.db import RuntimeRole, create_user_with_personal_workspace, session_scope
+from clipah.config import Environment, ProcessRole, Settings
+from clipah.db import (
+    RuntimeRole,
+    authorize_retention_mutation,
+    create_user_with_personal_workspace,
+    get_engine,
+    session_scope,
+)
 from clipah.models import Base, Job, JobEvent, Project, User, Workspace
 
 DATABASE_URL = os.getenv(
@@ -24,11 +31,20 @@ DATABASE_URL = os.getenv(
     "postgresql+psycopg://clipah_migrator:clipah_migrator_local@localhost:55433/"
     "clipah_rebuild_foundation",
 )
-RUNTIME_DATABASE_URL = os.getenv(
-    "CLIPAH_TEST_RUNTIME_DATABASE_URL",
-    "postgresql+psycopg://clipah_runtime:clipah_runtime_local@localhost:55433/"
+API_RUNTIME_DATABASE_URL = os.getenv(
+    "CLIPAH_TEST_API_RUNTIME_DATABASE_URL",
+    "postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@localhost:55433/"
     "clipah_rebuild_foundation",
 )
+WORKER_RUNTIME_DATABASE_URL = os.getenv(
+    "CLIPAH_TEST_WORKER_RUNTIME_DATABASE_URL",
+    "postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/"
+    "clipah_rebuild_foundation",
+)
+RUNTIME_LOGINS = {
+    RuntimeRole.API: ("clipah_api_runtime", API_RUNTIME_DATABASE_URL),
+    RuntimeRole.WORKER: ("clipah_worker_runtime", WORKER_RUNTIME_DATABASE_URL),
+}
 BACKEND_ROOT = Path(__file__).resolve().parents[2]
 RUNTIME_INIT_SQL = BACKEND_ROOT.parent / "infra" / "postgres" / "init-runtime.sql"
 
@@ -166,6 +182,19 @@ def alembic_config() -> Config:
     return config
 
 
+def runtime_settings(runtime_role: RuntimeRole = RuntimeRole.API, **overrides: object) -> Settings:
+    """Build the settings one deployment process would hold for its own runtime login."""
+    _, database_url = RUNTIME_LOGINS[runtime_role]
+    if runtime_role is RuntimeRole.WORKER:
+        process: dict[str, object] = {
+            "process_role": ProcessRole.WORKER,
+            "worker_database_url": database_url,
+        }
+    else:
+        process = {"process_role": ProcessRole.API, "database_url": database_url}
+    return Settings(environment=Environment.TEST, **{**process, **overrides})  # type: ignore[arg-type]
+
+
 @pytest.fixture(scope="session")
 def engine() -> Iterator[Engine]:
     """Upgrade the dedicated test database and expose a real SQLAlchemy engine."""
@@ -227,7 +256,8 @@ def provision_safe_runtime_roles(engine: Engine) -> None:
                     """
                 )
             )
-        connection.execute(text("GRANT clipah_api, clipah_worker TO clipah_runtime"))
+        connection.execute(text("GRANT clipah_api TO clipah_api_runtime"))
+        connection.execute(text("GRANT clipah_worker TO clipah_worker_runtime"))
 
 
 def provision_edit_revision(
@@ -638,7 +668,7 @@ def test_session_scope_sets_transaction_local_context_and_resets_it_after_commit
             {"workspace_id": workspace_id, "user_id": user_id},
         )
 
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings()
     with session_scope(
         settings=settings,
         workspace_id=workspace_id,
@@ -671,7 +701,7 @@ def test_session_scope_defaults_to_api_role_on_a_non_superuser_login(engine: Eng
             {"workspace_id": workspace_id, "user_id": user_id},
         )
 
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings()
     with session_scope(
         settings=settings,
         workspace_id=workspace_id,
@@ -680,7 +710,7 @@ def test_session_scope_defaults_to_api_role_on_a_non_superuser_login(engine: Eng
         identity = session.execute(text("SELECT session_user, current_user")).one()
         names = session.scalars(text("SELECT name FROM projects ORDER BY name")).all()
 
-    assert identity == ("clipah_runtime", "clipah_api")
+    assert identity == ("clipah_api_runtime", "clipah_api")
     assert names == ["Runtime Scoped"]
 
 
@@ -721,28 +751,28 @@ def test_session_scope_rejects_each_unsafe_runtime_login_capability(
     cleanup_statement: str
     with engine.begin() as connection:
         if unsafe_capability == "superuser":
-            connection.execute(text("ALTER ROLE clipah_runtime SUPERUSER"))
-            cleanup_statement = "ALTER ROLE clipah_runtime NOSUPERUSER"
+            connection.execute(text("ALTER ROLE clipah_api_runtime SUPERUSER"))
+            cleanup_statement = "ALTER ROLE clipah_api_runtime NOSUPERUSER"
         elif unsafe_capability == "bypassrls":
-            connection.execute(text("ALTER ROLE clipah_runtime BYPASSRLS"))
-            cleanup_statement = "ALTER ROLE clipah_runtime NOBYPASSRLS"
+            connection.execute(text("ALTER ROLE clipah_api_runtime BYPASSRLS"))
+            cleanup_statement = "ALTER ROLE clipah_api_runtime NOBYPASSRLS"
         elif unsafe_capability == "table_owner":
-            connection.execute(text("CREATE TABLE clipah_runtime_owner_probe (id integer)"))
+            connection.execute(text("CREATE TABLE clipah_api_runtime_owner_probe (id integer)"))
             connection.execute(
-                text("ALTER TABLE clipah_runtime_owner_probe OWNER TO clipah_runtime")
+                text("ALTER TABLE clipah_api_runtime_owner_probe OWNER TO clipah_api_runtime")
             )
-            cleanup_statement = "DROP TABLE clipah_runtime_owner_probe"
+            cleanup_statement = "DROP TABLE clipah_api_runtime_owner_probe"
         elif unsafe_capability == "inherit":
-            connection.execute(text("ALTER ROLE clipah_runtime INHERIT"))
-            cleanup_statement = "ALTER ROLE clipah_runtime NOINHERIT"
+            connection.execute(text("ALTER ROLE clipah_api_runtime INHERIT"))
+            cleanup_statement = "ALTER ROLE clipah_api_runtime NOINHERIT"
         elif unsafe_capability == "createrole":
-            connection.execute(text("ALTER ROLE clipah_runtime CREATEROLE"))
-            cleanup_statement = "ALTER ROLE clipah_runtime NOCREATEROLE"
+            connection.execute(text("ALTER ROLE clipah_api_runtime CREATEROLE"))
+            cleanup_statement = "ALTER ROLE clipah_api_runtime NOCREATEROLE"
         else:
-            connection.execute(text("GRANT SELECT ON users TO clipah_runtime"))
-            cleanup_statement = "REVOKE SELECT ON users FROM clipah_runtime"
+            connection.execute(text("GRANT SELECT ON users TO clipah_api_runtime"))
+            cleanup_statement = "REVOKE SELECT ON users FROM clipah_api_runtime"
 
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings()
     try:
         with (
             pytest.raises(RuntimeError, match="unsafe database session identity"),
@@ -755,12 +785,131 @@ def test_session_scope_rejects_each_unsafe_runtime_login_capability(
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize("membership_chain", ("direct_safe", "transitive_bypassrls"))
+def test_session_scope_rejects_every_additional_reachable_role_membership(
+    engine: Engine,
+    membership_chain: str,
+) -> None:
+    """A runtime login must reach only its one intended group through SET ROLE."""
+    login_role = "clipah_membership_probe"
+    bridge_role = "clipah_membership_bridge"
+    parent_role = "clipah_membership_parent"
+    password = "clipah_membership_probe_local"
+    probe_url = (
+        make_url(DATABASE_URL)
+        .set(username=login_role, password=password)
+        .render_as_string(hide_password=False)
+    )
+    settings = Settings(environment=Environment.TEST, database_url=probe_url)
+    user_id, workspace_id = provision_identity(engine, suffix=f"membership-{membership_chain}")
+
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                f"""
+                CREATE ROLE {login_role}
+                    LOGIN PASSWORD '{password}'
+                    NOSUPERUSER NOCREATEDB NOCREATEROLE
+                    NOINHERIT NOREPLICATION NOBYPASSRLS
+                """
+            )
+        )
+        connection.execute(text(f"GRANT clipah_api TO {login_role}"))
+        if membership_chain == "direct_safe":
+            connection.execute(
+                text(
+                    f"""
+                    CREATE ROLE {parent_role}
+                        NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+                        NOINHERIT NOREPLICATION NOBYPASSRLS
+                    """
+                )
+            )
+            connection.execute(text(f"GRANT {parent_role} TO {login_role}"))
+        else:
+            connection.execute(
+                text(
+                    f"""
+                    CREATE ROLE {bridge_role}
+                        NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+                        NOINHERIT NOREPLICATION NOBYPASSRLS
+                    """
+                )
+            )
+            connection.execute(
+                text(
+                    f"""
+                    CREATE ROLE {parent_role}
+                        NOLOGIN NOSUPERUSER NOCREATEDB NOCREATEROLE
+                        NOINHERIT NOREPLICATION BYPASSRLS
+                    """
+                )
+            )
+            connection.execute(text(f"GRANT SELECT ON projects TO {parent_role}"))
+            connection.execute(text(f"GRANT {parent_role} TO {bridge_role}"))
+            connection.execute(text(f"GRANT {bridge_role} TO {login_role}"))
+
+    try:
+        with (
+            pytest.raises(RuntimeError, match="unsafe database session identity"),
+            session_scope(
+                settings=settings,
+                workspace_id=workspace_id,
+                user_id=user_id,
+            ) as session,
+        ):
+            session.execute(text(f"SET LOCAL ROLE {parent_role}"))
+            if membership_chain == "transitive_bypassrls":
+                assert session.scalar(text("SELECT count(*) FROM projects")) >= 0
+    finally:
+        get_engine(settings).dispose()
+        with engine.begin() as connection:
+            if membership_chain == "direct_safe":
+                connection.execute(text(f"REVOKE {parent_role} FROM {login_role}"))
+            else:
+                connection.execute(text(f"REVOKE {bridge_role} FROM {login_role}"))
+                connection.execute(text(f"REVOKE {parent_role} FROM {bridge_role}"))
+                connection.execute(text(f"REVOKE SELECT ON projects FROM {parent_role}"))
+            connection.execute(text(f"REVOKE clipah_api FROM {login_role}"))
+            connection.execute(text(f"DROP ROLE {login_role}"))
+            if membership_chain == "transitive_bypassrls":
+                connection.execute(text(f"DROP ROLE {bridge_role}"))
+            connection.execute(text(f"DROP ROLE {parent_role}"))
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("runtime_role", "forbidden_role"),
+    (
+        (RuntimeRole.API, RuntimeRole.WORKER),
+        (RuntimeRole.WORKER, RuntimeRole.API),
+    ),
+)
+def test_each_runtime_process_login_cannot_assume_the_other_group(
+    engine: Engine,
+    runtime_role: RuntimeRole,
+    forbidden_role: RuntimeRole,
+) -> None:
+    """API and worker connection credentials must not be interchangeable."""
+    del engine
+    settings = runtime_settings(runtime_role)
+
+    with (
+        pytest.raises(DBAPIError) as caught,
+        session_scope(settings=settings, runtime_role=runtime_role) as session,
+    ):
+        session.execute(text(f"SET LOCAL ROLE {forbidden_role.value}"))
+
+    assert caught.value.orig.sqlstate == "42501"
+
+
+@pytest.mark.integration
 def test_alembic_ignores_the_application_runtime_database_url(
     engine: Engine, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """Runtime credentials must never replace Alembic's migration/admin connection."""
     del engine
-    monkeypatch.setenv("CLIPAH_DATABASE_URL", RUNTIME_DATABASE_URL)
+    monkeypatch.setenv("CLIPAH_DATABASE_URL", API_RUNTIME_DATABASE_URL)
     monkeypatch.delenv("CLIPAH_MIGRATION_DATABASE_URL", raising=False)
 
     command.check(alembic_config())
@@ -846,17 +995,40 @@ def test_local_runtime_role_initialization_is_repeatable_and_safe(engine: Engine
                     rolname, rolcanlogin, rolinherit, rolsuper, rolcreatedb,
                     rolcreaterole, rolreplication, rolbypassrls
                 FROM pg_roles
-                WHERE rolname IN ('clipah_api', 'clipah_runtime', 'clipah_worker')
+                WHERE rolname IN (
+                    'clipah_api', 'clipah_api_runtime', 'clipah_worker', 'clipah_worker_runtime'
+                )
                 ORDER BY rolname
+                """
+            )
+        ).all()
+        legacy_shared_login = connection.scalar(
+            text("SELECT rolcanlogin FROM pg_roles WHERE rolname = 'clipah_runtime'")
+        )
+        memberships = connection.execute(
+            text(
+                """
+                SELECT member.rolname, parent.rolname
+                FROM pg_auth_members AS membership
+                JOIN pg_roles AS member ON member.oid = membership.member
+                JOIN pg_roles AS parent ON parent.oid = membership.roleid
+                WHERE starts_with(member.rolname, 'clipah_')
+                ORDER BY member.rolname, parent.rolname
                 """
             )
         ).all()
 
     assert rows == [
         ("clipah_api", False, False, False, False, False, False, False),
-        ("clipah_runtime", True, False, False, False, False, False, False),
+        ("clipah_api_runtime", True, False, False, False, False, False, False),
         ("clipah_worker", False, False, False, False, False, False, False),
+        ("clipah_worker_runtime", True, False, False, False, False, False, False),
     ]
+    assert memberships == [
+        ("clipah_api_runtime", "clipah_api"),
+        ("clipah_worker_runtime", "clipah_worker"),
+    ]
+    assert legacy_shared_login in (None, False)
 
 
 @pytest.mark.integration
@@ -957,7 +1129,7 @@ def test_worker_runtime_role_cannot_mutate_identity_or_workspace_roots(
 ) -> None:
     """A worker connection must be denied every root-table write operation by Postgres."""
     del engine
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings(RuntimeRole.WORKER)
 
     with (
         pytest.raises(DBAPIError) as caught,
@@ -981,7 +1153,7 @@ def test_ordinary_runtime_roles_cannot_delete_immutable_or_history_tables(
 ) -> None:
     """No ordinary runtime role may acquire a delete path into durable evidence."""
     del engine
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings(runtime_role)
 
     with (
         pytest.raises(DBAPIError) as caught,
@@ -996,7 +1168,7 @@ def test_ordinary_runtime_roles_cannot_delete_immutable_or_history_tables(
 def test_api_runtime_role_can_atomically_provision_a_personal_workspace(engine: Engine) -> None:
     """The API's bounded root-table grants must support only the Task 4 bootstrap helper."""
     del engine
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
+    settings = runtime_settings()
     with session_scope(settings=settings) as session:
         provisioned = create_user_with_personal_workspace(
             session,
@@ -1075,7 +1247,7 @@ def test_upgrade_rejects_a_missing_externally_provisioned_runtime_role(engine: E
     config = alembic_config()
     command.downgrade(config, "base")
     with engine.begin() as connection:
-        connection.execute(text("REVOKE clipah_worker FROM clipah_runtime"))
+        connection.execute(text("REVOKE clipah_worker FROM clipah_worker_runtime"))
         connection.execute(text("DROP ROLE clipah_worker"))
 
     try:
@@ -1377,13 +1549,12 @@ def test_ordinary_roles_cannot_update_or_delete_revisions_and_artifacts(engine: 
         ("UPDATE render_artifacts SET storage_key = 'rewritten' WHERE id = :id", artifact_id),
         ("DELETE FROM render_artifacts WHERE id = :id", artifact_id),
     )
-    settings = Settings(environment=Environment.TEST, database_url=RUNTIME_DATABASE_URL)
     for runtime_role in RuntimeRole:
         for statement, row_id in statements:
             with (
                 pytest.raises(DBAPIError) as caught,
                 session_scope(
-                    settings=settings,
+                    settings=runtime_settings(runtime_role),
                     workspace_id=workspace_id,
                     user_id=uuid4(),
                     runtime_role=runtime_role,
@@ -1417,7 +1588,7 @@ def test_table_owner_can_explicitly_open_a_transaction_local_retention_delete_pa
             {"workspace": workspace_id, "revision": revision_id, "hash": composition_hash},
         )
     with pytest.raises(DBAPIError) as caught, engine.begin() as connection:
-        connection.execute(text("SELECT set_config('clipah.retention_mutation', 'on', true)"))
+        authorize_retention_mutation(connection)
         connection.execute(
             text(
                 """
@@ -1431,7 +1602,7 @@ def test_table_owner_can_explicitly_open_a_transaction_local_retention_delete_pa
     assert caught.value.orig.sqlstate == "55000"
 
     with engine.begin() as connection:
-        connection.execute(text("SELECT set_config('clipah.retention_mutation', 'on', true)"))
+        authorize_retention_mutation(connection)
         connection.execute(
             text("DELETE FROM render_artifacts WHERE id = :artifact_id"),
             {"artifact_id": artifact_id},
@@ -1453,6 +1624,63 @@ def test_table_owner_can_explicitly_open_a_transaction_local_retention_delete_pa
             {"revision_id": revision_id},
         )
     assert remaining == 0
+
+
+@pytest.mark.integration
+def test_retention_authorization_expires_with_the_transaction_that_opened_it(
+    engine: Engine,
+) -> None:
+    """A retention flag left on a pooled connection must not authorize a later transaction."""
+    workspace_id, _, revision_id, composition_hash = provision_edit_revision(
+        engine,
+        suffix="retention-leak",
+    )
+    with engine.begin() as connection:
+        artifact_id = connection.scalar(
+            text(
+                """
+                INSERT INTO render_artifacts
+                    (workspace_id, clip_edit_revision_id, preset, composition_hash,
+                     storage_key, size_bytes, duration_ms)
+                VALUES (:workspace, :revision, 'retention-leak', :hash,
+                        'renders/retention-leak.mp4', 100, 1000)
+                RETURNING id
+                """
+            ),
+            {"workspace": workspace_id, "revision": revision_id, "hash": composition_hash},
+        )
+
+    with engine.connect() as connection:
+        with connection.begin():
+            authorize_retention_mutation(connection)
+            authorized_token = connection.scalar(
+                text("SELECT current_setting('clipah.retention_mutation', true)")
+            )
+            # Simulate the worst pooled-connection case: the same authorization value
+            # survives the transaction that produced it.
+            connection.execute(
+                text("SELECT set_config('clipah.retention_mutation', :token, false)"),
+                {"token": authorized_token},
+            )
+
+        with pytest.raises(DBAPIError) as caught, connection.begin():
+            leaked_token = connection.scalar(
+                text("SELECT current_setting('clipah.retention_mutation', true)")
+            )
+            assert leaked_token == authorized_token
+            connection.execute(
+                text("DELETE FROM render_artifacts WHERE id = :artifact_id"),
+                {"artifact_id": artifact_id},
+            )
+
+    assert caught.value.orig.sqlstate == "55000"
+
+    with engine.connect() as connection:
+        surviving = connection.scalar(
+            text("SELECT count(*) FROM render_artifacts WHERE id = :artifact_id"),
+            {"artifact_id": artifact_id},
+        )
+    assert surviving == 1
 
 
 @pytest.mark.integration
