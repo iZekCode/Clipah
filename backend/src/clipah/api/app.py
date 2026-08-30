@@ -1,0 +1,131 @@
+"""FastAPI application factory and dependency-free health endpoints."""
+
+from __future__ import annotations
+
+import asyncio
+from collections.abc import Awaitable, Callable, Iterable
+from dataclasses import dataclass
+
+from fastapi import FastAPI, Request
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
+from starlette.responses import Response
+
+from clipah.api.errors import ApiError, error_response
+from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
+from clipah.config import Settings
+
+VERSION = "0.1.0"
+READINESS_TIMEOUT_SECONDS = 2.0
+ReadinessProbe = Callable[[], Awaitable[None]]
+
+
+async def _ready() -> None:
+    """Represent an adapter that has not been installed by a later task yet."""
+
+
+@dataclass(frozen=True, slots=True)
+class ReadinessProbes:
+    """Health probes supplied by the database and infrastructure composition root."""
+
+    database: ReadinessProbe = _ready
+    redis: ReadinessProbe = _ready
+    object_store: ReadinessProbe = _ready
+
+    def all(self) -> Iterable[ReadinessProbe]:
+        """Return every dependency probe without exposing route-layer details."""
+        return self.database, self.redis, self.object_store
+
+
+def create_app(
+    settings: Settings,
+    *,
+    readiness_probes: ReadinessProbes | None = None,
+) -> FastAPI:
+    """Create the typed HTTP application with stable health and failure contracts."""
+    probes = readiness_probes or ReadinessProbes()
+    # Public error responses stay sanitized even when local configuration enables debugging.
+    app = FastAPI(title="Clipah API", version=VERSION, debug=False)
+    app.state.settings = settings
+
+    @app.middleware("http")
+    async def add_request_id(
+        request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
+        request_id = assign_request_id(request)
+        response = await call_next(request)
+        response.headers[REQUEST_ID_HEADER] = request_id
+        return response
+
+    @app.exception_handler(ApiError)
+    async def handle_api_error(request: Request, error: ApiError) -> Response:
+        return error_response(
+            status_code=error.status_code,
+            code=error.code,
+            message=error.message,
+            request_id=request_id_for(request),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_error(request: Request, error: StarletteHTTPException) -> Response:
+        if error.status_code == 404:
+            code = "NOT_FOUND"
+            message = "The requested resource was not found."
+        else:
+            code = "HTTP_ERROR"
+            message = "The request could not be completed."
+        return error_response(
+            status_code=error.status_code,
+            code=code,
+            message=message,
+            request_id=request_id_for(request),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def handle_validation_error(request: Request, _: RequestValidationError) -> Response:
+        return error_response(
+            status_code=422,
+            code="VALIDATION_ERROR",
+            message="Request validation failed.",
+            request_id=request_id_for(request),
+        )
+
+    @app.exception_handler(Exception)
+    async def handle_unexpected_error(request: Request, _: Exception) -> Response:
+        return error_response(
+            status_code=500,
+            code="INTERNAL_ERROR",
+            message="An unexpected error occurred.",
+            request_id=request_id_for(request),
+        )
+
+    @app.get("/health/live")
+    async def live() -> dict[str, str]:
+        """Confirm that the HTTP process can accept requests without external I/O."""
+        return health_response()
+
+    @app.get("/health/ready")
+    async def ready() -> dict[str, str]:
+        """Confirm that all mandatory infrastructure adapters are reachable."""
+        results = await asyncio.gather(
+            *(_run_probe(probe) for probe in probes.all()), return_exceptions=True
+        )
+        if any(isinstance(result, BaseException) for result in results):
+            raise ApiError(
+                status_code=503,
+                code="SERVICE_UNAVAILABLE",
+                message="A required service is unavailable.",
+            )
+        return health_response()
+
+    return app
+
+
+async def _run_probe(probe: ReadinessProbe) -> None:
+    """Run one readiness probe with its own bounded timeout."""
+    await asyncio.wait_for(probe(), timeout=READINESS_TIMEOUT_SECONDS)
+
+
+def health_response() -> dict[str, str]:
+    """Return the common versioned health resource representation."""
+    return {"status": "ok", "version": VERSION}
