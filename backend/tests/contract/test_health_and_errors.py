@@ -6,8 +6,8 @@ import asyncio
 from collections.abc import Awaitable, Callable
 from time import perf_counter
 
-from fastapi.testclient import TestClient
-from httpx import Response
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient, Response
 
 from clipah.api.app import ReadinessProbes, create_app
 from clipah.api.errors import ApiError
@@ -29,7 +29,7 @@ def test_live_reports_version_without_contacting_dependencies() -> None:
         ),
     )
 
-    response = TestClient(app).get("/health/live")
+    response = request(app, "GET", "/health/live")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
@@ -55,7 +55,7 @@ def test_ready_reports_healthy_after_all_dependency_probes_succeed() -> None:
         ),
     )
 
-    response = TestClient(app).get("/health/ready")
+    response = request(app, "GET", "/health/ready")
 
     assert response.status_code == 200
     assert response.json() == {"status": "ok", "version": "0.1.0"}
@@ -73,7 +73,7 @@ def test_readiness_failure_is_sanitized_and_correlated() -> None:
         readiness_probes=ReadinessProbes(database=failed_database_probe),
     )
 
-    response = TestClient(app).get("/health/ready", headers={"X-Request-ID": "ready-123"})
+    response = request(app, "GET", "/health/ready", headers={"X-Request-ID": "ready-123"})
 
     assert_error(
         response,
@@ -102,7 +102,7 @@ def test_readiness_times_out_each_probe_concurrently() -> None:
     )
 
     started_at = perf_counter()
-    response = TestClient(app).get("/health/ready")
+    response = request(app, "GET", "/health/ready")
     elapsed_seconds = perf_counter() - started_at
 
     assert_error(
@@ -116,7 +116,9 @@ def test_readiness_times_out_each_probe_concurrently() -> None:
 
 def test_safe_request_id_is_propagated_to_unknown_route_errors() -> None:
     """A caller's safe correlation ID must remain intact across framework 404 handling."""
-    response = client().get("/not-a-route", headers={"X-Request-ID": "request-123_ABC"})
+    response = request(
+        default_app(), "GET", "/not-a-route", headers={"X-Request-ID": "request-123_ABC"}
+    )
 
     assert_error(
         response,
@@ -129,7 +131,7 @@ def test_safe_request_id_is_propagated_to_unknown_route_errors() -> None:
 
 def test_framework_method_errors_keep_their_http_status() -> None:
     """A framework HTTP error must use the stable envelope without changing its status."""
-    response = client().post("/health/live")
+    response = request(default_app(), "POST", "/health/live")
 
     assert_error(
         response,
@@ -141,7 +143,9 @@ def test_framework_method_errors_keep_their_http_status() -> None:
 
 def test_unsafe_request_id_is_replaced() -> None:
     """An invalid caller-supplied request ID must never be reflected to other clients."""
-    response = client().get("/not-a-route", headers={"X-Request-ID": "unsafe request id"})
+    response = request(
+        default_app(), "GET", "/not-a-route", headers={"X-Request-ID": "unsafe request id"}
+    )
 
     assert response.status_code == 404
     request_id = response.json()["error"]["requestId"]
@@ -157,7 +161,7 @@ def test_validation_errors_use_the_stable_error_envelope() -> None:
     async def validation_endpoint(limit: int) -> dict[str, int]:
         return {"limit": limit}
 
-    response = TestClient(app).get("/_contract/validation?limit=invalid")
+    response = request(app, "GET", "/_contract/validation?limit=invalid")
 
     assert_error(
         response,
@@ -168,14 +172,14 @@ def test_validation_errors_use_the_stable_error_envelope() -> None:
 
 
 def test_api_errors_use_the_stable_error_envelope() -> None:
-    """Domain-level API failures must preserve their explicit safe code and message."""
+    """Domain-level API failures must derive their public message from the error code."""
     app = create_app(Settings(environment=Environment.TEST))
 
     @app.get("/_contract/api-error")
     async def api_error_endpoint() -> None:
         raise ApiError(status_code=409, code="CONFLICT", message="The resource changed.")
 
-    response = TestClient(app).get("/_contract/api-error")
+    response = request(app, "GET", "/_contract/api-error")
 
     assert_error(
         response,
@@ -183,6 +187,28 @@ def test_api_errors_use_the_stable_error_envelope() -> None:
         code="CONFLICT",
         message="The resource changed.",
     )
+
+
+def test_api_errors_replace_untrusted_messages_with_catalog_value() -> None:
+    """A route must not serialize provider or credential details carried by an ApiError."""
+    app = create_app(Settings(environment=Environment.TEST))
+    untrusted_detail = "provider=https://storage.example/private?token=secret-value path=/srv/jobs"
+
+    @app.get("/_contract/api-error-detail")
+    async def api_error_detail_endpoint() -> None:
+        raise ApiError(status_code=502, code="UPSTREAM_FAILURE", message=untrusted_detail)
+
+    response = request(app, "GET", "/_contract/api-error-detail")
+
+    assert_error(
+        response,
+        status_code=502,
+        code="UPSTREAM_FAILURE",
+        message="The request could not be completed.",
+    )
+    assert "storage.example" not in response.text
+    assert "secret-value" not in response.text
+    assert "/srv/jobs" not in response.text
 
 
 def test_unhandled_errors_are_sanitized() -> None:
@@ -193,7 +219,7 @@ def test_unhandled_errors_are_sanitized() -> None:
     async def internal_error_endpoint() -> None:
         raise RuntimeError("command failed: /usr/bin/tool --token secret-value")
 
-    response = TestClient(app, raise_server_exceptions=False).get("/_contract/internal-error")
+    response = request(app, "GET", "/_contract/internal-error", raise_app_exceptions=False)
 
     assert_error(
         response,
@@ -205,9 +231,42 @@ def test_unhandled_errors_are_sanitized() -> None:
     assert "/usr/bin/tool" not in response.text
 
 
-def client() -> TestClient:
+def default_app() -> FastAPI:
     """Build a default test application without infrastructure access."""
-    return TestClient(create_app(Settings(environment=Environment.TEST)))
+    return create_app(Settings(environment=Environment.TEST))
+
+
+def request(
+    app: FastAPI,
+    method: str,
+    path: str,
+    *,
+    headers: dict[str, str] | None = None,
+    raise_app_exceptions: bool = True,
+) -> Response:
+    """Make one supported in-process ASGI request without Starlette's deprecated client."""
+    return asyncio.run(
+        _request(
+            app,
+            method,
+            path,
+            headers=headers,
+            raise_app_exceptions=raise_app_exceptions,
+        )
+    )
+
+
+async def _request(
+    app: FastAPI,
+    method: str,
+    path: str,
+    *,
+    headers: dict[str, str] | None,
+    raise_app_exceptions: bool,
+) -> Response:
+    transport = ASGITransport(app=app, raise_app_exceptions=raise_app_exceptions)
+    async with AsyncClient(transport=transport, base_url="http://testserver") as client:
+        return await client.request(method, path, headers=headers)
 
 
 def assert_error(

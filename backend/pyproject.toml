@@ -44,7 +44,7 @@ build-backend = "hatchling.build"
 packages = ["src/clipah"]
 
 [tool.pytest.ini_options]
-addopts = "--strict-markers --cov=clipah --cov-report=term-missing --cov-fail-under=90"
+addopts = "--strict-markers"
 testpaths = ["tests"]
 pythonpath = ["src"]
 markers = [
@@ -59,6 +59,7 @@ branch = true
 source = ["clipah"]
 
 [tool.coverage.report]
+fail_under = 90
 show_missing = true
 skip_covered = true
 

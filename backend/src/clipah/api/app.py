@@ -62,22 +62,15 @@ def create_app(
         return error_response(
             status_code=error.status_code,
             code=error.code,
-            message=error.message,
             request_id=request_id_for(request),
         )
 
     @app.exception_handler(StarletteHTTPException)
     async def handle_http_error(request: Request, error: StarletteHTTPException) -> Response:
-        if error.status_code == 404:
-            code = "NOT_FOUND"
-            message = "The requested resource was not found."
-        else:
-            code = "HTTP_ERROR"
-            message = "The request could not be completed."
+        code = "NOT_FOUND" if error.status_code == 404 else "HTTP_ERROR"
         return error_response(
             status_code=error.status_code,
             code=code,
-            message=message,
             request_id=request_id_for(request),
         )
 
@@ -86,7 +79,6 @@ def create_app(
         return error_response(
             status_code=422,
             code="VALIDATION_ERROR",
-            message="Request validation failed.",
             request_id=request_id_for(request),
         )
 
@@ -95,7 +87,6 @@ def create_app(
         return error_response(
             status_code=500,
             code="INTERNAL_ERROR",
-            message="An unexpected error occurred.",
             request_id=request_id_for(request),
         )
 
