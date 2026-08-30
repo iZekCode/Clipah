@@ -2,7 +2,7 @@
 name = "clipah-backend"
 version = "0.1.0"
 description = "Clipah FastAPI backend"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.13,<3.15"
 dependencies = [
     "alembic>=1.14,<2",
     "assemblyai>=1,<2",

@@ -68,6 +68,25 @@ def test_local_profile_loads_developer_dotenv_files(
 
 
 @pytest.mark.unit
+def test_dotenv_cannot_select_production_or_supply_production_credentials(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """Only an explicit local process or constructor profile may opt into dotenv."""
+    for name in production_environment_values():
+        monkeypatch.delenv(name, raising=False)
+    monkeypatch.chdir(tmp_path)
+    (tmp_path / ".env").write_text(
+        "\n".join(f"{name}={value}" for name, value in production_environment_values().items()),
+        encoding="utf-8",
+    )
+
+    settings = Settings()
+
+    assert settings.environment is Environment.LOCAL
+    assert settings.database_url is None
+
+
+@pytest.mark.unit
 def test_production_accepts_a_secret_manager_instead_of_an_encryption_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -121,6 +140,33 @@ def test_production_rejects_each_missing_required_setting(
     """Each foundational production dependency is independently required."""
     production_environment(monkeypatch)
     monkeypatch.delenv(setting)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "setting",
+    [
+        "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID",
+        "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY",
+        "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET",
+        "CLIPAH_ASSEMBLYAI_API_KEY",
+        "CLIPAH_GROQ_API_KEY",
+        "CLIPAH_SESSION_SECRET",
+        "CLIPAH_SECRET_ENCRYPTION_KEY",
+    ],
+)
+@pytest.mark.parametrize("blank_value", ["", " \t "])
+def test_production_rejects_blank_required_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+    setting: str,
+    blank_value: str,
+) -> None:
+    """Blank SecretStr values cannot satisfy production dependency requirements."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv(setting, blank_value)
 
     with pytest.raises(ValidationError):
         Settings()
@@ -184,6 +230,80 @@ def test_enabled_social_provider_requires_audit_approval_after_credentials_are_p
 
 @pytest.mark.unit
 @pytest.mark.parametrize(
+    ("provider_environment", "blank_secret_setting"),
+    [
+        (
+            {
+                "CLIPAH_YOUTUBE_PUBLISHING_ENABLED": "true",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_ID": "youtube-client-id",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET": "youtube-client-secret",
+                "CLIPAH_YOUTUBE_API_KEY": "youtube-api-key",
+                "CLIPAH_YOUTUBE_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET",
+        ),
+        (
+            {
+                "CLIPAH_YOUTUBE_PUBLISHING_ENABLED": "true",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_ID": "youtube-client-id",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET": "youtube-client-secret",
+                "CLIPAH_YOUTUBE_API_KEY": "youtube-api-key",
+                "CLIPAH_YOUTUBE_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_YOUTUBE_API_KEY",
+        ),
+        (
+            {
+                "CLIPAH_INSTAGRAM_PUBLISHING_ENABLED": "true",
+                "CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID": "instagram-client-id",
+                "CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET": "instagram-client-secret",
+                "CLIPAH_INSTAGRAM_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET",
+        ),
+        (
+            {
+                "CLIPAH_TIKTOK_PUBLISHING_ENABLED": "true",
+                "CLIPAH_TIKTOK_CLIENT_KEY": "tiktok-client-key",
+                "CLIPAH_TIKTOK_CLIENT_SECRET": "tiktok-client-secret",
+                "CLIPAH_TIKTOK_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_TIKTOK_CLIENT_SECRET",
+        ),
+    ],
+)
+def test_enabled_social_provider_rejects_blank_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+    provider_environment: dict[str, str],
+    blank_secret_setting: str,
+) -> None:
+    """An approved provider still requires non-blank OAuth/API secrets."""
+    production_environment(monkeypatch)
+    for name, value in provider_environment.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv(blank_secret_setting, " \t ")
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("blank_value", ["", " \t "])
+def test_production_rejects_blank_secret_manager_when_encryption_key_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+    blank_value: str,
+) -> None:
+    """A blank Secret Manager identifier cannot replace an encryption key."""
+    production_environment(monkeypatch)
+    monkeypatch.delenv("CLIPAH_SECRET_ENCRYPTION_KEY")
+    monkeypatch.setenv("CLIPAH_SECRET_MANAGER_KEY_NAME", blank_value)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
     ("setting", "value"),
     [
         ("CLIPAH_DEBUG", "true"),
@@ -229,7 +349,13 @@ def test_gpt_oss_aliases_follow_the_configured_groq_models(monkeypatch: pytest.M
 
 def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Populate the smallest complete, intentionally provider-disabled production environment."""
-    values = {
+    for name, value in production_environment_values().items():
+        monkeypatch.setenv(name, value)
+
+
+def production_environment_values() -> dict[str, str]:
+    """Return the smallest complete, intentionally provider-disabled production environment."""
+    return {
         "CLIPAH_ENVIRONMENT": "production",
         "CLIPAH_DATABASE_URL": "postgresql+psycopg://clipah:clipah@db/clipah",
         "CLIPAH_REDIS_URL": "redis://redis:6379/0",
@@ -244,5 +370,3 @@ def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
         "CLIPAH_SESSION_SECRET": "s" * 32,
         "CLIPAH_SECRET_ENCRYPTION_KEY": "e" * 32,
     }
-    for name, value in values.items():
-        monkeypatch.setenv(name, value)

@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import os
 from enum import StrEnum
 from typing import Any, Literal, Self
 
 from pydantic import SecretStr, model_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 
 
 class Environment(StrEnum):
@@ -80,14 +79,21 @@ class Settings(BaseSettings):
     tiktok_api_version: str = "v2"
     tiktok_audit_approved: bool = False
 
-    def __init__(self, **values: Any) -> None:
-        """Prevent non-local profiles from reading a developer ``.env`` file."""
-        requested_environment = values.get(
-            "environment", os.environ.get("CLIPAH_ENVIRONMENT", Environment.LOCAL)
-        )
-        if requested_environment != Environment.LOCAL and requested_environment != "local":
-            values.setdefault("_env_file", None)
-        super().__init__(**values)
+    @classmethod
+    def settings_customise_sources(
+        cls,
+        settings_cls: type[BaseSettings],
+        init_settings: PydanticBaseSettingsSource,
+        env_settings: PydanticBaseSettingsSource,
+        dotenv_settings: PydanticBaseSettingsSource,
+        file_secret_settings: PydanticBaseSettingsSource,
+    ) -> tuple[PydanticBaseSettingsSource, ...]:
+        """Allow dotenv only after a trusted source explicitly selects the local profile."""
+        del cls, settings_cls, file_secret_settings
+        source_profile = init_settings().get("environment", env_settings().get("environment"))
+        if _is_local_profile(source_profile):
+            return init_settings, env_settings, dotenv_settings
+        return init_settings, env_settings
 
     @property
     def gpt_oss_extraction_model(self) -> str:
@@ -144,8 +150,8 @@ class Settings(BaseSettings):
             "CLIPAH_GROQ_API_KEY": self.groq_api_key,
             "CLIPAH_SESSION_SECRET": self.session_secret,
         }
-        missing = [name for name, value in required_values.items() if value is None or value == ""]
-        if self.secret_encryption_key is None and self.secret_manager_key_name is None:
+        missing = [name for name, value in required_values.items() if _is_blank(value)]
+        if _is_blank(self.secret_encryption_key) and _is_blank(self.secret_manager_key_name):
             missing.append("CLIPAH_SECRET_ENCRYPTION_KEY or CLIPAH_SECRET_MANAGER_KEY_NAME")
         if missing:
             raise ValueError(f"missing required production settings: {', '.join(missing)}")
@@ -214,7 +220,23 @@ class Settings(BaseSettings):
         for provider, enabled, credentials, audit_approved in providers:
             if not enabled:
                 continue
-            if any(credential is None or credential == "" for credential in credentials):
+            if any(_is_blank(credential) for credential in credentials):
                 raise ValueError(f"{provider} publishing requires its OAuth/API credentials")
             if not audit_approved:
                 raise ValueError(f"{provider} publishing requires audit approval")
+
+
+def _is_local_profile(value: object | None) -> bool:
+    """Return whether a process or constructor source selected the local profile."""
+    if isinstance(value, Environment):
+        return value is Environment.LOCAL
+    return isinstance(value, str) and value.strip().lower() == Environment.LOCAL.value
+
+
+def _is_blank(value: object | None) -> bool:
+    """Treat absent, empty, and whitespace-only plain or secret values as missing."""
+    if value is None:
+        return True
+    if isinstance(value, SecretStr):
+        return not value.get_secret_value().strip()
+    return isinstance(value, str) and not value.strip()
