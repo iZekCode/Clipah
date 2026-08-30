@@ -54,6 +54,14 @@ env/
 ENV/
 env.bak/
 venv.bak/
+.venv/
+
+# Python tool caches and coverage artifacts
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.coverage
+coverage.xml
 
 # PyCharm
 .idea/

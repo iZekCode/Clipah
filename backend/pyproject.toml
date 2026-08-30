@@ -1,0 +1,82 @@
+[project]
+name = "clipah-backend"
+version = "0.1.0"
+description = "Clipah FastAPI backend"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+    "alembic>=1.14,<2",
+    "assemblyai>=1,<2",
+    "authlib>=1.4,<2",
+    "boto3>=1.35,<2",
+    "celery>=5.4,<6",
+    "cryptography>=44,<47",
+    "fastapi>=0.115,<1",
+    "google-api-python-client>=2.160,<3",
+    "google-cloud-kms>=3.5,<4",
+    "groq>=0.18,<1",
+    "httpx>=0.28,<1",
+    "opentelemetry-api>=1.29,<2",
+    "opentelemetry-exporter-otlp-proto-http>=1.29,<2",
+    "opentelemetry-sdk>=1.29,<2",
+    "psycopg[binary]>=3.2,<4",
+    "pydantic-settings>=2.7,<3",
+    "python-magic>=0.4,<1",
+    "redis>=5,<7",
+    "sentry-sdk[fastapi]>=2.20,<3",
+    "sqlalchemy>=2.0,<3",
+    "structlog>=24,<26",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=1.14,<2",
+    "pytest>=8.3,<9",
+    "pytest-cov>=6,<7",
+    "pytest-timeout>=2.3,<3",
+    "ruff>=0.9,<1",
+]
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/clipah"]
+
+[tool.pytest.ini_options]
+addopts = "--strict-markers --cov=clipah --cov-report=term-missing --cov-fail-under=90"
+testpaths = ["tests"]
+pythonpath = ["src"]
+markers = [
+    "unit: isolated unit test",
+    "integration: test requiring infrastructure or external boundaries",
+    "slow: test that is intentionally slower than the normal unit suite",
+]
+timeout = 15
+
+[tool.coverage.run]
+branch = true
+source = ["clipah"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+
+[tool.ruff]
+target-version = "py313"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.13"
+files = ["src/clipah"]
+strict = true
+warn_unused_configs = true
