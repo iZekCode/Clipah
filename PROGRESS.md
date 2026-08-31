@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 4 is complete. **Task 5 is the next task to start.**
+**Current position:** Task 5 is complete. **Task 6 is the next task to start.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -18,7 +18,7 @@ and durable jobs work without invoking AI or rendering.
 | 2 | Establish the FastAPI application and stable error contract | `[x]` | `8b00b18`, `8ce15b6` |
 | 3 | Add Postgres persistence and the initial schema | `[x]` | `259ff93`, `a222c1f`, `3348aa9` |
 | 4 | Implement Login Identities, Sessions, Workspaces, and authorization dependencies | `[x]` | `c29df19`, `15aef0c`, `8fbe92d` |
-| 5 | Implement project use cases and idempotent create/update/delete routes | `[ ]` | — |
+| 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | pending repository-owner commit |
 | 6 | Implement the S3-compatible object-store module and multipart uploads | `[ ]` | — |
 | 7 | Add backend rate limits, quotas, and concurrent-job admission | `[ ]` | — |
 | 8 | Implement durable jobs, events, cancellation, and Celery integration | `[ ]` | — |
@@ -163,6 +163,17 @@ the same 404 — same code and same public message — for a guessed UUID as for
 one, and that every request and worker transaction ends holding the expected
 `clipah.workspace_id` and `clipah.user_id`.
 
+### Task 5 — Workspace-scoped Projects and idempotent routes
+
+Pending repository-owner commit. Added create, list, get, rename, soft-delete, and restore routes
+behind the Workspace authorization dependency; Project SQLAlchemy details remain private to the
+repository module. Keyset pagination orders by `(created_at, id)` and excludes soft-deleted
+Projects. Soft deletion preserves the Project workflow status through recovery for 30 days.
+Migration `0003` adds RLS-protected, Workspace-wide idempotency records with nullable actor
+attribution, API-only least-privilege grants, deterministic concurrent replay/conflict behavior,
+and no worker access. Final verification: 290 tests passed with 97.68% coverage; Ruff check,
+Ruff format check, strict mypy, migration downgrade/upgrade, and `git diff --check` all passed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -174,16 +185,16 @@ oversight.
 | Workspace delete and restore endpoints | Task 45 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
-## Open decisions for Task 5
+## Task 5 decisions and review notes
 
-Both need an answer before Task 5 implementation begins. Recommendations given, awaiting
-the repository owner's call.
+The repository owner approved a shared `idempotency_keys` table and an opaque unsigned base64
+cursor over `(created_at, id)`. Task 5 implements both decisions. Idempotency identity is
+Workspace-wide, actor attribution is nullable, and API privileges are limited to response
+completion; workers receive no Task 5 idempotency-table access.
 
-1. **Idempotency storage.** Migration `0001` gives `projects` no idempotency column.
-   *Recommendation:* a shared `idempotency_keys` table rather than a per-table column, so
-   every later idempotent route reuses one mechanism.
-2. **Cursor pagination format.** *Recommendation:* an opaque, unsigned base64 encoding of
-   `(created_at, id)` — stable under insertion and not something a client can construct.
+Final review left two non-blocking notes for later adjudication: require canonical strict
+URL-safe base64 cursor decoding, and type closed Project status/source values as domain enums
+instead of unrestricted strings. Neither changes the completed Task 5 contract.
 
 ## Notes
 

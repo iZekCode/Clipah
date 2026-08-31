@@ -360,6 +360,41 @@ class Project(Base):
     archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
+class IdempotencyKey(Base):
+    """Persist one Workspace-scoped create response for safe request replay."""
+
+    __tablename__ = "idempotency_keys"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id",
+            "route",
+            "key",
+            name="uq_idempotency_keys_workspace_route_key",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL")
+    )
+    route: Mapped[str] = mapped_column(String(128), nullable=False)
+    key: Mapped[str] = mapped_column(Text, nullable=False)
+    request_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    response_status: Mapped[int | None] = mapped_column(Integer)
+    response_body: Mapped[dict[str, object] | None] = mapped_column(JSONB)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class Asset(Base):
     __tablename__ = "assets"
     __table_args__ = (

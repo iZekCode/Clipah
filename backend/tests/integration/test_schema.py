@@ -11,14 +11,6 @@ from sqlalchemy import Engine, create_engine, inspect, text
 from sqlalchemy.engine import make_url
 from sqlalchemy.exc import DBAPIError, IntegrityError
 from sqlalchemy.orm import Session
-from support import (
-    API_RUNTIME_DATABASE_URL,
-    DATABASE_URL,
-    RUNTIME_INIT_SQL,
-    alembic_config,
-    provision_identity,
-    runtime_settings,
-)
 
 from clipah.config import Environment, Settings
 from clipah.db import (
@@ -29,6 +21,14 @@ from clipah.db import (
     session_scope,
 )
 from clipah.models import Base, Job, JobEvent, Project, User, Workspace
+from support import (
+    API_RUNTIME_DATABASE_URL,
+    DATABASE_URL,
+    RUNTIME_INIT_SQL,
+    alembic_config,
+    provision_identity,
+    runtime_settings,
+)
 
 FOUNDATIONAL_TABLES = {
     "alembic_version",
@@ -39,6 +39,7 @@ FOUNDATIONAL_TABLES = {
     "clip_candidates",
     "clip_edit_revisions",
     "clip_edits",
+    "idempotency_keys",
     "job_events",
     "jobs",
     "multipart_uploads",
@@ -66,6 +67,7 @@ API_TABLE_PRIVILEGES = {
     "auth_sessions": {"SELECT", "INSERT", "UPDATE"},
     "workspaces": {"SELECT", "INSERT", "UPDATE"},
     "workspace_memberships": {"SELECT", "INSERT", "UPDATE"},
+    "idempotency_keys": {"SELECT", "INSERT"},
     "workspace_invites": {"SELECT", "INSERT", "UPDATE"},
     "projects": {"SELECT", "INSERT", "UPDATE"},
     "assets": {"SELECT", "INSERT", "UPDATE"},
@@ -987,6 +989,32 @@ def test_runtime_roles_have_exact_least_privilege_table_grants(engine: Engine) -
 
 
 @pytest.mark.integration
+def test_idempotency_key_privileges_allow_only_api_response_completion(engine: Engine) -> None:
+    """Only the API may complete a replay record; neither runtime may rewrite its identity."""
+    with engine.connect() as connection:
+        checks = connection.execute(
+            text(
+                """
+                SELECT
+                    has_column_privilege(
+                        'clipah_api', 'idempotency_keys', 'response_body', 'UPDATE'
+                    ),
+                    has_column_privilege(
+                        'clipah_api', 'idempotency_keys', 'workspace_id', 'UPDATE'
+                    ),
+                    has_column_privilege('clipah_api', 'idempotency_keys', 'route', 'UPDATE'),
+                    has_column_privilege('clipah_api', 'idempotency_keys', 'user_id', 'UPDATE'),
+                    has_column_privilege(
+                        'clipah_api', 'idempotency_keys', 'request_hash', 'UPDATE'
+                    ),
+                    has_table_privilege('clipah_worker', 'idempotency_keys', 'SELECT')
+                """
+            )
+        ).one()
+    assert checks == (True, False, False, False, False, False)
+
+
+@pytest.mark.integration
 def test_upgrade_revokes_public_table_privileges_inherited_from_cluster_defaults(
     engine: Engine,
 ) -> None:
@@ -1247,6 +1275,27 @@ def test_job_idempotency_keys_are_unique_inside_a_workspace(engine: Engine) -> N
             ),
             {"workspace_id": workspace_id, "project_id": project_id},
         )
+
+
+@pytest.mark.integration
+def test_project_idempotency_key_remains_valid_without_actor_attribution(engine: Engine) -> None:
+    """Workspace-wide replay state must outlive an optional originating User attribution."""
+    _, workspace_id = provision_identity(engine, suffix="idempotency-attribution")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "INSERT INTO idempotency_keys "
+                "(workspace_id, user_id, route, key, request_hash) "
+                "VALUES (:workspace_id, NULL, 'projects:create', 'actorless', :request_hash)"
+            ),
+            {"workspace_id": workspace_id, "request_hash": bytes.fromhex("33" * 32)},
+        )
+    with engine.connect() as connection:
+        actor = connection.execute(
+            text("SELECT user_id FROM idempotency_keys WHERE workspace_id = :workspace_id"),
+            {"workspace_id": workspace_id},
+        ).scalar_one()
+    assert actor is None
 
 
 @pytest.mark.integration
