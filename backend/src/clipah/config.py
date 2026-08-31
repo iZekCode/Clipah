@@ -72,6 +72,18 @@ class Settings(BaseSettings):
     session_absolute_ttl_minutes: int = 60 * 24 * 30
     session_recent_auth_ttl_minutes: int = 10
 
+    read_requests_per_minute: int = 60
+    write_requests_per_minute: int = 20
+    analyses_per_hour: int = 3
+    concurrent_jobs_per_workspace: int = 5
+
+    monthly_analyses: int = 30
+    monthly_stock_requests: int = 200
+    monthly_generated_images: int = 50
+    monthly_generated_videos: int = 10
+    monthly_generated_seconds: int = 300
+    monthly_social_publications: int = 100
+
     secret_encryption_key: SecretStr | None = None
     secret_manager_key_name: str | None = None
     secret_encryption_enabled: bool = False

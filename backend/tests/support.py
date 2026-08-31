@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from uuid import UUID, uuid4
 
 from alembic.config import Config
+from redis import Redis
 from sqlalchemy import Engine
 from sqlalchemy.orm import Session
 
@@ -28,6 +31,7 @@ WORKER_RUNTIME_DATABASE_URL = os.getenv(
     "postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/"
     "clipah_rebuild_foundation",
 )
+REDIS_URL = os.getenv("CLIPAH_TEST_REDIS_URL", "redis://localhost:56380/0")
 RUNTIME_LOGINS = {
     RuntimeRole.API: ("clipah_api_runtime", API_RUNTIME_DATABASE_URL),
     RuntimeRole.WORKER: ("clipah_worker_runtime", WORKER_RUNTIME_DATABASE_URL),
@@ -42,6 +46,17 @@ def alembic_config() -> Config:
     config.set_main_option("script_location", str(BACKEND_ROOT / "migrations"))
     config.set_main_option("sqlalchemy.url", DATABASE_URL)
     return config
+
+
+@contextmanager
+def redis_client() -> Iterator[Redis]:
+    """Open one real Redis connection against an emptied local test keyspace."""
+    client: Redis = Redis.from_url(REDIS_URL)
+    try:
+        client.flushdb()
+        yield client
+    finally:
+        client.close()
 
 
 def runtime_settings(runtime_role: RuntimeRole = RuntimeRole.API, **overrides: object) -> Settings:

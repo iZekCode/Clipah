@@ -52,6 +52,7 @@ FOUNDATIONAL_TABLES = {
     "users",
     "workspace_invites",
     "workspace_memberships",
+    "workspace_quota_reservations",
     "workspaces",
 }
 TENANT_TABLES = FOUNDATIONAL_TABLES - {
@@ -83,6 +84,7 @@ API_TABLE_PRIVILEGES = {
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT"},
     "retention_tombstones": {"SELECT", "INSERT"},
+    "workspace_quota_reservations": {"SELECT", "INSERT"},
 }
 WORKER_TABLE_PRIVILEGES = {
     "users": {"SELECT"},
@@ -102,6 +104,7 @@ WORKER_TABLE_PRIVILEGES = {
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT", "INSERT", "UPDATE"},
     "retention_tombstones": {"SELECT", "UPDATE"},
+    "workspace_quota_reservations": {"SELECT", "INSERT"},
 }
 EXPECTED_ENUMS = {
     "asset_kind": (
@@ -149,6 +152,15 @@ EXPECTED_ENUMS = {
         "archived",
     ),
     "publishing_role_policy": ("owner_admin_editor", "owner_admin"),
+    "quota_reservation_status": ("reserved", "settled", "released"),
+    "quota_resource": (
+        "analyses",
+        "stock_requests",
+        "generated_images",
+        "generated_videos",
+        "generated_seconds",
+        "social_publications",
+    ),
     "source_import_status": ("queued", "downloading", "completed", "failed", "canceled"),
     "source_kind": ("upload", "public_url", "authenticated_source"),
     "user_status": ("active", "disabled", "deleted"),
@@ -986,6 +998,32 @@ def test_runtime_roles_have_exact_least_privilege_table_grants(engine: Engine) -
         )
 
     assert actual == expected
+
+
+@pytest.mark.integration
+def test_quota_reservations_are_updatable_only_on_reconciliation_columns(engine: Engine) -> None:
+    """A held budget is evidence, so runtime roles may close a row but never rewrite it."""
+    with engine.connect() as connection:
+        actual = set(
+            connection.execute(
+                text(
+                    """
+                    SELECT grantee, column_name
+                    FROM information_schema.column_privileges
+                    WHERE table_schema = 'public'
+                      AND table_name = 'workspace_quota_reservations'
+                      AND privilege_type = 'UPDATE'
+                      AND grantee IN ('clipah_api', 'clipah_worker')
+                    """
+                )
+            ).tuples()
+        )
+
+    assert actual == {
+        (role, column)
+        for role in ("clipah_api", "clipah_worker")
+        for column in ("status", "actual_units", "settled_at")
+    }
 
 
 @pytest.mark.integration

@@ -485,6 +485,30 @@ def test_local_companion_cookies_drop_the_host_prefix() -> None:
     assert settings.oidc_state_cookie_name == "clipah_oidc"
 
 
+@pytest.mark.unit
+def test_plan_limits_are_configuration_rather_than_route_code() -> None:
+    """Section 7 processing limits must ship as settings a deployment can retune."""
+    settings = Settings(environment=Environment.TEST)
+
+    assert settings.read_requests_per_minute == 60
+    assert settings.write_requests_per_minute == 20
+    assert settings.analyses_per_hour == 3
+    assert settings.concurrent_jobs_per_workspace == 5
+
+
+@pytest.mark.unit
+def test_monthly_workspace_budgets_are_configuration() -> None:
+    """Every metered resource carries its own retunable monthly Workspace budget."""
+    settings = Settings(environment=Environment.TEST)
+
+    assert settings.monthly_analyses == 30
+    assert settings.monthly_stock_requests == 200
+    assert settings.monthly_generated_images == 50
+    assert settings.monthly_generated_videos == 10
+    assert settings.monthly_generated_seconds == 300
+    assert settings.monthly_social_publications == 100
+
+
 def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Populate the smallest complete, intentionally provider-disabled production environment."""
     for name, value in production_environment_values().items():

@@ -18,6 +18,7 @@ from starlette.responses import Response
 from clipah.api.errors import ApiError
 from clipah.assets.storage import ObjectStore
 from clipah.auth.google_oidc import AUTHORIZATION_LIFETIME, AuthlibGoogleProvider, GoogleOidcFlow
+from clipah.auth.limits import RateLimitBucket, RateLimiter
 from clipah.auth.models import (
     AuthenticatedSession,
     SessionInvalidError,
@@ -41,6 +42,7 @@ from clipah.workspaces.models import (
 CSRF_HEADER = "X-CSRF-Token"
 CSRF_TOKEN_BYTES = 32
 UNSAFE_METHODS = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+REQUEST_RATE_WINDOW = timedelta(minutes=1)
 
 
 def utcnow() -> datetime:
@@ -152,7 +154,42 @@ def require_authenticated_user(request: Request, session: DatabaseSession) -> Cu
         raise ApiError(status_code=403, code="ACCOUNT_DISABLED") from error
 
     set_actor_context(session, user_id=authenticated.user_id)
+    _enforce_request_rate_limit(request, user_id=authenticated.user_id)
     return CurrentUser(user_id=authenticated.user_id, session=authenticated)
+
+
+def rate_limiter_for(request: Request) -> RateLimiter | None:
+    """Return the shared limiter, or nothing when this deployment runs without Redis."""
+    limiter: RateLimiter | None = request.app.state.rate_limiter
+    return limiter
+
+
+def _enforce_request_rate_limit(request: Request, *, user_id: UUID) -> None:
+    """Spend one per-User request slot, sized by whether this request changes state.
+
+    The limits the plan states are per User, so they are enforced here rather than in
+    an ASGI middleware: this is the first point in a request that knows which User is
+    calling.
+    """
+    limiter = rate_limiter_for(request)
+    if limiter is None:
+        return
+    settings = settings_for(request)
+    writing = request.method in UNSAFE_METHODS
+    decision = limiter.check(
+        subject=f"user:{user_id}",
+        bucket=RateLimitBucket.WRITE if writing else RateLimitBucket.READ,
+        limit=(
+            settings.write_requests_per_minute if writing else settings.read_requests_per_minute
+        ),
+        window=REQUEST_RATE_WINDOW,
+    )
+    if not decision.allowed:
+        raise ApiError(
+            status_code=429,
+            code="RATE_LIMITED",
+            retry_after_seconds=decision.retry_after_seconds(),
+        )
 
 
 CurrentUserDependency = Annotated[CurrentUser, Depends(require_authenticated_user)]

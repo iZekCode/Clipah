@@ -8,6 +8,7 @@ from dataclasses import dataclass
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
+from redis import Redis
 from starlette.exceptions import HTTPException as StarletteHTTPException
 from starlette.responses import Response
 
@@ -19,6 +20,7 @@ from clipah.api.routes import projects as project_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.assets.storage import ObjectStore, S3ObjectStore
+from clipah.auth.limits import RateLimiter, RedisRateLimiter
 from clipah.config import Settings
 
 VERSION = "0.1.0"
@@ -49,6 +51,7 @@ def create_app(
     readiness_probes: ReadinessProbes | None = None,
     auth_components: AuthComponents | None = None,
     object_store: ObjectStore | None = None,
+    rate_limiter: RateLimiter | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -57,6 +60,7 @@ def create_app(
     app.state.settings = settings
     app.state.auth_components = auth_components or default_auth_components(settings)
     app.state.object_store = object_store or _configured_object_store(settings)
+    app.state.rate_limiter = rate_limiter or _configured_rate_limiter(settings, app)
 
     @app.middleware("http")
     async def add_request_id(
@@ -73,6 +77,7 @@ def create_app(
             status_code=error.status_code,
             code=error.code,
             request_id=request_id_for(request),
+            retry_after_seconds=error.retry_after_seconds,
         )
 
     @app.exception_handler(StarletteHTTPException)
@@ -140,6 +145,18 @@ def _configured_object_store(settings: Settings) -> ObjectStore | None:
         access_key_id=settings.object_store_access_key_id.get_secret_value(),
         secret_access_key=settings.object_store_secret_access_key.get_secret_value(),
     )
+
+
+def _configured_rate_limiter(settings: Settings, app: FastAPI) -> RateLimiter | None:
+    """Build the shared limiter only for a deployment that was given Redis.
+
+    Production configuration already requires ``CLIPAH_REDIS_URL``, so only local
+    profiles run without one, and they run unlimited by design.
+    """
+    if settings.redis_url is None:
+        return None
+    components: AuthComponents = app.state.auth_components
+    return RedisRateLimiter(Redis.from_url(settings.redis_url), now=components.now)
 
 
 async def _run_probe(probe: ReadinessProbe) -> None:

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import date, datetime
+from decimal import Decimal
 from enum import StrEnum
 from typing import Any
 from uuid import UUID, uuid4
@@ -12,6 +13,7 @@ from sqlalchemy import (
     BigInteger,
     Boolean,
     CheckConstraint,
+    Date,
     DateTime,
     ForeignKey,
     ForeignKeyConstraint,
@@ -141,6 +143,25 @@ class JobKind(StrEnum):
     SOCIAL_PUBLISH = "social_publish"
     SOCIAL_RECONCILE = "social_reconcile"
     CLEANUP = "cleanup"
+
+
+class QuotaResource(StrEnum):
+    """Metered Workspace budgets that reset with each calendar month."""
+
+    ANALYSES = "analyses"
+    STOCK_REQUESTS = "stock_requests"
+    GENERATED_IMAGES = "generated_images"
+    GENERATED_VIDEOS = "generated_videos"
+    GENERATED_SECONDS = "generated_seconds"
+    SOCIAL_PUBLICATIONS = "social_publications"
+
+
+class QuotaReservationStatus(StrEnum):
+    """Lifecycle of one budget reservation from estimate to reconciled outcome."""
+
+    RESERVED = "reserved"
+    SETTLED = "settled"
+    RELEASED = "released"
 
 
 class JobStatus(StrEnum):
@@ -924,8 +945,63 @@ class RetentionTombstone(Base):
     )
 
 
+class WorkspaceQuotaReservation(Base):
+    """One monthly budget charge held against a Workspace until its real cost is known."""
+
+    __tablename__ = "workspace_quota_reservations"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "id", name="uq_workspace_quota_reservations_workspace_id_id"
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "resource",
+            "reference_kind",
+            "reference_id",
+            name="uq_workspace_quota_reservations_workspace_resource_reference",
+        ),
+        CheckConstraint("estimated_units >= 0", name="nonnegative_estimated_units"),
+        CheckConstraint(
+            "actual_units IS NULL OR actual_units >= 0", name="nonnegative_actual_units"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    resource: Mapped[QuotaResource] = mapped_column(
+        enum_type(QuotaResource, "quota_resource"), nullable=False
+    )
+    period_start: Mapped[date] = mapped_column(Date, nullable=False)
+    status: Mapped[QuotaReservationStatus] = mapped_column(
+        enum_type(QuotaReservationStatus, "quota_reservation_status"),
+        nullable=False,
+        server_default=text("'reserved'"),
+    )
+    estimated_units: Mapped[Decimal] = mapped_column(Numeric(14, 4), nullable=False)
+    actual_units: Mapped[Decimal | None] = mapped_column(Numeric(14, 4))
+    reference_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    reference_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
 # Explicit tenant-leading indexes for the tables whose primary/unique keys do not
 # already cover the most common actor-oriented access path.
+Index(
+    "ix_workspace_quota_reservations_workspace_resource_period",
+    WorkspaceQuotaReservation.workspace_id,
+    WorkspaceQuotaReservation.resource,
+    WorkspaceQuotaReservation.period_start,
+)
 Index(
     "ix_workspace_memberships_workspace_id_role",
     WorkspaceMembership.workspace_id,

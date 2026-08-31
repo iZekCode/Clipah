@@ -22,6 +22,7 @@ from clipah.api.app import create_app
 from clipah.api.dependencies import CSRF_HEADER, AuthComponents, session_policy
 from clipah.assets.storage import ObjectStore
 from clipah.auth.google_oidc import GOOGLE_ISSUER, GoogleOidcFlow, IdTokenClaims
+from clipah.auth.limits import RateLimiter
 from clipah.auth.models import AuthorizationRedirect
 from clipah.config import Settings
 from clipah.db import session_scope
@@ -174,6 +175,7 @@ def build_app(
     *,
     recorded_contexts: list[dict[str, str]] | None = None,
     object_store: ObjectStore | None = None,
+    rate_limiter: RateLimiter | None = None,
     **setting_overrides: object,
 ) -> tuple[FastAPI, RecordingFlow, Settings]:
     """Compose the application against a stubbed provider and a hand-wound clock."""
@@ -198,7 +200,12 @@ def build_app(
         now=clock,
     )
     return (
-        create_app(settings, auth_components=components, object_store=object_store),
+        create_app(
+            settings,
+            auth_components=components,
+            object_store=object_store,
+            rate_limiter=rate_limiter,
+        ),
         flow,
         settings,
     )

@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 6 is complete. **Task 7 is the next task to start.**
+**Current position:** Task 7 is complete. **Task 8 is next.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -19,8 +19,8 @@ and durable jobs work without invoking AI or rendering.
 | 3 | Add Postgres persistence and the initial schema | `[x]` | `259ff93`, `a222c1f`, `3348aa9` |
 | 4 | Implement Login Identities, Sessions, Workspaces, and authorization dependencies | `[x]` | `c29df19`, `15aef0c`, `8fbe92d` |
 | 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | `fd55d5e` |
-| 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | pending repository-owner commit |
-| 7 | Add backend rate limits, quotas, and concurrent-job admission | `[ ]` | — |
+| 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | `a60342e` |
+| 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | pending repository-owner commit |
 | 8 | Implement durable jobs, events, cancellation, and Celery integration | `[ ]` | — |
 | 9 | Replace shared working files with secure per-job workspaces | `[ ]` | — |
 
@@ -176,7 +176,7 @@ Ruff format check, strict mypy, migration downgrade/upgrade, and `git diff --che
 
 ### Task 6 — Isolated multipart media storage
 
-Pending repository-owner commit. Added server-generated tenant keys, a provider-neutral
+`a60342e`. Added server-generated tenant keys, a provider-neutral
 `ObjectStore` protocol, deterministic fake, boto3-backed S3/MinIO adapter, and CSRF-protected
 create/sign/complete/abort routes. Migration `0004` persists display/content metadata and enforces
 the 2 GiB boundary. Durable transitions lock upload and active Project rows, canonicalize completion
@@ -185,6 +185,24 @@ download URLs without exposing private keys or provider upload IDs. The real Min
 full required lifecycle/error matrix. Final verification: 301 tests passed with 96.55% coverage;
 Ruff check, Ruff format check, strict mypy, migration downgrade/upgrade/drift, and
 `git diff --check` all passed.
+
+### Task 7 — Processing limits, Workspace quotas, and job admission
+
+Pending repository-owner commit. Added a Redis sliding-window limiter evaluated inside one
+atomic Lua script (`auth/limits.py`), so two API processes can never admit the same final
+request, and a refusal reports the exact wait a client must honour. Plan limits live in
+`config.py` — 60 read and 20 write requests per minute per User, 3 analyses per hour, 5
+concurrent jobs per Workspace, and the six monthly Workspace budgets — never in route code.
+Per-request limits are spent in `require_authenticated_user` rather than ASGI middleware,
+because that is the first point that knows which User is speaking. `jobs/admission.py` counts
+unfinished jobs under a Postgres advisory transaction lock before creating one more, so 50
+concurrent callers admit exactly the limit. Migration `0005` adds the RLS-protected
+`workspace_quota_reservations` ledger: admission holds an estimate, reconciliation settles the
+real cost or releases the whole hold, and runtime roles may only update `status`,
+`actual_units`, and `settled_at` — a held budget stays evidence. Refusals surface as the
+sanitized `RATE_LIMITED`, `QUOTA_EXCEEDED`, and `CONCURRENCY_LIMIT` codes with a `Retry-After`
+header and no balance leakage. Final verification: 325 tests passed with 96.51% coverage; Ruff
+check, Ruff format check, strict mypy, and migration downgrade/upgrade/drift all passed.
 
 ## Deferrals
 
@@ -197,6 +215,11 @@ oversight.
 | Workspace delete and restore endpoints | Task 45 |
 | Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Tasks 8 and 45 |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
+| Job-creation routes that map `ConcurrencyLimitError`/`QuotaExceededError` onto the HTTP envelope | Task 8 |
+| Spending the analysis allowance from a real analysis endpoint | Task 16 |
+| A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Tasks 8 and 37 |
+| Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
+| Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes
