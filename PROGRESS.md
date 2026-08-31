@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 8 is complete. **Task 9 is next.**
+**Current position:** Task 9 is complete. **Task 10 is next.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -22,7 +22,7 @@ and durable jobs work without invoking AI or rendering.
 | 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | `a60342e` |
 | 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | `5c041a4` |
 | 8 | Implement durable jobs, events, cancellation, and Celery integration | `[x]` | `46d07d8` |
-| 9 | Replace shared working files with secure per-job workspaces | `[ ]` | — |
+| 9 | Replace shared working files with secure per-job workspaces | `[x]` | pending owner commit |
 
 ## Phase B — Durable media and AI pipeline (Tasks 10-16)
 
@@ -244,6 +244,23 @@ tests passed with 96.23% coverage; Ruff check, Ruff format check, strict mypy, a
 Two frozen test clocks (`tests/harness.py` and `tests/integration/test_auth.py`) were anchored to
 the present day. Postgres stamps `created_at` from the server clock and checks that expiries lie
 after it, so a hardcoded past date turned into nine failing upload tests once real time caught up.
+
+### Task 9 — Secure per-Job workspaces
+
+Pending owner commit. `jobs/workspace.py` replaces shared working filenames with a
+`job_workspace(job_id)` context manager. Every invocation creates a random-suffixed,
+UUID-prefixed `0700` directory beneath `CLIPAH_JOB_WORKSPACE_ROOT` (defaulting to a dedicated
+system-temporary root). The root itself must be a real `0700` directory owned by the effective
+process user, so another local user cannot pre-create a permissive root and swap active Job paths.
+Canonical direct-child checks reject paths outside the root, configured-root symlinks are refused,
+and cleanup unlinks a replaced workspace symlink without following it. Recursive cleanup is
+best-effort and can target only the exact Job directory, never its root or a parent.
+
+Tests cover permissions, UUID scoping, normal and exceptional cleanup, nested diagnostic
+collection, symlink/path replacement attacks, untrusted roots, parent preservation, cleanup
+failure, and two concurrent workspaces for the same Job writing the same relative filename. Final
+verification: 367 tests passed with 96.30% coverage; the workspace module has 100% line and branch
+coverage; Ruff check, Ruff format check, and strict mypy all passed.
 
 ## Deferrals
 
