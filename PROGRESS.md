@@ -20,8 +20,8 @@ and durable jobs work without invoking AI or rendering.
 | 4 | Implement Login Identities, Sessions, Workspaces, and authorization dependencies | `[x]` | `c29df19`, `15aef0c`, `8fbe92d` |
 | 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | `fd55d5e` |
 | 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | `a60342e` |
-| 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | pending repository-owner commit |
-| 8 | Implement durable jobs, events, cancellation, and Celery integration | `[x]` | pending repository-owner commit |
+| 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | `5c041a4` |
+| 8 | Implement durable jobs, events, cancellation, and Celery integration | `[x]` | `46d07d8` |
 | 9 | Replace shared working files with secure per-job workspaces | `[ ]` | — |
 
 ## Phase B — Durable media and AI pipeline (Tasks 10-16)
@@ -188,7 +188,7 @@ Ruff check, Ruff format check, strict mypy, migration downgrade/upgrade/drift, a
 
 ### Task 7 — Processing limits, Workspace quotas, and job admission
 
-Pending repository-owner commit. Added a Redis sliding-window limiter evaluated inside one
+`5c041a4`. Added a Redis sliding-window limiter evaluated inside one
 atomic Lua script (`auth/limits.py`), so two API processes can never admit the same final
 request, and a refusal reports the exact wait a client must honour. Plan limits live in
 `config.py` — 60 read and 20 write requests per minute per User, 3 analyses per hour, 5
@@ -206,7 +206,7 @@ check, Ruff format check, strict mypy, and migration downgrade/upgrade/drift all
 
 ### Task 8 — Durable jobs, events, cancellation, and Celery
 
-Pending repository-owner commit. `jobs/models.py` holds the state machine as data — the allowed
+`46d07d8`. `jobs/models.py` holds the state machine as data — the allowed
 transitions, the terminal set, and the event each transition announces — so no route or task can
 invent a fifth way for a job to end. `jobs/repository.py` reads jobs under `SELECT ... FOR UPDATE`
 and appends events whose sequence is computed under that same lock, so two writers can never hand
