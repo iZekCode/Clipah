@@ -16,7 +16,9 @@ from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
 from clipah.api.routes import auth as auth_routes
 from clipah.api.routes import projects as project_routes
+from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
+from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.config import Settings
 
 VERSION = "0.1.0"
@@ -46,6 +48,7 @@ def create_app(
     *,
     readiness_probes: ReadinessProbes | None = None,
     auth_components: AuthComponents | None = None,
+    object_store: ObjectStore | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -53,6 +56,7 @@ def create_app(
     app = FastAPI(title="Clipah API", version=VERSION, debug=False)
     app.state.settings = settings
     app.state.auth_components = auth_components or default_auth_components(settings)
+    app.state.object_store = object_store or _configured_object_store(settings)
 
     @app.middleware("http")
     async def add_request_id(
@@ -118,7 +122,24 @@ def create_app(
     app.include_router(auth_routes.router)
     app.include_router(workspace_routes.router)
     app.include_router(project_routes.router)
+    app.include_router(upload_routes.router)
     return app
+
+
+def _configured_object_store(settings: Settings) -> ObjectStore | None:
+    """Create the production adapter only when every S3-compatible setting is configured."""
+    if (
+        settings.object_store_bucket is None
+        or settings.object_store_access_key_id is None
+        or settings.object_store_secret_access_key is None
+    ):
+        return None
+    return S3ObjectStore(
+        bucket=settings.object_store_bucket,
+        endpoint_url=settings.object_store_endpoint,
+        access_key_id=settings.object_store_access_key_id.get_secret_value(),
+        secret_access_key=settings.object_store_secret_access_key.get_secret_value(),
+    )
 
 
 async def _run_probe(probe: ReadinessProbe) -> None:

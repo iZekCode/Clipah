@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from starlette.responses import Response
 
 from clipah.api.errors import ApiError
+from clipah.assets.storage import ObjectStore
 from clipah.auth.google_oidc import AUTHORIZATION_LIFETIME, AuthlibGoogleProvider, GoogleOidcFlow
 from clipah.auth.models import (
     AuthenticatedSession,
@@ -100,6 +101,14 @@ def settings_for(request: Request) -> Settings:
     """Return the settings the application was created with."""
     settings: Settings = request.app.state.settings
     return settings
+
+
+def object_store_for(request: Request) -> ObjectStore:
+    """Resolve the configured object-store boundary without exposing configuration details."""
+    store: ObjectStore | None = request.app.state.object_store
+    if store is None:
+        raise ApiError(status_code=503, code="SERVICE_UNAVAILABLE")
+    return store
 
 
 def auth_components_for(request: Request) -> AuthComponents:

@@ -534,6 +534,15 @@ class MultipartUpload(Base):
             ondelete="RESTRICT",
         ),
         CheckConstraint("expires_at > created_at", name="expiry_after_creation"),
+        CheckConstraint(
+            "declared_size_bytes > 0 AND declared_size_bytes <= 2147483648",
+            name="declared_size_within_initial_media_limit",
+        ),
+        CheckConstraint(
+            "completed_size_bytes IS NULL OR "
+            "(completed_size_bytes > 0 AND completed_size_bytes <= 2147483648)",
+            name="completed_size_within_initial_media_limit",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -546,6 +555,10 @@ class MultipartUpload(Base):
     project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     storage_upload_id: Mapped[str] = mapped_column(Text, nullable=False)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    client_filename: Mapped[str] = mapped_column(Text, nullable=False)
+    content_type: Mapped[str] = mapped_column(Text, nullable=False)
+    declared_size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    completed_size_bytes: Mapped[int | None] = mapped_column(BigInteger)
     status: Mapped[MultipartUploadStatus] = mapped_column(
         enum_type(MultipartUploadStatus, "multipart_upload_status"),
         nullable=False,

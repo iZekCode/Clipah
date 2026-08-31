@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from clipah.api.app import create_app
 from clipah.api.dependencies import CSRF_HEADER, AuthComponents, session_policy
+from clipah.assets.storage import ObjectStore
 from clipah.auth.google_oidc import GOOGLE_ISSUER, GoogleOidcFlow, IdTokenClaims
 from clipah.auth.models import AuthorizationRedirect
 from clipah.config import Settings
@@ -172,6 +173,7 @@ def build_app(
     provider: StubGoogleProvider,
     *,
     recorded_contexts: list[dict[str, str]] | None = None,
+    object_store: ObjectStore | None = None,
     **setting_overrides: object,
 ) -> tuple[FastAPI, RecordingFlow, Settings]:
     """Compose the application against a stubbed provider and a hand-wound clock."""
@@ -195,7 +197,11 @@ def build_app(
         policy=session_policy(settings),
         now=clock,
     )
-    return create_app(settings, auth_components=components), flow, settings
+    return (
+        create_app(settings, auth_components=components, object_store=object_store),
+        flow,
+        settings,
+    )
 
 
 def sign_in(browser: Browser, flow: RecordingFlow, *, code: str = "authorization-code") -> Response:

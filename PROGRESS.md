@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 5 is complete. **Task 6 is the next task to start.**
+**Current position:** Task 6 is complete. **Task 7 is the next task to start.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -18,8 +18,8 @@ and durable jobs work without invoking AI or rendering.
 | 2 | Establish the FastAPI application and stable error contract | `[x]` | `8b00b18`, `8ce15b6` |
 | 3 | Add Postgres persistence and the initial schema | `[x]` | `259ff93`, `a222c1f`, `3348aa9` |
 | 4 | Implement Login Identities, Sessions, Workspaces, and authorization dependencies | `[x]` | `c29df19`, `15aef0c`, `8fbe92d` |
-| 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | pending repository-owner commit |
-| 6 | Implement the S3-compatible object-store module and multipart uploads | `[ ]` | — |
+| 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | `fd55d5e` |
+| 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | pending repository-owner commit |
 | 7 | Add backend rate limits, quotas, and concurrent-job admission | `[ ]` | — |
 | 8 | Implement durable jobs, events, cancellation, and Celery integration | `[ ]` | — |
 | 9 | Replace shared working files with secure per-job workspaces | `[ ]` | — |
@@ -165,7 +165,7 @@ one, and that every request and worker transaction ends holding the expected
 
 ### Task 5 — Workspace-scoped Projects and idempotent routes
 
-Pending repository-owner commit. Added create, list, get, rename, soft-delete, and restore routes
+`fd55d5e`. Added create, list, get, rename, soft-delete, and restore routes
 behind the Workspace authorization dependency; Project SQLAlchemy details remain private to the
 repository module. Keyset pagination orders by `(created_at, id)` and excludes soft-deleted
 Projects. Soft deletion preserves the Project workflow status through recovery for 30 days.
@@ -173,6 +173,18 @@ Migration `0003` adds RLS-protected, Workspace-wide idempotency records with nul
 attribution, API-only least-privilege grants, deterministic concurrent replay/conflict behavior,
 and no worker access. Final verification: 290 tests passed with 97.68% coverage; Ruff check,
 Ruff format check, strict mypy, migration downgrade/upgrade, and `git diff --check` all passed.
+
+### Task 6 — Isolated multipart media storage
+
+Pending repository-owner commit. Added server-generated tenant keys, a provider-neutral
+`ObjectStore` protocol, deterministic fake, boto3-backed S3/MinIO adapter, and CSRF-protected
+create/sign/complete/abort routes. Migration `0004` persists display/content metadata and enforces
+the 2 GiB boundary. Durable transitions lock upload and active Project rows, canonicalize completion
+parts, sanitize provider invalid-part errors, preserve exact-key cleanup, and return five-minute
+download URLs without exposing private keys or provider upload IDs. The real MinIO suite covers the
+full required lifecycle/error matrix. Final verification: 301 tests passed with 96.55% coverage;
+Ruff check, Ruff format check, strict mypy, migration downgrade/upgrade/drift, and
+`git diff --check` all passed.
 
 ## Deferrals
 
@@ -183,6 +195,8 @@ oversight.
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Workspace delete and restore endpoints | Task 45 |
+| Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Tasks 8 and 45 |
+| Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes
