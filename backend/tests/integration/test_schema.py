@@ -75,7 +75,7 @@ API_TABLE_PRIVILEGES = {
     "jobs": {"SELECT", "INSERT", "UPDATE"},
     "source_imports": {"SELECT", "INSERT", "UPDATE"},
     "multipart_uploads": {"SELECT", "INSERT", "UPDATE"},
-    "job_events": {"SELECT"},
+    "job_events": {"SELECT", "INSERT"},
     "transcripts": {"SELECT"},
     "clip_candidates": {"SELECT"},
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},

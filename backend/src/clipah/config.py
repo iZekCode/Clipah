@@ -77,6 +77,9 @@ class Settings(BaseSettings):
     analyses_per_hour: int = 3
     concurrent_jobs_per_workspace: int = 5
 
+    job_event_poll_seconds: float = 1.0
+    job_event_heartbeat_seconds: float = 15.0
+
     monthly_analyses: int = 30
     monthly_stock_requests: int = 200
     monthly_generated_images: int = 50

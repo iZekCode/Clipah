@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 7 is complete. **Task 8 is next.**
+**Current position:** Task 8 is complete. **Task 9 is next.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -21,7 +21,7 @@ and durable jobs work without invoking AI or rendering.
 | 5 | Implement project use cases and idempotent create/update/delete routes | `[x]` | `fd55d5e` |
 | 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | `a60342e` |
 | 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | pending repository-owner commit |
-| 8 | Implement durable jobs, events, cancellation, and Celery integration | `[ ]` | — |
+| 8 | Implement durable jobs, events, cancellation, and Celery integration | `[x]` | pending repository-owner commit |
 | 9 | Replace shared working files with secure per-job workspaces | `[ ]` | — |
 
 ## Phase B — Durable media and AI pipeline (Tasks 10-16)
@@ -204,6 +204,47 @@ sanitized `RATE_LIMITED`, `QUOTA_EXCEEDED`, and `CONCURRENCY_LIMIT` codes with a
 header and no balance leakage. Final verification: 325 tests passed with 96.51% coverage; Ruff
 check, Ruff format check, strict mypy, and migration downgrade/upgrade/drift all passed.
 
+### Task 8 — Durable jobs, events, cancellation, and Celery
+
+Pending repository-owner commit. `jobs/models.py` holds the state machine as data — the allowed
+transitions, the terminal set, and the event each transition announces — so no route or task can
+invent a fifth way for a job to end. `jobs/repository.py` reads jobs under `SELECT ... FOR UPDATE`
+and appends events whose sequence is computed under that same lock, so two writers can never hand
+out sequence 4 twice; the table is append-only by grant, not by convention. `jobs/use_cases.py`
+writes each transition exactly once for the API and the worker alike, and a repeated idempotency
+key returns the job the first submission created instead of admitting a second. Every event payload
+carries the job's status, stage, progress, attempt, and error code, so a subscriber never needs a
+second read.
+
+`celery_app.py` is the only place that knows Celery exists: it maps every `JobKind` onto the
+`source_import`, `ingest`, `ai`, `broll_retrieve`, `broll_generate`, `render`, `social_rendition`,
+`social_publish`, `social_reconcile`, and `maintenance` queues, sets late acknowledgement and a
+prefetch of one so a lost worker's job is redelivered rather than dropped, and stores `Settings` on
+the app so tasks need no import-time configuration. `jobs/tasks.py` carries only UUID strings across
+the broker — never an ORM object, Session, or token — and re-proves the caller's Workspace standing
+from those identifiers before touching anything. Recoverable provider failures retry with
+exponential backoff and jitter; an exhausted retry budget ends the job as `failed` rather than
+holding a concurrency slot forever. `JobContext.raise_if_cancelled()` reads `cancel_requested_at` in
+its own short transaction between stages, so cancelling a running job stops it at the next boundary
+instead of orphaning work.
+
+`api/routes/jobs.py` serves the job read, a CSRF-protected cancel, and the Server-Sent Events
+stream. The stream subscribes before its first read, replays from `Last-Event-ID` so a reconnecting
+browser loses no event, emits heartbeat comment frames through quiet periods, and closes on the
+terminal event. Each poll opens its own short tenant-scoped transaction, so an open stream holds no
+database connection. Wakeups travel over Redis pub/sub when configured (`jobs/events.py`, the one
+file beyond the plan's list) and fall back to polling otherwise; a wakeup is only an optimization,
+so an unreachable broker never fails work Postgres already recorded. Migration `0006` grants the API
+role `INSERT` on `job_events` — job creation and cancelling a queued job are API-side transitions —
+and no `UPDATE` or `DELETE`, so history cannot be rewritten. A cross-Workspace job identifier
+returns the same 404 as a missing one on every route, including the stream. Final verification: 357
+tests passed with 96.23% coverage; Ruff check, Ruff format check, strict mypy, and migration
+`0006` downgrade/upgrade plus the drift check all passed.
+
+Two frozen test clocks (`tests/harness.py` and `tests/integration/test_auth.py`) were anchored to
+the present day. Postgres stamps `created_at` from the server clock and checks that expiries lie
+after it, so a hardcoded past date turned into nine failing upload tests once real time caught up.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -213,11 +254,13 @@ oversight.
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Workspace delete and restore endpoints | Task 45 |
-| Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Tasks 8 and 45 |
+| Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Task 45 — Task 8 supplies the `maintenance` queue this sweep will run on |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
-| Job-creation routes that map `ConcurrencyLimitError`/`QuotaExceededError` onto the HTTP envelope | Task 8 |
+| Job-creation routes that map `ConcurrencyLimitError`/`QuotaExceededError` onto the HTTP envelope — `create_job` exists and is tested, but the first route that calls it is the source import | Tasks 10-11 |
+| Real stage runners for every `JobKind`; Task 8 ships the dispatch registry and an unsupported kind fails the job with `JOB_KIND_UNSUPPORTED` | Tasks 10-16 and later pipeline tasks |
+| Quota reconciliation driven from job completion, so an estimate settles against real cost when a job ends | Tasks 16 and 30-32 |
 | Spending the analysis allowance from a real analysis endpoint | Task 16 |
-| A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Tasks 8 and 37 |
+| A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
 | Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |

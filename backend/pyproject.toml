@@ -86,3 +86,14 @@ warn_unused_configs = true
 # Authlib ships no type information; its boundary is isolated inside one adapter.
 module = ["authlib.*"]
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Celery and its broker library ship no type information; both stay behind the
+# composition root in `celery_app` and the single task module.
+module = ["celery.*", "kombu.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# redis-py annotates its client but not its pub/sub surface, which lives only here.
+module = ["clipah.jobs.events"]
+disallow_untyped_calls = false

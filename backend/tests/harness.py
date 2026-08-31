@@ -10,9 +10,12 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Iterator
 from contextlib import AbstractContextManager, contextmanager
+from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
+from urllib.parse import urlsplit
 
+import anyio
 from fastapi import FastAPI
 from httpx import ASGITransport, AsyncClient, Cookies, Response
 from sqlalchemy import text
@@ -33,7 +36,9 @@ CLIENT_ID = "clipah-test-client-id.apps.googleusercontent.com"
 REDIRECT_URI = "http://testserver/api/v1/auth/google/callback"
 SITE_ORIGIN = "http://testserver"
 FOREIGN_ORIGIN = "http://attacker.example"
-NOW = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
+# Postgres stamps `created_at` from the server clock, and several tables check that an
+# expiry lies after it, so the hand-wound clock has to start from the same present day.
+NOW = datetime.now(tz=UTC).replace(microsecond=0)
 AUTHORIZATION_ENDPOINT = "https://accounts.google.com/o/oauth2/v2/auth"
 
 
@@ -107,6 +112,33 @@ class RecordingFlow(GoogleOidcFlow):
         return redirect
 
 
+@dataclass(frozen=True, slots=True)
+class ServerSentEvent:
+    """One frame a browser's ``EventSource`` would deliver to its listeners."""
+
+    id: str | None = None
+    event: str | None = None
+    data: str = ""
+    comment: str | None = None
+
+
+def _parse_sse_block(block: list[str]) -> ServerSentEvent | None:
+    """Turn one blank-line-delimited Server-Sent Events block into a frame."""
+    if not block:
+        return None
+    fields: dict[str, str] = {}
+    data: list[str] = []
+    for line in block:
+        if line.startswith(":"):
+            return ServerSentEvent(comment=line[1:].strip())
+        name, _, value = line.partition(":")
+        if name == "data":
+            data.append(value.lstrip())
+        else:
+            fields[name] = value.lstrip()
+    return ServerSentEvent(id=fields.get("id"), event=fields.get("event"), data="\n".join(data))
+
+
 class Browser:
     """One browser's cookie jar driven across a sequence of in-process requests."""
 
@@ -138,6 +170,73 @@ class Browser:
             if token:
                 request_headers.setdefault(CSRF_HEADER, token)
         return asyncio.run(self._request(method, path, request_headers, json))
+
+    def stream(
+        self,
+        path: str,
+        *,
+        headers: dict[str, str] | None = None,
+        limit: int | None = None,
+        comments: bool = False,
+    ) -> list[ServerSentEvent]:
+        """Read one Server-Sent Events response until it closes or ``limit`` frames arrive."""
+        return asyncio.run(self._stream(path, dict(headers or {}), limit, comments))
+
+    async def _stream(
+        self, path: str, headers: dict[str, str], limit: int | None, comments: bool
+    ) -> list[ServerSentEvent]:
+        """Drive the ASGI application directly, because a test client buffers whole bodies.
+
+        Reading an endless stream needs frames as they are written and a disconnect the
+        server can observe, which is exactly what an ASGI ``send``/``receive`` pair gives.
+        """
+        frames: list[ServerSentEvent] = []
+        pending = b""
+        disconnected = anyio.Event()
+
+        async def receive() -> dict[str, Any]:
+            await disconnected.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message: dict[str, Any]) -> None:
+            nonlocal pending
+            if message["type"] != "http.response.body":
+                return
+            pending += message.get("body", b"")
+            while b"\n\n" in pending:
+                block, _, pending = pending.partition(b"\n\n")
+                frame = _parse_sse_block(block.decode().splitlines())
+                if frame is None or (frame.comment is not None and not comments):
+                    continue
+                frames.append(frame)
+                if limit is not None and len(frames) >= limit:
+                    disconnected.set()
+
+        await self.app(self._stream_scope(path, headers), receive, send)
+        return frames
+
+    def _stream_scope(self, path: str, headers: dict[str, str]) -> dict[str, Any]:
+        """Describe one streaming GET the way an ASGI server would."""
+        target, _, query = path.partition("?")
+        host = urlsplit(self.origin).netloc
+        sent = {**headers, "host": host}
+        cookies = "; ".join(f"{name}={value}" for name, value in self.cookies.items())
+        if cookies:
+            sent["cookie"] = cookies
+        return {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.1"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": target,
+            "raw_path": target.encode(),
+            "root_path": "",
+            "query_string": query.encode(),
+            "headers": [(name.lower().encode(), value.encode()) for name, value in sent.items()],
+            "client": ("testclient", 50000),
+            "server": (host, 80),
+        }
 
     async def _request(
         self, method: str, path: str, headers: dict[str, str], json: Any

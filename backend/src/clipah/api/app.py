@@ -16,12 +16,18 @@ from clipah.api.dependencies import AuthComponents, default_auth_components
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
 from clipah.api.routes import auth as auth_routes
+from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
 from clipah.config import Settings
+from clipah.jobs.events import (
+    JobEventNotifier,
+    PollingJobEventNotifier,
+    RedisJobEventNotifier,
+)
 
 VERSION = "0.1.0"
 READINESS_TIMEOUT_SECONDS = 2.0
@@ -52,6 +58,7 @@ def create_app(
     auth_components: AuthComponents | None = None,
     object_store: ObjectStore | None = None,
     rate_limiter: RateLimiter | None = None,
+    job_event_notifier: JobEventNotifier | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -61,6 +68,7 @@ def create_app(
     app.state.auth_components = auth_components or default_auth_components(settings)
     app.state.object_store = object_store or _configured_object_store(settings)
     app.state.rate_limiter = rate_limiter or _configured_rate_limiter(settings, app)
+    app.state.job_event_notifier = job_event_notifier or _configured_job_event_notifier(settings)
 
     @app.middleware("http")
     async def add_request_id(
@@ -128,7 +136,15 @@ def create_app(
     app.include_router(workspace_routes.router)
     app.include_router(project_routes.router)
     app.include_router(upload_routes.router)
+    app.include_router(job_routes.router)
     return app
+
+
+def _configured_job_event_notifier(settings: Settings) -> JobEventNotifier:
+    """Push job wakeups over Redis when there is one, and poll the database otherwise."""
+    if settings.redis_url is None:
+        return PollingJobEventNotifier()
+    return RedisJobEventNotifier(Redis.from_url(settings.redis_url))
 
 
 def _configured_object_store(settings: Settings) -> ObjectStore | None:

@@ -11,7 +11,6 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import Engine, text
 from sqlalchemy.orm import Session
-from support import runtime_settings
 
 from clipah.auth.identities import resolve_login_identity
 from clipah.auth.models import (
@@ -32,10 +31,13 @@ from clipah.auth.sessions import (
 )
 from clipah.db import session_scope
 from clipah.models import AuthIdentity, AuthSession, User, Workspace, WorkspaceMembership
+from support import runtime_settings
 
 GOOGLE_ISSUER = "https://accounts.google.com"
 SESSION_SECRET = "a-test-session-secret-of-at-least-32-characters"
-NOW = datetime(2026, 8, 30, 12, 0, tzinfo=UTC)
+# The database stamps `created_at` itself and checks that every expiry lies after it,
+# so this clock starts from the present day rather than a date that eventually passes.
+NOW = datetime.now(tz=UTC).replace(microsecond=0)
 POLICY = SessionPolicy(
     idle_ttl=timedelta(days=7),
     absolute_ttl=timedelta(days=30),
