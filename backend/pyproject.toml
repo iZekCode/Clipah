@@ -27,6 +27,12 @@ dependencies = [
     "structlog>=24,<26",
 ]
 
+[project.optional-dependencies]
+source-import = [
+    "yt-dlp==2026.8.19",
+    "yt-dlp-ejs==0.8.0",
+]
+
 [dependency-groups]
 dev = [
     "mypy>=1.14,<2",

@@ -46,6 +46,11 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "RATE_LIMITED": "Too many requests. Try again shortly.",
         "QUOTA_EXCEEDED": "This workspace has used its plan allowance for this period.",
         "CONCURRENCY_LIMIT": "This workspace already has the maximum number of jobs running.",
+        "SOURCE_UNSUPPORTED": "This public video source is not supported.",
+        "SOURCE_PRIVATE": "This video is not publicly accessible.",
+        "SOURCE_TOO_LONG": "This video exceeds the supported duration.",
+        "SOURCE_TLS_FAILED": "The video source could not be verified securely.",
+        "SOURCE_UNAVAILABLE": "The video source is temporarily unavailable.",
     }
 )
 

@@ -20,6 +20,8 @@ from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
+from clipah.api.routes import youtube_imports as youtube_import_routes
+from clipah.assets.source_validation import validate_youtube_url
 from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
 from clipah.config import Settings
@@ -28,6 +30,7 @@ from clipah.jobs.events import (
     PollingJobEventNotifier,
     RedisJobEventNotifier,
 )
+from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
 
 VERSION = "0.1.0"
 READINESS_TIMEOUT_SECONDS = 2.0
@@ -59,6 +62,8 @@ def create_app(
     object_store: ObjectStore | None = None,
     rate_limiter: RateLimiter | None = None,
     job_event_notifier: JobEventNotifier | None = None,
+    job_dispatcher: JobDispatcher | None = None,
+    source_url_validator: Callable[[str], object] | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -69,6 +74,8 @@ def create_app(
     app.state.object_store = object_store or _configured_object_store(settings)
     app.state.rate_limiter = rate_limiter or _configured_rate_limiter(settings, app)
     app.state.job_event_notifier = job_event_notifier or _configured_job_event_notifier(settings)
+    app.state.job_dispatcher = job_dispatcher or CeleryJobDispatcher()
+    app.state.source_url_validator = source_url_validator or validate_youtube_url
 
     @app.middleware("http")
     async def add_request_id(
@@ -137,6 +144,7 @@ def create_app(
     app.include_router(project_routes.router)
     app.include_router(upload_routes.router)
     app.include_router(job_routes.router)
+    app.include_router(youtube_import_routes.router)
     return app
 
 

@@ -80,6 +80,10 @@ class RetryableJobError(JobError):
     """Raised by a stage runner when a provider or network failure may succeed later."""
 
 
+class TerminalJobError(JobError):
+    """Raised by a stage runner for a stable, non-retryable public failure code."""
+
+
 @dataclass(frozen=True, slots=True)
 class JobSnapshot:
     """One Job as every reader outside the ORM sees it."""

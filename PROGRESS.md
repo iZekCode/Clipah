@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 9 is complete. **Task 10 is next.**
+**Current position:** Task 10 is complete. **Task 11 is next.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -22,7 +22,7 @@ and durable jobs work without invoking AI or rendering.
 | 6 | Implement the S3-compatible object-store module and multipart uploads | `[x]` | `a60342e` |
 | 7 | Add backend rate limits, quotas, and concurrent-job admission | `[x]` | `5c041a4` |
 | 8 | Implement durable jobs, events, cancellation, and Celery integration | `[x]` | `46d07d8` |
-| 9 | Replace shared working files with secure per-job workspaces | `[x]` | pending owner commit |
+| 9 | Replace shared working files with secure per-job workspaces | `[x]` | `011f9c0` |
 
 ## Phase B — Durable media and AI pipeline (Tasks 10-16)
 
@@ -31,7 +31,7 @@ retries do not duplicate records or artifacts.
 
 | # | Task | Status |
 | --- | --- | --- |
-| 10 | Implement safe YouTube imports and source validation | `[ ]` |
+| 10 | Implement safe YouTube imports and source validation | `[x]` (pending owner commit) |
 | 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[ ]` |
 | 12 | Implement one-pass transcription with real diarization | `[ ]` |
 | 13 | Implement transcript windowing and candidate extraction schemas | `[ ]` |
@@ -262,6 +262,34 @@ failure, and two concurrent workspaces for the same Job writing the same relativ
 verification: 367 tests passed with 96.30% coverage; the workspace module has 100% line and branch
 coverage; Ruff check, Ruff format check, and strict mypy all passed.
 
+### Task 10 — Safe public YouTube imports
+
+Pending owner commit. Strict URL normalization accepts only exact HTTPS single-video YouTube hosts
+and forms, rejects deceptive authorities and playlists, validates every IPv4/IPv6 DNS result as
+globally routable, and detects rebinding and unsafe redirects. Provider-neutral source contracts
+keep yt-dlp details, raw errors, commands, and paths out of API and durable Job state. The public
+adapter runs shell-free with a sanitized environment, process-group timeout, continuously drained
+bounded output, no cookies/browser profile/certificate bypass, deterministic Job-local output, a
+two-GiB ceiling, final-path containment, single-final-file enforcement, SHA-256 calculation, and
+exact-key private object upload.
+
+`POST /api/v1/projects/{project_id}/youtube-imports` now enforces authentication, CSRF, Workspace
+write authority, active Project state, admission limits, and payload-bound idempotency. An advisory
+lock makes concurrent identical requests converge on one `SOURCE_IMPORT` Job and SourceImport;
+commit occurs before UUID-only dispatch, so broker failure leaves durable queued work that an exact
+replay can redispatch. The isolated worker uses short tenant-scoped transactions around external
+work, a deterministic object key and Asset ID, immutable metadata verification, cancellation
+boundaries, and stable terminal/retryable source codes.
+
+The independently buildable non-root source-import image pins its Python base and Debian snapshot,
+yt-dlp `2026.08.19`, yt-dlp-ejs `0.8.0`, Deno `2.9.5`, FFmpeg/ffprobe
+`7.1.5-0+deb13u1`, and immutable `uv 0.12.7`. Its isolated readiness command reported every exact
+version. The environment-gated public metadata/EJS/Deno smoke test is marked `slow` and skipped by
+default; it was intentionally not opted in during normal verification. Final verification: 477
+tests passed, one opt-in network smoke test skipped, and coverage reached 94.00%; Ruff check, Ruff
+format check, strict mypy, and the full pytest/coverage gate all passed. The two-axis standards/spec
+review against `011f9c0` passed after all reported findings were resolved.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -273,8 +301,8 @@ oversight.
 | Workspace delete and restore endpoints | Task 45 |
 | Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Task 45 — Task 8 supplies the `maintenance` queue this sweep will run on |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
-| Job-creation routes that map `ConcurrencyLimitError`/`QuotaExceededError` onto the HTTP envelope — `create_job` exists and is tested, but the first route that calls it is the source import | Tasks 10-11 |
-| Real stage runners for every `JobKind`; Task 8 ships the dispatch registry and an unsupported kind fails the job with `JOB_KIND_UNSUPPORTED` | Tasks 10-16 and later pipeline tasks |
+| Remaining metered job-creation routes that map `QuotaExceededError` onto the HTTP envelope; Task 10 now maps source-import concurrency admission | Tasks 11-16 |
+| Real stage runners for remaining `JobKind` values; Task 10 now registers `SOURCE_IMPORT`, while unsupported remaining kinds fail with `JOB_KIND_UNSUPPORTED` | Tasks 11-16 and later pipeline tasks |
 | Quota reconciliation driven from job completion, so an estimate settles against real cost when a job ends | Tasks 16 and 30-32 |
 | Spending the analysis allowance from a real analysis endpoint | Task 16 |
 | A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |

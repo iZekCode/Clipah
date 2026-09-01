@@ -29,6 +29,7 @@ from clipah.auth.limits import RateLimiter
 from clipah.auth.models import AuthorizationRedirect
 from clipah.config import Settings
 from clipah.db import session_scope
+from clipah.source_imports.dispatch import JobDispatcher
 from support import runtime_settings
 
 SESSION_SECRET = "a-test-session-secret-of-at-least-32-characters"
@@ -275,6 +276,8 @@ def build_app(
     recorded_contexts: list[dict[str, str]] | None = None,
     object_store: ObjectStore | None = None,
     rate_limiter: RateLimiter | None = None,
+    job_dispatcher: JobDispatcher | None = None,
+    source_url_validator: Any = None,
     **setting_overrides: object,
 ) -> tuple[FastAPI, RecordingFlow, Settings]:
     """Compose the application against a stubbed provider and a hand-wound clock."""
@@ -304,6 +307,8 @@ def build_app(
             auth_components=components,
             object_store=object_store,
             rate_limiter=rate_limiter,
+            job_dispatcher=job_dispatcher,
+            source_url_validator=source_url_validator,
         ),
         flow,
         settings,

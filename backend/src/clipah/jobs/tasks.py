@@ -28,7 +28,7 @@ from clipah.jobs.events import (
     PollingJobEventNotifier,
     RedisJobEventNotifier,
 )
-from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError
+from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import cancel_job, fail_job, start_job, succeed_job
 from clipah.models import JobKind, JobStatus
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
@@ -110,6 +110,10 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
             _end_attempt(settings, context, error_code=_code_of(error), retryable=False)
             _announce(notifier, workspace_id=workspace, job_id=job)
             raise
+    except TerminalJobError as error:
+        _end_attempt(settings, context, error_code=_code_of(error), retryable=False)
+        _announce(notifier, workspace_id=workspace, job_id=job)
+        raise
     except Exception:
         _end_attempt(settings, context, error_code=INTERNAL_ERROR_CODE, retryable=False)
         _announce(notifier, workspace_id=workspace, job_id=job)
@@ -136,7 +140,7 @@ def _end_attempt(
         )
 
 
-def _code_of(error: RetryableJobError) -> str:
+def _code_of(error: RetryableJobError | TerminalJobError) -> str:
     """Use the stable code a stage runner raised, or a generic one if it named none."""
     return str(error) or INTERNAL_ERROR_CODE
 
@@ -181,3 +185,8 @@ def _redis(redis_url: str) -> Redis:
 def _now() -> datetime:
     """Return the instant a worker records its transitions at."""
     return datetime.now(tz=UTC)
+
+
+from clipah.jobs.source_import_task import source_import_stage_runner  # noqa: E402
+
+_STAGE_RUNNERS.setdefault(JobKind.SOURCE_IMPORT, source_import_stage_runner)

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Any, Protocol
+from typing import Any, BinaryIO, Protocol
 
 
 @dataclass(frozen=True)
@@ -38,6 +38,8 @@ class StoredObject:
     key: str
     content_type: str
     content_length: int
+    sha256: bytes | None = None
+    duration_ms: int | None = None
 
 
 class MultipartCompletionError(Exception):
@@ -49,6 +51,9 @@ class ObjectStore(Protocol):
 
     def create_multipart_upload(self, *, key: str, content_type: str) -> MultipartUpload:
         """Create one private multipart upload for a server-generated key."""
+
+    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
+        """Upload one exact server-selected stream without any prefix or listing operation."""
 
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
         """Sign exactly one numbered part belonging to the recorded upload and key."""
@@ -106,6 +111,16 @@ class S3ObjectStore:
             Bucket=self._bucket, Key=key, ContentType=content_type
         )
         return MultipartUpload(upload_id=str(response["UploadId"]))
+
+    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
+        """Stream one exact private object to S3, then normalize its stored metadata."""
+        self._client.upload_fileobj(
+            file,
+            self._bucket,
+            key,
+            ExtraArgs={"ContentType": content_type},
+        )
+        return self.head_object(key=key)
 
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
         """Generate a five-minute presigned URL for one S3 upload part."""
@@ -182,6 +197,7 @@ class FakeObjectStore:
         self.upload_parts: dict[str, dict[int, int]] = {}
         self.completed_parts: list[tuple[int, ...]] = []
         self.objects: dict[str, StoredObject] = {}
+        self.object_bodies: dict[str, bytes] = {}
         self.aborted: list[tuple[str, str]] = []
         self.deleted: list[str] = []
 
@@ -193,6 +209,14 @@ class FakeObjectStore:
         self.upload_content_types[upload_id] = content_type
         self.upload_parts[upload_id] = {}
         return MultipartUpload(upload_id=upload_id)
+
+    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
+        """Read one exact fake stream so hashing and retry behavior remain observable."""
+        body = file.read()
+        stored = StoredObject(key=key, content_type=content_type, content_length=len(body))
+        self.object_bodies[key] = body
+        self.objects[key] = stored
+        return stored
 
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
         """Return a fake URL only when the caller retains the exact stored binding."""
@@ -237,6 +261,7 @@ class FakeObjectStore:
         """Remove exactly one fake object after failed final validation."""
         self.deleted.append(key)
         self.objects.pop(key, None)
+        self.object_bodies.pop(key, None)
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Return a fake download URL that preserves requested expiration semantics."""

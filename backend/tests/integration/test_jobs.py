@@ -28,6 +28,7 @@ from clipah.jobs.models import (
     JobEventType,
     JobNotFoundError,
     RetryableJobError,
+    TerminalJobError,
 )
 from clipah.jobs.tasks import run_job, stage_runners
 from clipah.jobs.use_cases import (
@@ -450,6 +451,26 @@ def test_a_recoverable_provider_error_retries_the_same_job(engine: Engine, clock
 
     assert attempts == [1, 2]
     assert _status(workspace_id, user_id, job_id) is JobStatus.SUCCEEDED
+
+
+@pytest.mark.integration
+def test_a_terminal_stage_error_preserves_its_public_code(engine: Engine, clock: Clock) -> None:
+    """Permanent source-policy failures must not collapse into an internal error."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="terminal")
+    job_id = _queued_job(workspace_id, user_id, project_id, clock, key="terminal")
+
+    def refuse(_: JobContext) -> None:
+        raise TerminalJobError("SOURCE_PRIVATE")
+
+    with _eager_celery():
+        stage_runners()[JobKind.INGEST] = refuse
+        result = run_job.apply(args=(str(job_id), str(workspace_id), str(user_id)))
+
+    assert result.failed()
+    with _api_session(workspace_id, user_id) as session:
+        finished = job_snapshot(session, workspace_id=workspace_id, job_id=job_id)
+    assert finished.status is JobStatus.FAILED
+    assert finished.error_code == "SOURCE_PRIVATE"
 
 
 @pytest.mark.integration
