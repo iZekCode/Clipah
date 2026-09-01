@@ -629,6 +629,7 @@ class Transcript(Base):
     __tablename__ = "transcripts"
     __table_args__ = (
         UniqueConstraint("workspace_id", "id", name="uq_transcripts_workspace_id_id"),
+        UniqueConstraint("workspace_id", "asset_id", name="uq_transcripts_workspace_asset"),
         ForeignKeyConstraint(
             ["workspace_id", "project_id"],
             ["projects.workspace_id", "projects.id"],

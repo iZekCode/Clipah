@@ -94,6 +94,11 @@ module = ["authlib.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# AssemblyAI does not publish a py.typed marker; its values stay inside one adapter.
+module = ["assemblyai.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
 # Celery and its broker library ship no type information; both stay behind the
 # composition root in `celery_app` and the single task module.
 module = ["celery.*", "kombu.*"]

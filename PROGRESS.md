@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 11 implementation is complete and pending owner commit. **Task 12 follows.**
+**Current position:** Task 12 implementation is complete and pending owner commit. **Task 13 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -32,8 +32,8 @@ retries do not duplicate records or artifacts.
 | # | Task | Status |
 | --- | --- | --- |
 | 10 | Implement safe YouTube imports and source validation | `[x]` (`f3fec26`) |
-| 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[~]` |
-| 12 | Implement one-pass transcription with real diarization | `[ ]` |
+| 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[x]` (`b434f8d`) |
+| 12 | Implement one-pass transcription with real diarization | `[~]` |
 | 13 | Implement transcript windowing and candidate extraction schemas | `[ ]` |
 | 14 | Implement structured LLM extraction, deduplication, and global reranking | `[ ]` |
 | 15 | Add the versioned highlight evaluation harness | `[ ]` |
@@ -292,7 +292,7 @@ review against `011f9c0` passed after all reported findings were resolved.
 
 ### Task 11 — Durable media ingest pipeline
 
-Pending owner commit. The registered `INGEST` runner now downloads the private source through a
+Landed in `b434f8d`. The registered `INGEST` runner now downloads the private source through a
 five-minute signed capability, enforces observed byte and SHA-256 boundaries while streaming,
 rejects libmagic MIME mismatches before invoking ffprobe, and converts complete ffprobe output into
 the exact duration, stream-count, resolution, and codec limits from the plan. FFmpeg and ffprobe run
@@ -316,6 +316,36 @@ fixture digest, and the checked real-media integration test passed all three lan
 and VFR cases inside that image while inspecting proxy, JPEG, and WAV outputs. Host verification:
 552 tests passed, four environment-gated tests skipped, and coverage reached 93.18%; Ruff check,
 Ruff format check, strict mypy, and the full pytest/coverage gate all passed.
+
+### Task 12 — One-pass diarized word transcripts
+
+Pending owner commit. Added a provider-neutral `Transcriber` port and immutable transcript values
+for canonical word IDs, millisecond timestamps, confidence, punctuation, opaque provider speaker
+labels, utterances, and maximal contiguous speaker segments. Normalization preserves legitimate
+speaker overlap, refuses empty or malformed provider evidence, rejects regressing or out-of-source
+timestamps, and never invents punctuation or speaker identity.
+
+The AssemblyAI adapter uses the locked 1.0.0 SDK without global API-key mutation, enables provider
+speaker diarization, and issues exactly one pre-recorded transcription request. Requested English,
+Spanish, German, French, Portuguese, and Italian use only `universal-3-pro`; Indonesian and other
+languages outside that support set use only `universal-2`; an unspecified language uses the ordered
+U3 Pro/U2 detection fallback. SDK values, signed audio capabilities, provider diagnostics, and raw
+exceptions remain inside the adapter. A deterministic fake supports the normal test suite, while an
+explicit environment-gated AssemblyAI contract smoke test is excluded by default.
+
+The registered `TRANSCRIBE` runner resolves Task 11's deterministic transcription-audio Asset under
+the worker's live Workspace context, performs provider and object-store work outside transactions,
+stores one SHA-256-verified private raw provider JSON document, and persists normalized words,
+utterances, and speaker segments atomically. Migration `0007` enforces one Transcript per source
+Asset. Repeated delivery validates and reuses the canonical row without another provider call;
+provider/storage outages remain sanitized retryable failures while invalid or conflicting evidence
+is terminal.
+
+Final verification: 585 tests passed, five environment-gated tests skipped, and coverage reached
+92.43%. Ruff check, Ruff format check, strict mypy, the full pytest/coverage gate, migration `0007`
+downgrade/upgrade, Alembic drift check, and `git diff --check` all passed. The existing Authlib
+deprecation warning remains unrelated to Task 12. The provider smoke test was not opted in during
+normal verification.
 
 ## Deferrals
 
