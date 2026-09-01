@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -46,13 +48,24 @@ class MultipartCompletionError(Exception):
     """Raised when a provider rejects submitted multipart part identifiers or ordering."""
 
 
+class ObjectStoreUnavailableError(Exception):
+    """Raised when an object-store provider operation cannot currently complete."""
+
+
 class ObjectStore(Protocol):
     """Minimal object-store capability required by direct multipart media upload."""
 
     def create_multipart_upload(self, *, key: str, content_type: str) -> MultipartUpload:
         """Create one private multipart upload for a server-generated key."""
 
-    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
+    def put_file(
+        self,
+        *,
+        key: str,
+        content_type: str,
+        file: BinaryIO,
+        sha256: bytes | None = None,
+    ) -> StoredObject:
         """Upload one exact server-selected stream without any prefix or listing operation."""
 
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
@@ -112,15 +125,45 @@ class S3ObjectStore:
         )
         return MultipartUpload(upload_id=str(response["UploadId"]))
 
-    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
-        """Stream one exact private object to S3, then normalize its stored metadata."""
-        self._client.upload_fileobj(
-            file,
-            self._bucket,
-            key,
-            ExtraArgs={"ContentType": content_type},
-        )
-        return self.head_object(key=key)
+    def put_file(
+        self,
+        *,
+        key: str,
+        content_type: str,
+        file: BinaryIO,
+        sha256: bytes | None = None,
+    ) -> StoredObject:
+        """Stream one exact private object to S3 and retain its verified SHA-256."""
+        try:
+            if sha256 is None:
+                self._client.upload_fileobj(
+                    file,
+                    self._bucket,
+                    key,
+                    ExtraArgs={"ContentType": content_type},
+                )
+                return self.head_object(key=key)
+            encoded_digest = base64.b64encode(sha256).decode("ascii")
+            response = self._client.put_object(
+                Bucket=self._bucket,
+                Key=key,
+                Body=file,
+                ContentType=content_type,
+                ChecksumSHA256=encoded_digest,
+                Metadata={"sha256": sha256.hex()},
+            )
+            provider_digest = _decode_sha256(response.get("ChecksumSHA256"))
+            observed = self.head_object(key=key)
+            return StoredObject(
+                key=observed.key,
+                content_type=observed.content_type,
+                content_length=observed.content_length,
+                sha256=provider_digest,
+            )
+        except ObjectStoreUnavailableError:
+            raise
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store upload unavailable") from error
 
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
         """Generate a five-minute presigned URL for one S3 upload part."""
@@ -163,11 +206,17 @@ class S3ObjectStore:
 
     def head_object(self, *, key: str) -> StoredObject:
         """Translate S3 head metadata into the provider-neutral object value."""
-        response = self._client.head_object(Bucket=self._bucket, Key=key)
+        try:
+            response = self._client.head_object(Bucket=self._bucket, Key=key)
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store metadata unavailable") from error
+        metadata = response.get("Metadata")
+        digest = _metadata_sha256(metadata)
         return StoredObject(
             key=key,
             content_type=str(response.get("ContentType") or "application/octet-stream"),
             content_length=int(response["ContentLength"]),
+            sha256=digest,
         )
 
     def delete_object(self, *, key: str) -> None:
@@ -176,12 +225,15 @@ class S3ObjectStore:
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Generate a presigned GET URL for the caller-selected bounded lifetime."""
-        url = self._client.generate_presigned_url(
-            "get_object",
-            Params={"Bucket": self._bucket, "Key": key},
-            ExpiresIn=int(expires_in.total_seconds()),
-            HttpMethod="GET",
-        )
+        try:
+            url = self._client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self._bucket, "Key": key},
+                ExpiresIn=int(expires_in.total_seconds()),
+                HttpMethod="GET",
+            )
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store signing unavailable") from error
         return SignedUrl(url=str(url), expires_at=self._now() + expires_in)
 
 
@@ -210,10 +262,25 @@ class FakeObjectStore:
         self.upload_parts[upload_id] = {}
         return MultipartUpload(upload_id=upload_id)
 
-    def put_file(self, *, key: str, content_type: str, file: BinaryIO) -> StoredObject:
+    def put_file(
+        self,
+        *,
+        key: str,
+        content_type: str,
+        file: BinaryIO,
+        sha256: bytes | None = None,
+    ) -> StoredObject:
         """Read one exact fake stream so hashing and retry behavior remain observable."""
         body = file.read()
-        stored = StoredObject(key=key, content_type=content_type, content_length=len(body))
+        observed_digest = hashlib.sha256(body).digest()
+        if sha256 is not None and sha256 != observed_digest:
+            raise ValueError("fake upload checksum mismatch")
+        stored = StoredObject(
+            key=key,
+            content_type=content_type,
+            content_length=len(body),
+            sha256=observed_digest if sha256 is not None else None,
+        )
         self.object_bodies[key] = body
         self.objects[key] = stored
         return stored
@@ -286,3 +353,27 @@ def _is_invalid_multipart_completion(error: Exception) -> bool:
         return False
     details = response.get("Error")
     return isinstance(details, dict) and details.get("Code") in {"InvalidPart", "InvalidPartOrder"}
+
+
+def _decode_sha256(value: object) -> bytes | None:
+    """Decode one provider checksum without accepting malformed metadata."""
+    if not isinstance(value, str):
+        return None
+    try:
+        digest = base64.b64decode(value, validate=True)
+    except ValueError:
+        return None
+    return digest if len(digest) == hashlib.sha256().digest_size else None
+
+
+def _metadata_sha256(value: object) -> bytes | None:
+    """Read the immutable digest copied into S3 object metadata at upload time."""
+    if not isinstance(value, dict):
+        return None
+    encoded = value.get("sha256")
+    if not isinstance(encoded, str) or len(encoded) != hashlib.sha256().digest_size * 2:
+        return None
+    try:
+        return bytes.fromhex(encoded)
+    except ValueError:
+        return None

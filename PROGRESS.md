@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 10 is complete. **Task 11 is next.**
+**Current position:** Task 11 implementation is complete and pending owner commit. **Task 12 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -31,8 +31,8 @@ retries do not duplicate records or artifacts.
 
 | # | Task | Status |
 | --- | --- | --- |
-| 10 | Implement safe YouTube imports and source validation | `[x]` (pending owner commit) |
-| 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[ ]` |
+| 10 | Implement safe YouTube imports and source validation | `[x]` (`f3fec26`) |
+| 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[~]` |
 | 12 | Implement one-pass transcription with real diarization | `[ ]` |
 | 13 | Implement transcript windowing and candidate extraction schemas | `[ ]` |
 | 14 | Implement structured LLM extraction, deduplication, and global reranking | `[ ]` |
@@ -247,7 +247,7 @@ after it, so a hardcoded past date turned into nine failing upload tests once re
 
 ### Task 9 — Secure per-Job workspaces
 
-Pending owner commit. `jobs/workspace.py` replaces shared working filenames with a
+Landed in `011f9c0`. `jobs/workspace.py` replaces shared working filenames with a
 `job_workspace(job_id)` context manager. Every invocation creates a random-suffixed,
 UUID-prefixed `0700` directory beneath `CLIPAH_JOB_WORKSPACE_ROOT` (defaulting to a dedicated
 system-temporary root). The root itself must be a real `0700` directory owned by the effective
@@ -264,7 +264,7 @@ coverage; Ruff check, Ruff format check, and strict mypy all passed.
 
 ### Task 10 — Safe public YouTube imports
 
-Pending owner commit. Strict URL normalization accepts only exact HTTPS single-video YouTube hosts
+Landed in `f3fec26`. Strict URL normalization accepts only exact HTTPS single-video YouTube hosts
 and forms, rejects deceptive authorities and playlists, validates every IPv4/IPv6 DNS result as
 globally routable, and detects rebinding and unsafe redirects. Provider-neutral source contracts
 keep yt-dlp details, raw errors, commands, and paths out of API and durable Job state. The public
@@ -289,6 +289,33 @@ default; it was intentionally not opted in during normal verification. Final ver
 tests passed, one opt-in network smoke test skipped, and coverage reached 94.00%; Ruff check, Ruff
 format check, strict mypy, and the full pytest/coverage gate all passed. The two-axis standards/spec
 review against `011f9c0` passed after all reported findings were resolved.
+
+### Task 11 — Durable media ingest pipeline
+
+Pending owner commit. The registered `INGEST` runner now downloads the private source through a
+five-minute signed capability, enforces observed byte and SHA-256 boundaries while streaming,
+rejects libmagic MIME mismatches before invoking ffprobe, and converts complete ffprobe output into
+the exact duration, stream-count, resolution, and codec limits from the plan. FFmpeg and ffprobe run
+only as argument arrays in isolated process groups with fixed timeouts, bounded diagnostics,
+cancellation checks, and an exact `7.1.5` startup version gate. Ingest-capable Celery workers also
+prove native libmagic readiness before accepting work.
+
+Every accepted source produces an orientation-aware, no-upscale H.264/AAC proxy bounded to 720p, a
+JPEG thumbnail, and mono 16 kHz PCM transcription audio. Derivative IDs and tenant-scoped object
+keys are deterministic. Uploads submit the locally computed S3 SHA-256, persist it as immutable
+object metadata, and require both the provider upload response and the subsequent object metadata
+read to match the local byte length and digest before database persistence. Storage transport
+failures use a sanitized retryable code; malformed media and integrity failures remain terminal.
+Source metadata and all three derivative rows converge in one tenant-scoped transaction, and a
+complete retry reuses the existing deterministic Asset set without repeating external media work.
+
+Checked-in landscape, portrait, missing-stream, corrupt, unsupported-codec, oversized-metadata,
+and true-VFR fixtures have a deterministic generator and SHA-256 manifest. The rebuilt pinned image
+includes `libmagic1t64=1:5.46-5`; its ingest readiness passed, regeneration matched every committed
+fixture digest, and the checked real-media integration test passed all three landscape, portrait,
+and VFR cases inside that image while inspecting proxy, JPEG, and WAV outputs. Host verification:
+552 tests passed, four environment-gated tests skipped, and coverage reached 93.18%; Ruff check,
+Ruff format check, strict mypy, and the full pytest/coverage gate all passed.
 
 ## Deferrals
 

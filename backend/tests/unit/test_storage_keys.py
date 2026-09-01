@@ -6,7 +6,8 @@ from uuid import UUID
 
 import pytest
 
-from clipah.assets.keys import source_upload_key
+from clipah.assets.keys import derived_asset_key, source_upload_key
+from clipah.models import AssetKind
 
 
 @pytest.mark.unit
@@ -39,3 +40,36 @@ def test_source_upload_key_rejects_an_object_identifier_that_cannot_be_server_ge
             object_id=UUID("33333333-3333-3333-3333-333333333333"),
             client_filename="normal.mp4",
         )
+
+
+@pytest.mark.unit
+def test_derived_asset_key_is_scoped_to_source_identity_and_kind() -> None:
+    """Retries must converge on one server-owned derivative location per source and kind."""
+    key = derived_asset_key(
+        workspace_id=UUID("11111111-1111-1111-1111-111111111111"),
+        project_id=UUID("22222222-2222-2222-2222-222222222222"),
+        source_asset_id=UUID("33333333-3333-3333-3333-333333333333"),
+        kind=AssetKind.PROXY,
+    )
+
+    assert key == (
+        "workspaces/11111111-1111-1111-1111-111111111111/"
+        "projects/22222222-2222-2222-2222-222222222222/"
+        "derived/33333333-3333-3333-3333-333333333333/proxy"
+    )
+
+
+@pytest.mark.unit
+def test_derived_asset_key_rejects_untrusted_identifiers_and_non_ingest_kinds() -> None:
+    """No caller may widen the deterministic derivative namespace with strings or render kinds."""
+    identifiers = {
+        "workspace_id": UUID("11111111-1111-1111-1111-111111111111"),
+        "project_id": UUID("22222222-2222-2222-2222-222222222222"),
+        "source_asset_id": UUID("33333333-3333-3333-3333-333333333333"),
+    }
+    with pytest.raises(TypeError):
+        derived_asset_key(  # type: ignore[arg-type]
+            **{**identifiers, "source_asset_id": "../source"}, kind=AssetKind.PROXY
+        )
+    with pytest.raises(ValueError):
+        derived_asset_key(**identifiers, kind=AssetKind.RENDER)

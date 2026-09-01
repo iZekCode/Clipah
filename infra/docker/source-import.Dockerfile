@@ -46,6 +46,7 @@ RUN rm -f /etc/apt/sources.list.d/debian.sources \
     && apt-get install --yes --no-install-recommends \
       ca-certificates \
       ffmpeg=7:7.1.5-0+deb13u1 \
+      libmagic1t64=1:5.46-5 \
       passwd \
     && rm -rf /var/lib/apt/lists/*
 COPY --from=deno /usr/local/bin/deno /usr/local/bin/deno

@@ -9,7 +9,7 @@ from datetime import UTC, datetime
 from functools import lru_cache
 from uuid import UUID
 
-from celery import Task
+from celery import Task, signals
 from celery.exceptions import MaxRetriesExceededError
 from redis import Redis, RedisError
 from sqlalchemy.orm import Session
@@ -187,6 +187,33 @@ def _now() -> datetime:
     return datetime.now(tz=UTC)
 
 
+from clipah.jobs.ingest_task import (  # noqa: E402
+    ingest_stage_runner,
+    validate_ingest_readiness,
+)
 from clipah.jobs.source_import_task import source_import_stage_runner  # noqa: E402
 
 _STAGE_RUNNERS.setdefault(JobKind.SOURCE_IMPORT, source_import_stage_runner)
+_STAGE_RUNNERS.setdefault(JobKind.INGEST, ingest_stage_runner)
+
+
+def _worker_accepts_ingest(queues: object) -> bool:
+    """Treat the default worker or any explicitly named ingest queue as ingest-capable."""
+    if queues is None:
+        return True
+    if isinstance(queues, str):
+        names = {name.strip() for name in queues.split(",")}
+    elif isinstance(queues, (tuple, list, set, frozenset)):
+        names = {str(getattr(queue, "name", queue)).strip() for queue in queues}
+    else:
+        return False
+    return "ingest" in names
+
+
+@signals.celeryd_init.connect  # type: ignore[untyped-decorator]
+def _validate_ingest_worker_startup(
+    *, options: dict[str, object] | None = None, **_kwargs: object
+) -> None:
+    """Validate native ingest dependencies before an ingest-capable worker starts."""
+    if _worker_accepts_ingest((options or {}).get("queues")):
+        validate_ingest_readiness()
