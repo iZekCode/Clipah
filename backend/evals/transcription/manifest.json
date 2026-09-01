@@ -1,0 +1,114 @@
+{
+  "audio_seconds_before_provider_freeze": 7200,
+  "audio_seconds_before_public_launch": 18000,
+  "audio_seconds_present": 0,
+  "cases": [
+    {
+      "case_id": "en-onboarding-rebuild",
+      "duration_ms": 108792,
+      "language": "en",
+      "path": "cases/en-onboarding-rebuild.json",
+      "sha256": "d3fef415034718ba9ca5771b746692f6f2db2c3bb7460e46c3121a487a9fe344"
+    },
+    {
+      "case_id": "en-pricing-experiment",
+      "duration_ms": 107126,
+      "language": "en",
+      "path": "cases/en-pricing-experiment.json",
+      "sha256": "c01dfb480ec3bb164b5e79bf54c5bda68015d5500f52d8396ffb70b1f2f2800c"
+    },
+    {
+      "case_id": "en-support-loop",
+      "duration_ms": 107588,
+      "language": "en",
+      "path": "cases/en-support-loop.json",
+      "sha256": "b9d40029eacf12fe34559db08a483a930d20f6feb7d2ffb12ae4a1481c7d602c"
+    },
+    {
+      "case_id": "en-remote-team",
+      "duration_ms": 108526,
+      "language": "en",
+      "path": "cases/en-remote-team.json",
+      "sha256": "6e63c422c02b293d129a1702a5dbc208048e63e7908aae0cbd80be9f723e8018"
+    },
+    {
+      "case_id": "en-content-engine",
+      "duration_ms": 107522,
+      "language": "en",
+      "path": "cases/en-content-engine.json",
+      "sha256": "31a58a6f6c31a8c850c9f1e398d4a5556b155842fbba22538e9ef158f44b9d2e"
+    },
+    {
+      "case_id": "id-onboarding-rebuild",
+      "duration_ms": 102312,
+      "language": "id",
+      "path": "cases/id-onboarding-rebuild.json",
+      "sha256": "fc30a1d6be51de56b93041dc001c01d5870c51f43d44235aad2ea99721e52e10"
+    },
+    {
+      "case_id": "id-pricing-experiment",
+      "duration_ms": 102424,
+      "language": "id",
+      "path": "cases/id-pricing-experiment.json",
+      "sha256": "8a2c754ef9313f68acac1177e83f7db6393e2898abe4642d86627ea4c266fcd8"
+    },
+    {
+      "case_id": "id-support-loop",
+      "duration_ms": 101768,
+      "language": "id",
+      "path": "cases/id-support-loop.json",
+      "sha256": "b0cc78997bcb79bd2beba164fa2d6105f756488d7c3f8c67e655988aa213a746"
+    },
+    {
+      "case_id": "id-remote-team",
+      "duration_ms": 103690,
+      "language": "id",
+      "path": "cases/id-remote-team.json",
+      "sha256": "6c0ae7675156a7f14dfe8f910ed6f2c0cf88873fc65962368f283b4ccacaf064"
+    },
+    {
+      "case_id": "id-content-engine",
+      "duration_ms": 100410,
+      "language": "id",
+      "path": "cases/id-content-engine.json",
+      "sha256": "b4e6ed37a2a85ed854f81e26276897b4c7ecd81a39857418ac5378330882e9f6"
+    },
+    {
+      "case_id": "mixed-onboarding-rebuild",
+      "duration_ms": 102582,
+      "language": "mixed",
+      "path": "cases/mixed-onboarding-rebuild.json",
+      "sha256": "73fe13d1c432079618f853ae815a63a05af6525759764054db259b7fef84b6e0"
+    },
+    {
+      "case_id": "mixed-pricing-experiment",
+      "duration_ms": 99890,
+      "language": "mixed",
+      "path": "cases/mixed-pricing-experiment.json",
+      "sha256": "0545823a6a6d5f53b50e793c0a95a18207337610e959b26690ea9c4c1e690a1e"
+    },
+    {
+      "case_id": "mixed-support-loop",
+      "duration_ms": 100088,
+      "language": "mixed",
+      "path": "cases/mixed-support-loop.json",
+      "sha256": "c85d4ba7638912072eba4306b963cdb6afc6268bc93ce3446980a06ea8e38f26"
+    },
+    {
+      "case_id": "mixed-remote-team",
+      "duration_ms": 101224,
+      "language": "mixed",
+      "path": "cases/mixed-remote-team.json",
+      "sha256": "c22ca4b8b7e2a163796231031cfe5bef8b3d1c9a2c91a6e885c675bdb16c915c"
+    },
+    {
+      "case_id": "mixed-content-engine",
+      "duration_ms": 100658,
+      "language": "mixed",
+      "path": "cases/mixed-content-engine.json",
+      "sha256": "6b2726d9f8f3b5693f62633ffb5771e9f02454e414e286f36ea4f664fc08c1ef"
+    }
+  ],
+  "generated_by": "evals/generate_fixtures.py",
+  "manifest_version": "transcription-eval-cases/1"
+}

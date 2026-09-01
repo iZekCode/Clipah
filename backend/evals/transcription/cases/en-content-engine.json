@@ -1,0 +1,1730 @@
+{
+  "audio_key": null,
+  "case_id": "en-content-engine",
+  "duration_ms": 107522,
+  "language": "en",
+  "named_entities": [
+    "YouTube",
+    "Northwind",
+    "Jakarta"
+  ],
+  "reference_words": [
+    {
+      "end_ms": 224,
+      "speaker": "speaker_0",
+      "start_ms": 0,
+      "text": "We"
+    },
+    {
+      "end_ms": 640,
+      "speaker": "speaker_0",
+      "start_ms": 284,
+      "text": "recorded"
+    },
+    {
+      "end_ms": 968,
+      "speaker": "speaker_0",
+      "start_ms": 700,
+      "text": "this"
+    },
+    {
+      "end_ms": 1252,
+      "speaker": "speaker_0",
+      "start_ms": 1028,
+      "text": "in"
+    },
+    {
+      "end_ms": 1646,
+      "speaker": "speaker_0",
+      "start_ms": 1312,
+      "text": "YouTube"
+    },
+    {
+      "end_ms": 1996,
+      "speaker": "speaker_0",
+      "start_ms": 1706,
+      "text": "right"
+    },
+    {
+      "end_ms": 2346,
+      "speaker": "speaker_0",
+      "start_ms": 2056,
+      "text": "after"
+    },
+    {
+      "end_ms": 2784,
+      "speaker": "speaker_0",
+      "start_ms": 2406,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 3156,
+      "speaker": "speaker_0",
+      "start_ms": 2844,
+      "text": "closed"
+    },
+    {
+      "end_ms": 3484,
+      "speaker": "speaker_0",
+      "start_ms": 3216,
+      "text": "with"
+    },
+    {
+      "end_ms": 3878,
+      "speaker": "speaker_0",
+      "start_ms": 3544,
+      "text": "Jakarta"
+    },
+    {
+      "end_ms": 4444,
+      "speaker": "speaker_0",
+      "start_ms": 4198,
+      "text": "The"
+    },
+    {
+      "end_ms": 4794,
+      "speaker": "speaker_0",
+      "start_ms": 4504,
+      "text": "first"
+    },
+    {
+      "end_ms": 5144,
+      "speaker": "speaker_0",
+      "start_ms": 4854,
+      "text": "month"
+    },
+    {
+      "end_ms": 5516,
+      "speaker": "speaker_0",
+      "start_ms": 5204,
+      "text": "taught"
+    },
+    {
+      "end_ms": 5800,
+      "speaker": "speaker_0",
+      "start_ms": 5576,
+      "text": "us"
+    },
+    {
+      "end_ms": 6128,
+      "speaker": "speaker_0",
+      "start_ms": 5860,
+      "text": "that"
+    },
+    {
+      "end_ms": 6434,
+      "speaker": "speaker_0",
+      "start_ms": 6188,
+      "text": "the"
+    },
+    {
+      "end_ms": 6872,
+      "speaker": "speaker_0",
+      "start_ms": 6494,
+      "text": "interview"
+    },
+    {
+      "end_ms": 7244,
+      "speaker": "speaker_0",
+      "start_ms": 6932,
+      "text": "series"
+    },
+    {
+      "end_ms": 7616,
+      "speaker": "speaker_0",
+      "start_ms": 7304,
+      "text": "breaks"
+    },
+    {
+      "end_ms": 7944,
+      "speaker": "speaker_0",
+      "start_ms": 7676,
+      "text": "long"
+    },
+    {
+      "end_ms": 8316,
+      "speaker": "speaker_0",
+      "start_ms": 8004,
+      "text": "before"
+    },
+    {
+      "end_ms": 8622,
+      "speaker": "speaker_0",
+      "start_ms": 8376,
+      "text": "the"
+    },
+    {
+      "end_ms": 8950,
+      "speaker": "speaker_0",
+      "start_ms": 8682,
+      "text": "team"
+    },
+    {
+      "end_ms": 9344,
+      "speaker": "speaker_0",
+      "start_ms": 9010,
+      "text": "notices"
+    },
+    {
+      "end_ms": 10020,
+      "speaker": "speaker_0",
+      "start_ms": 9664,
+      "text": "Everyone"
+    },
+    {
+      "end_ms": 10348,
+      "speaker": "speaker_0",
+      "start_ms": 10080,
+      "text": "told"
+    },
+    {
+      "end_ms": 10632,
+      "speaker": "speaker_0",
+      "start_ms": 10408,
+      "text": "us"
+    },
+    {
+      "end_ms": 10916,
+      "speaker": "speaker_0",
+      "start_ms": 10692,
+      "text": "to"
+    },
+    {
+      "end_ms": 11244,
+      "speaker": "speaker_0",
+      "start_ms": 10976,
+      "text": "hire"
+    },
+    {
+      "end_ms": 11616,
+      "speaker": "speaker_0",
+      "start_ms": 11304,
+      "text": "faster"
+    },
+    {
+      "end_ms": 11900,
+      "speaker": "speaker_0",
+      "start_ms": 11676,
+      "text": "so"
+    },
+    {
+      "end_ms": 12184,
+      "speaker": "speaker_0",
+      "start_ms": 11960,
+      "text": "we"
+    },
+    {
+      "end_ms": 12534,
+      "speaker": "speaker_0",
+      "start_ms": 12244,
+      "text": "hired"
+    },
+    {
+      "end_ms": 12840,
+      "speaker": "speaker_0",
+      "start_ms": 12594,
+      "text": "six"
+    },
+    {
+      "end_ms": 13212,
+      "speaker": "speaker_0",
+      "start_ms": 12900,
+      "text": "people"
+    },
+    {
+      "end_ms": 13496,
+      "speaker": "speaker_0",
+      "start_ms": 13272,
+      "text": "in"
+    },
+    {
+      "end_ms": 13802,
+      "speaker": "speaker_0",
+      "start_ms": 13556,
+      "text": "one"
+    },
+    {
+      "end_ms": 14196,
+      "speaker": "speaker_0",
+      "start_ms": 13862,
+      "text": "quarter"
+    },
+    {
+      "end_ms": 14784,
+      "speaker": "speaker_0",
+      "start_ms": 14516,
+      "text": "That"
+    },
+    {
+      "end_ms": 15200,
+      "speaker": "speaker_0",
+      "start_ms": 14844,
+      "text": "decision"
+    },
+    {
+      "end_ms": 15528,
+      "speaker": "speaker_0",
+      "start_ms": 15260,
+      "text": "cost"
+    },
+    {
+      "end_ms": 15812,
+      "speaker": "speaker_0",
+      "start_ms": 15588,
+      "text": "us"
+    },
+    {
+      "end_ms": 16184,
+      "speaker": "speaker_0",
+      "start_ms": 15872,
+      "text": "eighty"
+    },
+    {
+      "end_ms": 16534,
+      "speaker": "speaker_0",
+      "start_ms": 16244,
+      "text": "weeks"
+    },
+    {
+      "end_ms": 16818,
+      "speaker": "speaker_0",
+      "start_ms": 16594,
+      "text": "of"
+    },
+    {
+      "end_ms": 17278,
+      "speaker": "speaker_0",
+      "start_ms": 16878,
+      "text": "onboarding"
+    },
+    {
+      "end_ms": 17562,
+      "speaker": "speaker_0",
+      "start_ms": 17338,
+      "text": "we"
+    },
+    {
+      "end_ms": 17868,
+      "speaker": "speaker_0",
+      "start_ms": 17622,
+      "text": "had"
+    },
+    {
+      "end_ms": 18174,
+      "speaker": "speaker_0",
+      "start_ms": 17928,
+      "text": "not"
+    },
+    {
+      "end_ms": 18568,
+      "speaker": "speaker_0",
+      "start_ms": 18234,
+      "text": "planned"
+    },
+    {
+      "end_ms": 18874,
+      "speaker": "speaker_0",
+      "start_ms": 18628,
+      "text": "for"
+    },
+    {
+      "end_ms": 19462,
+      "speaker": "speaker_1",
+      "start_ms": 19194,
+      "text": "Here"
+    },
+    {
+      "end_ms": 19746,
+      "speaker": "speaker_1",
+      "start_ms": 19522,
+      "text": "is"
+    },
+    {
+      "end_ms": 20052,
+      "speaker": "speaker_1",
+      "start_ms": 19806,
+      "text": "the"
+    },
+    {
+      "end_ms": 20380,
+      "speaker": "speaker_1",
+      "start_ms": 20112,
+      "text": "part"
+    },
+    {
+      "end_ms": 20752,
+      "speaker": "speaker_1",
+      "start_ms": 20440,
+      "text": "nobody"
+    },
+    {
+      "end_ms": 21124,
+      "speaker": "speaker_1",
+      "start_ms": 20812,
+      "text": "writes"
+    },
+    {
+      "end_ms": 21474,
+      "speaker": "speaker_1",
+      "start_ms": 21184,
+      "text": "about"
+    },
+    {
+      "end_ms": 21802,
+      "speaker": "speaker_1",
+      "start_ms": 21534,
+      "text": "when"
+    },
+    {
+      "end_ms": 22130,
+      "speaker": "speaker_1",
+      "start_ms": 21862,
+      "text": "they"
+    },
+    {
+      "end_ms": 22546,
+      "speaker": "speaker_1",
+      "start_ms": 22190,
+      "text": "describe"
+    },
+    {
+      "end_ms": 22852,
+      "speaker": "speaker_1",
+      "start_ms": 22606,
+      "text": "the"
+    },
+    {
+      "end_ms": 23290,
+      "speaker": "speaker_1",
+      "start_ms": 22912,
+      "text": "interview"
+    },
+    {
+      "end_ms": 23662,
+      "speaker": "speaker_1",
+      "start_ms": 23350,
+      "text": "series"
+    },
+    {
+      "end_ms": 24228,
+      "speaker": "speaker_1",
+      "start_ms": 23982,
+      "text": "Our"
+    },
+    {
+      "end_ms": 24578,
+      "speaker": "speaker_1",
+      "start_ms": 24288,
+      "text": "churn"
+    },
+    {
+      "end_ms": 24928,
+      "speaker": "speaker_1",
+      "start_ms": 24638,
+      "text": "moved"
+    },
+    {
+      "end_ms": 25256,
+      "speaker": "speaker_1",
+      "start_ms": 24988,
+      "text": "from"
+    },
+    {
+      "end_ms": 25628,
+      "speaker": "speaker_1",
+      "start_ms": 25316,
+      "text": "eighty"
+    },
+    {
+      "end_ms": 26022,
+      "speaker": "speaker_1",
+      "start_ms": 25688,
+      "text": "percent"
+    },
+    {
+      "end_ms": 26306,
+      "speaker": "speaker_1",
+      "start_ms": 26082,
+      "text": "to"
+    },
+    {
+      "end_ms": 26744,
+      "speaker": "speaker_1",
+      "start_ms": 26366,
+      "text": "something"
+    },
+    {
+      "end_ms": 27028,
+      "speaker": "speaker_1",
+      "start_ms": 26804,
+      "text": "we"
+    },
+    {
+      "end_ms": 27378,
+      "speaker": "speaker_1",
+      "start_ms": 27088,
+      "text": "could"
+    },
+    {
+      "end_ms": 27772,
+      "speaker": "speaker_1",
+      "start_ms": 27438,
+      "text": "finally"
+    },
+    {
+      "end_ms": 28166,
+      "speaker": "speaker_1",
+      "start_ms": 27832,
+      "text": "explain"
+    },
+    {
+      "end_ms": 29890,
+      "speaker": "speaker_1",
+      "start_ms": 29666,
+      "text": "We"
+    },
+    {
+      "end_ms": 30284,
+      "speaker": "speaker_1",
+      "start_ms": 29950,
+      "text": "rebuilt"
+    },
+    {
+      "end_ms": 30590,
+      "speaker": "speaker_1",
+      "start_ms": 30344,
+      "text": "the"
+    },
+    {
+      "end_ms": 30940,
+      "speaker": "speaker_1",
+      "start_ms": 30650,
+      "text": "whole"
+    },
+    {
+      "end_ms": 31312,
+      "speaker": "speaker_1",
+      "start_ms": 31000,
+      "text": "intake"
+    },
+    {
+      "end_ms": 31640,
+      "speaker": "speaker_1",
+      "start_ms": 31372,
+      "text": "flow"
+    },
+    {
+      "end_ms": 32012,
+      "speaker": "speaker_1",
+      "start_ms": 31700,
+      "text": "around"
+    },
+    {
+      "end_ms": 32406,
+      "speaker": "speaker_1",
+      "start_ms": 32072,
+      "text": "content"
+    },
+    {
+      "end_ms": 32712,
+      "speaker": "speaker_1",
+      "start_ms": 32466,
+      "text": "and"
+    },
+    {
+      "end_ms": 33128,
+      "speaker": "speaker_1",
+      "start_ms": 32772,
+      "text": "measured"
+    },
+    {
+      "end_ms": 33412,
+      "speaker": "speaker_1",
+      "start_ms": 33188,
+      "text": "it"
+    },
+    {
+      "end_ms": 33784,
+      "speaker": "speaker_1",
+      "start_ms": 33472,
+      "text": "weekly"
+    },
+    {
+      "end_ms": 34328,
+      "speaker": "speaker_1",
+      "start_ms": 34104,
+      "text": "It"
+    },
+    {
+      "end_ms": 34656,
+      "speaker": "speaker_1",
+      "start_ms": 34388,
+      "text": "took"
+    },
+    {
+      "end_ms": 35050,
+      "speaker": "speaker_1",
+      "start_ms": 34716,
+      "text": "fifteen"
+    },
+    {
+      "end_ms": 35466,
+      "speaker": "speaker_1",
+      "start_ms": 35110,
+      "text": "attempts"
+    },
+    {
+      "end_ms": 35838,
+      "speaker": "speaker_1",
+      "start_ms": 35526,
+      "text": "before"
+    },
+    {
+      "end_ms": 36144,
+      "speaker": "speaker_1",
+      "start_ms": 35898,
+      "text": "the"
+    },
+    {
+      "end_ms": 36538,
+      "speaker": "speaker_1",
+      "start_ms": 36204,
+      "text": "numbers"
+    },
+    {
+      "end_ms": 36932,
+      "speaker": "speaker_1",
+      "start_ms": 36598,
+      "text": "stopped"
+    },
+    {
+      "end_ms": 37458,
+      "speaker": "speaker_1",
+      "start_ms": 36992,
+      "text": "contradicting"
+    },
+    {
+      "end_ms": 37786,
+      "speaker": "speaker_1",
+      "start_ms": 37518,
+      "text": "each"
+    },
+    {
+      "end_ms": 38136,
+      "speaker": "speaker_1",
+      "start_ms": 37846,
+      "text": "other"
+    },
+    {
+      "end_ms": 38680,
+      "speaker": "speaker_0",
+      "start_ms": 38456,
+      "text": "We"
+    },
+    {
+      "end_ms": 39096,
+      "speaker": "speaker_0",
+      "start_ms": 38740,
+      "text": "recorded"
+    },
+    {
+      "end_ms": 39424,
+      "speaker": "speaker_0",
+      "start_ms": 39156,
+      "text": "this"
+    },
+    {
+      "end_ms": 39708,
+      "speaker": "speaker_0",
+      "start_ms": 39484,
+      "text": "in"
+    },
+    {
+      "end_ms": 40102,
+      "speaker": "speaker_0",
+      "start_ms": 39768,
+      "text": "YouTube"
+    },
+    {
+      "end_ms": 40452,
+      "speaker": "speaker_0",
+      "start_ms": 40162,
+      "text": "right"
+    },
+    {
+      "end_ms": 40802,
+      "speaker": "speaker_0",
+      "start_ms": 40512,
+      "text": "after"
+    },
+    {
+      "end_ms": 41240,
+      "speaker": "speaker_0",
+      "start_ms": 40862,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 41612,
+      "speaker": "speaker_0",
+      "start_ms": 41300,
+      "text": "closed"
+    },
+    {
+      "end_ms": 41940,
+      "speaker": "speaker_0",
+      "start_ms": 41672,
+      "text": "with"
+    },
+    {
+      "end_ms": 42334,
+      "speaker": "speaker_0",
+      "start_ms": 42000,
+      "text": "Jakarta"
+    },
+    {
+      "end_ms": 42878,
+      "speaker": "speaker_0",
+      "start_ms": 42654,
+      "text": "If"
+    },
+    {
+      "end_ms": 43184,
+      "speaker": "speaker_0",
+      "start_ms": 42938,
+      "text": "you"
+    },
+    {
+      "end_ms": 43556,
+      "speaker": "speaker_0",
+      "start_ms": 43244,
+      "text": "cannot"
+    },
+    {
+      "end_ms": 43972,
+      "speaker": "speaker_0",
+      "start_ms": 43616,
+      "text": "describe"
+    },
+    {
+      "end_ms": 44366,
+      "speaker": "speaker_0",
+      "start_ms": 44032,
+      "text": "content"
+    },
+    {
+      "end_ms": 44650,
+      "speaker": "speaker_0",
+      "start_ms": 44426,
+      "text": "in"
+    },
+    {
+      "end_ms": 44956,
+      "speaker": "speaker_0",
+      "start_ms": 44710,
+      "text": "one"
+    },
+    {
+      "end_ms": 45372,
+      "speaker": "speaker_0",
+      "start_ms": 45016,
+      "text": "sentence"
+    },
+    {
+      "end_ms": 45678,
+      "speaker": "speaker_0",
+      "start_ms": 45432,
+      "text": "you"
+    },
+    {
+      "end_ms": 45962,
+      "speaker": "speaker_0",
+      "start_ms": 45738,
+      "text": "do"
+    },
+    {
+      "end_ms": 46268,
+      "speaker": "speaker_0",
+      "start_ms": 46022,
+      "text": "not"
+    },
+    {
+      "end_ms": 46728,
+      "speaker": "speaker_0",
+      "start_ms": 46328,
+      "text": "understand"
+    },
+    {
+      "end_ms": 47012,
+      "speaker": "speaker_0",
+      "start_ms": 46788,
+      "text": "it"
+    },
+    {
+      "end_ms": 47318,
+      "speaker": "speaker_0",
+      "start_ms": 47072,
+      "text": "yet"
+    },
+    {
+      "end_ms": 47862,
+      "speaker": "speaker_0",
+      "start_ms": 47638,
+      "text": "We"
+    },
+    {
+      "end_ms": 48212,
+      "speaker": "speaker_0",
+      "start_ms": 47922,
+      "text": "wrote"
+    },
+    {
+      "end_ms": 48518,
+      "speaker": "speaker_0",
+      "start_ms": 48272,
+      "text": "six"
+    },
+    {
+      "end_ms": 48868,
+      "speaker": "speaker_0",
+      "start_ms": 48578,
+      "text": "pages"
+    },
+    {
+      "end_ms": 49152,
+      "speaker": "speaker_0",
+      "start_ms": 48928,
+      "text": "of"
+    },
+    {
+      "end_ms": 49678,
+      "speaker": "speaker_0",
+      "start_ms": 49212,
+      "text": "documentation"
+    },
+    {
+      "end_ms": 49984,
+      "speaker": "speaker_0",
+      "start_ms": 49738,
+      "text": "and"
+    },
+    {
+      "end_ms": 50378,
+      "speaker": "speaker_0",
+      "start_ms": 50044,
+      "text": "deleted"
+    },
+    {
+      "end_ms": 50706,
+      "speaker": "speaker_0",
+      "start_ms": 50438,
+      "text": "most"
+    },
+    {
+      "end_ms": 50990,
+      "speaker": "speaker_0",
+      "start_ms": 50766,
+      "text": "of"
+    },
+    {
+      "end_ms": 51318,
+      "speaker": "speaker_0",
+      "start_ms": 51050,
+      "text": "them"
+    },
+    {
+      "end_ms": 51884,
+      "speaker": "speaker_0",
+      "start_ms": 51638,
+      "text": "The"
+    },
+    {
+      "end_ms": 52212,
+      "speaker": "speaker_0",
+      "start_ms": 51944,
+      "text": "team"
+    },
+    {
+      "end_ms": 52540,
+      "speaker": "speaker_0",
+      "start_ms": 52272,
+      "text": "that"
+    },
+    {
+      "end_ms": 52890,
+      "speaker": "speaker_0",
+      "start_ms": 52600,
+      "text": "owned"
+    },
+    {
+      "end_ms": 53196,
+      "speaker": "speaker_0",
+      "start_ms": 52950,
+      "text": "our"
+    },
+    {
+      "end_ms": 53590,
+      "speaker": "speaker_0",
+      "start_ms": 53256,
+      "text": "editing"
+    },
+    {
+      "end_ms": 54006,
+      "speaker": "speaker_0",
+      "start_ms": 53650,
+      "text": "pipeline"
+    },
+    {
+      "end_ms": 54312,
+      "speaker": "speaker_0",
+      "start_ms": 54066,
+      "text": "was"
+    },
+    {
+      "end_ms": 54640,
+      "speaker": "speaker_0",
+      "start_ms": 54372,
+      "text": "also"
+    },
+    {
+      "end_ms": 54946,
+      "speaker": "speaker_0",
+      "start_ms": 54700,
+      "text": "the"
+    },
+    {
+      "end_ms": 55274,
+      "speaker": "speaker_0",
+      "start_ms": 55006,
+      "text": "team"
+    },
+    {
+      "end_ms": 55712,
+      "speaker": "speaker_0",
+      "start_ms": 55334,
+      "text": "answering"
+    },
+    {
+      "end_ms": 56106,
+      "speaker": "speaker_0",
+      "start_ms": 55772,
+      "text": "support"
+    },
+    {
+      "end_ms": 56500,
+      "speaker": "speaker_0",
+      "start_ms": 56166,
+      "text": "tickets"
+    },
+    {
+      "end_ms": 58268,
+      "speaker": "speaker_1",
+      "start_ms": 58000,
+      "text": "That"
+    },
+    {
+      "end_ms": 58662,
+      "speaker": "speaker_1",
+      "start_ms": 58328,
+      "text": "overlap"
+    },
+    {
+      "end_ms": 58946,
+      "speaker": "speaker_1",
+      "start_ms": 58722,
+      "text": "is"
+    },
+    {
+      "end_ms": 59296,
+      "speaker": "speaker_1",
+      "start_ms": 59006,
+      "text": "where"
+    },
+    {
+      "end_ms": 59602,
+      "speaker": "speaker_1",
+      "start_ms": 59356,
+      "text": "the"
+    },
+    {
+      "end_ms": 59930,
+      "speaker": "speaker_1",
+      "start_ms": 59662,
+      "text": "real"
+    },
+    {
+      "end_ms": 60346,
+      "speaker": "speaker_1",
+      "start_ms": 59990,
+      "text": "feedback"
+    },
+    {
+      "end_ms": 60696,
+      "speaker": "speaker_1",
+      "start_ms": 60406,
+      "text": "about"
+    },
+    {
+      "end_ms": 61090,
+      "speaker": "speaker_1",
+      "start_ms": 60756,
+      "text": "content"
+    },
+    {
+      "end_ms": 61418,
+      "speaker": "speaker_1",
+      "start_ms": 61150,
+      "text": "came"
+    },
+    {
+      "end_ms": 61746,
+      "speaker": "speaker_1",
+      "start_ms": 61478,
+      "text": "from"
+    },
+    {
+      "end_ms": 62290,
+      "speaker": "speaker_1",
+      "start_ms": 62066,
+      "text": "By"
+    },
+    {
+      "end_ms": 62596,
+      "speaker": "speaker_1",
+      "start_ms": 62350,
+      "text": "the"
+    },
+    {
+      "end_ms": 62902,
+      "speaker": "speaker_1",
+      "start_ms": 62656,
+      "text": "end"
+    },
+    {
+      "end_ms": 63186,
+      "speaker": "speaker_1",
+      "start_ms": 62962,
+      "text": "of"
+    },
+    {
+      "end_ms": 63492,
+      "speaker": "speaker_1",
+      "start_ms": 63246,
+      "text": "the"
+    },
+    {
+      "end_ms": 63820,
+      "speaker": "speaker_1",
+      "start_ms": 63552,
+      "text": "year"
+    },
+    {
+      "end_ms": 64126,
+      "speaker": "speaker_1",
+      "start_ms": 63880,
+      "text": "the"
+    },
+    {
+      "end_ms": 64564,
+      "speaker": "speaker_1",
+      "start_ms": 64186,
+      "text": "interview"
+    },
+    {
+      "end_ms": 64936,
+      "speaker": "speaker_1",
+      "start_ms": 64624,
+      "text": "series"
+    },
+    {
+      "end_ms": 65242,
+      "speaker": "speaker_1",
+      "start_ms": 64996,
+      "text": "was"
+    },
+    {
+      "end_ms": 65658,
+      "speaker": "speaker_1",
+      "start_ms": 65302,
+      "text": "carrying"
+    },
+    {
+      "end_ms": 66030,
+      "speaker": "speaker_1",
+      "start_ms": 65718,
+      "text": "eighty"
+    },
+    {
+      "end_ms": 66424,
+      "speaker": "speaker_1",
+      "start_ms": 66090,
+      "text": "percent"
+    },
+    {
+      "end_ms": 66708,
+      "speaker": "speaker_1",
+      "start_ms": 66484,
+      "text": "of"
+    },
+    {
+      "end_ms": 67102,
+      "speaker": "speaker_1",
+      "start_ms": 66768,
+      "text": "revenue"
+    },
+    {
+      "end_ms": 67624,
+      "speaker": "speaker_1",
+      "start_ms": 67422,
+      "text": "I"
+    },
+    {
+      "end_ms": 67974,
+      "speaker": "speaker_1",
+      "start_ms": 67684,
+      "text": "would"
+    },
+    {
+      "end_ms": 68280,
+      "speaker": "speaker_1",
+      "start_ms": 68034,
+      "text": "not"
+    },
+    {
+      "end_ms": 68652,
+      "speaker": "speaker_1",
+      "start_ms": 68340,
+      "text": "repeat"
+    },
+    {
+      "end_ms": 68958,
+      "speaker": "speaker_1",
+      "start_ms": 68712,
+      "text": "the"
+    },
+    {
+      "end_ms": 69330,
+      "speaker": "speaker_1",
+      "start_ms": 69018,
+      "text": "middle"
+    },
+    {
+      "end_ms": 69636,
+      "speaker": "speaker_1",
+      "start_ms": 69390,
+      "text": "six"
+    },
+    {
+      "end_ms": 70008,
+      "speaker": "speaker_1",
+      "start_ms": 69696,
+      "text": "months"
+    },
+    {
+      "end_ms": 70292,
+      "speaker": "speaker_1",
+      "start_ms": 70068,
+      "text": "of"
+    },
+    {
+      "end_ms": 70598,
+      "speaker": "speaker_1",
+      "start_ms": 70352,
+      "text": "our"
+    },
+    {
+      "end_ms": 70992,
+      "speaker": "speaker_1",
+      "start_ms": 70658,
+      "text": "editing"
+    },
+    {
+      "end_ms": 71408,
+      "speaker": "speaker_1",
+      "start_ms": 71052,
+      "text": "pipeline"
+    },
+    {
+      "end_ms": 71714,
+      "speaker": "speaker_1",
+      "start_ms": 71468,
+      "text": "for"
+    },
+    {
+      "end_ms": 72020,
+      "speaker": "speaker_1",
+      "start_ms": 71774,
+      "text": "any"
+    },
+    {
+      "end_ms": 72392,
+      "speaker": "speaker_1",
+      "start_ms": 72080,
+      "text": "amount"
+    },
+    {
+      "end_ms": 72676,
+      "speaker": "speaker_1",
+      "start_ms": 72452,
+      "text": "of"
+    },
+    {
+      "end_ms": 73026,
+      "speaker": "speaker_1",
+      "start_ms": 72736,
+      "text": "money"
+    },
+    {
+      "end_ms": 73614,
+      "speaker": "speaker_1",
+      "start_ms": 73346,
+      "text": "What"
+    },
+    {
+      "end_ms": 74008,
+      "speaker": "speaker_1",
+      "start_ms": 73674,
+      "text": "changed"
+    },
+    {
+      "end_ms": 74314,
+      "speaker": "speaker_1",
+      "start_ms": 74068,
+      "text": "was"
+    },
+    {
+      "end_ms": 74620,
+      "speaker": "speaker_1",
+      "start_ms": 74374,
+      "text": "not"
+    },
+    {
+      "end_ms": 74926,
+      "speaker": "speaker_1",
+      "start_ms": 74680,
+      "text": "the"
+    },
+    {
+      "end_ms": 75342,
+      "speaker": "speaker_1",
+      "start_ms": 74986,
+      "text": "strategy"
+    },
+    {
+      "end_ms": 75626,
+      "speaker": "speaker_1",
+      "start_ms": 75402,
+      "text": "it"
+    },
+    {
+      "end_ms": 75932,
+      "speaker": "speaker_1",
+      "start_ms": 75686,
+      "text": "was"
+    },
+    {
+      "end_ms": 76238,
+      "speaker": "speaker_1",
+      "start_ms": 75992,
+      "text": "how"
+    },
+    {
+      "end_ms": 76588,
+      "speaker": "speaker_1",
+      "start_ms": 76298,
+      "text": "often"
+    },
+    {
+      "end_ms": 76872,
+      "speaker": "speaker_1",
+      "start_ms": 76648,
+      "text": "we"
+    },
+    {
+      "end_ms": 77244,
+      "speaker": "speaker_1",
+      "start_ms": 76932,
+      "text": "looked"
+    },
+    {
+      "end_ms": 77528,
+      "speaker": "speaker_1",
+      "start_ms": 77304,
+      "text": "at"
+    },
+    {
+      "end_ms": 77922,
+      "speaker": "speaker_1",
+      "start_ms": 77588,
+      "text": "content"
+    },
+    {
+      "end_ms": 78466,
+      "speaker": "speaker_0",
+      "start_ms": 78242,
+      "text": "We"
+    },
+    {
+      "end_ms": 78882,
+      "speaker": "speaker_0",
+      "start_ms": 78526,
+      "text": "recorded"
+    },
+    {
+      "end_ms": 79210,
+      "speaker": "speaker_0",
+      "start_ms": 78942,
+      "text": "this"
+    },
+    {
+      "end_ms": 79494,
+      "speaker": "speaker_0",
+      "start_ms": 79270,
+      "text": "in"
+    },
+    {
+      "end_ms": 79888,
+      "speaker": "speaker_0",
+      "start_ms": 79554,
+      "text": "YouTube"
+    },
+    {
+      "end_ms": 80238,
+      "speaker": "speaker_0",
+      "start_ms": 79948,
+      "text": "right"
+    },
+    {
+      "end_ms": 80588,
+      "speaker": "speaker_0",
+      "start_ms": 80298,
+      "text": "after"
+    },
+    {
+      "end_ms": 81026,
+      "speaker": "speaker_0",
+      "start_ms": 80648,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 81398,
+      "speaker": "speaker_0",
+      "start_ms": 81086,
+      "text": "closed"
+    },
+    {
+      "end_ms": 81726,
+      "speaker": "speaker_0",
+      "start_ms": 81458,
+      "text": "with"
+    },
+    {
+      "end_ms": 82120,
+      "speaker": "speaker_0",
+      "start_ms": 81786,
+      "text": "Jakarta"
+    },
+    {
+      "end_ms": 82686,
+      "speaker": "speaker_0",
+      "start_ms": 82440,
+      "text": "The"
+    },
+    {
+      "end_ms": 83036,
+      "speaker": "speaker_0",
+      "start_ms": 82746,
+      "text": "first"
+    },
+    {
+      "end_ms": 83386,
+      "speaker": "speaker_0",
+      "start_ms": 83096,
+      "text": "month"
+    },
+    {
+      "end_ms": 83758,
+      "speaker": "speaker_0",
+      "start_ms": 83446,
+      "text": "taught"
+    },
+    {
+      "end_ms": 84042,
+      "speaker": "speaker_0",
+      "start_ms": 83818,
+      "text": "us"
+    },
+    {
+      "end_ms": 84370,
+      "speaker": "speaker_0",
+      "start_ms": 84102,
+      "text": "that"
+    },
+    {
+      "end_ms": 84676,
+      "speaker": "speaker_0",
+      "start_ms": 84430,
+      "text": "our"
+    },
+    {
+      "end_ms": 85070,
+      "speaker": "speaker_0",
+      "start_ms": 84736,
+      "text": "editing"
+    },
+    {
+      "end_ms": 85486,
+      "speaker": "speaker_0",
+      "start_ms": 85130,
+      "text": "pipeline"
+    },
+    {
+      "end_ms": 85858,
+      "speaker": "speaker_0",
+      "start_ms": 85546,
+      "text": "breaks"
+    },
+    {
+      "end_ms": 86186,
+      "speaker": "speaker_0",
+      "start_ms": 85918,
+      "text": "long"
+    },
+    {
+      "end_ms": 86558,
+      "speaker": "speaker_0",
+      "start_ms": 86246,
+      "text": "before"
+    },
+    {
+      "end_ms": 86864,
+      "speaker": "speaker_0",
+      "start_ms": 86618,
+      "text": "the"
+    },
+    {
+      "end_ms": 87192,
+      "speaker": "speaker_0",
+      "start_ms": 86924,
+      "text": "team"
+    },
+    {
+      "end_ms": 87586,
+      "speaker": "speaker_0",
+      "start_ms": 87252,
+      "text": "notices"
+    },
+    {
+      "end_ms": 89442,
+      "speaker": "speaker_0",
+      "start_ms": 89086,
+      "text": "Everyone"
+    },
+    {
+      "end_ms": 89770,
+      "speaker": "speaker_0",
+      "start_ms": 89502,
+      "text": "told"
+    },
+    {
+      "end_ms": 90054,
+      "speaker": "speaker_0",
+      "start_ms": 89830,
+      "text": "us"
+    },
+    {
+      "end_ms": 90338,
+      "speaker": "speaker_0",
+      "start_ms": 90114,
+      "text": "to"
+    },
+    {
+      "end_ms": 90666,
+      "speaker": "speaker_0",
+      "start_ms": 90398,
+      "text": "hire"
+    },
+    {
+      "end_ms": 91038,
+      "speaker": "speaker_0",
+      "start_ms": 90726,
+      "text": "faster"
+    },
+    {
+      "end_ms": 91322,
+      "speaker": "speaker_0",
+      "start_ms": 91098,
+      "text": "so"
+    },
+    {
+      "end_ms": 91606,
+      "speaker": "speaker_0",
+      "start_ms": 91382,
+      "text": "we"
+    },
+    {
+      "end_ms": 91956,
+      "speaker": "speaker_0",
+      "start_ms": 91666,
+      "text": "hired"
+    },
+    {
+      "end_ms": 92262,
+      "speaker": "speaker_0",
+      "start_ms": 92016,
+      "text": "six"
+    },
+    {
+      "end_ms": 92634,
+      "speaker": "speaker_0",
+      "start_ms": 92322,
+      "text": "people"
+    },
+    {
+      "end_ms": 92918,
+      "speaker": "speaker_0",
+      "start_ms": 92694,
+      "text": "in"
+    },
+    {
+      "end_ms": 93224,
+      "speaker": "speaker_0",
+      "start_ms": 92978,
+      "text": "one"
+    },
+    {
+      "end_ms": 93618,
+      "speaker": "speaker_0",
+      "start_ms": 93284,
+      "text": "quarter"
+    },
+    {
+      "end_ms": 94206,
+      "speaker": "speaker_0",
+      "start_ms": 93938,
+      "text": "That"
+    },
+    {
+      "end_ms": 94622,
+      "speaker": "speaker_0",
+      "start_ms": 94266,
+      "text": "decision"
+    },
+    {
+      "end_ms": 94950,
+      "speaker": "speaker_0",
+      "start_ms": 94682,
+      "text": "cost"
+    },
+    {
+      "end_ms": 95234,
+      "speaker": "speaker_0",
+      "start_ms": 95010,
+      "text": "us"
+    },
+    {
+      "end_ms": 95540,
+      "speaker": "speaker_0",
+      "start_ms": 95294,
+      "text": "six"
+    },
+    {
+      "end_ms": 95890,
+      "speaker": "speaker_0",
+      "start_ms": 95600,
+      "text": "weeks"
+    },
+    {
+      "end_ms": 96174,
+      "speaker": "speaker_0",
+      "start_ms": 95950,
+      "text": "of"
+    },
+    {
+      "end_ms": 96634,
+      "speaker": "speaker_0",
+      "start_ms": 96234,
+      "text": "onboarding"
+    },
+    {
+      "end_ms": 96918,
+      "speaker": "speaker_0",
+      "start_ms": 96694,
+      "text": "we"
+    },
+    {
+      "end_ms": 97224,
+      "speaker": "speaker_0",
+      "start_ms": 96978,
+      "text": "had"
+    },
+    {
+      "end_ms": 97530,
+      "speaker": "speaker_0",
+      "start_ms": 97284,
+      "text": "not"
+    },
+    {
+      "end_ms": 97924,
+      "speaker": "speaker_0",
+      "start_ms": 97590,
+      "text": "planned"
+    },
+    {
+      "end_ms": 98230,
+      "speaker": "speaker_0",
+      "start_ms": 97984,
+      "text": "for"
+    },
+    {
+      "end_ms": 98818,
+      "speaker": "speaker_1",
+      "start_ms": 98550,
+      "text": "Here"
+    },
+    {
+      "end_ms": 99102,
+      "speaker": "speaker_1",
+      "start_ms": 98878,
+      "text": "is"
+    },
+    {
+      "end_ms": 99408,
+      "speaker": "speaker_1",
+      "start_ms": 99162,
+      "text": "the"
+    },
+    {
+      "end_ms": 99736,
+      "speaker": "speaker_1",
+      "start_ms": 99468,
+      "text": "part"
+    },
+    {
+      "end_ms": 100108,
+      "speaker": "speaker_1",
+      "start_ms": 99796,
+      "text": "nobody"
+    },
+    {
+      "end_ms": 100480,
+      "speaker": "speaker_1",
+      "start_ms": 100168,
+      "text": "writes"
+    },
+    {
+      "end_ms": 100830,
+      "speaker": "speaker_1",
+      "start_ms": 100540,
+      "text": "about"
+    },
+    {
+      "end_ms": 101158,
+      "speaker": "speaker_1",
+      "start_ms": 100890,
+      "text": "when"
+    },
+    {
+      "end_ms": 101486,
+      "speaker": "speaker_1",
+      "start_ms": 101218,
+      "text": "they"
+    },
+    {
+      "end_ms": 101902,
+      "speaker": "speaker_1",
+      "start_ms": 101546,
+      "text": "describe"
+    },
+    {
+      "end_ms": 102208,
+      "speaker": "speaker_1",
+      "start_ms": 101962,
+      "text": "our"
+    },
+    {
+      "end_ms": 102602,
+      "speaker": "speaker_1",
+      "start_ms": 102268,
+      "text": "editing"
+    },
+    {
+      "end_ms": 103018,
+      "speaker": "speaker_1",
+      "start_ms": 102662,
+      "text": "pipeline"
+    },
+    {
+      "end_ms": 103584,
+      "speaker": "speaker_1",
+      "start_ms": 103338,
+      "text": "Our"
+    },
+    {
+      "end_ms": 103934,
+      "speaker": "speaker_1",
+      "start_ms": 103644,
+      "text": "churn"
+    },
+    {
+      "end_ms": 104284,
+      "speaker": "speaker_1",
+      "start_ms": 103994,
+      "text": "moved"
+    },
+    {
+      "end_ms": 104612,
+      "speaker": "speaker_1",
+      "start_ms": 104344,
+      "text": "from"
+    },
+    {
+      "end_ms": 104984,
+      "speaker": "speaker_1",
+      "start_ms": 104672,
+      "text": "eighty"
+    },
+    {
+      "end_ms": 105378,
+      "speaker": "speaker_1",
+      "start_ms": 105044,
+      "text": "percent"
+    },
+    {
+      "end_ms": 105662,
+      "speaker": "speaker_1",
+      "start_ms": 105438,
+      "text": "to"
+    },
+    {
+      "end_ms": 106100,
+      "speaker": "speaker_1",
+      "start_ms": 105722,
+      "text": "something"
+    },
+    {
+      "end_ms": 106384,
+      "speaker": "speaker_1",
+      "start_ms": 106160,
+      "text": "we"
+    },
+    {
+      "end_ms": 106734,
+      "speaker": "speaker_1",
+      "start_ms": 106444,
+      "text": "could"
+    },
+    {
+      "end_ms": 107128,
+      "speaker": "speaker_1",
+      "start_ms": 106794,
+      "text": "finally"
+    },
+    {
+      "end_ms": 107522,
+      "speaker": "speaker_1",
+      "start_ms": 107188,
+      "text": "explain"
+    }
+  ],
+  "title": "Turning one long interview into a content engine"
+}

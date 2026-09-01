@@ -1,0 +1,1514 @@
+{
+  "audio_key": null,
+  "case_id": "id-pricing-experiment",
+  "duration_ms": 102424,
+  "language": "id",
+  "named_entities": [
+    "Bandung",
+    "Northwind",
+    "kuartal ketiga"
+  ],
+  "reference_words": [
+    {
+      "end_ms": 268,
+      "speaker": "speaker_0",
+      "start_ms": 0,
+      "text": "Kami"
+    },
+    {
+      "end_ms": 662,
+      "speaker": "speaker_0",
+      "start_ms": 328,
+      "text": "merekam"
+    },
+    {
+      "end_ms": 968,
+      "speaker": "speaker_0",
+      "start_ms": 722,
+      "text": "ini"
+    },
+    {
+      "end_ms": 1252,
+      "speaker": "speaker_0",
+      "start_ms": 1028,
+      "text": "di"
+    },
+    {
+      "end_ms": 1646,
+      "speaker": "speaker_0",
+      "start_ms": 1312,
+      "text": "Bandung"
+    },
+    {
+      "end_ms": 1996,
+      "speaker": "speaker_0",
+      "start_ms": 1706,
+      "text": "tepat"
+    },
+    {
+      "end_ms": 2390,
+      "speaker": "speaker_0",
+      "start_ms": 2056,
+      "text": "setelah"
+    },
+    {
+      "end_ms": 2828,
+      "speaker": "speaker_0",
+      "start_ms": 2450,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 3222,
+      "speaker": "speaker_0",
+      "start_ms": 2888,
+      "text": "selesai"
+    },
+    {
+      "end_ms": 3616,
+      "speaker": "speaker_0",
+      "start_ms": 3282,
+      "text": "bersama"
+    },
+    {
+      "end_ms": 4010,
+      "speaker": "speaker_0",
+      "start_ms": 3676,
+      "text": "kuartal"
+    },
+    {
+      "end_ms": 4382,
+      "speaker": "speaker_0",
+      "start_ms": 4070,
+      "text": "ketiga"
+    },
+    {
+      "end_ms": 4992,
+      "speaker": "speaker_0",
+      "start_ms": 4702,
+      "text": "Bulan"
+    },
+    {
+      "end_ms": 5386,
+      "speaker": "speaker_0",
+      "start_ms": 5052,
+      "text": "pertama"
+    },
+    {
+      "end_ms": 5868,
+      "speaker": "speaker_0",
+      "start_ms": 5446,
+      "text": "mengajarkan"
+    },
+    {
+      "end_ms": 6218,
+      "speaker": "speaker_0",
+      "start_ms": 5928,
+      "text": "bahwa"
+    },
+    {
+      "end_ms": 6678,
+      "speaker": "speaker_0",
+      "start_ms": 6278,
+      "text": "eksperimen"
+    },
+    {
+      "end_ms": 6984,
+      "speaker": "speaker_0",
+      "start_ms": 6738,
+      "text": "uji"
+    },
+    {
+      "end_ms": 7312,
+      "speaker": "speaker_0",
+      "start_ms": 7044,
+      "text": "coba"
+    },
+    {
+      "end_ms": 7662,
+      "speaker": "speaker_0",
+      "start_ms": 7372,
+      "text": "rusak"
+    },
+    {
+      "end_ms": 7990,
+      "speaker": "speaker_0",
+      "start_ms": 7722,
+      "text": "jauh"
+    },
+    {
+      "end_ms": 8384,
+      "speaker": "speaker_0",
+      "start_ms": 8050,
+      "text": "sebelum"
+    },
+    {
+      "end_ms": 8690,
+      "speaker": "speaker_0",
+      "start_ms": 8444,
+      "text": "tim"
+    },
+    {
+      "end_ms": 9194,
+      "speaker": "speaker_0",
+      "start_ms": 8750,
+      "text": "menyadarinya"
+    },
+    {
+      "end_ms": 9804,
+      "speaker": "speaker_0",
+      "start_ms": 9514,
+      "text": "Semua"
+    },
+    {
+      "end_ms": 10154,
+      "speaker": "speaker_0",
+      "start_ms": 9864,
+      "text": "orang"
+    },
+    {
+      "end_ms": 10570,
+      "speaker": "speaker_0",
+      "start_ms": 10214,
+      "text": "menyuruh"
+    },
+    {
+      "end_ms": 10898,
+      "speaker": "speaker_0",
+      "start_ms": 10630,
+      "text": "kami"
+    },
+    {
+      "end_ms": 11314,
+      "speaker": "speaker_0",
+      "start_ms": 10958,
+      "text": "merekrut"
+    },
+    {
+      "end_ms": 11664,
+      "speaker": "speaker_0",
+      "start_ms": 11374,
+      "text": "cepat"
+    },
+    {
+      "end_ms": 11992,
+      "speaker": "speaker_0",
+      "start_ms": 11724,
+      "text": "jadi"
+    },
+    {
+      "end_ms": 12320,
+      "speaker": "speaker_0",
+      "start_ms": 12052,
+      "text": "kami"
+    },
+    {
+      "end_ms": 12736,
+      "speaker": "speaker_0",
+      "start_ms": 12380,
+      "text": "menambah"
+    },
+    {
+      "end_ms": 13152,
+      "speaker": "speaker_0",
+      "start_ms": 12796,
+      "text": "sembilan"
+    },
+    {
+      "end_ms": 13502,
+      "speaker": "speaker_0",
+      "start_ms": 13212,
+      "text": "orang"
+    },
+    {
+      "end_ms": 14200,
+      "speaker": "speaker_0",
+      "start_ms": 13822,
+      "text": "Keputusan"
+    },
+    {
+      "end_ms": 14506,
+      "speaker": "speaker_0",
+      "start_ms": 14260,
+      "text": "itu"
+    },
+    {
+      "end_ms": 14900,
+      "speaker": "speaker_0",
+      "start_ms": 14566,
+      "text": "memakan"
+    },
+    {
+      "end_ms": 15206,
+      "speaker": "speaker_0",
+      "start_ms": 14960,
+      "text": "dua"
+    },
+    {
+      "end_ms": 15556,
+      "speaker": "speaker_0",
+      "start_ms": 15266,
+      "text": "puluh"
+    },
+    {
+      "end_ms": 15928,
+      "speaker": "speaker_0",
+      "start_ms": 15616,
+      "text": "minggu"
+    },
+    {
+      "end_ms": 16366,
+      "speaker": "speaker_0",
+      "start_ms": 15988,
+      "text": "pelatihan"
+    },
+    {
+      "end_ms": 16694,
+      "speaker": "speaker_0",
+      "start_ms": 16426,
+      "text": "yang"
+    },
+    {
+      "end_ms": 17044,
+      "speaker": "speaker_0",
+      "start_ms": 16754,
+      "text": "tidak"
+    },
+    {
+      "end_ms": 17416,
+      "speaker": "speaker_0",
+      "start_ms": 17104,
+      "text": "pernah"
+    },
+    {
+      "end_ms": 17744,
+      "speaker": "speaker_0",
+      "start_ms": 17476,
+      "text": "kami"
+    },
+    {
+      "end_ms": 18204,
+      "speaker": "speaker_0",
+      "start_ms": 17804,
+      "text": "rencanakan"
+    },
+    {
+      "end_ms": 18770,
+      "speaker": "speaker_1",
+      "start_ms": 18524,
+      "text": "Ini"
+    },
+    {
+      "end_ms": 19142,
+      "speaker": "speaker_1",
+      "start_ms": 18830,
+      "text": "bagian"
+    },
+    {
+      "end_ms": 19470,
+      "speaker": "speaker_1",
+      "start_ms": 19202,
+      "text": "yang"
+    },
+    {
+      "end_ms": 19842,
+      "speaker": "speaker_1",
+      "start_ms": 19530,
+      "text": "jarang"
+    },
+    {
+      "end_ms": 20236,
+      "speaker": "speaker_1",
+      "start_ms": 19902,
+      "text": "ditulis"
+    },
+    {
+      "end_ms": 20586,
+      "speaker": "speaker_1",
+      "start_ms": 20296,
+      "text": "orang"
+    },
+    {
+      "end_ms": 20958,
+      "speaker": "speaker_1",
+      "start_ms": 20646,
+      "text": "ketika"
+    },
+    {
+      "end_ms": 21374,
+      "speaker": "speaker_1",
+      "start_ms": 21018,
+      "text": "membahas"
+    },
+    {
+      "end_ms": 21834,
+      "speaker": "speaker_1",
+      "start_ms": 21434,
+      "text": "eksperimen"
+    },
+    {
+      "end_ms": 22140,
+      "speaker": "speaker_1",
+      "start_ms": 21894,
+      "text": "uji"
+    },
+    {
+      "end_ms": 22468,
+      "speaker": "speaker_1",
+      "start_ms": 22200,
+      "text": "coba"
+    },
+    {
+      "end_ms": 23078,
+      "speaker": "speaker_1",
+      "start_ms": 22788,
+      "text": "Angka"
+    },
+    {
+      "end_ms": 23494,
+      "speaker": "speaker_1",
+      "start_ms": 23138,
+      "text": "berhenti"
+    },
+    {
+      "end_ms": 23998,
+      "speaker": "speaker_1",
+      "start_ms": 23554,
+      "text": "berlangganan"
+    },
+    {
+      "end_ms": 24348,
+      "speaker": "speaker_1",
+      "start_ms": 24058,
+      "text": "turun"
+    },
+    {
+      "end_ms": 24676,
+      "speaker": "speaker_1",
+      "start_ms": 24408,
+      "text": "dari"
+    },
+    {
+      "end_ms": 24982,
+      "speaker": "speaker_1",
+      "start_ms": 24736,
+      "text": "dua"
+    },
+    {
+      "end_ms": 25332,
+      "speaker": "speaker_1",
+      "start_ms": 25042,
+      "text": "puluh"
+    },
+    {
+      "end_ms": 25704,
+      "speaker": "speaker_1",
+      "start_ms": 25392,
+      "text": "persen"
+    },
+    {
+      "end_ms": 26098,
+      "speaker": "speaker_1",
+      "start_ms": 25764,
+      "text": "menjadi"
+    },
+    {
+      "end_ms": 26492,
+      "speaker": "speaker_1",
+      "start_ms": 26158,
+      "text": "sesuatu"
+    },
+    {
+      "end_ms": 26820,
+      "speaker": "speaker_1",
+      "start_ms": 26552,
+      "text": "yang"
+    },
+    {
+      "end_ms": 27170,
+      "speaker": "speaker_1",
+      "start_ms": 26880,
+      "text": "jelas"
+    },
+    {
+      "end_ms": 28938,
+      "speaker": "speaker_1",
+      "start_ms": 28670,
+      "text": "Kami"
+    },
+    {
+      "end_ms": 29376,
+      "speaker": "speaker_1",
+      "start_ms": 28998,
+      "text": "membangun"
+    },
+    {
+      "end_ms": 29726,
+      "speaker": "speaker_1",
+      "start_ms": 29436,
+      "text": "ulang"
+    },
+    {
+      "end_ms": 30054,
+      "speaker": "speaker_1",
+      "start_ms": 29786,
+      "text": "alur"
+    },
+    {
+      "end_ms": 30404,
+      "speaker": "speaker_1",
+      "start_ms": 30114,
+      "text": "masuk"
+    },
+    {
+      "end_ms": 30688,
+      "speaker": "speaker_1",
+      "start_ms": 30464,
+      "text": "di"
+    },
+    {
+      "end_ms": 31082,
+      "speaker": "speaker_1",
+      "start_ms": 30748,
+      "text": "sekitar"
+    },
+    {
+      "end_ms": 31520,
+      "speaker": "speaker_1",
+      "start_ms": 31142,
+      "text": "penetapan"
+    },
+    {
+      "end_ms": 31870,
+      "speaker": "speaker_1",
+      "start_ms": 31580,
+      "text": "harga"
+    },
+    {
+      "end_ms": 32176,
+      "speaker": "speaker_1",
+      "start_ms": 31930,
+      "text": "dan"
+    },
+    {
+      "end_ms": 32658,
+      "speaker": "speaker_1",
+      "start_ms": 32236,
+      "text": "mengukurnya"
+    },
+    {
+      "end_ms": 32986,
+      "speaker": "speaker_1",
+      "start_ms": 32718,
+      "text": "tiap"
+    },
+    {
+      "end_ms": 33358,
+      "speaker": "speaker_1",
+      "start_ms": 33046,
+      "text": "minggu"
+    },
+    {
+      "end_ms": 33968,
+      "speaker": "speaker_1",
+      "start_ms": 33678,
+      "text": "Butuh"
+    },
+    {
+      "end_ms": 34296,
+      "speaker": "speaker_1",
+      "start_ms": 34028,
+      "text": "lima"
+    },
+    {
+      "end_ms": 34734,
+      "speaker": "speaker_1",
+      "start_ms": 34356,
+      "text": "percobaan"
+    },
+    {
+      "end_ms": 35128,
+      "speaker": "speaker_1",
+      "start_ms": 34794,
+      "text": "sebelum"
+    },
+    {
+      "end_ms": 35478,
+      "speaker": "speaker_1",
+      "start_ms": 35188,
+      "text": "semua"
+    },
+    {
+      "end_ms": 35894,
+      "speaker": "speaker_1",
+      "start_ms": 35538,
+      "text": "angkanya"
+    },
+    {
+      "end_ms": 36310,
+      "speaker": "speaker_1",
+      "start_ms": 35954,
+      "text": "berhenti"
+    },
+    {
+      "end_ms": 36682,
+      "speaker": "speaker_1",
+      "start_ms": 36370,
+      "text": "saling"
+    },
+    {
+      "end_ms": 37186,
+      "speaker": "speaker_1",
+      "start_ms": 36742,
+      "text": "bertentangan"
+    },
+    {
+      "end_ms": 37774,
+      "speaker": "speaker_0",
+      "start_ms": 37506,
+      "text": "Kami"
+    },
+    {
+      "end_ms": 38168,
+      "speaker": "speaker_0",
+      "start_ms": 37834,
+      "text": "merekam"
+    },
+    {
+      "end_ms": 38474,
+      "speaker": "speaker_0",
+      "start_ms": 38228,
+      "text": "ini"
+    },
+    {
+      "end_ms": 38758,
+      "speaker": "speaker_0",
+      "start_ms": 38534,
+      "text": "di"
+    },
+    {
+      "end_ms": 39152,
+      "speaker": "speaker_0",
+      "start_ms": 38818,
+      "text": "Bandung"
+    },
+    {
+      "end_ms": 39502,
+      "speaker": "speaker_0",
+      "start_ms": 39212,
+      "text": "tepat"
+    },
+    {
+      "end_ms": 39896,
+      "speaker": "speaker_0",
+      "start_ms": 39562,
+      "text": "setelah"
+    },
+    {
+      "end_ms": 40334,
+      "speaker": "speaker_0",
+      "start_ms": 39956,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 40728,
+      "speaker": "speaker_0",
+      "start_ms": 40394,
+      "text": "selesai"
+    },
+    {
+      "end_ms": 41122,
+      "speaker": "speaker_0",
+      "start_ms": 40788,
+      "text": "bersama"
+    },
+    {
+      "end_ms": 41516,
+      "speaker": "speaker_0",
+      "start_ms": 41182,
+      "text": "kuartal"
+    },
+    {
+      "end_ms": 41888,
+      "speaker": "speaker_0",
+      "start_ms": 41576,
+      "text": "ketiga"
+    },
+    {
+      "end_ms": 42498,
+      "speaker": "speaker_0",
+      "start_ms": 42208,
+      "text": "Kalau"
+    },
+    {
+      "end_ms": 42936,
+      "speaker": "speaker_0",
+      "start_ms": 42558,
+      "text": "penetapan"
+    },
+    {
+      "end_ms": 43286,
+      "speaker": "speaker_0",
+      "start_ms": 42996,
+      "text": "harga"
+    },
+    {
+      "end_ms": 43636,
+      "speaker": "speaker_0",
+      "start_ms": 43346,
+      "text": "belum"
+    },
+    {
+      "end_ms": 43964,
+      "speaker": "speaker_0",
+      "start_ms": 43696,
+      "text": "bisa"
+    },
+    {
+      "end_ms": 44424,
+      "speaker": "speaker_0",
+      "start_ms": 44024,
+      "text": "dijelaskan"
+    },
+    {
+      "end_ms": 44752,
+      "speaker": "speaker_0",
+      "start_ms": 44484,
+      "text": "satu"
+    },
+    {
+      "end_ms": 45146,
+      "speaker": "speaker_0",
+      "start_ms": 44812,
+      "text": "kalimat"
+    },
+    {
+      "end_ms": 45540,
+      "speaker": "speaker_0",
+      "start_ms": 45206,
+      "text": "berarti"
+    },
+    {
+      "end_ms": 45890,
+      "speaker": "speaker_0",
+      "start_ms": 45600,
+      "text": "belum"
+    },
+    {
+      "end_ms": 46306,
+      "speaker": "speaker_0",
+      "start_ms": 45950,
+      "text": "dipahami"
+    },
+    {
+      "end_ms": 46894,
+      "speaker": "speaker_0",
+      "start_ms": 46626,
+      "text": "Kami"
+    },
+    {
+      "end_ms": 47288,
+      "speaker": "speaker_0",
+      "start_ms": 46954,
+      "text": "menulis"
+    },
+    {
+      "end_ms": 47704,
+      "speaker": "speaker_0",
+      "start_ms": 47348,
+      "text": "sembilan"
+    },
+    {
+      "end_ms": 48098,
+      "speaker": "speaker_0",
+      "start_ms": 47764,
+      "text": "halaman"
+    },
+    {
+      "end_ms": 48580,
+      "speaker": "speaker_0",
+      "start_ms": 48158,
+      "text": "dokumentasi"
+    },
+    {
+      "end_ms": 48908,
+      "speaker": "speaker_0",
+      "start_ms": 48640,
+      "text": "lalu"
+    },
+    {
+      "end_ms": 49346,
+      "speaker": "speaker_0",
+      "start_ms": 48968,
+      "text": "menghapus"
+    },
+    {
+      "end_ms": 49762,
+      "speaker": "speaker_0",
+      "start_ms": 49406,
+      "text": "sebagian"
+    },
+    {
+      "end_ms": 50178,
+      "speaker": "speaker_0",
+      "start_ms": 49822,
+      "text": "besarnya"
+    },
+    {
+      "end_ms": 50744,
+      "speaker": "speaker_0",
+      "start_ms": 50498,
+      "text": "Tim"
+    },
+    {
+      "end_ms": 51072,
+      "speaker": "speaker_0",
+      "start_ms": 50804,
+      "text": "yang"
+    },
+    {
+      "end_ms": 51488,
+      "speaker": "speaker_0",
+      "start_ms": 51132,
+      "text": "memegang"
+    },
+    {
+      "end_ms": 51838,
+      "speaker": "speaker_0",
+      "start_ms": 51548,
+      "text": "paket"
+    },
+    {
+      "end_ms": 52298,
+      "speaker": "speaker_0",
+      "start_ms": 51898,
+      "text": "perusahaan"
+    },
+    {
+      "end_ms": 52626,
+      "speaker": "speaker_0",
+      "start_ms": 52358,
+      "text": "juga"
+    },
+    {
+      "end_ms": 52932,
+      "speaker": "speaker_0",
+      "start_ms": 52686,
+      "text": "tim"
+    },
+    {
+      "end_ms": 53260,
+      "speaker": "speaker_0",
+      "start_ms": 52992,
+      "text": "yang"
+    },
+    {
+      "end_ms": 53676,
+      "speaker": "speaker_0",
+      "start_ms": 53320,
+      "text": "menjawab"
+    },
+    {
+      "end_ms": 54070,
+      "speaker": "speaker_0",
+      "start_ms": 53736,
+      "text": "keluhan"
+    },
+    {
+      "end_ms": 54486,
+      "speaker": "speaker_0",
+      "start_ms": 54130,
+      "text": "pengguna"
+    },
+    {
+      "end_ms": 56298,
+      "speaker": "speaker_1",
+      "start_ms": 55986,
+      "text": "Justru"
+    },
+    {
+      "end_ms": 56626,
+      "speaker": "speaker_1",
+      "start_ms": 56358,
+      "text": "dari"
+    },
+    {
+      "end_ms": 56998,
+      "speaker": "speaker_1",
+      "start_ms": 56686,
+      "text": "irisan"
+    },
+    {
+      "end_ms": 57370,
+      "speaker": "speaker_1",
+      "start_ms": 57058,
+      "text": "itulah"
+    },
+    {
+      "end_ms": 57764,
+      "speaker": "speaker_1",
+      "start_ms": 57430,
+      "text": "masukan"
+    },
+    {
+      "end_ms": 58224,
+      "speaker": "speaker_1",
+      "start_ms": 57824,
+      "text": "sebenarnya"
+    },
+    {
+      "end_ms": 58618,
+      "speaker": "speaker_1",
+      "start_ms": 58284,
+      "text": "tentang"
+    },
+    {
+      "end_ms": 59056,
+      "speaker": "speaker_1",
+      "start_ms": 58678,
+      "text": "penetapan"
+    },
+    {
+      "end_ms": 59406,
+      "speaker": "speaker_1",
+      "start_ms": 59116,
+      "text": "harga"
+    },
+    {
+      "end_ms": 59778,
+      "speaker": "speaker_1",
+      "start_ms": 59466,
+      "text": "datang"
+    },
+    {
+      "end_ms": 60322,
+      "speaker": "speaker_1",
+      "start_ms": 60098,
+      "text": "Di"
+    },
+    {
+      "end_ms": 60672,
+      "speaker": "speaker_1",
+      "start_ms": 60382,
+      "text": "akhir"
+    },
+    {
+      "end_ms": 61022,
+      "speaker": "speaker_1",
+      "start_ms": 60732,
+      "text": "tahun"
+    },
+    {
+      "end_ms": 61482,
+      "speaker": "speaker_1",
+      "start_ms": 61082,
+      "text": "eksperimen"
+    },
+    {
+      "end_ms": 61788,
+      "speaker": "speaker_1",
+      "start_ms": 61542,
+      "text": "uji"
+    },
+    {
+      "end_ms": 62116,
+      "speaker": "speaker_1",
+      "start_ms": 61848,
+      "text": "coba"
+    },
+    {
+      "end_ms": 62576,
+      "speaker": "speaker_1",
+      "start_ms": 62176,
+      "text": "menyumbang"
+    },
+    {
+      "end_ms": 62882,
+      "speaker": "speaker_1",
+      "start_ms": 62636,
+      "text": "dua"
+    },
+    {
+      "end_ms": 63232,
+      "speaker": "speaker_1",
+      "start_ms": 62942,
+      "text": "puluh"
+    },
+    {
+      "end_ms": 63604,
+      "speaker": "speaker_1",
+      "start_ms": 63292,
+      "text": "persen"
+    },
+    {
+      "end_ms": 63932,
+      "speaker": "speaker_1",
+      "start_ms": 63664,
+      "text": "dari"
+    },
+    {
+      "end_ms": 64392,
+      "speaker": "speaker_1",
+      "start_ms": 63992,
+      "text": "pendapatan"
+    },
+    {
+      "end_ms": 64720,
+      "speaker": "speaker_1",
+      "start_ms": 64452,
+      "text": "kami"
+    },
+    {
+      "end_ms": 65308,
+      "speaker": "speaker_1",
+      "start_ms": 65040,
+      "text": "Saya"
+    },
+    {
+      "end_ms": 65658,
+      "speaker": "speaker_1",
+      "start_ms": 65368,
+      "text": "tidak"
+    },
+    {
+      "end_ms": 65964,
+      "speaker": "speaker_1",
+      "start_ms": 65718,
+      "text": "mau"
+    },
+    {
+      "end_ms": 66402,
+      "speaker": "speaker_1",
+      "start_ms": 66024,
+      "text": "mengulang"
+    },
+    {
+      "end_ms": 66730,
+      "speaker": "speaker_1",
+      "start_ms": 66462,
+      "text": "enam"
+    },
+    {
+      "end_ms": 67080,
+      "speaker": "speaker_1",
+      "start_ms": 66790,
+      "text": "bulan"
+    },
+    {
+      "end_ms": 67496,
+      "speaker": "speaker_1",
+      "start_ms": 67140,
+      "text": "tersulit"
+    },
+    {
+      "end_ms": 67824,
+      "speaker": "speaker_1",
+      "start_ms": 67556,
+      "text": "dari"
+    },
+    {
+      "end_ms": 68174,
+      "speaker": "speaker_1",
+      "start_ms": 67884,
+      "text": "paket"
+    },
+    {
+      "end_ms": 68634,
+      "speaker": "speaker_1",
+      "start_ms": 68234,
+      "text": "perusahaan"
+    },
+    {
+      "end_ms": 69006,
+      "speaker": "speaker_1",
+      "start_ms": 68694,
+      "text": "dengan"
+    },
+    {
+      "end_ms": 69400,
+      "speaker": "speaker_1",
+      "start_ms": 69066,
+      "text": "bayaran"
+    },
+    {
+      "end_ms": 69706,
+      "speaker": "speaker_1",
+      "start_ms": 69460,
+      "text": "apa"
+    },
+    {
+      "end_ms": 70012,
+      "speaker": "speaker_1",
+      "start_ms": 69766,
+      "text": "pun"
+    },
+    {
+      "end_ms": 70600,
+      "speaker": "speaker_1",
+      "start_ms": 70332,
+      "text": "Yang"
+    },
+    {
+      "end_ms": 70994,
+      "speaker": "speaker_1",
+      "start_ms": 70660,
+      "text": "berubah"
+    },
+    {
+      "end_ms": 71344,
+      "speaker": "speaker_1",
+      "start_ms": 71054,
+      "text": "bukan"
+    },
+    {
+      "end_ms": 71826,
+      "speaker": "speaker_1",
+      "start_ms": 71404,
+      "text": "strateginya"
+    },
+    {
+      "end_ms": 72264,
+      "speaker": "speaker_1",
+      "start_ms": 71886,
+      "text": "melainkan"
+    },
+    {
+      "end_ms": 72680,
+      "speaker": "speaker_1",
+      "start_ms": 72324,
+      "text": "seberapa"
+    },
+    {
+      "end_ms": 73052,
+      "speaker": "speaker_1",
+      "start_ms": 72740,
+      "text": "sering"
+    },
+    {
+      "end_ms": 73380,
+      "speaker": "speaker_1",
+      "start_ms": 73112,
+      "text": "kami"
+    },
+    {
+      "end_ms": 73774,
+      "speaker": "speaker_1",
+      "start_ms": 73440,
+      "text": "melihat"
+    },
+    {
+      "end_ms": 74212,
+      "speaker": "speaker_1",
+      "start_ms": 73834,
+      "text": "penetapan"
+    },
+    {
+      "end_ms": 74562,
+      "speaker": "speaker_1",
+      "start_ms": 74272,
+      "text": "harga"
+    },
+    {
+      "end_ms": 75150,
+      "speaker": "speaker_0",
+      "start_ms": 74882,
+      "text": "Kami"
+    },
+    {
+      "end_ms": 75544,
+      "speaker": "speaker_0",
+      "start_ms": 75210,
+      "text": "merekam"
+    },
+    {
+      "end_ms": 75850,
+      "speaker": "speaker_0",
+      "start_ms": 75604,
+      "text": "ini"
+    },
+    {
+      "end_ms": 76134,
+      "speaker": "speaker_0",
+      "start_ms": 75910,
+      "text": "di"
+    },
+    {
+      "end_ms": 76528,
+      "speaker": "speaker_0",
+      "start_ms": 76194,
+      "text": "Bandung"
+    },
+    {
+      "end_ms": 76878,
+      "speaker": "speaker_0",
+      "start_ms": 76588,
+      "text": "tepat"
+    },
+    {
+      "end_ms": 77272,
+      "speaker": "speaker_0",
+      "start_ms": 76938,
+      "text": "setelah"
+    },
+    {
+      "end_ms": 77710,
+      "speaker": "speaker_0",
+      "start_ms": 77332,
+      "text": "Northwind"
+    },
+    {
+      "end_ms": 78104,
+      "speaker": "speaker_0",
+      "start_ms": 77770,
+      "text": "selesai"
+    },
+    {
+      "end_ms": 78498,
+      "speaker": "speaker_0",
+      "start_ms": 78164,
+      "text": "bersama"
+    },
+    {
+      "end_ms": 78892,
+      "speaker": "speaker_0",
+      "start_ms": 78558,
+      "text": "kuartal"
+    },
+    {
+      "end_ms": 79264,
+      "speaker": "speaker_0",
+      "start_ms": 78952,
+      "text": "ketiga"
+    },
+    {
+      "end_ms": 79874,
+      "speaker": "speaker_0",
+      "start_ms": 79584,
+      "text": "Bulan"
+    },
+    {
+      "end_ms": 80268,
+      "speaker": "speaker_0",
+      "start_ms": 79934,
+      "text": "pertama"
+    },
+    {
+      "end_ms": 80750,
+      "speaker": "speaker_0",
+      "start_ms": 80328,
+      "text": "mengajarkan"
+    },
+    {
+      "end_ms": 81100,
+      "speaker": "speaker_0",
+      "start_ms": 80810,
+      "text": "bahwa"
+    },
+    {
+      "end_ms": 81450,
+      "speaker": "speaker_0",
+      "start_ms": 81160,
+      "text": "paket"
+    },
+    {
+      "end_ms": 81910,
+      "speaker": "speaker_0",
+      "start_ms": 81510,
+      "text": "perusahaan"
+    },
+    {
+      "end_ms": 82260,
+      "speaker": "speaker_0",
+      "start_ms": 81970,
+      "text": "rusak"
+    },
+    {
+      "end_ms": 82588,
+      "speaker": "speaker_0",
+      "start_ms": 82320,
+      "text": "jauh"
+    },
+    {
+      "end_ms": 82982,
+      "speaker": "speaker_0",
+      "start_ms": 82648,
+      "text": "sebelum"
+    },
+    {
+      "end_ms": 83288,
+      "speaker": "speaker_0",
+      "start_ms": 83042,
+      "text": "tim"
+    },
+    {
+      "end_ms": 83792,
+      "speaker": "speaker_0",
+      "start_ms": 83348,
+      "text": "menyadarinya"
+    },
+    {
+      "end_ms": 85582,
+      "speaker": "speaker_0",
+      "start_ms": 85292,
+      "text": "Semua"
+    },
+    {
+      "end_ms": 85932,
+      "speaker": "speaker_0",
+      "start_ms": 85642,
+      "text": "orang"
+    },
+    {
+      "end_ms": 86348,
+      "speaker": "speaker_0",
+      "start_ms": 85992,
+      "text": "menyuruh"
+    },
+    {
+      "end_ms": 86676,
+      "speaker": "speaker_0",
+      "start_ms": 86408,
+      "text": "kami"
+    },
+    {
+      "end_ms": 87092,
+      "speaker": "speaker_0",
+      "start_ms": 86736,
+      "text": "merekrut"
+    },
+    {
+      "end_ms": 87442,
+      "speaker": "speaker_0",
+      "start_ms": 87152,
+      "text": "cepat"
+    },
+    {
+      "end_ms": 87770,
+      "speaker": "speaker_0",
+      "start_ms": 87502,
+      "text": "jadi"
+    },
+    {
+      "end_ms": 88098,
+      "speaker": "speaker_0",
+      "start_ms": 87830,
+      "text": "kami"
+    },
+    {
+      "end_ms": 88514,
+      "speaker": "speaker_0",
+      "start_ms": 88158,
+      "text": "menambah"
+    },
+    {
+      "end_ms": 88930,
+      "speaker": "speaker_0",
+      "start_ms": 88574,
+      "text": "sembilan"
+    },
+    {
+      "end_ms": 89280,
+      "speaker": "speaker_0",
+      "start_ms": 88990,
+      "text": "orang"
+    },
+    {
+      "end_ms": 89978,
+      "speaker": "speaker_0",
+      "start_ms": 89600,
+      "text": "Keputusan"
+    },
+    {
+      "end_ms": 90284,
+      "speaker": "speaker_0",
+      "start_ms": 90038,
+      "text": "itu"
+    },
+    {
+      "end_ms": 90678,
+      "speaker": "speaker_0",
+      "start_ms": 90344,
+      "text": "memakan"
+    },
+    {
+      "end_ms": 91094,
+      "speaker": "speaker_0",
+      "start_ms": 90738,
+      "text": "sembilan"
+    },
+    {
+      "end_ms": 91466,
+      "speaker": "speaker_0",
+      "start_ms": 91154,
+      "text": "minggu"
+    },
+    {
+      "end_ms": 91904,
+      "speaker": "speaker_0",
+      "start_ms": 91526,
+      "text": "pelatihan"
+    },
+    {
+      "end_ms": 92232,
+      "speaker": "speaker_0",
+      "start_ms": 91964,
+      "text": "yang"
+    },
+    {
+      "end_ms": 92582,
+      "speaker": "speaker_0",
+      "start_ms": 92292,
+      "text": "tidak"
+    },
+    {
+      "end_ms": 92954,
+      "speaker": "speaker_0",
+      "start_ms": 92642,
+      "text": "pernah"
+    },
+    {
+      "end_ms": 93282,
+      "speaker": "speaker_0",
+      "start_ms": 93014,
+      "text": "kami"
+    },
+    {
+      "end_ms": 93742,
+      "speaker": "speaker_0",
+      "start_ms": 93342,
+      "text": "rencanakan"
+    },
+    {
+      "end_ms": 94308,
+      "speaker": "speaker_1",
+      "start_ms": 94062,
+      "text": "Ini"
+    },
+    {
+      "end_ms": 94680,
+      "speaker": "speaker_1",
+      "start_ms": 94368,
+      "text": "bagian"
+    },
+    {
+      "end_ms": 95008,
+      "speaker": "speaker_1",
+      "start_ms": 94740,
+      "text": "yang"
+    },
+    {
+      "end_ms": 95380,
+      "speaker": "speaker_1",
+      "start_ms": 95068,
+      "text": "jarang"
+    },
+    {
+      "end_ms": 95774,
+      "speaker": "speaker_1",
+      "start_ms": 95440,
+      "text": "ditulis"
+    },
+    {
+      "end_ms": 96124,
+      "speaker": "speaker_1",
+      "start_ms": 95834,
+      "text": "orang"
+    },
+    {
+      "end_ms": 96496,
+      "speaker": "speaker_1",
+      "start_ms": 96184,
+      "text": "ketika"
+    },
+    {
+      "end_ms": 96912,
+      "speaker": "speaker_1",
+      "start_ms": 96556,
+      "text": "membahas"
+    },
+    {
+      "end_ms": 97262,
+      "speaker": "speaker_1",
+      "start_ms": 96972,
+      "text": "paket"
+    },
+    {
+      "end_ms": 97722,
+      "speaker": "speaker_1",
+      "start_ms": 97322,
+      "text": "perusahaan"
+    },
+    {
+      "end_ms": 98332,
+      "speaker": "speaker_1",
+      "start_ms": 98042,
+      "text": "Angka"
+    },
+    {
+      "end_ms": 98748,
+      "speaker": "speaker_1",
+      "start_ms": 98392,
+      "text": "berhenti"
+    },
+    {
+      "end_ms": 99252,
+      "speaker": "speaker_1",
+      "start_ms": 98808,
+      "text": "berlangganan"
+    },
+    {
+      "end_ms": 99602,
+      "speaker": "speaker_1",
+      "start_ms": 99312,
+      "text": "turun"
+    },
+    {
+      "end_ms": 99930,
+      "speaker": "speaker_1",
+      "start_ms": 99662,
+      "text": "dari"
+    },
+    {
+      "end_ms": 100236,
+      "speaker": "speaker_1",
+      "start_ms": 99990,
+      "text": "dua"
+    },
+    {
+      "end_ms": 100586,
+      "speaker": "speaker_1",
+      "start_ms": 100296,
+      "text": "puluh"
+    },
+    {
+      "end_ms": 100958,
+      "speaker": "speaker_1",
+      "start_ms": 100646,
+      "text": "persen"
+    },
+    {
+      "end_ms": 101352,
+      "speaker": "speaker_1",
+      "start_ms": 101018,
+      "text": "menjadi"
+    },
+    {
+      "end_ms": 101746,
+      "speaker": "speaker_1",
+      "start_ms": 101412,
+      "text": "sesuatu"
+    },
+    {
+      "end_ms": 102074,
+      "speaker": "speaker_1",
+      "start_ms": 101806,
+      "text": "yang"
+    },
+    {
+      "end_ms": 102424,
+      "speaker": "speaker_1",
+      "start_ms": 102134,
+      "text": "jelas"
+    }
+  ],
+  "title": "Eksperimen harga yang mengubah peta jalan produk"
+}

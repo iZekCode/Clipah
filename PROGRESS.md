@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 14 is ready to commit. **Task 15 follows.**
+**Current position:** Task 15 is ready to commit. **Task 16 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -35,8 +35,8 @@ retries do not duplicate records or artifacts.
 | 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[x]` (`b434f8d`) |
 | 12 | Implement one-pass transcription with real diarization | `[x]` (`b272927`) |
 | 13 | Implement transcript windowing and candidate extraction schemas | `[x]` (`cedc4e9`) |
-| 14 | Implement structured LLM extraction, deduplication, and global reranking | `[~]` (ready to commit) |
-| 15 | Add the versioned highlight evaluation harness | `[ ]` |
+| 14 | Implement structured LLM extraction, deduplication, and global reranking | `[x]` (`efcdcfa`) |
+| 15 | Add the versioned highlight evaluation harness | `[~]` (ready to commit) |
 | 16 | Expose analysis and ranked candidate endpoints | `[ ]` |
 
 ## Phase C — Product dashboard and basic editor (Tasks 17-23)
@@ -429,6 +429,53 @@ Final verification: 697 tests passed, five environment-gated tests skipped, and 
 93%, with 100% line and branch coverage on every module this task touched. Ruff check, Ruff format
 check, and strict mypy all passed.
 
+### Task 15 — Versioned highlight and transcription evaluation
+
+`highlights/evaluation.py` scores one labeled case against a ranked result set and reports the five
+quality gates the plan names: timestamp validity, duration validity, duplicate rate, context-safety
+recall, and top-three acceptance. Timestamp validity is judged against the case's own words rather
+than against the provider's arithmetic, so a candidate whose bounds do not reproduce the transcript
+counts as invalid even when its numbers look plausible. Duplicate rate runs the production
+`deduplicate` policy over the produced candidates, so the harness measures the same overlap rule the
+pipeline enforces. Context-safety recall counts a labeled risky cut only when a surfaced candidate
+both covers it and carries a context warning. Clip-level rates aggregate weighted by candidate
+count, so a long case is not outvoted by a short one, while case-level rates aggregate by case.
+`HighlightReport` carries the manifest version, adapter, provider, model, prompt version, and schema
+version, so a score can always be attributed to what produced it, and it decides `passed` itself
+rather than leaving the judgement to a reader.
+
+`transcripts/evaluation.py` scores transcription with word error rate over a minimal edit path,
+named-entity accuracy, median and p95 word-timestamp drift over matched words, and a diarization
+error rate that maps hypothesis speakers onto reference speakers by majority, so a provider that
+renames speakers consistently is charged nothing. It also records p95 completion time, failure rate,
+and cost per source hour. A case that failed to transcribe is counted as total error rather than
+skipped, because a provider that cannot finish has not earned a favourable average.
+
+Both loaders are tamper-evident: `manifest.json` records a SHA-256 per case file, and a case whose
+bytes do not match its digest is refused rather than scored. That makes the checked-in baseline hard
+to move without saying so.
+
+`backend/evals/` holds the fixtures and the runners. The 15 highlight cases and 15 transcription
+cases are sanitized synthetic transcripts — five English, five Indonesian, five code-switched — and
+`evals/generate_fixtures.py` regenerates them deterministically. The runners are wiring only:
+`scripts/run-highlight-eval.sh` and `scripts/run-transcription-eval.sh` select an adapter, take one
+observation per case, write the report, and exit non-zero on a gate violation. Every live adapter
+(Groq for highlights; AssemblyAI, Deepgram, or WhisperX for transcription) needs an explicit
+credential and, for transcription, a local directory of evaluation audio, so a live comparison is
+always deliberate and never an ordinary CI dependency. The live adapters live under `backend/evals/`
+rather than under `src/clipah/`, so comparing Deepgram and WhisperX adds no backend dependency.
+
+The offline run passes: the highlight evaluation scores 93 candidates across 15 cases at 1.0
+timestamp validity, 1.0 duration validity, 0.0 duplicate rate, 1.0 context-safety recall, and 1.0
+top-three acceptance; the transcription evaluation scores 0.0 word error rate and 0.0 diarization
+error rate. Those numbers prove the harness and the plumbing, not provider quality: the offline
+provider proposes sentence-aligned candidates and warns on every candidate, and the fixture labels
+are sentence-aligned the same way. The harness earns its keep against a live adapter on real audio.
+
+Final verification: 756 tests passed, five environment-gated tests skipped, total coverage 93.99%,
+and 100% line and branch coverage on both new evaluation modules. Ruff check, Ruff format check, and
+strict mypy all passed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -450,6 +497,8 @@ oversight.
 | Binding `WindowingPolicy`, `CandidatePolicy`, `DeduplicationPolicy`, and `RankingPolicy` to `Settings` instead of their module defaults, so window shape, the duration preset, and the exposed-candidate count are deployment configuration | Task 16, which owns the analysis endpoint that reads them |
 | Exposing candidates over HTTP; Task 14 marks the exposed ranks in `model_metadata` but adds no route | Task 16 |
 | Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
+| The evaluation audio corpus itself — Task 15 checks in sanitized synthetic transcripts, not the two hours of source audio the plan asks for before a provider is frozen, nor the five hours asked for before public launch; the manifests record the shortfall in their audio-coverage fields | the repository owner, before the provider decision in Task 16 and before public launch |
+| Measuring a live provider — the checked-in run uses the offline adapters, so the recorded scores prove the harness rather than any provider's quality | Task 16, which owns the provider decision |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes
