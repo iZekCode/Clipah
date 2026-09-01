@@ -3,7 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 12 implementation is complete and pending owner commit. **Task 13 follows.**
+**Current position:** Task 12 and Task 13 implementations are complete and pending owner commits.
+**Task 14 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -34,7 +35,7 @@ retries do not duplicate records or artifacts.
 | 10 | Implement safe YouTube imports and source validation | `[x]` (`f3fec26`) |
 | 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[x]` (`b434f8d`) |
 | 12 | Implement one-pass transcription with real diarization | `[~]` |
-| 13 | Implement transcript windowing and candidate extraction schemas | `[ ]` |
+| 13 | Implement transcript windowing and candidate extraction schemas | `[~]` |
 | 14 | Implement structured LLM extraction, deduplication, and global reranking | `[ ]` |
 | 15 | Add the versioned highlight evaluation harness | `[ ]` |
 | 16 | Expose analysis and ranked candidate endpoints | `[ ]` |
@@ -347,6 +348,36 @@ downgrade/upgrade, Alembic drift check, and `git diff --check` all passed. The e
 deprecation warning remains unrelated to Task 12. The provider smoke test was not opted in during
 normal verification.
 
+### Task 13 — Timestamp-safe highlight windows and candidates
+
+Pending owner commit. `highlights/models.py` holds the window and candidate shapes as data: a
+`WindowingPolicy` (120-180 second target, 20-second overlap, silence-gap threshold, minimum word
+count), a `CandidatePolicy` (the inclusive 20-90 second preset), the `ClipCategory` review filters,
+the seven-dimension `ScoreBreakdown`, the strict `ClipCandidateProposal` a provider may return, and
+the accepted `ClipCandidateDraft`. Both Pydantic models forbid extra fields and are frozen, so a
+provider cannot smuggle free-form timestamps or unlisted attributes into durable state.
+
+`highlights/windowing.py` is pure and deterministic. `build_windows` walks the authoritative words,
+so every window is a contiguous slice that can never repeat a word ID, consecutive windows overlap
+by at most the configured amount, and the windows together cover every word. Inside the target band
+the cut is chosen by preference — a silence gap outranks a speaker change, which outranks a sentence
+ending — and the longest qualifying window wins a tie. A transcript below the configured word count
+produces no windows at all, and a final window that would fall below that count is grown backwards
+rather than dropped, so the tail of a source is never lost.
+
+`highlights/extractor.py` validates one proposal against the transcript and resolves the clip
+bounds itself: unknown word IDs, reversed ranges, durations outside the preset, and excerpts that do
+not match the authoritative words are all refused through the stable `CANDIDATE_UNKNOWN_WORD_ID`,
+`CANDIDATE_RANGE_REVERSED`, `CANDIDATE_DURATION_OUT_OF_RANGE`, `CANDIDATE_EXCERPT_MISMATCH`, and
+`CANDIDATE_SCHEMA_INVALID` codes, which carry no provider text. Excerpt comparison ignores case,
+spacing, and punctuation only; the stored excerpt is always the transcript's own text. Context
+warnings and dependencies survive validation verbatim. No module in this task performs provider,
+network, or database work.
+
+Final verification: 620 tests passed, five environment-gated tests skipped, and coverage reached
+92.73%, with 100% line and branch coverage on the three new modules. Ruff check, Ruff format check,
+strict mypy, the full pytest/coverage gate, and `git diff --check` all passed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -365,6 +396,8 @@ oversight.
 | A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
 | Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
+| Binding `WindowingPolicy` and `CandidatePolicy` to `Settings` instead of their module defaults, so window shape and the duration preset are deployment configuration | Task 14, which builds the analyzer that constructs them |
+| Persisting `ClipCandidateDraft` rows, deduplication, global reranking, and provider calls | Task 14 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes
