@@ -3,8 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 12 and Task 13 implementations are complete and pending owner commits.
-**Task 14 follows.**
+**Current position:** Task 14 is ready to commit. **Task 15 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -34,9 +33,9 @@ retries do not duplicate records or artifacts.
 | --- | --- | --- |
 | 10 | Implement safe YouTube imports and source validation | `[x]` (`f3fec26`) |
 | 11 | Implement ffprobe validation, proxy generation, and ingest orchestration | `[x]` (`b434f8d`) |
-| 12 | Implement one-pass transcription with real diarization | `[~]` |
-| 13 | Implement transcript windowing and candidate extraction schemas | `[~]` |
-| 14 | Implement structured LLM extraction, deduplication, and global reranking | `[ ]` |
+| 12 | Implement one-pass transcription with real diarization | `[x]` (`b272927`) |
+| 13 | Implement transcript windowing and candidate extraction schemas | `[x]` (`cedc4e9`) |
+| 14 | Implement structured LLM extraction, deduplication, and global reranking | `[~]` (ready to commit) |
 | 15 | Add the versioned highlight evaluation harness | `[ ]` |
 | 16 | Expose analysis and ranked candidate endpoints | `[ ]` |
 
@@ -320,7 +319,7 @@ Ruff format check, strict mypy, and the full pytest/coverage gate all passed.
 
 ### Task 12 — One-pass diarized word transcripts
 
-Pending owner commit. Added a provider-neutral `Transcriber` port and immutable transcript values
+Landed in `b272927`. Added a provider-neutral `Transcriber` port and immutable transcript values
 for canonical word IDs, millisecond timestamps, confidence, punctuation, opaque provider speaker
 labels, utterances, and maximal contiguous speaker segments. Normalization preserves legitimate
 speaker overlap, refuses empty or malformed provider evidence, rejects regressing or out-of-source
@@ -350,7 +349,7 @@ normal verification.
 
 ### Task 13 — Timestamp-safe highlight windows and candidates
 
-Pending owner commit. `highlights/models.py` holds the window and candidate shapes as data: a
+Landed in `cedc4e9`. `highlights/models.py` holds the window and candidate shapes as data: a
 `WindowingPolicy` (120-180 second target, 20-second overlap, silence-gap threshold, minimum word
 count), a `CandidatePolicy` (the inclusive 20-90 second preset), the `ClipCategory` review filters,
 the seven-dimension `ScoreBreakdown`, the strict `ClipCandidateProposal` a provider may return, and
@@ -378,6 +377,58 @@ Final verification: 620 tests passed, five environment-gated tests skipped, and 
 92.73%, with 100% line and branch coverage on the three new modules. Ruff check, Ruff format check,
 strict mypy, the full pytest/coverage gate, and `git diff --check` all passed.
 
+### Task 14 — Structured extraction, deduplication, and global reranking
+
+`highlights/provider.py` holds the provider-neutral ports. An extraction provider may only propose
+candidates keyed to the word IDs it was shown; it never resolves a timestamp and never decides
+whether a proposal is valid. `ProviderCall` carries everything usage recording needs — provider,
+operation, model, request ID, latency, input and output units, prompt version, and schema version —
+so no SDK object ever leaves an adapter. The module also ships the offline
+`DeterministicHighlightProvider`, which proposes sentence-aligned candidates from the words alone
+and marks them "selected without a language model", and the `FakeHighlightProvider` used where real
+provider work would be inappropriate.
+
+`highlights/groq_adapter.py` is the only module that knows Groq exists. It sends strict JSON Schema
+requests in which every property is required and `additionalProperties` is false, uses the
+configured extraction model for windows and the configured reranking model for the global order,
+pins temperature to zero and an explicit timeout, and spends its retry budget on transient failures
+only. Provider failures are classified by status alone onto the stable
+`HIGHLIGHT_PROVIDER_RATE_LIMITED`, `HIGHLIGHT_PROVIDER_UNAVAILABLE`, `HIGHLIGHT_PROVIDER_REJECTED`,
+`HIGHLIGHT_PROVIDER_INVALID`, and `HIGHLIGHT_WINDOW_TOO_LARGE` codes, which carry no provider text.
+`highlights/provider_router.py` proves both configured model aliases are known and unretired before
+a worker starts, and falls back to the offline provider only for retryable failures.
+
+`highlights/deduplicate.py` drops a candidate that repeats a stronger one at temporal IoU 0.65 or
+excerpt cosine 0.90, walking strongest-first so the survivor is deterministic, and returns
+survivors in transcript order. `highlights/rerank.py` scores the seven dimensions with explicit
+weights, accepts a provider order only when it is a true permutation, and otherwise falls back to
+the local ranking. Stored scores are assigned from the sorted pool of local scores, so a stored
+score can never contradict its own rank. The ranking policy keeps 30 candidates and exposes 10.
+
+`highlights/analyzer.py` drives one transcript: build windows, extract per window, validate every
+proposal against the authoritative words, deduplicate, rerank globally, and rank. A window the
+provider refuses is reported through `on_window_failure` and the remaining windows still complete;
+the analysis fails only when fewer than three candidates survive, and that failure is retryable
+exactly when a window failed transiently.
+
+`jobs/analyze_task.py` runs the ANALYZE stage. It loads the project's sole canonical Transcript,
+returns immediately when candidates already exist, records each failed window as its own durable
+progress event carrying the window index and the stable error code, and inserts every ranked
+candidate and every provider call in one tenant-scoped worker transaction. Because the worker holds
+no DELETE grant on `clip_candidates`, a redelivery converges on the stored set rather than
+rewriting it, and a concurrent insert conflict is re-checked before it is reported as
+`ANALYSIS_INTEGRITY`. `ANALYZE` is now registered in `jobs/tasks.py`.
+
+Two supporting changes were needed. Migration `0008` adds the candidate evidence the plan's
+original column list omitted — `payoff`, `start_word_id`, `end_word_id`, and
+`context_dependencies` — so a durable candidate carries the word IDs it was derived from rather
+than timestamps alone. `update_job_progress` gained an optional `detail` payload so a failed window
+can be explained in its own event instead of being flattened into a stage name.
+
+Final verification: 697 tests passed, five environment-gated tests skipped, and coverage reached
+93%, with 100% line and branch coverage on every module this task touched. Ruff check, Ruff format
+check, and strict mypy all passed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -396,8 +447,9 @@ oversight.
 | A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
 | Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
-| Binding `WindowingPolicy` and `CandidatePolicy` to `Settings` instead of their module defaults, so window shape and the duration preset are deployment configuration | Task 14, which builds the analyzer that constructs them |
-| Persisting `ClipCandidateDraft` rows, deduplication, global reranking, and provider calls | Task 14 |
+| Binding `WindowingPolicy`, `CandidatePolicy`, `DeduplicationPolicy`, and `RankingPolicy` to `Settings` instead of their module defaults, so window shape, the duration preset, and the exposed-candidate count are deployment configuration | Task 16, which owns the analysis endpoint that reads them |
+| Exposing candidates over HTTP; Task 14 marks the exposed ranks in `model_metadata` but adds no route | Task 16 |
+| Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

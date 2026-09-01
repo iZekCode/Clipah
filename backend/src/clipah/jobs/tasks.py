@@ -187,6 +187,7 @@ def _now() -> datetime:
     return datetime.now(tz=UTC)
 
 
+from clipah.jobs.analyze_task import analyze_stage_runner  # noqa: E402
 from clipah.jobs.ingest_task import (  # noqa: E402
     ingest_stage_runner,
     validate_ingest_readiness,
@@ -197,6 +198,7 @@ from clipah.jobs.transcribe_task import transcribe_stage_runner  # noqa: E402
 _STAGE_RUNNERS.setdefault(JobKind.SOURCE_IMPORT, source_import_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.INGEST, ingest_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.TRANSCRIBE, transcribe_stage_runner)
+_STAGE_RUNNERS.setdefault(JobKind.ANALYZE, analyze_stage_runner)
 
 
 def _worker_accepts_ingest(queues: object) -> bool:

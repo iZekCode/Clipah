@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
+from typing import Any
 from uuid import UUID
 
 from sqlalchemy.orm import Session
@@ -80,8 +82,9 @@ def update_job_progress(
     stage: str,
     progress: float,
     now: datetime,
+    detail: Mapping[str, Any] | None = None,
 ) -> JobSnapshot:
-    """Record honest progress for work a worker is currently doing."""
+    """Record honest progress, with any detail a reader needs to understand the stage."""
     del now
     repository = JobRepository(session)
     job = repository.lock(workspace_id=workspace_id, job_id=job_id)
@@ -89,7 +92,8 @@ def update_job_progress(
         raise InvalidJobTransitionError(f"{job.status.value} reports no progress")
     job.stage = stage
     job.progress = progress
-    return _record(repository, job, JobEventType.PROGRESS)
+    repository.append_event(job, event_type=JobEventType.PROGRESS, payload=dict(detail or {}))
+    return snapshot_of(job)
 
 
 def succeed_job(

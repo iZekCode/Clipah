@@ -705,6 +705,7 @@ class ClipCandidate(Base):
     rank: Mapped[int] = mapped_column(Integer, nullable=False)
     score: Mapped[float] = mapped_column(Numeric(6, 5), nullable=False)
     hook: Mapped[str] = mapped_column(Text, nullable=False)
+    payoff: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
     reason: Mapped[str] = mapped_column(Text, nullable=False)
     category: Mapped[str] = mapped_column(String(64), nullable=False)
     tags: Mapped[list[str]] = mapped_column(
@@ -712,7 +713,14 @@ class ClipCandidate(Base):
     )
     start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
     end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_word_id: Mapped[str] = mapped_column(
+        String(32), nullable=False, server_default=text("''")
+    )
+    end_word_id: Mapped[str] = mapped_column(String(32), nullable=False, server_default=text("''"))
     transcript_excerpt: Mapped[str] = mapped_column(Text, nullable=False)
+    context_dependencies: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
     score_breakdown: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     context_warnings: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, server_default=text("'{}'")
