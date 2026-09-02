@@ -73,7 +73,54 @@ Whether you have a YouTube video URL or a local video file, Clipah uses advanced
 
 ---
 
+## 🚧 Repository layout during the rebuild
+
+Clipah is being rebuilt. Two stacks live in this repository at once, and only the rebuild
+receives new work. `AGENTS.md` holds the working rules, `plan.md` the specification, and
+`PROGRESS.md` the current position.
+
+| Path | What it is |
+| --- | --- |
+| `backend/` | The FastAPI + Celery backend (Python 3.13, managed with `uv`). |
+| `frontend/` | **The product UI.** Next.js 15, React 19, TypeScript, TanStack Query. |
+| `contracts/openapi.json` | The backend contract the typed frontend client is generated from. |
+| `app.py`, `templates/`, `static/` | The legacy Flask application, kept until the cutover and no longer the product UI. |
+
+### Running the frontend
+
+```bash
+pnpm install                      # workspace root
+pnpm dev                          # http://localhost:3000
+```
+
+The browser only ever calls its own origin: `/api/*` is rewritten to the FastAPI process
+at `CLIPAH_API_ORIGIN` (default `http://127.0.0.1:8000`), which keeps the Session cookie
+first-party and satisfies the backend's same-origin CSRF check without any CORS grant.
+
+Frontend checks, all runnable from the repository root:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+### Regenerating the typed API client
+
+The frontend never hand-writes request or response types. After any backend route or
+schema change:
+
+```bash
+scripts/export-openapi.sh         # writes contracts/openapi.json
+pnpm generate:api                 # regenerates frontend/lib/api/generated/
+```
+
+---
+
 ## 🏗️ Architecture
+
+> The diagram and stack below describe the legacy Flask application.
 
 Clipah combines multiple powerful technologies to automate clip creation:
 

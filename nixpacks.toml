@@ -1,3 +1,9 @@
+# Deployment configuration for the legacy Flask stack only.
+#
+# The product UI is now the Next.js application in `frontend/`, which is built and served
+# separately and proxies `/api` to FastAPI. This file pins the Python provider so the
+# legacy service keeps building from `app.py` and never builds the frontend package, and
+# it is removed with the rest of the legacy deployment at cutover.
 providers = ["python"]
 
 [phases.setup]

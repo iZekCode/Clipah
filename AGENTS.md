@@ -42,6 +42,8 @@ and do not skip requirements it does state.
 
 ## Quality gates
 
+### Backend
+
 All four commands run from `backend/` and all four must pass before work is handed over:
 
 ```bash
@@ -53,6 +55,21 @@ uv run pytest -q --cov=clipah --cov-fail-under=90
 
 There is no "fix it in the next task". A gate that fails is work that is not finished.
 Coverage may not be lowered; if a line is uncovered, either test it or delete it.
+
+### Frontend
+
+A task that touches `frontend/` runs these four from the repository root, and all four
+must pass:
+
+```bash
+pnpm lint
+pnpm typecheck
+pnpm test
+pnpm build
+```
+
+The repository root is a pnpm workspace whose one package is `frontend/`; each root
+script delegates to it. `pnpm install` from the root installs everything.
 
 ## Local infrastructure
 
@@ -106,6 +123,25 @@ mechanics.
 
 **Determinism.** No wall-clock reads, no randomness, and no network calls inside domain
 code. Clocks and providers are injected so tests can pin them.
+
+## Frontend conventions
+
+**Tooling.** `pnpm` manages the workspace and the lockfile. TypeScript runs in strict mode
+with `noUncheckedIndexedAccess`; ESLint runs `next/core-web-vitals` and `next/typescript`
+over `app`, `components`, `hooks`, `lib`, and `tests`. Vitest with Testing Library runs in
+jsdom.
+
+**Types come from the backend.** Request and response types are never hand-written. Run
+`scripts/export-openapi.sh` and then `pnpm generate:api`; `frontend/lib/api/generated/` is
+generated output and is not edited by hand.
+
+**One way to call the API.** Every request goes through `apiFetch` in
+`frontend/lib/api/client.ts`, which is also the generated client's mutator: same-origin
+`/api` paths, `credentials: 'same-origin'`, the double-submit CSRF token echoed on unsafe
+methods, and failures raised as an `ApiError` carrying `code` and `requestId`.
+
+**Nothing is rendered as markup.** Provider and user text is rendered as React children.
+`dangerouslySetInnerHTML` is a lint error.
 
 ## Non-negotiable safety rules
 

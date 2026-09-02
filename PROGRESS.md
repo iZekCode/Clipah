@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 16 is ready to commit. **Task 17 follows.**
+**Current position:** Task 17 is ready to commit. **Task 18 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -37,7 +37,7 @@ retries do not duplicate records or artifacts.
 | 13 | Implement transcript windowing and candidate extraction schemas | `[x]` (`cedc4e9`) |
 | 14 | Implement structured LLM extraction, deduplication, and global reranking | `[x]` (`efcdcfa`) |
 | 15 | Add the versioned highlight evaluation harness | `[x]` (`7a51d88`) |
-| 16 | Expose analysis and ranked candidate endpoints | `[~]` (ready to commit) |
+| 16 | Expose analysis and ranked candidate endpoints | `[x]` (`98a8636`) |
 
 ## Phase C — Product dashboard and basic editor (Tasks 17-23)
 
@@ -46,7 +46,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 17 | Move the product UI into one clean Next.js frontend | `[ ]` |
+| 17 | Move the product UI into one clean Next.js frontend | `[~]` (ready to commit) |
 | 18 | Build authentication and project dashboard UX | `[ ]` |
 | 19 | Build resumable upload and safe YouTube import UX | `[ ]` |
 | 20 | Build ranked clips review UX | `[ ]` |
@@ -504,6 +504,47 @@ tests skipped, and total coverage reached 94.11%. Ruff check, Ruff format check,
 passed. No commit was created; the required owner commit message is
 `feat: expose ranked clip candidates`.
 
+### Task 17 — One clean Next.js product frontend
+
+The product UI is now the Next.js application in `frontend/`, and the repository root is a
+pnpm workspace whose single package it is. The root `app/`, `components/`, `hooks/`, `lib/`,
+and the Next.js configuration moved under `frontend/`; the root `styles/` directory keeps
+only the TrueType fonts the legacy Flask renderer still loads. The v0 scaffold's
+`ignoreDuringBuilds` and `ignoreBuildErrors` escapes are gone, so ESLint and TypeScript now
+fail the build rather than being skipped by it.
+
+Types are no longer hand-written on either side of the boundary. `scripts/export-openapi.sh`
+builds the application from the same factory the API serves and writes
+`contracts/openapi.json`, and `pnpm generate:api` turns that document into the TanStack Query
+client under `frontend/lib/api/generated/`. Every generated call goes through `apiFetch` in
+`frontend/lib/api/client.ts`, so the whole client inherits one behaviour: same-origin `/api`
+paths, `credentials: 'same-origin'`, the double-submit CSRF token echoed in `X-CSRF-Token` on
+unsafe methods, and failures raised as an `ApiError` carrying the backend's `code` and
+`requestId`. `next.config.mjs` rewrites `/api/:path*` to `CLIPAH_API_ORIGIN`, which keeps the
+Session cookie first-party and satisfies the backend's same-origin check without CORS; the
+rewrite was verified end to end against a stub origin.
+
+The landing page and the dashboard shell are rebuilt as React text rendering. No component
+in the product path uses `dangerouslySetInnerHTML` — the one vendored use, the chart theme
+style tag, now passes its rules as element text, and `react/no-danger` is a lint error so a
+future one cannot land quietly. The subtitle and watermark controls emit real booleans and
+omit the watermark text entirely when no watermark was asked for, replacing the legacy form
+fields that serialized every toggle as the string `"true"` or `"false"`. The new UI depends
+on neither the Tailwind CDN, the unpkg Lucide bundle, the Flask templates, nor
+`static/script.js`; the redundant `lucide` package was dropped in favour of `lucide-react`.
+
+Twelve smoke tests were written and watched fail before any of it existed: the landing page,
+the authenticated dashboard shell, request-identifier error rendering, strict boolean
+serialization, literal rendering of strings that contain HTML tags, and the client's cookie,
+CSRF, and error-envelope behaviour including a failure body that is not the envelope.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (12 passed), and `pnpm build`
+all passed, and the backend gates were re-run unchanged — Ruff check, Ruff format check,
+strict mypy, and 785 tests passed with five environment-gated skips at 94.11% coverage. No
+commit was created; the required owner commit message is
+`refactor: make Next.js the product frontend`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -512,6 +553,11 @@ oversight.
 | Deferred | Owner |
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
+| Real authentication in the dashboard shell — the shell renders a placeholder User and Workspace instead of reading `/api/v1/me` | Task 18 |
+| Playwright and any end-to-end frontend suite; Task 17 ships Vitest and Testing Library only | Task 18 (`frontend/e2e/`) |
+| A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
+| Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
+| Replacing `nixpacks.toml` with per-process Railway deployment configuration for the frontend and backend | Task 46 |
 | Workspace delete and restore endpoints | Task 45 |
 | Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Task 45 — Task 8 supplies the `maintenance` queue this sweep will run on |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
