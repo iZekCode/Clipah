@@ -17,6 +17,11 @@ def event_channel(*, workspace_id: UUID, job_id: UUID) -> str:
     return f"{CHANNEL_PREFIX}:{workspace_id}:{job_id}"
 
 
+def workspace_channel(*, workspace_id: UUID) -> str:
+    """Name the channel one Workspace's job center listens on."""
+    return f"{CHANNEL_PREFIX}:{workspace_id}"
+
+
 class JobEventSubscription(Protocol):
     """One subscriber's open interest in a single job's history."""
 
@@ -35,6 +40,9 @@ class JobEventNotifier(Protocol):
 
     def subscribe(self, *, workspace_id: UUID, job_id: UUID) -> JobEventSubscription:
         """Open one subscriber's interest in a single job."""
+
+    def subscribe_workspace(self, *, workspace_id: UUID) -> JobEventSubscription:
+        """Open one job center's interest in every job of one Workspace."""
 
 
 class PollingSubscription:
@@ -64,6 +72,11 @@ class PollingJobEventNotifier:
         del workspace_id, job_id
         return PollingSubscription()
 
+    def subscribe_workspace(self, *, workspace_id: UUID) -> JobEventSubscription:
+        """Hand a job center the same subscription that only waits out the interval."""
+        del workspace_id
+        return PollingSubscription()
+
 
 class RedisSubscription:
     """One Redis pub/sub channel held open for the life of a stream."""
@@ -91,11 +104,16 @@ class RedisJobEventNotifier:
         self._redis = redis
 
     def notify(self, *, workspace_id: UUID, job_id: UUID) -> None:
-        """Publish one wakeup for every subscriber currently following this job."""
+        """Wake this job's own followers and the Workspace job centers watching all of them."""
         self._redis.publish(event_channel(workspace_id=workspace_id, job_id=job_id), "1")
+        self._redis.publish(workspace_channel(workspace_id=workspace_id), "1")
 
     def subscribe(self, *, workspace_id: UUID, job_id: UUID) -> JobEventSubscription:
         """Open one pub/sub channel for this job before its history is replayed."""
         return RedisSubscription(
             self._redis, event_channel(workspace_id=workspace_id, job_id=job_id)
         )
+
+    def subscribe_workspace(self, *, workspace_id: UUID) -> JobEventSubscription:
+        """Open one pub/sub channel carrying every job wakeup of one Workspace."""
+        return RedisSubscription(self._redis, workspace_channel(workspace_id=workspace_id))

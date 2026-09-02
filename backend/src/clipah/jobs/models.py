@@ -116,6 +116,15 @@ class JobEventRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class WorkspaceEventBoundary:
+    """The last Workspace-wide event a job-center subscriber already holds."""
+
+    created_at: datetime
+    job_id: UUID
+    sequence: int
+
+
+@dataclass(frozen=True, slots=True)
 class JobContext:
     """The identifiers and cancellation question one worker stage is allowed to see.
 

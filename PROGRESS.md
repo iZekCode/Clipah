@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 17 is ready to commit. **Task 18 follows.**
+**Current position:** Task 18 is ready to commit. **Task 19 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -46,8 +46,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 17 | Move the product UI into one clean Next.js frontend | `[~]` (ready to commit) |
-| 18 | Build authentication and project dashboard UX | `[ ]` |
+| 17 | Move the product UI into one clean Next.js frontend | `[x]` (`e45a3fe`) |
+| 18 | Build authentication and project dashboard UX | `[~]` (ready to commit) |
 | 19 | Build resumable upload and safe YouTube import UX | `[ ]` |
 | 20 | Build ranked clips review UX | `[ ]` |
 | 21 | Run the editor-engine bake-off and record the adoption decision | `[ ]` |
@@ -545,6 +545,72 @@ commit was created; the required owner commit message is
 `refactor: make Next.js the product frontend`.
 
 
+### Task 18 — Authentication and the project dashboard
+
+The frontend now shows a Workspace instead of a placeholder. `RequireSession` reads
+`/api/v1/me` and renders one of three honest states — still checking, an invitation to sign
+in, or the private content — so nothing about a Session is guessed from the browser.
+`WorkspaceProvider` holds the memberships the backend returned and the one Workspace being
+viewed; a freshly bootstrapped User lands in their personal Workspace, and the only thing the
+browser remembers is which membership was last opened, ignored as soon as it names a
+Workspace the member no longer belongs to.
+
+The route shell from Section 9 exists: `/signin`, `/demo`, `/dashboard` and its overview,
+projects, project detail, clips, clip detail, assets, templates, brand kits, team,
+publishing, settings, and settings/connections. `DashboardShell` marks the entry for the
+route being viewed with `aria-current="page"` and keeps its navigation reachable on a narrow
+screen behind one labelled control. `/demo` renders bundled example candidates and calls no
+endpoint at all.
+
+The Project library pages through the backend's cursor rather than holding a Workspace in
+memory, names the processing state each Project is actually in, renames optimistically and
+reverts on refusal, and offers the recovery window a soft delete leaves open. Writing
+controls are hidden from members whose role cannot write, which is a courtesy on top of the
+backend's refusal, never a substitute for it. Another Workspace's Project renders the same
+generic not-found message as a Project that never existed.
+
+The job center follows one Workspace-wide Server-Sent Events stream. It survives navigation,
+keeps finished work in the list instead of dropping it at the moment it succeeds, deep-links
+each job to its Project, and closes the connection and empties the list when the active
+Workspace changes, so one Workspace's work is never visible while another is open.
+
+Two backend gaps were found and closed inside this task, because the screen the plan asks
+for cannot be answered without them:
+
+- `GET /api/v1/dashboard/summary` answers the whole overview in one read — the Workspace and
+  the caller's role, the active Project count, recent Projects, unfinished Jobs, consumption
+  against each monthly budget, and the top exposed Clip Candidates. Six contract tests cover
+  it, including that archived Projects, terminal Jobs, and unexposed candidates are omitted,
+  that another Workspace's work never appears, and that a missing membership is refused
+  exactly like a missing Workspace.
+- `GET /api/v1/jobs/events` streams every Job of one Workspace. Its `id` is an opaque base64
+  cursor over `(created_at, job_id, sequence)`, because `sequence` is per-Job and events
+  written in one transaction share a timestamp; an unreadable cursor replays the whole
+  history rather than failing. Seven contract tests cover replay, resumption, staying open
+  past a terminal Job, tenant isolation, and anonymous refusal.
+
+Strict response models were added to `/me`, `/workspaces`, `/workspaces/{id}/members`, and
+the Project routes so the generated frontend types stop being `Record<string, unknown>`;
+twenty contract tests assert every typed success response is a component reference that
+forbids extra fields. `contracts/openapi.json` was re-exported and the client regenerated.
+JSON shapes did not change.
+
+`clipah.dev.seed` mints one signed-in Session directly for browser tests, refuses to run when
+the environment is production, and prints the cookies as JSON for the Playwright runner.
+
+Thirty-five frontend tests were written and watched fail before any feature module existed,
+covering signed-out, loading, empty, populated, error, membership-safe 404, Workspace
+switching, responsive navigation, active-route state, job-center persistence across
+navigation, and role-gated controls.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (35 passed), and `pnpm build`
+all passed; Ruff check, Ruff format check, strict mypy, and 822 backend tests passed with
+five environment-gated skips at 94.32% coverage. The Playwright suite in `frontend/e2e/` was
+written but not run here: it needs Postgres, the backend, the frontend, and browser binaries
+running together. No commit was created; the required owner commit message is
+`feat: add secure project dashboard`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -553,8 +619,8 @@ oversight.
 | Deferred | Owner |
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
-| Real authentication in the dashboard shell — the shell renders a placeholder User and Workspace instead of reading `/api/v1/me` | Task 18 |
-| Playwright and any end-to-end frontend suite; Task 17 ships Vitest and Testing Library only | Task 18 (`frontend/e2e/`) |
+| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts` and `pnpm test:e2e` exist, but no run happened in the Task 18 session because a full stack and browser binaries were not available | the repository owner, before Task 19 |
+| The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
 | Replacing `nixpacks.toml` with per-process Railway deployment configuration for the frontend and backend | Task 46 |

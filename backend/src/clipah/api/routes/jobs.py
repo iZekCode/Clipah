@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
+from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
@@ -32,8 +35,14 @@ from clipah.jobs.models import (
     JobEventType,
     JobNotFoundError,
     JobSnapshot,
+    WorkspaceEventBoundary,
 )
-from clipah.jobs.use_cases import job_events, job_snapshot, request_job_cancellation
+from clipah.jobs.use_cases import (
+    job_events,
+    job_snapshot,
+    request_job_cancellation,
+    workspace_job_events,
+)
 from clipah.workspaces.models import WorkspaceAction
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
@@ -47,6 +56,27 @@ WritableWorkspace = Annotated[
 LastEventId = Annotated[str | None, Header(alias="Last-Event-ID")]
 SSE_MEDIA_TYPE = "text/event-stream"
 TERMINAL_EVENTS = frozenset({JobEventType.SUCCEEDED, JobEventType.FAILED, JobEventType.CANCELED})
+WORKSPACE_EVENT_BATCH = 100
+
+
+@router.get("/jobs/events")
+def stream_workspace(
+    request: Request,
+    session: DatabaseSession,
+    workspace: ReadableWorkspace,
+    last_event_id: LastEventId = None,
+) -> StreamingResponse:
+    """Stream every Job of one Workspace on the single connection its job center holds."""
+    del session
+    frames = _workspace_event_frames(
+        components=auth_components_for(request),
+        settings=settings_for(request),
+        notifier=job_event_notifier_for(request),
+        workspace_id=workspace.access.workspace_id,
+        user_id=workspace.user.user_id,
+        after=_workspace_resume_point(last_event_id),
+    )
+    return StreamingResponse(frames, media_type=SSE_MEDIA_TYPE)
 
 
 @router.get("/jobs/{job_id}")
@@ -145,6 +175,58 @@ def _event_frames(
         subscription.close()
 
 
+def _workspace_event_frames(
+    *,
+    components: AuthComponents,
+    settings: Settings,
+    notifier: JobEventNotifier,
+    workspace_id: UUID,
+    user_id: UUID,
+    after: WorkspaceEventBoundary | None,
+) -> Iterator[str]:
+    """Follow one Workspace's whole job history for as long as the client stays connected.
+
+    No single Job can end this stream: a job center outlives every Job it announces, so
+    the connection closes only when the browser goes away.
+    """
+    subscription = notifier.subscribe_workspace(workspace_id=workspace_id)
+    heartbeat = settings.job_event_heartbeat_seconds
+    quiet_since = time.monotonic()
+    try:
+        while True:
+            events = _read_workspace(
+                components, workspace_id=workspace_id, user_id=user_id, after=after
+            )
+            for event in events:
+                after = WorkspaceEventBoundary(
+                    created_at=event.created_at, job_id=event.job_id, sequence=event.sequence
+                )
+                quiet_since = time.monotonic()
+                yield _workspace_event_frame(event)
+            if events:
+                continue
+            subscription.wait(settings.job_event_poll_seconds)
+            if time.monotonic() - quiet_since >= heartbeat:
+                quiet_since = time.monotonic()
+                yield ": heartbeat\n\n"
+    finally:
+        subscription.close()
+
+
+def _read_workspace(
+    components: AuthComponents,
+    *,
+    workspace_id: UUID,
+    user_id: UUID,
+    after: WorkspaceEventBoundary | None,
+) -> list[JobEventRecord]:
+    """Read the next batch of Workspace history in its own short transaction."""
+    with _tenant_session(components, workspace_id=workspace_id, user_id=user_id) as session:
+        return workspace_job_events(
+            session, workspace_id=workspace_id, after=after, limit=WORKSPACE_EVENT_BATCH
+        )
+
+
 def _read(
     components: AuthComponents,
     *,
@@ -184,6 +266,43 @@ def _resume_point(last_event_id: str | None) -> int:
     if last_event_id is None or not last_event_id.isdigit():
         return 0
     return int(last_event_id)
+
+
+def _workspace_resume_point(last_event_id: str | None) -> WorkspaceEventBoundary | None:
+    """Read the Workspace-wide point a reconnecting job center holds, ignoring anything else.
+
+    A resume point that cannot be read is treated as no resume point at all: replaying
+    history the client may already have is harmless, while refusing the stream is not.
+    """
+    if last_event_id is None:
+        return None
+    try:
+        padded = last_event_id + "=" * (-len(last_event_id) % 4)
+        created_at, job_id, sequence = (
+            base64.urlsafe_b64decode(padded).decode().rsplit("|", maxsplit=2)
+        )
+        timestamp = datetime.fromisoformat(created_at)
+        if timestamp.tzinfo is None:
+            return None
+        return WorkspaceEventBoundary(
+            created_at=timestamp, job_id=UUID(job_id), sequence=int(sequence)
+        )
+    except (ValueError, UnicodeDecodeError, binascii.Error):
+        return None
+
+
+def _workspace_event_cursor(event: JobEventRecord) -> str:
+    """Name the exact place in one Workspace's history a subscriber has reached."""
+    raw = f"{event.created_at.isoformat()}|{event.job_id}|{event.sequence}".encode()
+    return base64.urlsafe_b64encode(raw).decode().rstrip("=")
+
+
+def _workspace_event_frame(event: JobEventRecord) -> str:
+    """Render one Workspace-wide event, naming the Job it belongs to."""
+    data = json.dumps({**event.payload, "jobId": str(event.job_id), "sequence": event.sequence})
+    return (
+        f"id: {_workspace_event_cursor(event)}\nevent: {event.event_type.value}\ndata: {data}\n\n"
+    )
 
 
 def _event_frame(event: JobEventRecord) -> str:

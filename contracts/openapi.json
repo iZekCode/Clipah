@@ -297,6 +297,333 @@
         "title": "CreateUploadRequest",
         "type": "object"
       },
+      "CurrentUserResponse": {
+        "additionalProperties": false,
+        "description": "The signed-in User, and how recently they proved who they are.",
+        "properties": {
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatarurl"
+          },
+          "displayName": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Displayname"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "recentAuthentication": {
+            "title": "Recentauthentication",
+            "type": "boolean"
+          },
+          "sessionId": {
+            "format": "uuid",
+            "title": "Sessionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "displayName",
+          "avatarUrl",
+          "sessionId",
+          "recentAuthentication"
+        ],
+        "title": "CurrentUserResponse",
+        "type": "object"
+      },
+      "DashboardCandidateResponse": {
+        "additionalProperties": false,
+        "description": "One highly ranked Clip Candidate waiting for review.",
+        "properties": {
+          "category": {
+            "title": "Category",
+            "type": "string"
+          },
+          "endMs": {
+            "title": "Endms",
+            "type": "integer"
+          },
+          "hook": {
+            "title": "Hook",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "rank",
+          "score",
+          "hook",
+          "category",
+          "startMs",
+          "endMs"
+        ],
+        "title": "DashboardCandidateResponse",
+        "type": "object"
+      },
+      "DashboardJobResponse": {
+        "additionalProperties": false,
+        "description": "One unfinished Job the job center has to keep announcing.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "progress": {
+            "title": "Progress",
+            "type": "number"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "stage": {
+            "title": "Stage",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "kind",
+          "status",
+          "stage",
+          "progress",
+          "updatedAt"
+        ],
+        "title": "DashboardJobResponse",
+        "type": "object"
+      },
+      "DashboardJobsResponse": {
+        "additionalProperties": false,
+        "description": "The Jobs this Workspace still has in flight.",
+        "properties": {
+          "active": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardJobResponse"
+            },
+            "title": "Active",
+            "type": "array"
+          }
+        },
+        "required": [
+          "active"
+        ],
+        "title": "DashboardJobsResponse",
+        "type": "object"
+      },
+      "DashboardProjectResponse": {
+        "additionalProperties": false,
+        "description": "One recently touched Project as the overview lists it.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sourceKind": {
+            "title": "Sourcekind",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status",
+          "sourceKind",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "DashboardProjectResponse",
+        "type": "object"
+      },
+      "DashboardProjectsResponse": {
+        "additionalProperties": false,
+        "description": "How much work this Workspace holds, and the part of it worth showing first.",
+        "properties": {
+          "activeCount": {
+            "title": "Activecount",
+            "type": "integer"
+          },
+          "recent": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardProjectResponse"
+            },
+            "title": "Recent",
+            "type": "array"
+          }
+        },
+        "required": [
+          "activeCount",
+          "recent"
+        ],
+        "title": "DashboardProjectsResponse",
+        "type": "object"
+      },
+      "DashboardSummaryResponse": {
+        "additionalProperties": false,
+        "description": "The whole overview screen, answered by one read.",
+        "properties": {
+          "jobs": {
+            "$ref": "#/components/schemas/DashboardJobsResponse"
+          },
+          "projects": {
+            "$ref": "#/components/schemas/DashboardProjectsResponse"
+          },
+          "topCandidates": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardCandidateResponse"
+            },
+            "title": "Topcandidates",
+            "type": "array"
+          },
+          "usage": {
+            "items": {
+              "$ref": "#/components/schemas/DashboardUsageResponse"
+            },
+            "title": "Usage",
+            "type": "array"
+          },
+          "workspace": {
+            "$ref": "#/components/schemas/DashboardWorkspaceResponse"
+          }
+        },
+        "required": [
+          "workspace",
+          "projects",
+          "jobs",
+          "usage",
+          "topCandidates"
+        ],
+        "title": "DashboardSummaryResponse",
+        "type": "object"
+      },
+      "DashboardUsageResponse": {
+        "additionalProperties": false,
+        "description": "What one metered resource has cost against its monthly budget.",
+        "properties": {
+          "consumed": {
+            "title": "Consumed",
+            "type": "number"
+          },
+          "limit": {
+            "title": "Limit",
+            "type": "integer"
+          },
+          "resource": {
+            "$ref": "#/components/schemas/QuotaResource"
+          }
+        },
+        "required": [
+          "resource",
+          "consumed",
+          "limit"
+        ],
+        "title": "DashboardUsageResponse",
+        "type": "object"
+      },
+      "DashboardWorkspaceResponse": {
+        "additionalProperties": false,
+        "description": "The Workspace the overview belongs to, and the caller's standing in it.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "role"
+        ],
+        "title": "DashboardWorkspaceResponse",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -310,6 +637,25 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "JobKind": {
+        "enum": [
+          "source_import",
+          "ingest",
+          "transcribe",
+          "analyze",
+          "broll_plan",
+          "broll_retrieve",
+          "broll_generate",
+          "render",
+          "campaign_generate",
+          "social_rendition",
+          "social_publish",
+          "social_reconcile",
+          "cleanup"
+        ],
+        "title": "JobKind",
+        "type": "string"
+      },
       "JobStatus": {
         "enum": [
           "queued",
@@ -322,6 +668,59 @@
         ],
         "title": "JobStatus",
         "type": "string"
+      },
+      "MemberCollectionResponse": {
+        "additionalProperties": false,
+        "description": "The people who can currently act inside one Workspace.",
+        "properties": {
+          "members": {
+            "items": {
+              "$ref": "#/components/schemas/MemberResponse"
+            },
+            "title": "Members",
+            "type": "array"
+          }
+        },
+        "required": [
+          "members"
+        ],
+        "title": "MemberCollectionResponse",
+        "type": "object"
+      },
+      "MemberResponse": {
+        "additionalProperties": false,
+        "description": "One fellow member as it is safe to show inside their Workspace.",
+        "properties": {
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "joinedAt": {
+            "title": "Joinedat",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId",
+          "role",
+          "displayName",
+          "email",
+          "joinedAt"
+        ],
+        "title": "MemberResponse",
+        "type": "object"
       },
       "ProjectCreateRequest": {
         "additionalProperties": false,
@@ -343,6 +742,36 @@
         "title": "ProjectCreateRequest",
         "type": "object"
       },
+      "ProjectPageResponse": {
+        "additionalProperties": false,
+        "description": "One cursor-bounded page of a Workspace's Projects.",
+        "properties": {
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectResponse"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "projects",
+          "nextCursor"
+        ],
+        "title": "ProjectPageResponse",
+        "type": "object"
+      },
       "ProjectRenameRequest": {
         "additionalProperties": false,
         "description": "Accept one strictly shaped Project rename payload.",
@@ -359,12 +788,84 @@
         "title": "ProjectRenameRequest",
         "type": "object"
       },
+      "ProjectResponse": {
+        "additionalProperties": false,
+        "description": "One Project as it is safe to show a member of its Workspace.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "sourceKind": {
+            "$ref": "#/components/schemas/SourceKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/ProjectStatus"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          },
+          "workspaceId": {
+            "format": "uuid",
+            "title": "Workspaceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "workspaceId",
+          "name",
+          "status",
+          "sourceKind",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ProjectResponse",
+        "type": "object"
+      },
+      "ProjectStatus": {
+        "enum": [
+          "created",
+          "uploading",
+          "ingesting",
+          "transcribing",
+          "analyzing",
+          "ready",
+          "failed",
+          "archived"
+        ],
+        "title": "ProjectStatus",
+        "type": "string"
+      },
       "PublishingRolePolicy": {
         "enum": [
           "owner_admin_editor",
           "owner_admin"
         ],
         "title": "PublishingRolePolicy",
+        "type": "string"
+      },
+      "QuotaResource": {
+        "description": "Metered Workspace budgets that reset with each calendar month.",
+        "enum": [
+          "analyses",
+          "stock_requests",
+          "generated_images",
+          "generated_videos",
+          "generated_seconds",
+          "social_publications"
+        ],
+        "title": "QuotaResource",
         "type": "string"
       },
       "SourceKind": {
@@ -416,6 +917,24 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "WorkspaceCollectionResponse": {
+        "additionalProperties": false,
+        "description": "Every Workspace the caller may enter.",
+        "properties": {
+          "workspaces": {
+            "items": {
+              "$ref": "#/components/schemas/WorkspaceResponse"
+            },
+            "title": "Workspaces",
+            "type": "array"
+          }
+        },
+        "required": [
+          "workspaces"
+        ],
+        "title": "WorkspaceCollectionResponse",
+        "type": "object"
+      },
       "WorkspaceCreateRequest": {
         "additionalProperties": false,
         "description": "The Workspace a member asks us to create for them.",
@@ -443,6 +962,73 @@
           "team"
         ],
         "title": "WorkspaceKind",
+        "type": "string"
+      },
+      "WorkspaceResponse": {
+        "additionalProperties": false,
+        "description": "One Workspace as it is safe to show a member of it.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WorkspaceKind"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "publishingRolePolicy": {
+            "$ref": "#/components/schemas/PublishingRolePolicy"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/WorkspaceStatus"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "kind",
+          "status",
+          "publishingRolePolicy",
+          "role",
+          "createdAt"
+        ],
+        "title": "WorkspaceResponse",
+        "type": "object"
+      },
+      "WorkspaceRole": {
+        "enum": [
+          "owner",
+          "admin",
+          "editor",
+          "reviewer",
+          "viewer"
+        ],
+        "title": "WorkspaceRole",
+        "type": "string"
+      },
+      "WorkspaceStatus": {
+        "enum": [
+          "active",
+          "suspended",
+          "deleted"
+        ],
+        "title": "WorkspaceStatus",
         "type": "string"
       },
       "WorkspaceUpdateRequest": {
@@ -583,6 +1169,108 @@
         "summary": "Logout",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/dashboard/summary": {
+      "get": {
+        "description": "Summarize one Workspace for a member who has already proven they belong to it.",
+        "operationId": "show_api_v1_dashboard_summary_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DashboardSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "dashboard"
+        ]
+      }
+    },
+    "/api/v1/jobs/events": {
+      "get": {
+        "description": "Stream every Job of one Workspace on the single connection its job center holds.",
+        "operationId": "stream_workspace_api_v1_jobs_events_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Last-Event-ID",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Last-Event-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Stream Workspace",
+        "tags": [
+          "jobs"
         ]
       }
     },
@@ -775,9 +1463,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Read Current User Api V1 Me Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/CurrentUserResponse"
                 }
               }
             },
@@ -924,9 +1610,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response List Collection Api V1 Projects Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectPageResponse"
                 }
               }
             },
@@ -989,9 +1673,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Api V1 Projects Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectResponse"
                 }
               }
             },
@@ -1090,9 +1772,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Show Api V1 Projects  Project Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectResponse"
                 }
               }
             },
@@ -1154,9 +1834,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Rename Api V1 Projects  Project Id  Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectResponse"
                 }
               }
             },
@@ -1421,9 +2099,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Restore Api V1 Projects  Project Id  Restore Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/ProjectResponse"
                 }
               }
             },
@@ -1830,9 +2506,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Index Api V1 Workspaces Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkspaceCollectionResponse"
                 }
               }
             },
@@ -1862,9 +2536,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Create Api V1 Workspaces Post",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             },
@@ -1908,9 +2580,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Show Api V1 Workspaces  Workspace Id  Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             },
@@ -1962,9 +2632,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Update Api V1 Workspaces  Workspace Id  Patch",
-                  "type": "object"
+                  "$ref": "#/components/schemas/WorkspaceResponse"
                 }
               }
             },
@@ -2008,9 +2676,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "additionalProperties": true,
-                  "title": "Response Members Api V1 Workspaces  Workspace Id  Members Get",
-                  "type": "object"
+                  "$ref": "#/components/schemas/MemberCollectionResponse"
                 }
               }
             },

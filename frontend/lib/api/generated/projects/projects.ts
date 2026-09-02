@@ -24,19 +24,16 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  CreateApiV1ProjectsPost201,
   CreateApiV1ProjectsPostParams,
   DeleteApiV1ProjectsProjectIdDeleteParams,
   HTTPValidationError,
-  ListCollectionApiV1ProjectsGet200,
   ListCollectionApiV1ProjectsGetParams,
   ProjectCreateRequest,
+  ProjectPageResponse,
   ProjectRenameRequest,
-  RenameApiV1ProjectsProjectIdPatch200,
+  ProjectResponse,
   RenameApiV1ProjectsProjectIdPatchParams,
-  RestoreApiV1ProjectsProjectIdRestorePost200,
   RestoreApiV1ProjectsProjectIdRestorePostParams,
-  ShowApiV1ProjectsProjectIdGet200,
   ShowApiV1ProjectsProjectIdGetParams
 } from '.././model';
 
@@ -66,9 +63,9 @@ export const getListCollectionApiV1ProjectsGetUrl = (params: ListCollectionApiV1
   return stringifiedParams.length > 0 ? `/api/v1/projects?${stringifiedParams}` : `/api/v1/projects`
 }
 
-export const listCollectionApiV1ProjectsGet = async (params: ListCollectionApiV1ProjectsGetParams, options?: RequestInit): Promise<ListCollectionApiV1ProjectsGet200> => {
+export const listCollectionApiV1ProjectsGet = async (params: ListCollectionApiV1ProjectsGetParams, options?: RequestInit): Promise<ProjectPageResponse> => {
   
-  return apiFetch<ListCollectionApiV1ProjectsGet200>(getListCollectionApiV1ProjectsGetUrl(params),
+  return apiFetch<ProjectPageResponse>(getListCollectionApiV1ProjectsGetUrl(params),
   {      
     ...options,
     method: 'GET'
@@ -175,9 +172,9 @@ export const getCreateApiV1ProjectsPostUrl = (params: CreateApiV1ProjectsPostPar
 }
 
 export const createApiV1ProjectsPost = async (projectCreateRequest: ProjectCreateRequest,
-    params: CreateApiV1ProjectsPostParams, options?: RequestInit): Promise<CreateApiV1ProjectsPost201> => {
+    params: CreateApiV1ProjectsPostParams, options?: RequestInit): Promise<ProjectResponse> => {
   
-  return apiFetch<CreateApiV1ProjectsPost201>(getCreateApiV1ProjectsPostUrl(params),
+  return apiFetch<ProjectResponse>(getCreateApiV1ProjectsPostUrl(params),
   {      
     ...options,
     method: 'POST',
@@ -336,9 +333,9 @@ export const getShowApiV1ProjectsProjectIdGetUrl = (projectId: string,
 }
 
 export const showApiV1ProjectsProjectIdGet = async (projectId: string,
-    params: ShowApiV1ProjectsProjectIdGetParams, options?: RequestInit): Promise<ShowApiV1ProjectsProjectIdGet200> => {
+    params: ShowApiV1ProjectsProjectIdGetParams, options?: RequestInit): Promise<ProjectResponse> => {
   
-  return apiFetch<ShowApiV1ProjectsProjectIdGet200>(getShowApiV1ProjectsProjectIdGetUrl(projectId,params),
+  return apiFetch<ProjectResponse>(getShowApiV1ProjectsProjectIdGetUrl(projectId,params),
   {      
     ...options,
     method: 'GET'
@@ -453,9 +450,9 @@ export const getRenameApiV1ProjectsProjectIdPatchUrl = (projectId: string,
 
 export const renameApiV1ProjectsProjectIdPatch = async (projectId: string,
     projectRenameRequest: ProjectRenameRequest,
-    params: RenameApiV1ProjectsProjectIdPatchParams, options?: RequestInit): Promise<RenameApiV1ProjectsProjectIdPatch200> => {
+    params: RenameApiV1ProjectsProjectIdPatchParams, options?: RequestInit): Promise<ProjectResponse> => {
   
-  return apiFetch<RenameApiV1ProjectsProjectIdPatch200>(getRenameApiV1ProjectsProjectIdPatchUrl(projectId,params),
+  return apiFetch<ProjectResponse>(getRenameApiV1ProjectsProjectIdPatchUrl(projectId,params),
   {      
     ...options,
     method: 'PATCH',
@@ -534,9 +531,9 @@ export const getRestoreApiV1ProjectsProjectIdRestorePostUrl = (projectId: string
 }
 
 export const restoreApiV1ProjectsProjectIdRestorePost = async (projectId: string,
-    params: RestoreApiV1ProjectsProjectIdRestorePostParams, options?: RequestInit): Promise<RestoreApiV1ProjectsProjectIdRestorePost200> => {
+    params: RestoreApiV1ProjectsProjectIdRestorePostParams, options?: RequestInit): Promise<ProjectResponse> => {
   
-  return apiFetch<RestoreApiV1ProjectsProjectIdRestorePost200>(getRestoreApiV1ProjectsProjectIdRestorePostUrl(projectId,params),
+  return apiFetch<ProjectResponse>(getRestoreApiV1ProjectsProjectIdRestorePostUrl(projectId,params),
   {      
     ...options,
     method: 'POST'

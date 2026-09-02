@@ -24,13 +24,11 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
-  CreateApiV1WorkspacesPost201,
   HTTPValidationError,
-  IndexApiV1WorkspacesGet200,
-  MembersApiV1WorkspacesWorkspaceIdMembersGet200,
-  ShowApiV1WorkspacesWorkspaceIdGet200,
-  UpdateApiV1WorkspacesWorkspaceIdPatch200,
+  MemberCollectionResponse,
+  WorkspaceCollectionResponse,
   WorkspaceCreateRequest,
+  WorkspaceResponse,
   WorkspaceUpdateRequest
 } from '.././model';
 
@@ -53,9 +51,9 @@ export const getIndexApiV1WorkspacesGetUrl = () => {
   return `/api/v1/workspaces`
 }
 
-export const indexApiV1WorkspacesGet = async ( options?: RequestInit): Promise<IndexApiV1WorkspacesGet200> => {
+export const indexApiV1WorkspacesGet = async ( options?: RequestInit): Promise<WorkspaceCollectionResponse> => {
   
-  return apiFetch<IndexApiV1WorkspacesGet200>(getIndexApiV1WorkspacesGetUrl(),
+  return apiFetch<WorkspaceCollectionResponse>(getIndexApiV1WorkspacesGetUrl(),
   {      
     ...options,
     method: 'GET'
@@ -154,9 +152,9 @@ export const getCreateApiV1WorkspacesPostUrl = () => {
   return `/api/v1/workspaces`
 }
 
-export const createApiV1WorkspacesPost = async (workspaceCreateRequest: WorkspaceCreateRequest, options?: RequestInit): Promise<CreateApiV1WorkspacesPost201> => {
+export const createApiV1WorkspacesPost = async (workspaceCreateRequest: WorkspaceCreateRequest, options?: RequestInit): Promise<WorkspaceResponse> => {
   
-  return apiFetch<CreateApiV1WorkspacesPost201>(getCreateApiV1WorkspacesPostUrl(),
+  return apiFetch<WorkspaceResponse>(getCreateApiV1WorkspacesPostUrl(),
   {      
     ...options,
     method: 'POST',
@@ -226,9 +224,9 @@ export const getShowApiV1WorkspacesWorkspaceIdGetUrl = (workspaceId: string,) =>
   return `/api/v1/workspaces/${workspaceId}`
 }
 
-export const showApiV1WorkspacesWorkspaceIdGet = async (workspaceId: string, options?: RequestInit): Promise<ShowApiV1WorkspacesWorkspaceIdGet200> => {
+export const showApiV1WorkspacesWorkspaceIdGet = async (workspaceId: string, options?: RequestInit): Promise<WorkspaceResponse> => {
   
-  return apiFetch<ShowApiV1WorkspacesWorkspaceIdGet200>(getShowApiV1WorkspacesWorkspaceIdGetUrl(workspaceId),
+  return apiFetch<WorkspaceResponse>(getShowApiV1WorkspacesWorkspaceIdGetUrl(workspaceId),
   {      
     ...options,
     method: 'GET'
@@ -328,9 +326,9 @@ export const getUpdateApiV1WorkspacesWorkspaceIdPatchUrl = (workspaceId: string,
 }
 
 export const updateApiV1WorkspacesWorkspaceIdPatch = async (workspaceId: string,
-    workspaceUpdateRequest: WorkspaceUpdateRequest, options?: RequestInit): Promise<UpdateApiV1WorkspacesWorkspaceIdPatch200> => {
+    workspaceUpdateRequest: WorkspaceUpdateRequest, options?: RequestInit): Promise<WorkspaceResponse> => {
   
-  return apiFetch<UpdateApiV1WorkspacesWorkspaceIdPatch200>(getUpdateApiV1WorkspacesWorkspaceIdPatchUrl(workspaceId),
+  return apiFetch<WorkspaceResponse>(getUpdateApiV1WorkspacesWorkspaceIdPatchUrl(workspaceId),
   {      
     ...options,
     method: 'PATCH',
@@ -400,9 +398,9 @@ export const getMembersApiV1WorkspacesWorkspaceIdMembersGetUrl = (workspaceId: s
   return `/api/v1/workspaces/${workspaceId}/members`
 }
 
-export const membersApiV1WorkspacesWorkspaceIdMembersGet = async (workspaceId: string, options?: RequestInit): Promise<MembersApiV1WorkspacesWorkspaceIdMembersGet200> => {
+export const membersApiV1WorkspacesWorkspaceIdMembersGet = async (workspaceId: string, options?: RequestInit): Promise<MemberCollectionResponse> => {
   
-  return apiFetch<MembersApiV1WorkspacesWorkspaceIdMembersGet200>(getMembersApiV1WorkspacesWorkspaceIdMembersGetUrl(workspaceId),
+  return apiFetch<MemberCollectionResponse>(getMembersApiV1WorkspacesWorkspaceIdMembersGetUrl(workspaceId),
   {      
     ...options,
     method: 'GET'

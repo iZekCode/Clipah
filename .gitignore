@@ -89,3 +89,7 @@ raw_transcript.vtt
 clipah_clips.zip
 cookies.txt
 temp-audio.m4a
+
+# Playwright artifacts
+test-results/
+playwright-report/

@@ -25,9 +25,9 @@ import type {
 
 import type {
   CompleteGoogleLoginApiV1AuthGoogleCallbackGetParams,
+  CurrentUserResponse,
   HTTPValidationError,
   ListSessionsApiV1MeSessionsGet200,
-  ReadCurrentUserApiV1MeGet200,
   RevokeOtherSessionsApiV1MeSessionsDelete200
 } from '.././model';
 
@@ -330,9 +330,9 @@ export const getReadCurrentUserApiV1MeGetUrl = () => {
   return `/api/v1/me`
 }
 
-export const readCurrentUserApiV1MeGet = async ( options?: RequestInit): Promise<ReadCurrentUserApiV1MeGet200> => {
+export const readCurrentUserApiV1MeGet = async ( options?: RequestInit): Promise<CurrentUserResponse> => {
   
-  return apiFetch<ReadCurrentUserApiV1MeGet200>(getReadCurrentUserApiV1MeGetUrl(),
+  return apiFetch<CurrentUserResponse>(getReadCurrentUserApiV1MeGetUrl(),
   {      
     ...options,
     method: 'GET'

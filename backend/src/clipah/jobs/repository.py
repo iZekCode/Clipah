@@ -5,10 +5,16 @@ from __future__ import annotations
 from typing import Any
 from uuid import UUID, uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, literal, select, tuple_
 from sqlalchemy.orm import Session
 
-from clipah.jobs.models import JobEventRecord, JobEventType, JobNotFoundError, JobSnapshot
+from clipah.jobs.models import (
+    JobEventRecord,
+    JobEventType,
+    JobNotFoundError,
+    JobSnapshot,
+    WorkspaceEventBoundary,
+)
 from clipah.models import Job, JobEvent
 
 
@@ -85,6 +91,27 @@ class JobRepository:
                 JobEvent.sequence > after_sequence,
             )
             .order_by(JobEvent.sequence)
+        ).all()
+        return [_event_record(event) for event in events]
+
+    def workspace_events(
+        self, *, workspace_id: UUID, after: WorkspaceEventBoundary | None, limit: int
+    ) -> list[JobEventRecord]:
+        """Replay every Job's history in this Workspace under one stable total order.
+
+        Two Jobs can record an event in the same transaction timestamp, so the order also
+        uses the Job and its own sequence: a subscriber never sees one Job's history out
+        of order, and every subscriber sees the same order as every other.
+        """
+        order = (JobEvent.created_at, JobEvent.job_id, JobEvent.sequence)
+        conditions = [JobEvent.workspace_id == workspace_id]
+        if after is not None:
+            conditions.append(
+                tuple_(*order)
+                > tuple_(literal(after.created_at), literal(after.job_id), literal(after.sequence))
+            )
+        events = self._session.scalars(
+            select(JobEvent).where(*conditions).order_by(*order).limit(limit)
         ).all()
         return [_event_record(event) for event in events]
 

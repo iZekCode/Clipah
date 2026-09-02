@@ -18,6 +18,7 @@ from clipah.jobs.models import (
     JobEventRecord,
     JobEventType,
     JobSnapshot,
+    WorkspaceEventBoundary,
     assert_transition,
 )
 from clipah.jobs.repository import JobRepository, snapshot_of
@@ -174,6 +175,19 @@ def job_events(
     """Replay one job's durable history from the sequence a subscriber already holds."""
     return JobRepository(session).events(
         workspace_id=workspace_id, job_id=job_id, after_sequence=after_sequence
+    )
+
+
+def workspace_job_events(
+    session: Session,
+    *,
+    workspace_id: UUID,
+    after: WorkspaceEventBoundary | None,
+    limit: int,
+) -> list[JobEventRecord]:
+    """Replay one Workspace's whole job history from the point a job center already holds."""
+    return JobRepository(session).workspace_events(
+        workspace_id=workspace_id, after=after, limit=limit
     )
 
 

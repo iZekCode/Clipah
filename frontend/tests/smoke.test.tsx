@@ -11,7 +11,6 @@ import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import DashboardPage from '@/app/dashboard/page'
 import LandingPage from '@/app/page'
 import { ClipOptionsForm } from '@/components/clip-options-form'
 import { DashboardShell } from '@/components/dashboard-shell'
@@ -32,13 +31,17 @@ describe('landing page', () => {
 describe('dashboard shell', () => {
   it('renders the workspace navigation and the signed-in user for an authenticated view', () => {
     render(
-      <DashboardShell user={{ displayName: 'Ada Lovelace' }} workspaceName="Personal Workspace">
+      <DashboardShell
+        user={{ displayName: 'Ada Lovelace' }}
+        workspaceSwitcher={<p>Personal Workspace</p>}
+        jobCenter={null}
+      >
         <p>Projects live here.</p>
       </DashboardShell>,
     )
 
     expect(screen.getByRole('navigation', { name: /workspace/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /projects/i })).toHaveAttribute(
+    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute(
       'href',
       '/dashboard/projects',
     )
@@ -49,20 +52,17 @@ describe('dashboard shell', () => {
 
   it('renders provider and user text that contains HTML tags as literal text', () => {
     render(
-      <DashboardShell user={{ displayName: HTML_LOOKING_TEXT }} workspaceName={HTML_LOOKING_TEXT}>
+      <DashboardShell
+        user={{ displayName: HTML_LOOKING_TEXT }}
+        workspaceSwitcher={<p>{HTML_LOOKING_TEXT}</p>}
+        jobCenter={null}
+      >
         <p>{HTML_LOOKING_TEXT}</p>
       </DashboardShell>,
     )
 
     expect(screen.getAllByText(HTML_LOOKING_TEXT).length).toBeGreaterThan(0)
     expect(document.querySelector('img')).toBeNull()
-  })
-
-  it('renders the dashboard route inside the shell', () => {
-    render(<DashboardPage />)
-
-    expect(screen.getByRole('navigation', { name: /workspace/i })).toBeInTheDocument()
-    expect(screen.getByRole('heading', { level: 1, name: /dashboard/i })).toBeInTheDocument()
   })
 })
 

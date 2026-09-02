@@ -6,6 +6,7 @@ from typing import Any
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Request
+from pydantic import BaseModel, ConfigDict, Field
 from starlette.responses import RedirectResponse, Response
 
 from clipah.api.dependencies import (
@@ -34,6 +35,19 @@ from clipah.db import set_actor_context
 from clipah.models import User
 
 router = APIRouter(prefix="/api/v1", tags=["auth"])
+
+
+class CurrentUserResponse(BaseModel):
+    """The signed-in User, and how recently they proved who they are."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    id: UUID
+    email: str
+    display_name: str | None = Field(alias="displayName")
+    avatar_url: str | None = Field(alias="avatarUrl")
+    session_id: UUID = Field(alias="sessionId")
+    recent_authentication: bool = Field(alias="recentAuthentication")
 
 
 @router.get("/auth/google/start")
@@ -117,24 +131,24 @@ def logout(request: Request, session: DatabaseSession, user: CurrentUserDependen
     return response
 
 
-@router.get("/me")
+@router.get("/me", response_model=CurrentUserResponse)
 def read_current_user(
     request: Request, session: DatabaseSession, user: CurrentUserDependency
-) -> dict[str, Any]:
+) -> CurrentUserResponse:
     """Describe the authenticated User and the freshness of their authentication."""
     components = auth_components_for(request)
     # Authentication already proved this User is active inside this same transaction.
     record = session.get_one(User, user.user_id)
-    return {
-        "id": str(record.id),
-        "email": record.primary_email,
-        "displayName": record.display_name,
-        "avatarUrl": record.avatar_url,
-        "sessionId": str(user.session.session_id),
-        "recentAuthentication": user.session.has_recent_authentication(
+    return CurrentUserResponse(
+        id=record.id,
+        email=record.primary_email,
+        displayName=record.display_name,
+        avatarUrl=record.avatar_url,
+        sessionId=user.session.session_id,
+        recentAuthentication=user.session.has_recent_authentication(
             policy=components.policy, now=components.now()
         ),
-    }
+    )
 
 
 @router.get("/me/sessions")

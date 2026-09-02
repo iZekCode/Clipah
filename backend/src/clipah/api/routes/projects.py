@@ -5,11 +5,11 @@ from __future__ import annotations
 import base64
 import binascii
 from datetime import datetime
-from typing import Annotated, Any
+from typing import Annotated
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, Header, Query, Request, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from clipah.api.dependencies import (
     CurrentWorkspace,
@@ -19,7 +19,7 @@ from clipah.api.dependencies import (
     require_workspace,
 )
 from clipah.api.errors import ApiError
-from clipah.models import SourceKind
+from clipah.models import ProjectStatus, SourceKind
 from clipah.projects.repository import ProjectRepository
 from clipah.projects.schemas import CreateProjectCommand, ProjectPageBoundary, ProjectSummary
 from clipah.projects.use_cases import (
@@ -47,6 +47,34 @@ IdempotencyHeader = Annotated[str, Header(alias="Idempotency-Key", min_length=1,
 PROJECT_CREATE_IDEMPOTENCY_SCOPE = "projects:create"
 
 
+class ProjectResponse(BaseModel):
+    """One Project as it is safe to show a member of its Workspace."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    id: UUID
+    workspace_id: UUID = Field(alias="workspaceId")
+    name: str
+    status: ProjectStatus
+    source_kind: SourceKind = Field(alias="sourceKind")
+    created_at: datetime = Field(alias="createdAt")
+    updated_at: datetime = Field(alias="updatedAt")
+
+    @field_serializer("created_at", "updated_at")
+    def serialize_timestamp(self, value: datetime) -> str:
+        """Preserve the API's established explicit UTC-offset timestamp shape."""
+        return value.isoformat()
+
+
+class ProjectPageResponse(BaseModel):
+    """One cursor-bounded page of a Workspace's Projects."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    projects: tuple[ProjectResponse, ...]
+    next_cursor: str | None = Field(alias="nextCursor")
+
+
 class ProjectCreateRequest(BaseModel):
     """Accept one strictly shaped Project creation payload."""
 
@@ -64,14 +92,19 @@ class ProjectRenameRequest(BaseModel):
     name: str = Field(min_length=1)
 
 
-@router.post("/projects", status_code=201, dependencies=[Depends(require_csrf)])
+@router.post(
+    "/projects",
+    status_code=201,
+    response_model=ProjectResponse,
+    dependencies=[Depends(require_csrf)],
+)
 def create(
     request: Request,
     session: DatabaseSession,
     workspace: WritableWorkspace,
     payload: ProjectCreateRequest,
     idempotency_key: IdempotencyHeader,
-) -> dict[str, object]:
+) -> ProjectResponse:
     """Create one Project in the Workspace whose membership was already proven."""
     try:
         summary = create_project(
@@ -89,13 +122,13 @@ def create(
     return _project_body(summary)
 
 
-@router.get("/projects")
+@router.get("/projects", response_model=ProjectPageResponse)
 def list_collection(
     session: DatabaseSession,
     workspace: ReadableWorkspace,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     cursor: str | None = None,
-) -> dict[str, Any]:
+) -> ProjectPageResponse:
     """List visible Projects from one Workspace with an opaque creation-order cursor."""
     try:
         page = list_projects(
@@ -106,16 +139,16 @@ def list_collection(
         )
     except ValueError as error:
         raise ApiError(status_code=422, code="VALIDATION_ERROR") from error
-    return {
-        "projects": [_project_body(project) for project in page.projects],
-        "nextCursor": None if page.next_boundary is None else _encode_cursor(page.next_boundary),
-    }
+    return ProjectPageResponse(
+        projects=tuple(_project_body(project) for project in page.projects),
+        nextCursor=None if page.next_boundary is None else _encode_cursor(page.next_boundary),
+    )
 
 
-@router.get("/projects/{project_id}")
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
 def show(
     project_id: UUID, session: DatabaseSession, workspace: ReadableWorkspace
-) -> dict[str, object]:
+) -> ProjectResponse:
     """Show one visible Project without leaking archived or cross-Workspace records."""
     try:
         return _project_body(
@@ -125,14 +158,16 @@ def show(
         raise ApiError(status_code=404, code="NOT_FOUND") from error
 
 
-@router.patch("/projects/{project_id}", dependencies=[Depends(require_csrf)])
+@router.patch(
+    "/projects/{project_id}", response_model=ProjectResponse, dependencies=[Depends(require_csrf)]
+)
 def rename(
     request: Request,
     project_id: UUID,
     session: DatabaseSession,
     workspace: WritableWorkspace,
     payload: ProjectRenameRequest,
-) -> dict[str, object]:
+) -> ProjectResponse:
     """Rename a visible Project when the member may write this Workspace."""
     try:
         return _project_body(
@@ -167,10 +202,14 @@ def delete(
     return Response(status_code=204)
 
 
-@router.post("/projects/{project_id}/restore", dependencies=[Depends(require_csrf)])
+@router.post(
+    "/projects/{project_id}/restore",
+    response_model=ProjectResponse,
+    dependencies=[Depends(require_csrf)],
+)
 def restore(
     request: Request, project_id: UUID, session: DatabaseSession, workspace: WritableWorkspace
-) -> dict[str, object]:
+) -> ProjectResponse:
     """Restore a recently soft-deleted Project for an authorized Workspace member."""
     try:
         return _project_body(
@@ -187,17 +226,17 @@ def restore(
         raise ApiError(status_code=409, code="CONFLICT") from error
 
 
-def _project_body(project: ProjectSummary) -> dict[str, object]:
+def _project_body(project: ProjectSummary) -> ProjectResponse:
     """Render one Project domain value into the public camelCase HTTP representation."""
-    return {
-        "id": str(project.project_id),
-        "workspaceId": str(project.workspace_id),
-        "name": project.name,
-        "status": project.status,
-        "sourceKind": project.source_kind,
-        "createdAt": project.created_at.isoformat(),
-        "updatedAt": project.updated_at.isoformat(),
-    }
+    return ProjectResponse(
+        id=project.project_id,
+        workspaceId=project.workspace_id,
+        name=project.name,
+        status=ProjectStatus(project.status),
+        sourceKind=SourceKind(project.source_kind),
+        createdAt=project.created_at,
+        updatedAt=project.updated_at,
+    )
 
 
 def _encode_cursor(boundary: ProjectPageBoundary) -> str:
