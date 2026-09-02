@@ -496,6 +496,19 @@ def test_a_fourth_analysis_within_one_hour_is_refused(
 
         assert refusal.value.retry_after <= timedelta(hours=1)
 
+    with _tenant_session(workspace_id, user_id) as session:
+        assert (
+            session.scalar(
+                select(func.count()).select_from(Job).where(Job.workspace_id == workspace_id)
+            )
+            == 3
+        )
+        assert QuotaLedger(session, limits=policy.quota_limits).consumed(
+            workspace_id=workspace_id,
+            resource=QuotaResource.ANALYSES,
+            now=clock(),
+        ) == Decimal(3)
+
 
 @pytest.mark.integration
 def test_admitting_an_analysis_charges_the_monthly_analyses_budget(

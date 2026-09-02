@@ -43,6 +43,7 @@ from clipah.models import (
     Project,
     ProjectStatus,
     ProviderUsage,
+    RenderArtifact,
     SourceKind,
     Transcript,
 )
@@ -97,6 +98,17 @@ def test_worker_persists_ranked_candidates_and_usage_then_converges_on_redeliver
                 )
             )
         )
+        project_status = session.scalar(
+            select(Project.status).where(
+                Project.workspace_id == context.workspace_id,
+                Project.id == context.project_id,
+            )
+        )
+        render_count = session.scalar(
+            select(func.count())
+            .select_from(RenderArtifact)
+            .where(RenderArtifact.workspace_id == context.workspace_id)
+        )
     assert calls == ["assemblyai"]
     assert 3 <= len(candidates) <= 30
     assert [candidate.rank for candidate in candidates] == list(range(1, len(candidates) + 1))
@@ -121,6 +133,8 @@ def test_worker_persists_ranked_candidates_and_usage_then_converges_on_redeliver
     assert usage
     assert {row.operation for row in usage} == {"highlight_extract", "highlight_rerank"}
     assert all(row.provider == DETERMINISTIC_PROVIDER for row in usage)
+    assert project_status is ProjectStatus.READY
+    assert render_count == 0
 
 
 @pytest.mark.integration

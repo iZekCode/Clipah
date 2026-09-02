@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 15 is ready to commit. **Task 16 follows.**
+**Current position:** Task 16 is ready to commit. **Task 17 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -36,8 +36,8 @@ retries do not duplicate records or artifacts.
 | 12 | Implement one-pass transcription with real diarization | `[x]` (`b272927`) |
 | 13 | Implement transcript windowing and candidate extraction schemas | `[x]` (`cedc4e9`) |
 | 14 | Implement structured LLM extraction, deduplication, and global reranking | `[x]` (`efcdcfa`) |
-| 15 | Add the versioned highlight evaluation harness | `[~]` (ready to commit) |
-| 16 | Expose analysis and ranked candidate endpoints | `[ ]` |
+| 15 | Add the versioned highlight evaluation harness | `[x]` (`7a51d88`) |
+| 16 | Expose analysis and ranked candidate endpoints | `[~]` (ready to commit) |
 
 ## Phase C — Product dashboard and basic editor (Tasks 17-23)
 
@@ -476,6 +476,34 @@ Final verification: 756 tests passed, five environment-gated tests skipped, tota
 and 100% line and branch coverage on both new evaluation modules. Ruff check, Ruff format check, and
 strict mypy all passed.
 
+### Task 16 — Analysis admission and ranked candidate API
+
+The new analysis endpoint admits exactly one durable `ANALYZE` Job for a transcribed Project,
+reserves the Workspace analysis quota before dispatch, spends the per-User hourly allowance only
+after database concurrency and quota admission succeed, and binds one idempotency key to one
+Project. Broker failure cannot erase the committed Job. Analysis completion settles the reservation;
+failure or cancellation releases it, marks the Project failed, and a cancellation arriving after
+the stage runner still reaches the terminal `canceled` state instead of holding capacity forever.
+
+The analysis runner now reads windowing, candidate, deduplication, and ranking policies from
+validated settings. A successful run moves the Project to `ready` after candidates are durable and
+before any render artifact exists. Dispatch selects the queue from the Job kind, including analysis,
+instead of routing every admitted Job through the source-import queue.
+
+The candidate collection and detail endpoints expose only ranked review evidence through strict
+Pydantic response schemas. Reads require a ready, active Project in the selected Workspace; hidden,
+foreign, failed, canceled, and cross-Project candidates are indistinguishable from missing data.
+Pagination uses an opaque stable cursor over `(rank, id)`, and responses omit storage keys, provider
+raw output, and private model metadata.
+
+Contract coverage includes lifecycle preconditions, idempotency binding, quota and concurrency
+refusals, hourly allowance accounting, durable dispatch, terminal quota reconciliation, late
+cancellation, tenant scoping, stable pagination, invalid cursors, strict OpenAPI schemas, safe fields,
+and the ready-before-render invariant. Final verification: 785 tests passed, five environment-gated
+tests skipped, and total coverage reached 94.11%. Ruff check, Ruff format check, and strict mypy all
+passed. No commit was created; the required owner commit message is
+`feat: expose ranked clip candidates`.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -489,16 +517,12 @@ oversight.
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
 | Remaining metered job-creation routes that map `QuotaExceededError` onto the HTTP envelope; Task 10 now maps source-import concurrency admission | Tasks 11-16 |
 | Real stage runners for remaining `JobKind` values; Task 10 now registers `SOURCE_IMPORT`, while unsupported remaining kinds fail with `JOB_KIND_UNSUPPORTED` | Tasks 11-16 and later pipeline tasks |
-| Quota reconciliation driven from job completion, so an estimate settles against real cost when a job ends | Tasks 16 and 30-32 |
-| Spending the analysis allowance from a real analysis endpoint | Task 16 |
 | A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
 | Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
-| Binding `WindowingPolicy`, `CandidatePolicy`, `DeduplicationPolicy`, and `RankingPolicy` to `Settings` instead of their module defaults, so window shape, the duration preset, and the exposed-candidate count are deployment configuration | Task 16, which owns the analysis endpoint that reads them |
-| Exposing candidates over HTTP; Task 14 marks the exposed ranks in `model_metadata` but adds no route | Task 16 |
 | Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
 | The evaluation audio corpus itself — Task 15 checks in sanitized synthetic transcripts, not the two hours of source audio the plan asks for before a provider is frozen, nor the five hours asked for before public launch; the manifests record the shortfall in their audio-coverage fields | the repository owner, before the provider decision in Task 16 and before public launch |
-| Measuring a live provider — the checked-in run uses the offline adapters, so the recorded scores prove the harness rather than any provider's quality | Task 16, which owns the provider decision |
+| Measuring a live provider — the checked-in run uses the offline adapters, so the recorded scores prove the harness rather than any provider's quality | the repository owner, after supplying the real-audio corpus and explicit live credentials |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

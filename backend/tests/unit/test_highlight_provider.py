@@ -37,7 +37,7 @@ from clipah.highlights.provider_router import (
     UnsupportedHighlightModelError,
     highlight_provider_router,
 )
-from clipah.jobs.analyze_task import production_analysis_dependencies
+from clipah.jobs.analyze_task import production_analysis_dependencies, production_analysis_policy
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
 WINDOW = TranscriptWindow(
@@ -680,3 +680,35 @@ def test_production_dependencies_build_a_router_with_the_offline_fallback() -> N
     dependencies = production_analysis_dependencies(settings)
 
     assert isinstance(dependencies.provider_factory(transcript), HighlightProviderRouter)
+
+
+@pytest.mark.unit
+def test_production_analysis_policy_reads_every_deployment_tuning_setting() -> None:
+    """Changing a deployment policy must affect workers without editing analysis modules."""
+    settings = _settings(
+        analysis_window_target_min_ms=100_000,
+        analysis_window_target_max_ms=160_000,
+        analysis_window_overlap_ms=15_000,
+        analysis_window_silence_gap_ms=900,
+        analysis_window_min_words=20,
+        analysis_candidate_min_duration_ms=15_000,
+        analysis_candidate_max_duration_ms=75_000,
+        analysis_deduplication_temporal_iou=0.7,
+        analysis_deduplication_excerpt_cosine=0.95,
+        analysis_candidates_kept=24,
+        analysis_candidates_exposed=8,
+    )
+
+    policy = production_analysis_policy(settings)
+
+    assert policy.windowing.target_min_ms == 100_000
+    assert policy.windowing.target_max_ms == 160_000
+    assert policy.windowing.overlap_ms == 15_000
+    assert policy.windowing.silence_gap_ms == 900
+    assert policy.windowing.min_words == 20
+    assert policy.candidate.min_duration_ms == 15_000
+    assert policy.candidate.max_duration_ms == 75_000
+    assert policy.deduplication.min_temporal_iou == 0.7
+    assert policy.deduplication.min_excerpt_cosine == 0.95
+    assert policy.ranking.keep == 24
+    assert policy.ranking.expose == 8

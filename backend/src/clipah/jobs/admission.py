@@ -283,24 +283,28 @@ def admit_job(
     All three checks share the caller's transaction, so a refusal at any point leaves
     no admitted job and no held budget behind.
     """
-    if kind is JobKind.ANALYZE:
-        _require_analysis_allowance(policy, user_id=user_id)
-    job = JobAdmission(session, limit=policy.concurrent_jobs).reserve(
-        workspace_id=workspace_id,
-        project_id=project_id,
-        kind=kind,
-        idempotency_key=idempotency_key,
-    )
-    resource = QUOTA_FOR_JOB_KIND.get(kind)
-    if resource is not None:
-        QuotaLedger(session, limits=policy.quota_limits).reserve(
+    # The Redis allowance must run last so a database refusal cannot spend it. A
+    # savepoint makes the inverse failure atomic too: callers may translate the
+    # limiter exception without having to know tentative rows were flushed first.
+    with session.begin_nested():
+        job = JobAdmission(session, limit=policy.concurrent_jobs).reserve(
             workspace_id=workspace_id,
-            resource=resource,
-            units=estimated_units,
-            reference_kind="job",
-            reference_id=job.id,
-            now=now,
+            project_id=project_id,
+            kind=kind,
+            idempotency_key=idempotency_key,
         )
+        resource = QUOTA_FOR_JOB_KIND.get(kind)
+        if resource is not None:
+            QuotaLedger(session, limits=policy.quota_limits).reserve(
+                workspace_id=workspace_id,
+                resource=resource,
+                units=estimated_units,
+                reference_kind="job",
+                reference_id=job.id,
+                now=now,
+            )
+        if kind is JobKind.ANALYZE:
+            _require_analysis_allowance(policy, user_id=user_id)
     return job
 
 

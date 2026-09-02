@@ -22,16 +22,18 @@ from clipah.highlights.analyzer import (
     AnalysisResult,
     HighlightAnalyzer,
 )
+from clipah.highlights.deduplicate import DeduplicationPolicy
+from clipah.highlights.models import CandidatePolicy, WindowingPolicy
 from clipah.highlights.provider import (
     DeterministicHighlightProvider,
     HighlightProvider,
     ProviderCall,
 )
 from clipah.highlights.provider_router import highlight_provider_router
-from clipah.highlights.rerank import RankedCandidate
+from clipah.highlights.rerank import RankedCandidate, RankingPolicy
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import update_job_progress
-from clipah.models import ClipCandidate, ProviderUsage, Transcript
+from clipah.models import ClipCandidate, Project, ProjectStatus, ProviderUsage, Transcript
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
 ANALYZE_STAGE = "analyze"
@@ -51,6 +53,7 @@ class AnalysisDependencies:
 
 
 DependenciesFactory = Callable[[Settings], AnalysisDependencies]
+PolicyFactory = Callable[[Settings], AnalysisPolicy]
 
 
 class AnalysisIntegrityError(Exception):
@@ -72,11 +75,13 @@ class AnalyzeStageRunner:
         self,
         *,
         dependencies_factory: DependenciesFactory,
-        policy: AnalysisPolicy = DEFAULT_ANALYSIS_POLICY,
+        policy: AnalysisPolicy | None = None,
+        policy_factory: PolicyFactory | None = None,
     ) -> None:
         """Bind production or deterministic capabilities and the analysis policy."""
         self._dependencies_factory = dependencies_factory
         self._policy = policy
+        self._policy_factory = policy_factory
 
     def __call__(self, context: JobContext) -> None:
         """Run one analysis attempt through stable retryable and terminal codes."""
@@ -86,9 +91,14 @@ class AnalyzeStageRunner:
             if self._already_complete(context):
                 return
             dependencies = self._dependencies_factory(context.settings)
+            policy = self._policy or (
+                self._policy_factory(context.settings)
+                if self._policy_factory is not None
+                else DEFAULT_ANALYSIS_POLICY
+            )
             analyzer = HighlightAnalyzer(
                 provider=dependencies.provider_factory(snapshot.result),
-                policy=self._policy,
+                policy=policy,
                 on_window_failure=lambda index, code: self._report_window_failure(
                     context, index=index, code=code
                 ),
@@ -97,7 +107,7 @@ class AnalyzeStageRunner:
             result = analyzer.analyze(transcript=snapshot.result)
             context.raise_if_cancelled()
             try:
-                self._persist(context, snapshot=snapshot, result=result)
+                self._persist(context, snapshot=snapshot, result=result, policy=policy)
             except IntegrityError:
                 if not self._already_complete(context):
                     raise AnalysisIntegrityError("concurrent candidate conflict") from None
@@ -140,7 +150,19 @@ class AnalyzeStageRunner:
                     ClipCandidate.project_id == context.project_id,
                 )
             )
-            return bool(stored)
+            if not stored:
+                return False
+            project = session.scalar(
+                select(Project).where(
+                    Project.workspace_id == context.workspace_id,
+                    Project.id == context.project_id,
+                )
+            )
+            if project is None:
+                raise AnalysisIntegrityError("analysis Project disappeared")
+            if project.status is ProjectStatus.ANALYZING:
+                project.status = ProjectStatus.READY
+            return True
 
     def _report_window_failure(self, context: JobContext, *, index: int, code: str) -> None:
         """Record one failed window durably so the remaining windows can continue."""
@@ -156,7 +178,12 @@ class AnalyzeStageRunner:
             )
 
     def _persist(
-        self, context: JobContext, *, snapshot: _TranscriptSnapshot, result: AnalysisResult
+        self,
+        context: JobContext,
+        *,
+        snapshot: _TranscriptSnapshot,
+        result: AnalysisResult,
+        policy: AnalysisPolicy,
     ) -> None:
         """Insert every ranked candidate and provider call in one atomic transaction."""
         metadata = _analysis_metadata(result.calls)
@@ -168,11 +195,21 @@ class AnalyzeStageRunner:
                         transcript_id=snapshot.transcript_id,
                         ranked=ranked,
                         metadata=metadata,
-                        exposed=ranked.rank <= self._policy.ranking.expose,
+                        exposed=ranked.rank <= policy.ranking.expose,
                     )
                 )
             for call in result.calls:
                 session.add(_usage_row(context, call))
+            project = session.scalar(
+                select(Project).where(
+                    Project.workspace_id == context.workspace_id,
+                    Project.id == context.project_id,
+                    Project.status == ProjectStatus.ANALYZING,
+                )
+            )
+            if project is None:
+                raise AnalysisIntegrityError("analysis Project is not running")
+            project.status = ProjectStatus.READY
             session.flush()
 
 
@@ -299,4 +336,32 @@ def production_analysis_dependencies(settings: Settings) -> AnalysisDependencies
     return AnalysisDependencies(provider_factory=factory)
 
 
-analyze_stage_runner = AnalyzeStageRunner(dependencies_factory=production_analysis_dependencies)
+def production_analysis_policy(settings: Settings) -> AnalysisPolicy:
+    """Build every analysis tuning policy from validated deployment settings."""
+    return AnalysisPolicy(
+        windowing=WindowingPolicy(
+            target_min_ms=settings.analysis_window_target_min_ms,
+            target_max_ms=settings.analysis_window_target_max_ms,
+            overlap_ms=settings.analysis_window_overlap_ms,
+            silence_gap_ms=settings.analysis_window_silence_gap_ms,
+            min_words=settings.analysis_window_min_words,
+        ),
+        candidate=CandidatePolicy(
+            min_duration_ms=settings.analysis_candidate_min_duration_ms,
+            max_duration_ms=settings.analysis_candidate_max_duration_ms,
+        ),
+        deduplication=DeduplicationPolicy(
+            min_temporal_iou=settings.analysis_deduplication_temporal_iou,
+            min_excerpt_cosine=settings.analysis_deduplication_excerpt_cosine,
+        ),
+        ranking=RankingPolicy(
+            keep=settings.analysis_candidates_kept,
+            expose=settings.analysis_candidates_exposed,
+        ),
+    )
+
+
+analyze_stage_runner = AnalyzeStageRunner(
+    dependencies_factory=production_analysis_dependencies,
+    policy_factory=production_analysis_policy,
+)

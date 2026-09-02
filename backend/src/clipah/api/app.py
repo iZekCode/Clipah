@@ -15,7 +15,9 @@ from starlette.responses import Response
 from clipah.api.dependencies import AuthComponents, default_auth_components
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
+from clipah.api.routes import analysis as analysis_routes
 from clipah.api.routes import auth as auth_routes
+from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import uploads as upload_routes
@@ -145,6 +147,8 @@ def create_app(
     app.include_router(upload_routes.router)
     app.include_router(job_routes.router)
     app.include_router(youtube_import_routes.router)
+    app.include_router(analysis_routes.router)
+    app.include_router(candidate_routes.router)
     return app
 
 

@@ -29,7 +29,7 @@ from clipah.jobs.events import (
     RedisJobEventNotifier,
 )
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
-from clipah.jobs.use_cases import cancel_job, fail_job, start_job, succeed_job
+from clipah.jobs.use_cases import cancel_job, complete_job_after_runner, fail_job, start_job
 from clipah.models import JobKind, JobStatus
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import WorkspaceAction
@@ -120,9 +120,14 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
         raise
 
     with _transaction(settings, workspace, user) as session:
-        succeed_job(session, workspace_id=workspace, job_id=job, now=_now())
+        completed = complete_job_after_runner(
+            session,
+            workspace_id=workspace,
+            job_id=job,
+            now=_now(),
+        )
     _announce(notifier, workspace_id=workspace, job_id=job)
-    return JobStatus.SUCCEEDED.value
+    return completed.status.value
 
 
 def _end_attempt(

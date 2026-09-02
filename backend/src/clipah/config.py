@@ -6,7 +6,7 @@ from enum import StrEnum
 from typing import Any, Literal, Self
 from urllib.parse import urlsplit
 
-from pydantic import SecretStr, model_validator
+from pydantic import Field, SecretStr, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -76,6 +76,18 @@ class Settings(BaseSettings):
     write_requests_per_minute: int = 20
     analyses_per_hour: int = 3
     concurrent_jobs_per_workspace: int = 5
+
+    analysis_window_target_min_ms: int = Field(default=120_000, gt=0)
+    analysis_window_target_max_ms: int = Field(default=180_000, gt=0)
+    analysis_window_overlap_ms: int = Field(default=20_000, ge=0)
+    analysis_window_silence_gap_ms: int = Field(default=1_200, ge=0)
+    analysis_window_min_words: int = Field(default=25, gt=0)
+    analysis_candidate_min_duration_ms: int = Field(default=20_000, gt=0)
+    analysis_candidate_max_duration_ms: int = Field(default=90_000, gt=0)
+    analysis_deduplication_temporal_iou: float = Field(default=0.65, ge=0, le=1)
+    analysis_deduplication_excerpt_cosine: float = Field(default=0.90, ge=0, le=1)
+    analysis_candidates_kept: int = Field(default=30, gt=0)
+    analysis_candidates_exposed: int = Field(default=10, gt=0)
 
     job_event_poll_seconds: float = 1.0
     job_event_heartbeat_seconds: float = 15.0
@@ -178,6 +190,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def validate_profile(self) -> Self:
         """Fail closed for missing production dependencies and unsafe provider choices."""
+        self._validate_analysis_policy()
         if self.environment is not Environment.PRODUCTION:
             return self
 
@@ -186,6 +199,17 @@ class Settings(BaseSettings):
         self._validate_provider_versions()
         self._validate_enabled_social_providers()
         return self
+
+    def _validate_analysis_policy(self) -> None:
+        """Reject internally contradictory window, duration, and exposure settings."""
+        if self.analysis_window_target_min_ms > self.analysis_window_target_max_ms:
+            raise ValueError("analysis window minimum cannot exceed its maximum")
+        if self.analysis_window_overlap_ms >= self.analysis_window_target_min_ms:
+            raise ValueError("analysis window overlap must be below its minimum target")
+        if self.analysis_candidate_min_duration_ms > self.analysis_candidate_max_duration_ms:
+            raise ValueError("analysis candidate minimum cannot exceed its maximum")
+        if self.analysis_candidates_exposed > self.analysis_candidates_kept:
+            raise ValueError("exposed analysis candidates cannot exceed kept candidates")
 
     def _validate_production_requirements(self) -> None:
         runtime_setting_name, runtime_url = self._runtime_database_configuration()

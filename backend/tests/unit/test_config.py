@@ -509,6 +509,24 @@ def test_monthly_workspace_budgets_are_configuration() -> None:
     assert settings.monthly_social_publications == 100
 
 
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        {"analysis_window_target_min_ms": 181_000},
+        {"analysis_window_overlap_ms": 120_000},
+        {"analysis_candidate_min_duration_ms": 91_000},
+        {"analysis_candidates_exposed": 31},
+    ],
+)
+def test_analysis_policy_settings_reject_contradictory_ranges(
+    overrides: dict[str, int],
+) -> None:
+    """Workers must never start with an impossible window, duration, or exposure policy."""
+    with pytest.raises(ValidationError):
+        Settings(environment=Environment.TEST, **overrides)  # type: ignore[arg-type]
+
+
 def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:
     """Populate the smallest complete, intentionally provider-disabled production environment."""
     for name, value in production_environment_values().items():

@@ -725,7 +725,7 @@ class ClipCandidate(Base):
     context_warnings: Mapped[list[str]] = mapped_column(
         ARRAY(Text), nullable=False, server_default=text("'{}'")
     )
-    visual_opportunities: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    visual_opportunities: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     model_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

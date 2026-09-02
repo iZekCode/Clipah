@@ -8,9 +8,10 @@ from decimal import Decimal
 from typing import Any
 from uuid import UUID
 
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clipah.jobs.admission import AdmissionPolicy, admit_job
+from clipah.jobs.admission import AdmissionPolicy, QuotaLedger, admit_job
 from clipah.jobs.models import (
     EVENT_FOR_STATUS,
     InvalidJobTransitionError,
@@ -20,7 +21,7 @@ from clipah.jobs.models import (
     assert_transition,
 )
 from clipah.jobs.repository import JobRepository, snapshot_of
-from clipah.models import Job, JobKind, JobStatus
+from clipah.models import Job, JobKind, JobStatus, Project, ProjectStatus, QuotaResource
 from clipah.workspaces.models import WorkspaceAccess
 
 SUCCESS_PROGRESS = 1.0
@@ -123,6 +124,7 @@ def fail_job(
     job.error_code = error_code
     if target is JobStatus.FAILED:
         job.finished_at = now
+        _reconcile_analysis_terminal(session, job=job, target=target, now=now)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -138,6 +140,7 @@ def request_job_cancellation(
     job.cancel_requested_at = now
     if target is JobStatus.CANCELED:
         job.finished_at = now
+        _reconcile_analysis_terminal(session, job=job, target=target, now=now)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -146,6 +149,18 @@ def cancel_job(session: Session, *, workspace_id: UUID, job_id: UUID, now: datet
     return _finish(
         session, workspace_id=workspace_id, job_id=job_id, target=JobStatus.CANCELED, now=now
     )
+
+
+def complete_job_after_runner(
+    session: Session, *, workspace_id: UUID, job_id: UUID, now: datetime
+) -> JobSnapshot:
+    """Resolve success or a cancellation that arrived while the stage runner finished."""
+    job = JobRepository(session).lock(workspace_id=workspace_id, job_id=job_id)
+    if job.status is JobStatus.CANCEL_REQUESTED:
+        return cancel_job(session, workspace_id=workspace_id, job_id=job_id, now=now)
+    if job.status is JobStatus.SUCCEEDED:
+        return snapshot_of(job)
+    return succeed_job(session, workspace_id=workspace_id, job_id=job_id, now=now)
 
 
 def job_snapshot(session: Session, *, workspace_id: UUID, job_id: UUID) -> JobSnapshot:
@@ -173,7 +188,44 @@ def _finish(
     job.finished_at = now
     if target is JobStatus.SUCCEEDED:
         job.progress = SUCCESS_PROGRESS
+    _reconcile_analysis_terminal(session, job=job, target=target, now=now)
     return _record(repository, job, EVENT_FOR_STATUS[target])
+
+
+def _reconcile_analysis_terminal(
+    session: Session, *, job: Job, target: JobStatus, now: datetime
+) -> None:
+    """Settle successful analysis quota or release it after failure and cancellation."""
+    if job.kind is not JobKind.ANALYZE:
+        return
+    ledger = QuotaLedger(session, limits={})
+    if target is JobStatus.SUCCEEDED:
+        ledger.settle(
+            workspace_id=job.workspace_id,
+            resource=QuotaResource.ANALYSES,
+            reference_kind="job",
+            reference_id=job.id,
+            actual_units=Decimal(1),
+            now=now,
+        )
+        return
+    if target not in {JobStatus.FAILED, JobStatus.CANCELED}:
+        return
+    ledger.release(
+        workspace_id=job.workspace_id,
+        resource=QuotaResource.ANALYSES,
+        reference_kind="job",
+        reference_id=job.id,
+        now=now,
+    )
+    project = session.scalar(
+        select(Project).where(
+            Project.workspace_id == job.workspace_id,
+            Project.id == job.project_id,
+        )
+    )
+    if project is not None:
+        project.status = ProjectStatus.FAILED
 
 
 def _record(repository: JobRepository, job: Job, event_type: JobEventType) -> JobSnapshot:
