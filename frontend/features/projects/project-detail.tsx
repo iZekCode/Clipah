@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { UploadPanel } from '@/features/uploads/UploadPanel'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
@@ -38,9 +39,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
   }
 
   return (
-    <article className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">{project.data.name}</h1>
-      <p className="text-sm text-muted-foreground">{projectStatusLabel(project.data.status)}</p>
+    <article className="space-y-6">
+      <div className="space-y-2">
+        <h1 className="text-2xl font-semibold tracking-tight">{project.data.name}</h1>
+        <p className="text-sm text-muted-foreground">{projectStatusLabel(project.data.status)}</p>
+      </div>
+      <UploadPanel projectId={projectId} />
     </article>
   )
 }

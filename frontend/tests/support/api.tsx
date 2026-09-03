@@ -8,6 +8,7 @@ export interface RecordedRequest {
   method: string
   path: string
   params: URLSearchParams
+  headers: Headers
   body: unknown
 }
 
@@ -15,9 +16,10 @@ export interface RecordedRequest {
 export interface StubbedResponse {
   status?: number
   body?: unknown
+  headers?: Record<string, string>
 }
 
-type Handler = StubbedResponse | ((request: RecordedRequest) => StubbedResponse)
+export type Handler = StubbedResponse | ((request: RecordedRequest) => StubbedResponse)
 
 /** The stubbed backend a test drives its components against. */
 export interface StubbedApi {
@@ -53,6 +55,7 @@ export function stubApi(handlers: Record<string, Handler>): StubbedApi {
         method,
         path: url.pathname,
         params: url.searchParams,
+        headers: new Headers(init.headers),
         body: typeof init.body === 'string' ? JSON.parse(init.body) : undefined,
       }
       calls.push(request)
@@ -64,9 +67,9 @@ export function stubApi(handlers: Record<string, Handler>): StubbedApi {
       const answer = typeof handler === 'function' ? handler(request) : handler
       const status = answer.status ?? 200
       if (status >= 400) {
-        return jsonResponse(status, answer.body ?? errorBody(status))
+        return jsonResponse(status, answer.body ?? errorBody(status), answer.headers)
       }
-      return jsonResponse(status, answer.body)
+      return jsonResponse(status, answer.body, answer.headers)
     }),
   )
 
@@ -113,12 +116,16 @@ function codeFor(status: number): string {
   return 'INTERNAL_ERROR'
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+function jsonResponse(
+  status: number,
+  body: unknown,
+  headers: Record<string, string> = {},
+): Response {
   if (body === undefined) {
-    return new Response(null, { status: 204 })
+    return new Response(null, { status: status >= 400 ? status : 204, headers })
   }
   return new Response(JSON.stringify(body), {
     status,
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', ...headers },
   })
 }

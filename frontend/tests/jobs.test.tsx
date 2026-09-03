@@ -7,6 +7,7 @@ import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
 
 import { renderWithApi, stubApi } from './support/api'
+import { FakeEventSource } from './support/events'
 import { currentUser, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
@@ -19,44 +20,6 @@ vi.mock('next/navigation', () => ({
   usePathname: () => '/dashboard',
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }))
-
-/** One connection a component opened, as the test drives it. */
-class FakeEventSource {
-  static instances: FakeEventSource[] = []
-  readonly url: string
-  readonly withCredentials: boolean
-  closed = false
-  private readonly listeners = new Map<string, ((event: MessageEvent) => void)[]>()
-
-  constructor(url: string, init?: EventSourceInit) {
-    this.url = url
-    this.withCredentials = init?.withCredentials ?? false
-    FakeEventSource.instances.push(this)
-  }
-
-  addEventListener(type: string, listener: (event: MessageEvent) => void): void {
-    this.listeners.set(type, [...(this.listeners.get(type) ?? []), listener])
-  }
-
-  removeEventListener(type: string, listener: (event: MessageEvent) => void): void {
-    this.listeners.set(
-      type,
-      (this.listeners.get(type) ?? []).filter((existing) => existing !== listener),
-    )
-  }
-
-  close(): void {
-    this.closed = true
-  }
-
-  /** Deliver one Server-Sent Event exactly as the backend frames it. */
-  emit(type: string, data: Record<string, unknown>, lastEventId = '1'): void {
-    const event = new MessageEvent(type, { data: JSON.stringify(data), lastEventId })
-    for (const listener of this.listeners.get(type) ?? []) {
-      listener(event)
-    }
-  }
-}
 
 function jobEvent(overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return {

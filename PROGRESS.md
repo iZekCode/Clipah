@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 18 is ready to commit. **Task 19 follows.**
+**Current position:** Task 19 is ready to commit. **Task 20 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -47,8 +47,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | # | Task | Status |
 | --- | --- | --- |
 | 17 | Move the product UI into one clean Next.js frontend | `[x]` (`e45a3fe`) |
-| 18 | Build authentication and project dashboard UX | `[~]` (ready to commit) |
-| 19 | Build resumable upload and safe YouTube import UX | `[ ]` |
+| 18 | Build authentication and project dashboard UX | `[x]` (`af04a94`) |
+| 19 | Build resumable upload and safe YouTube import UX | `[~]` (ready to commit) |
 | 20 | Build ranked clips review UX | `[ ]` |
 | 21 | Run the editor-engine bake-off and record the adoption decision | `[ ]` |
 | 22 | Implement composition validation and immutable edit revisions | `[ ]` |
@@ -611,6 +611,54 @@ running together. No commit was created; the required owner commit message is
 `feat: add secure project dashboard`.
 
 
+
+### Task 19 — Resumable upload and safe YouTube import
+
+Direct upload is now the way media gets into a Project, and it is the first control on the
+Project page. `uploader.ts` holds the rules with no React anywhere near them: a file is
+refused here for the same reasons the backend would refuse it, parts are sized inside the
+agreed 8-32 MiB band, at most three are in flight at once, and a part that fails is tried
+again with a longer wait each time until the budget runs out.
+
+The checkpoint is the part worth being careful about. A resumed upload remembers the upload
+identifier and the ETags the object store already acknowledged, and nothing else — the shape
+has no room for a signed URL, and a test reads back everything written to prove none leaked
+in. Every part is signed inside the attempt that uses it, so a retry after a long backoff
+asks for a fresh five-minute capability rather than replaying an expired one, and a
+checkpoint restored from IndexedDB grants no access on its own. Checkpoints are forgotten
+when the upload completes, when the member cancels, and when the backend refuses the
+finished media; a network failure keeps them, because that is the case resuming exists for.
+
+`UploadPanel` names one state at a time and takes each from the backend rather than guessing:
+uploading with its own percentage, then importing, transcribing, finding moments, retrying
+with its attempt number, stopping, canceled, failed with the code the backend reported, and
+ready to review. It follows the Workspace event stream and ignores every Job belonging to
+another Project. A dropped connection says it is reconnecting without forgetting the Job it
+was watching, because the browser resumes that stream from `Last-Event-ID` by itself. The
+member can stop a running Job, and analysis is asked for under one key derived from the
+upload, so pressing the button again is one analysis to the backend rather than two.
+
+`YouTubeImportForm` is labelled a convenience connector and says plainly that it takes one
+public, non-live video the member has the right to use. It checks the scheme and the host
+before spending a round trip, and shows every other refusal — private, age-restricted,
+unsupported, too long — exactly as the backend worded it. There is no cookie control on the
+page and no code path that would render one: the authenticated connector belongs to Task 27,
+behind its server capability and feature flag.
+
+Twenty-eight frontend tests were written and watched fail before any of it existed, covering
+size rejection, part sizing and concurrency, retry backoff and exhaustion, resume through
+both an injected store and real IndexedDB, cancellation with a provider abort, the backend's
+media rejection, every rendered state, job cancellation, stream reconnection, and duplicate
+submission of both an analysis and an import. Each behaviour was then re-checked by breaking
+the implementation and watching the matching test fail.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (63 passed), and `pnpm build`
+all passed. No backend file was touched, so the backend gates were not re-run. The Playwright
+suite in `frontend/e2e/upload-analysis.spec.ts` was written but not run here: it needs
+Postgres, MinIO, the backend, the frontend, and browser binaries running together. No commit
+was created; the required owner commit message is `feat: add resilient media submission flow`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -619,7 +667,9 @@ oversight.
 | Deferred | Owner |
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
-| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts` and `pnpm test:e2e` exist, but no run happened in the Task 18 session because a full stack and browser binaries were not available | the repository owner, before Task 19 |
+| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts` and `frontend/e2e/upload-analysis.spec.ts` exist and `pnpm test:e2e` runs them, but no run happened in the Task 18 or Task 19 sessions because a full stack and browser binaries were not available | the repository owner, before Task 20 |
+| Cookie-based authenticated YouTube import, including its consent and ownership-attestation UI; the public form deliberately offers no cookie control while the server capability and feature flag are off | Task 27 (`plan.md:1333-1360`) |
+| A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 20 |
 | The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
