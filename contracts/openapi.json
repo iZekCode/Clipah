@@ -847,6 +847,67 @@
         "title": "ProjectStatus",
         "type": "string"
       },
+      "ProxyPlaybackResponse": {
+        "additionalProperties": false,
+        "description": "One expiring proxy URL and the media shape a player needs before it loads.",
+        "properties": {
+          "contentType": {
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt",
+          "contentType",
+          "durationMs",
+          "width",
+          "height"
+        ],
+        "title": "ProxyPlaybackResponse",
+        "type": "object"
+      },
       "PublishingRolePolicy": {
         "enum": [
           "owner_admin_editor",
@@ -2065,6 +2126,60 @@
         "summary": "Show",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/proxy": {
+      "get": {
+        "description": "Sign one five-minute proxy capability for a Project this member may read.",
+        "operationId": "show_api_v1_projects__project_id__proxy_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProxyPlaybackResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "playback"
         ]
       }
     },

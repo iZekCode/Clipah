@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 19 is ready to commit. **Task 20 follows.**
+**Current position:** Task 20 is ready to commit. **Task 21 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -48,8 +48,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | --- | --- | --- |
 | 17 | Move the product UI into one clean Next.js frontend | `[x]` (`e45a3fe`) |
 | 18 | Build authentication and project dashboard UX | `[x]` (`af04a94`) |
-| 19 | Build resumable upload and safe YouTube import UX | `[~]` (ready to commit) |
-| 20 | Build ranked clips review UX | `[ ]` |
+| 19 | Build resumable upload and safe YouTube import UX | `[x]` (`8e7add7`) |
+| 20 | Build ranked clips review UX | `[~]` (ready to commit) |
 | 21 | Run the editor-engine bake-off and record the adoption decision | `[ ]` |
 | 22 | Implement composition validation and immutable edit revisions | `[ ]` |
 | 23 | Build the basic non-destructive editor and autosave | `[ ]` |
@@ -659,6 +659,60 @@ Postgres, MinIO, the backend, the frontend, and browser binaries running togethe
 was created; the required owner commit message is `feat: add resilient media submission flow`.
 
 
+
+### Task 20 — Ranked clip review
+
+The review surface exists, and it is available the moment analysis finishes rather than
+after anything has been rendered. `ClipList` reads the whole exposed ranked set before it
+offers a single control, because sorting or filtering half a list would be an order the
+browser invented rather than the one the analysis decided; the set is bounded by the
+ranking policy, so reading it whole costs one or two requests. Sorting by rank, score, and
+length, and filtering by category and by maximum length, all work over that complete set.
+
+`ClipCard` shows a reviewer enough to disagree with the analysis: the rank, the hook, the
+payoff, why the moment was chosen, its category, tags, length, and transcript excerpt, all
+seven score dimensions behind the number rather than the number alone, the context each
+clip depends on, the visual opportunities it named, and its context warnings in a group a
+reviewer cannot miss. Every one of those fields came from a language model reading someone
+else's words, so all of it is rendered as React children; a hook containing an `img` tag
+appears as that text and produces no element.
+
+`ClipPreview` plays the proposed range against the Project's proxy and stops where the
+candidate ends, so a reviewer hears the moment being proposed and not whatever follows it.
+The capability is asked for when the preview opens and never kept: closing and reopening
+asks the backend for a new five-minute URL.
+
+One backend gap was closed inside this task, because preview cannot exist without it.
+`GET /projects/{project_id}/proxy` signs the newest proxy of one active Project for five
+minutes and returns the media shape a player needs before it loads. No numbered task owned
+an asset or playback route, and Task 20's interface names signed proxy URLs. Six contract
+tests cover it, including that a foreign Project, a deleted Project, and a Project whose
+ingest has produced no proxy all answer exactly like a Project that never existed, and that
+an anonymous caller is refused. `contracts/openapi.json` was re-exported and the client
+regenerated.
+
+One deliberate judgement is worth recording: a 404 from the candidates endpoint is rendered
+as "No clips to review yet" rather than as an error. Absence is the backend's one answer for
+a Project still being analysed, a Project that produced nothing, and a Project the caller
+has no standing on — and only the first is possible on a Project the member already has
+open. Every other failure still raises the alert carrying the request identifier.
+
+Seventeen frontend tests and six backend tests were written and watched fail before any of
+it existed, covering ranking order, score and reason visibility, all seven breakdown
+dimensions, warning badges, category and duration filters, each sort, literal rendering of
+untrusted text, the empty and not-yet-analysed states, range playback stopping at the
+candidate end, keyboard operation, a missing proxy, and a fresh capability per preview. Each
+behaviour was then re-checked by breaking the implementation and watching the matching test
+fail.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (80 passed), and `pnpm build`
+all passed; Ruff check, Ruff format check, strict mypy, and 828 backend tests passed with
+five environment-gated skips at 94.36% coverage. The Playwright suite in
+`frontend/e2e/clips-review.spec.ts` was written but not run here: it needs Postgres, the
+backend, the frontend, and browser binaries running together. No commit was created; the
+required owner commit message is `feat: add ranked clip review`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -667,9 +721,11 @@ oversight.
 | Deferred | Owner |
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
-| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts` and `frontend/e2e/upload-analysis.spec.ts` exist and `pnpm test:e2e` runs them, but no run happened in the Task 18 or Task 19 sessions because a full stack and browser binaries were not available | the repository owner, before Task 20 |
+| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts`, `frontend/e2e/upload-analysis.spec.ts`, and `frontend/e2e/clips-review.spec.ts` exist and `pnpm test:e2e` runs them, but no run happened in the Task 18, 19, or 20 sessions because a full stack and browser binaries were not available | the repository owner, before Task 21 |
+| Creating an Edit from a reviewed candidate, and the idempotency of doing it twice — the review surface is complete without it, but `create_edit_from_candidate` and `POST /projects/{project_id}/candidates/{candidate_id}/edits` belong to the composition domain. The repository owner decided Task 20 would not start that domain early; the Playwright scenario is marked `test.fixme` | Task 22 (`plan.md:1214-1236`) |
+| Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Cookie-based authenticated YouTube import, including its consent and ownership-attestation UI; the public form deliberately offers no cookie control while the server capability and feature flag are off | Task 27 (`plan.md:1333-1360`) |
-| A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 20 |
+| A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
 | The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |

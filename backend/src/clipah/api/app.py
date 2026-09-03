@@ -20,6 +20,7 @@ from clipah.api.routes import auth as auth_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import jobs as job_routes
+from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
@@ -150,6 +151,7 @@ def create_app(
     app.include_router(youtube_import_routes.router)
     app.include_router(analysis_routes.router)
     app.include_router(candidate_routes.router)
+    app.include_router(playback_routes.router)
     app.include_router(dashboard_routes.router)
     return app
 

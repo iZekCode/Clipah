@@ -3,6 +3,7 @@
 import { useQuery } from '@tanstack/react-query'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { ClipList } from '@/features/clips/ClipList'
 import { UploadPanel } from '@/features/uploads/UploadPanel'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -45,6 +46,7 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
         <p className="text-sm text-muted-foreground">{projectStatusLabel(project.data.status)}</p>
       </div>
       <UploadPanel projectId={projectId} />
+      <ClipList projectId={projectId} />
     </article>
   )
 }
