@@ -12,7 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
-    "generate:api": "orval --config orval.config.ts"
+    "generate:api": "orval --config orval.config.ts",
+    "generate:composition": "json2ts --input ../contracts/composition.schema.json --output features/editor/composition.generated.ts --bannerComment ''"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
@@ -83,6 +84,7 @@
     "eslint-config-next": "15.2.4",
     "fake-indexeddb": "^6.2.5",
     "jsdom": "^26.0.0",
+    "json-schema-to-typescript": "15.0.4",
     "mediabunny": "1.55.5",
     "orval": "^7.5.0",
     "postcss": "^8.5",

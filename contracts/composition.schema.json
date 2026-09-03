@@ -1,0 +1,1122 @@
+{
+  "$defs": {
+    "AudioMix": {
+      "additionalProperties": false,
+      "description": "The two gains a version 1 composition can set.",
+      "properties": {
+        "gainDb": {
+          "maximum": 12,
+          "minimum": -60,
+          "type": "number"
+        },
+        "musicGainDb": {
+          "maximum": 12,
+          "minimum": -60,
+          "type": "number"
+        }
+      },
+      "required": [
+        "gainDb",
+        "musicGainDb"
+      ],
+      "title": "AudioMix",
+      "type": "object"
+    },
+    "BlendMode": {
+      "description": "The compositing modes both the browser preview and FFmpeg can reproduce.",
+      "enum": [
+        "normal",
+        "multiply",
+        "screen",
+        "overlay",
+        "darken",
+        "lighten"
+      ],
+      "title": "BlendMode",
+      "type": "string"
+    },
+    "Bookmark": {
+      "additionalProperties": false,
+      "description": "A member's marker on the timeline.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "label": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        },
+        "timelineMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "timelineMs",
+        "label"
+      ],
+      "title": "Bookmark",
+      "type": "object"
+    },
+    "BrandKitReference": {
+      "additionalProperties": false,
+      "description": "The exact Brand Kit version this composition was built against.",
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "logoAssetId": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "version": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version",
+        "logoAssetId"
+      ],
+      "title": "BrandKitReference",
+      "type": "object"
+    },
+    "Canvas": {
+      "additionalProperties": false,
+      "description": "The output frame every item is composited into.",
+      "properties": {
+        "background": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "height": {
+          "type": "integer"
+        },
+        "width": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "width",
+        "height",
+        "background"
+      ],
+      "title": "Canvas",
+      "type": "object"
+    },
+    "CaptionMode": {
+      "description": "How caption words are drawn, if they are drawn at all.",
+      "enum": [
+        "off",
+        "block",
+        "karaoke"
+      ],
+      "title": "CaptionMode",
+      "type": "string"
+    },
+    "CaptionStyle": {
+      "additionalProperties": false,
+      "description": "Caption type, plus the colour karaoke highlighting paints the active word.",
+      "properties": {
+        "align": {
+          "$ref": "#/$defs/TextAlign"
+        },
+        "backgroundColor": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "backgroundEnabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "decoration": {
+          "$ref": "#/$defs/TextDecoration"
+        },
+        "fontFamily": {
+          "$ref": "#/$defs/FontFamily"
+        },
+        "fontSize": {
+          "maximum": 200,
+          "minimum": 12,
+          "type": "integer"
+        },
+        "highlightColor": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "letterSpacing": {
+          "maximum": 40,
+          "minimum": -10,
+          "type": "number"
+        },
+        "lineHeight": {
+          "maximum": 3,
+          "minimum": 0.5,
+          "type": "number"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fontFamily",
+        "fontSize",
+        "color",
+        "align",
+        "weight",
+        "italic",
+        "decoration",
+        "letterSpacing",
+        "lineHeight",
+        "backgroundEnabled",
+        "backgroundColor",
+        "highlightColor"
+      ],
+      "title": "CaptionStyle",
+      "type": "object"
+    },
+    "CaptionWord": {
+      "additionalProperties": false,
+      "description": "One transcript word as it is drawn, timed against the composition.",
+      "properties": {
+        "endMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "speaker": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "startMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "text": {
+          "maxLength": 200,
+          "minLength": 1,
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "startMs",
+        "endMs",
+        "text",
+        "speaker"
+      ],
+      "title": "CaptionWord",
+      "type": "object"
+    },
+    "Captions": {
+      "additionalProperties": false,
+      "description": "The caption layer, its words, and the type they are drawn in.",
+      "properties": {
+        "mode": {
+          "$ref": "#/$defs/CaptionMode"
+        },
+        "style": {
+          "$ref": "#/$defs/CaptionStyle"
+        },
+        "words": {
+          "items": {
+            "$ref": "#/$defs/CaptionWord"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "mode",
+        "words",
+        "style"
+      ],
+      "title": "Captions",
+      "type": "object"
+    },
+    "CitationOverlay": {
+      "additionalProperties": false,
+      "description": "An on-screen source note bound to the evidence record it cites.",
+      "properties": {
+        "claimEvidenceId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "keyframes": {
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "type": "array"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "style": {
+          "$ref": "#/$defs/TextStyle"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "timelineEndMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineStartMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "citation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timelineStartMs",
+        "timelineEndMs",
+        "placement",
+        "opacity",
+        "keyframes",
+        "type",
+        "claimEvidenceId",
+        "text",
+        "style"
+      ],
+      "title": "CitationOverlay",
+      "type": "object"
+    },
+    "Crop": {
+      "additionalProperties": false,
+      "description": "A normalized crop rectangle inside the source frame.",
+      "properties": {
+        "height": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "width": {
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "type": "number"
+        },
+        "x": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "width",
+        "height"
+      ],
+      "title": "Crop",
+      "type": "object"
+    },
+    "Easing": {
+      "description": "How a value travels between two keyframes.",
+      "enum": [
+        "linear",
+        "easeIn",
+        "easeOut",
+        "easeInOut"
+      ],
+      "title": "Easing",
+      "type": "string"
+    },
+    "FontFamily": {
+      "description": "The fonts Clipah ships to both the browser preview and the render worker.",
+      "enum": [
+        "Inter",
+        "Montserrat",
+        "Poppins",
+        "Roboto",
+        "Open Sans",
+        "Bebas Neue",
+        "Anton",
+        "Nunito"
+      ],
+      "title": "FontFamily",
+      "type": "string"
+    },
+    "ImageOverlay": {
+      "additionalProperties": false,
+      "description": "A still image placed over the main timeline.",
+      "properties": {
+        "assetId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "blendMode": {
+          "$ref": "#/$defs/BlendMode"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "keyframes": {
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "type": "array"
+        },
+        "motion": {
+          "$ref": "#/$defs/MotionPreset"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "timelineEndMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineStartMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "image",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timelineStartMs",
+        "timelineEndMs",
+        "placement",
+        "opacity",
+        "keyframes",
+        "type",
+        "assetId",
+        "blendMode",
+        "motion",
+        "origin"
+      ],
+      "title": "ImageOverlay",
+      "type": "object"
+    },
+    "Keyframe": {
+      "additionalProperties": false,
+      "description": "One animated value at one instant, relative to the element that carries it.",
+      "properties": {
+        "atMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "easing": {
+          "$ref": "#/$defs/Easing"
+        },
+        "opacity": {
+          "anyOf": [
+            {
+              "maximum": 1,
+              "minimum": 0,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "style": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TextStyle"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "transform": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Transform"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "atMs",
+        "easing",
+        "transform",
+        "opacity",
+        "style"
+      ],
+      "title": "Keyframe",
+      "type": "object"
+    },
+    "MotionPreset": {
+      "description": "The named animations an item or overlay may be given.",
+      "enum": [
+        "none",
+        "kenBurnsIn",
+        "kenBurnsOut",
+        "panLeft",
+        "panRight",
+        "slideUp",
+        "fade"
+      ],
+      "title": "MotionPreset",
+      "type": "string"
+    },
+    "Origin": {
+      "additionalProperties": false,
+      "description": "Where one element's media came from, and the records that attribute it.",
+      "properties": {
+        "provenanceId": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "suggestionId": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "type": {
+          "$ref": "#/$defs/OriginType"
+        }
+      },
+      "required": [
+        "type",
+        "suggestionId",
+        "provenanceId"
+      ],
+      "title": "Origin",
+      "type": "object"
+    },
+    "OriginType": {
+      "description": "Where the media in one item or overlay came from.",
+      "enum": [
+        "source",
+        "brollSuggestion",
+        "userAsset",
+        "generated"
+      ],
+      "title": "OriginType",
+      "type": "string"
+    },
+    "Placement": {
+      "description": "Where an overlay sits inside the canvas.",
+      "enum": [
+        "cover",
+        "pictureInPicture",
+        "lowerThird",
+        "top",
+        "center"
+      ],
+      "title": "Placement",
+      "type": "string"
+    },
+    "SourceRange": {
+      "additionalProperties": false,
+      "description": "The span of the source asset this clip was cut from.",
+      "properties": {
+        "inMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "outMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "inMs",
+        "outMs"
+      ],
+      "title": "SourceRange",
+      "type": "object"
+    },
+    "TemplateReference": {
+      "additionalProperties": false,
+      "description": "The exact template version this composition was built against.",
+      "properties": {
+        "id": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "version": {
+          "exclusiveMinimum": 0,
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "TemplateReference",
+      "type": "object"
+    },
+    "TextAlign": {
+      "description": "Horizontal alignment for caption and text-overlay type.",
+      "enum": [
+        "left",
+        "center",
+        "right"
+      ],
+      "title": "TextAlign",
+      "type": "string"
+    },
+    "TextDecoration": {
+      "description": "The decorations a supported renderer can draw on text.",
+      "enum": [
+        "none",
+        "underline",
+        "strikethrough"
+      ],
+      "title": "TextDecoration",
+      "type": "string"
+    },
+    "TextOverlay": {
+      "additionalProperties": false,
+      "description": "Type the member wrote, drawn rather than loaded.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "keyframes": {
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "type": "array"
+        },
+        "motion": {
+          "$ref": "#/$defs/MotionPreset"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "style": {
+          "$ref": "#/$defs/TextStyle"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "type": "string"
+        },
+        "timelineEndMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineStartMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timelineStartMs",
+        "timelineEndMs",
+        "placement",
+        "opacity",
+        "keyframes",
+        "type",
+        "text",
+        "style",
+        "motion"
+      ],
+      "title": "TextOverlay",
+      "type": "object"
+    },
+    "TextStyle": {
+      "additionalProperties": false,
+      "description": "Every type attribute Section 9 requires the editor to expose.",
+      "properties": {
+        "align": {
+          "$ref": "#/$defs/TextAlign"
+        },
+        "backgroundColor": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "backgroundEnabled": {
+          "type": "boolean"
+        },
+        "color": {
+          "pattern": "^#[0-9A-Fa-f]{6}$",
+          "type": "string"
+        },
+        "decoration": {
+          "$ref": "#/$defs/TextDecoration"
+        },
+        "fontFamily": {
+          "$ref": "#/$defs/FontFamily"
+        },
+        "fontSize": {
+          "maximum": 200,
+          "minimum": 12,
+          "type": "integer"
+        },
+        "italic": {
+          "type": "boolean"
+        },
+        "letterSpacing": {
+          "maximum": 40,
+          "minimum": -10,
+          "type": "number"
+        },
+        "lineHeight": {
+          "maximum": 3,
+          "minimum": 0.5,
+          "type": "number"
+        },
+        "weight": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "fontFamily",
+        "fontSize",
+        "color",
+        "align",
+        "weight",
+        "italic",
+        "decoration",
+        "letterSpacing",
+        "lineHeight",
+        "backgroundEnabled",
+        "backgroundColor"
+      ],
+      "title": "TextStyle",
+      "type": "object"
+    },
+    "Track": {
+      "additionalProperties": false,
+      "description": "One lane of the timeline, playing one item at a time.",
+      "properties": {
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/TrackItem"
+          },
+          "type": "array"
+        },
+        "type": {
+          "$ref": "#/$defs/TrackType"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "items"
+      ],
+      "title": "Track",
+      "type": "object"
+    },
+    "TrackItem": {
+      "additionalProperties": false,
+      "description": "One slice of a source asset placed on a timeline lane.",
+      "properties": {
+        "blendMode": {
+          "$ref": "#/$defs/BlendMode"
+        },
+        "crop": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Crop"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "keyframes": {
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "type": "array"
+        },
+        "motion": {
+          "$ref": "#/$defs/MotionPreset"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "sourceAssetId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "sourceInMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceOutMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineStartMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "transform": {
+          "$ref": "#/$defs/Transform"
+        }
+      },
+      "required": [
+        "id",
+        "sourceAssetId",
+        "timelineStartMs",
+        "sourceInMs",
+        "sourceOutMs",
+        "transform",
+        "crop",
+        "opacity",
+        "blendMode",
+        "motion",
+        "origin",
+        "keyframes"
+      ],
+      "title": "TrackItem",
+      "type": "object"
+    },
+    "TrackType": {
+      "description": "The kinds of timeline lane a composition may carry.",
+      "enum": [
+        "video",
+        "audio",
+        "music",
+        "extractedAudio"
+      ],
+      "title": "TrackType",
+      "type": "string"
+    },
+    "Transform": {
+      "additionalProperties": false,
+      "description": "The position, scale, and rotation of one visual element.",
+      "properties": {
+        "rotation": {
+          "type": "number"
+        },
+        "scale": {
+          "exclusiveMinimum": 0,
+          "type": "number"
+        },
+        "x": {
+          "type": "number"
+        },
+        "y": {
+          "type": "number"
+        }
+      },
+      "required": [
+        "x",
+        "y",
+        "scale",
+        "rotation"
+      ],
+      "title": "Transform",
+      "type": "object"
+    },
+    "VideoOverlay": {
+      "additionalProperties": false,
+      "description": "A B-roll or supporting video placed over the main timeline.",
+      "properties": {
+        "assetId": {
+          "format": "uuid",
+          "type": "string"
+        },
+        "blendMode": {
+          "$ref": "#/$defs/BlendMode"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "pattern": "^[A-Za-z0-9._:-]+$",
+          "type": "string"
+        },
+        "keyframes": {
+          "items": {
+            "$ref": "#/$defs/Keyframe"
+          },
+          "type": "array"
+        },
+        "motion": {
+          "$ref": "#/$defs/MotionPreset"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0,
+          "type": "number"
+        },
+        "origin": {
+          "$ref": "#/$defs/Origin"
+        },
+        "placement": {
+          "$ref": "#/$defs/Placement"
+        },
+        "preserveDialogueAudio": {
+          "type": "boolean"
+        },
+        "sourceInMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "sourceOutMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineEndMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "timelineStartMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "type": {
+          "const": "video",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "timelineStartMs",
+        "timelineEndMs",
+        "placement",
+        "opacity",
+        "keyframes",
+        "type",
+        "assetId",
+        "sourceInMs",
+        "sourceOutMs",
+        "blendMode",
+        "motion",
+        "preserveDialogueAudio",
+        "origin"
+      ],
+      "title": "VideoOverlay",
+      "type": "object"
+    }
+  },
+  "$id": "https://clipah.com/contracts/composition.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "description": "One immutable editing decision set, valid on its own terms.",
+  "properties": {
+    "audio": {
+      "$ref": "#/$defs/AudioMix"
+    },
+    "bookmarks": {
+      "items": {
+        "$ref": "#/$defs/Bookmark"
+      },
+      "type": "array"
+    },
+    "brandKit": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BrandKitReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "canvas": {
+      "$ref": "#/$defs/Canvas"
+    },
+    "captions": {
+      "$ref": "#/$defs/Captions"
+    },
+    "durationMs": {
+      "exclusiveMinimum": 0,
+      "maximum": 600000,
+      "type": "integer"
+    },
+    "overlays": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "citation": "#/$defs/CitationOverlay",
+            "image": "#/$defs/ImageOverlay",
+            "text": "#/$defs/TextOverlay",
+            "video": "#/$defs/VideoOverlay"
+          },
+          "propertyName": "type"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/VideoOverlay"
+          },
+          {
+            "$ref": "#/$defs/ImageOverlay"
+          },
+          {
+            "$ref": "#/$defs/TextOverlay"
+          },
+          {
+            "$ref": "#/$defs/CitationOverlay"
+          }
+        ]
+      },
+      "type": "array"
+    },
+    "schemaVersion": {
+      "const": 1,
+      "type": "integer"
+    },
+    "sourceAssetId": {
+      "format": "uuid",
+      "type": "string"
+    },
+    "sourceRange": {
+      "$ref": "#/$defs/SourceRange"
+    },
+    "template": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/TemplateReference"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "tracks": {
+      "items": {
+        "$ref": "#/$defs/Track"
+      },
+      "type": "array"
+    }
+  },
+  "required": [
+    "schemaVersion",
+    "sourceAssetId",
+    "durationMs",
+    "canvas",
+    "sourceRange",
+    "template",
+    "brandKit",
+    "tracks",
+    "captions",
+    "overlays",
+    "audio",
+    "bookmarks"
+  ],
+  "title": "CompositionV1",
+  "type": "object"
+}

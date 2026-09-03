@@ -21,6 +21,110 @@
         "title": "AnalysisJobResponse",
         "type": "object"
       },
+      "AudioMix": {
+        "additionalProperties": false,
+        "description": "The two gains a version 1 composition can set.",
+        "properties": {
+          "gainDb": {
+            "maximum": 12.0,
+            "minimum": -60.0,
+            "title": "Gaindb",
+            "type": "number"
+          },
+          "musicGainDb": {
+            "maximum": 12.0,
+            "minimum": -60.0,
+            "title": "Musicgaindb",
+            "type": "number"
+          }
+        },
+        "required": [
+          "gainDb",
+          "musicGainDb"
+        ],
+        "title": "AudioMix",
+        "type": "object"
+      },
+      "BlendMode": {
+        "description": "The compositing modes both the browser preview and FFmpeg can reproduce.",
+        "enum": [
+          "normal",
+          "multiply",
+          "screen",
+          "overlay",
+          "darken",
+          "lighten"
+        ],
+        "title": "BlendMode",
+        "type": "string"
+      },
+      "Bookmark": {
+        "additionalProperties": false,
+        "description": "A member's marker on the timeline.",
+        "properties": {
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "label": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Label",
+            "type": "string"
+          },
+          "timelineMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinems",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "timelineMs",
+          "label"
+        ],
+        "title": "Bookmark",
+        "type": "object"
+      },
+      "BrandKitReference": {
+        "additionalProperties": false,
+        "description": "The exact Brand Kit version this composition was built against.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "logoAssetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logoassetid"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "logoAssetId"
+        ],
+        "title": "BrandKitReference",
+        "type": "object"
+      },
       "CandidatePageResponse": {
         "additionalProperties": false,
         "description": "One strict ranked candidate page and its opaque continuation cursor.",
@@ -208,6 +312,270 @@
         "title": "CandidateScoreResponse",
         "type": "object"
       },
+      "Canvas": {
+        "additionalProperties": false,
+        "description": "The output frame every item is composited into.",
+        "properties": {
+          "background": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Background",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "width",
+          "height",
+          "background"
+        ],
+        "title": "Canvas",
+        "type": "object"
+      },
+      "CaptionMode": {
+        "description": "How caption words are drawn, if they are drawn at all.",
+        "enum": [
+          "off",
+          "block",
+          "karaoke"
+        ],
+        "title": "CaptionMode",
+        "type": "string"
+      },
+      "CaptionStyle": {
+        "additionalProperties": false,
+        "description": "Caption type, plus the colour karaoke highlighting paints the active word.",
+        "properties": {
+          "align": {
+            "$ref": "#/components/schemas/TextAlign"
+          },
+          "backgroundColor": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Backgroundcolor",
+            "type": "string"
+          },
+          "backgroundEnabled": {
+            "title": "Backgroundenabled",
+            "type": "boolean"
+          },
+          "color": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "decoration": {
+            "$ref": "#/components/schemas/TextDecoration"
+          },
+          "fontFamily": {
+            "$ref": "#/components/schemas/FontFamily"
+          },
+          "fontSize": {
+            "maximum": 200.0,
+            "minimum": 12.0,
+            "title": "Fontsize",
+            "type": "integer"
+          },
+          "highlightColor": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Highlightcolor",
+            "type": "string"
+          },
+          "italic": {
+            "title": "Italic",
+            "type": "boolean"
+          },
+          "letterSpacing": {
+            "maximum": 40.0,
+            "minimum": -10.0,
+            "title": "Letterspacing",
+            "type": "number"
+          },
+          "lineHeight": {
+            "maximum": 3.0,
+            "minimum": 0.5,
+            "title": "Lineheight",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fontFamily",
+          "fontSize",
+          "color",
+          "align",
+          "weight",
+          "italic",
+          "decoration",
+          "letterSpacing",
+          "lineHeight",
+          "backgroundEnabled",
+          "backgroundColor",
+          "highlightColor"
+        ],
+        "title": "CaptionStyle",
+        "type": "object"
+      },
+      "CaptionWord": {
+        "additionalProperties": false,
+        "description": "One transcript word as it is drawn, timed against the composition.",
+        "properties": {
+          "endMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Endms",
+            "type": "integer"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "speaker": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker"
+          },
+          "startMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Startms",
+            "type": "integer"
+          },
+          "text": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "startMs",
+          "endMs",
+          "text",
+          "speaker"
+        ],
+        "title": "CaptionWord",
+        "type": "object"
+      },
+      "Captions": {
+        "additionalProperties": false,
+        "description": "The caption layer, its words, and the type they are drawn in.",
+        "properties": {
+          "mode": {
+            "$ref": "#/components/schemas/CaptionMode"
+          },
+          "style": {
+            "$ref": "#/components/schemas/CaptionStyle"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/CaptionWord"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "mode",
+          "words",
+          "style"
+        ],
+        "title": "Captions",
+        "type": "object"
+      },
+      "CitationOverlay": {
+        "additionalProperties": false,
+        "description": "An on-screen source note bound to the evidence record it cites.",
+        "properties": {
+          "claimEvidenceId": {
+            "format": "uuid",
+            "title": "Claimevidenceid",
+            "type": "string"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Keyframe"
+            },
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          },
+          "style": {
+            "$ref": "#/components/schemas/TextStyle"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "timelineEndMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelineendms",
+            "type": "integer"
+          },
+          "timelineStartMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinestartms",
+            "type": "integer"
+          },
+          "type": {
+            "const": "citation",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timelineStartMs",
+          "timelineEndMs",
+          "placement",
+          "opacity",
+          "keyframes",
+          "type",
+          "claimEvidenceId",
+          "text",
+          "style"
+        ],
+        "title": "CitationOverlay",
+        "type": "object"
+      },
       "ClipCategory": {
         "description": "The review filters version one of the product supports.",
         "enum": [
@@ -266,6 +634,119 @@
         "title": "CompletedPartRequest",
         "type": "object"
       },
+      "CompositionV1": {
+        "additionalProperties": false,
+        "description": "One immutable editing decision set, valid on its own terms.",
+        "properties": {
+          "audio": {
+            "$ref": "#/components/schemas/AudioMix"
+          },
+          "bookmarks": {
+            "items": {
+              "$ref": "#/components/schemas/Bookmark"
+            },
+            "title": "Bookmarks",
+            "type": "array"
+          },
+          "brandKit": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrandKitReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "canvas": {
+            "$ref": "#/components/schemas/Canvas"
+          },
+          "captions": {
+            "$ref": "#/components/schemas/Captions"
+          },
+          "durationMs": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 600000.0,
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "overlays": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "citation": "#/components/schemas/CitationOverlay",
+                  "image": "#/components/schemas/ImageOverlay",
+                  "text": "#/components/schemas/TextOverlay",
+                  "video": "#/components/schemas/VideoOverlay"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/VideoOverlay"
+                },
+                {
+                  "$ref": "#/components/schemas/ImageOverlay"
+                },
+                {
+                  "$ref": "#/components/schemas/TextOverlay"
+                },
+                {
+                  "$ref": "#/components/schemas/CitationOverlay"
+                }
+              ]
+            },
+            "title": "Overlays",
+            "type": "array"
+          },
+          "schemaVersion": {
+            "const": 1,
+            "title": "Schemaversion",
+            "type": "integer"
+          },
+          "sourceAssetId": {
+            "format": "uuid",
+            "title": "Sourceassetid",
+            "type": "string"
+          },
+          "sourceRange": {
+            "$ref": "#/components/schemas/SourceRange"
+          },
+          "template": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TemplateReference"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tracks": {
+            "items": {
+              "$ref": "#/components/schemas/Track"
+            },
+            "title": "Tracks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "schemaVersion",
+          "sourceAssetId",
+          "durationMs",
+          "canvas",
+          "sourceRange",
+          "template",
+          "brandKit",
+          "tracks",
+          "captions",
+          "overlays",
+          "audio",
+          "bookmarks"
+        ],
+        "title": "CompositionV1",
+        "type": "object"
+      },
       "CreateUploadRequest": {
         "additionalProperties": false,
         "description": "Explicit client display and content metadata for one source-media upload intent.",
@@ -295,6 +776,44 @@
           "contentLength"
         ],
         "title": "CreateUploadRequest",
+        "type": "object"
+      },
+      "Crop": {
+        "additionalProperties": false,
+        "description": "A normalized crop rectangle inside the source frame.",
+        "properties": {
+          "height": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Height",
+            "type": "number"
+          },
+          "width": {
+            "exclusiveMinimum": 0.0,
+            "maximum": 1.0,
+            "title": "Width",
+            "type": "number"
+          },
+          "x": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "width",
+          "height"
+        ],
+        "title": "Crop",
         "type": "object"
       },
       "CurrentUserResponse": {
@@ -624,6 +1143,84 @@
         "title": "DashboardWorkspaceResponse",
         "type": "object"
       },
+      "Easing": {
+        "description": "How a value travels between two keyframes.",
+        "enum": [
+          "linear",
+          "easeIn",
+          "easeOut",
+          "easeInOut"
+        ],
+        "title": "Easing",
+        "type": "string"
+      },
+      "EditResponse": {
+        "additionalProperties": false,
+        "description": "One Edit and the composition its current Revision holds.",
+        "properties": {
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "composition": {
+            "$ref": "#/components/schemas/CompositionV1"
+          },
+          "compositionHash": {
+            "title": "Compositionhash",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "currentRevision": {
+            "title": "Currentrevision",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "candidateId",
+          "currentRevision",
+          "composition",
+          "compositionHash",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "EditResponse",
+        "type": "object"
+      },
+      "FontFamily": {
+        "description": "The fonts Clipah ships to both the browser preview and the render worker.",
+        "enum": [
+          "Inter",
+          "Montserrat",
+          "Poppins",
+          "Roboto",
+          "Open Sans",
+          "Bebas Neue",
+          "Anton",
+          "Nunito"
+        ],
+        "title": "FontFamily",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -635,6 +1232,81 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImageOverlay": {
+        "additionalProperties": false,
+        "description": "A still image placed over the main timeline.",
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "title": "Assetid",
+            "type": "string"
+          },
+          "blendMode": {
+            "$ref": "#/components/schemas/BlendMode"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Keyframe"
+            },
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MotionPreset"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Origin"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          },
+          "timelineEndMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelineendms",
+            "type": "integer"
+          },
+          "timelineStartMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinestartms",
+            "type": "integer"
+          },
+          "type": {
+            "const": "image",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timelineStartMs",
+          "timelineEndMs",
+          "placement",
+          "opacity",
+          "keyframes",
+          "type",
+          "assetId",
+          "blendMode",
+          "motion",
+          "origin"
+        ],
+        "title": "ImageOverlay",
         "type": "object"
       },
       "JobKind": {
@@ -668,6 +1340,63 @@
         ],
         "title": "JobStatus",
         "type": "string"
+      },
+      "Keyframe": {
+        "additionalProperties": false,
+        "description": "One animated value at one instant, relative to the element that carries it.",
+        "properties": {
+          "atMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Atms",
+            "type": "integer"
+          },
+          "easing": {
+            "$ref": "#/components/schemas/Easing"
+          },
+          "opacity": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opacity"
+          },
+          "style": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TextStyle"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "transform": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Transform"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "atMs",
+          "easing",
+          "transform",
+          "opacity",
+          "style"
+        ],
+        "title": "Keyframe",
+        "type": "object"
       },
       "MemberCollectionResponse": {
         "additionalProperties": false,
@@ -721,6 +1450,83 @@
         ],
         "title": "MemberResponse",
         "type": "object"
+      },
+      "MotionPreset": {
+        "description": "The named animations an item or overlay may be given.",
+        "enum": [
+          "none",
+          "kenBurnsIn",
+          "kenBurnsOut",
+          "panLeft",
+          "panRight",
+          "slideUp",
+          "fade"
+        ],
+        "title": "MotionPreset",
+        "type": "string"
+      },
+      "Origin": {
+        "additionalProperties": false,
+        "description": "Where one element's media came from, and the records that attribute it.",
+        "properties": {
+          "provenanceId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provenanceid"
+          },
+          "suggestionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestionid"
+          },
+          "type": {
+            "$ref": "#/components/schemas/OriginType"
+          }
+        },
+        "required": [
+          "type",
+          "suggestionId",
+          "provenanceId"
+        ],
+        "title": "Origin",
+        "type": "object"
+      },
+      "OriginType": {
+        "description": "Where the media in one item or overlay came from.",
+        "enum": [
+          "source",
+          "brollSuggestion",
+          "userAsset",
+          "generated"
+        ],
+        "title": "OriginType",
+        "type": "string"
+      },
+      "Placement": {
+        "description": "Where an overlay sits inside the canvas.",
+        "enum": [
+          "cover",
+          "pictureInPicture",
+          "lowerThird",
+          "top",
+          "center"
+        ],
+        "title": "Placement",
+        "type": "string"
       },
       "ProjectCreateRequest": {
         "additionalProperties": false,
@@ -929,6 +1735,77 @@
         "title": "QuotaResource",
         "type": "string"
       },
+      "RevisionHistoryResponse": {
+        "additionalProperties": false,
+        "description": "One Edit's Revisions, newest first.",
+        "properties": {
+          "revisions": {
+            "items": {
+              "$ref": "#/components/schemas/RevisionResponse"
+            },
+            "title": "Revisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revisions"
+        ],
+        "title": "RevisionHistoryResponse",
+        "type": "object"
+      },
+      "RevisionResponse": {
+        "additionalProperties": false,
+        "description": "One entry of an Edit's history, without repeating its whole composition.",
+        "properties": {
+          "compositionHash": {
+            "title": "Compositionhash",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "compositionHash",
+          "createdBy",
+          "createdAt"
+        ],
+        "title": "RevisionResponse",
+        "type": "object"
+      },
+      "SaveRevisionRequest": {
+        "additionalProperties": false,
+        "description": "One composition offered as the successor of the Revision the caller holds.",
+        "properties": {
+          "composition": {
+            "additionalProperties": true,
+            "title": "Composition",
+            "type": "object"
+          },
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "composition"
+        ],
+        "title": "SaveRevisionRequest",
+        "type": "object"
+      },
       "SourceKind": {
         "enum": [
           "upload",
@@ -937,6 +1814,373 @@
         ],
         "title": "SourceKind",
         "type": "string"
+      },
+      "SourceRange": {
+        "additionalProperties": false,
+        "description": "The span of the source asset this clip was cut from.",
+        "properties": {
+          "inMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Inms",
+            "type": "integer"
+          },
+          "outMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Outms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "inMs",
+          "outMs"
+        ],
+        "title": "SourceRange",
+        "type": "object"
+      },
+      "TemplateReference": {
+        "additionalProperties": false,
+        "description": "The exact template version this composition was built against.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "version": {
+            "exclusiveMinimum": 0.0,
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "version"
+        ],
+        "title": "TemplateReference",
+        "type": "object"
+      },
+      "TextAlign": {
+        "description": "Horizontal alignment for caption and text-overlay type.",
+        "enum": [
+          "left",
+          "center",
+          "right"
+        ],
+        "title": "TextAlign",
+        "type": "string"
+      },
+      "TextDecoration": {
+        "description": "The decorations a supported renderer can draw on text.",
+        "enum": [
+          "none",
+          "underline",
+          "strikethrough"
+        ],
+        "title": "TextDecoration",
+        "type": "string"
+      },
+      "TextOverlay": {
+        "additionalProperties": false,
+        "description": "Type the member wrote, drawn rather than loaded.",
+        "properties": {
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Keyframe"
+            },
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MotionPreset"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          },
+          "style": {
+            "$ref": "#/components/schemas/TextStyle"
+          },
+          "text": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          },
+          "timelineEndMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelineendms",
+            "type": "integer"
+          },
+          "timelineStartMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinestartms",
+            "type": "integer"
+          },
+          "type": {
+            "const": "text",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timelineStartMs",
+          "timelineEndMs",
+          "placement",
+          "opacity",
+          "keyframes",
+          "type",
+          "text",
+          "style",
+          "motion"
+        ],
+        "title": "TextOverlay",
+        "type": "object"
+      },
+      "TextStyle": {
+        "additionalProperties": false,
+        "description": "Every type attribute Section 9 requires the editor to expose.",
+        "properties": {
+          "align": {
+            "$ref": "#/components/schemas/TextAlign"
+          },
+          "backgroundColor": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Backgroundcolor",
+            "type": "string"
+          },
+          "backgroundEnabled": {
+            "title": "Backgroundenabled",
+            "type": "boolean"
+          },
+          "color": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Color",
+            "type": "string"
+          },
+          "decoration": {
+            "$ref": "#/components/schemas/TextDecoration"
+          },
+          "fontFamily": {
+            "$ref": "#/components/schemas/FontFamily"
+          },
+          "fontSize": {
+            "maximum": 200.0,
+            "minimum": 12.0,
+            "title": "Fontsize",
+            "type": "integer"
+          },
+          "italic": {
+            "title": "Italic",
+            "type": "boolean"
+          },
+          "letterSpacing": {
+            "maximum": 40.0,
+            "minimum": -10.0,
+            "title": "Letterspacing",
+            "type": "number"
+          },
+          "lineHeight": {
+            "maximum": 3.0,
+            "minimum": 0.5,
+            "title": "Lineheight",
+            "type": "number"
+          },
+          "weight": {
+            "title": "Weight",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "fontFamily",
+          "fontSize",
+          "color",
+          "align",
+          "weight",
+          "italic",
+          "decoration",
+          "letterSpacing",
+          "lineHeight",
+          "backgroundEnabled",
+          "backgroundColor"
+        ],
+        "title": "TextStyle",
+        "type": "object"
+      },
+      "Track": {
+        "additionalProperties": false,
+        "description": "One lane of the timeline, playing one item at a time.",
+        "properties": {
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TrackItem"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "type": {
+            "$ref": "#/components/schemas/TrackType"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "items"
+        ],
+        "title": "Track",
+        "type": "object"
+      },
+      "TrackItem": {
+        "additionalProperties": false,
+        "description": "One slice of a source asset placed on a timeline lane.",
+        "properties": {
+          "blendMode": {
+            "$ref": "#/components/schemas/BlendMode"
+          },
+          "crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Crop"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Keyframe"
+            },
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MotionPreset"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Origin"
+          },
+          "sourceAssetId": {
+            "format": "uuid",
+            "title": "Sourceassetid",
+            "type": "string"
+          },
+          "sourceInMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Sourceinms",
+            "type": "integer"
+          },
+          "sourceOutMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Sourceoutms",
+            "type": "integer"
+          },
+          "timelineStartMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinestartms",
+            "type": "integer"
+          },
+          "transform": {
+            "$ref": "#/components/schemas/Transform"
+          }
+        },
+        "required": [
+          "id",
+          "sourceAssetId",
+          "timelineStartMs",
+          "sourceInMs",
+          "sourceOutMs",
+          "transform",
+          "crop",
+          "opacity",
+          "blendMode",
+          "motion",
+          "origin",
+          "keyframes"
+        ],
+        "title": "TrackItem",
+        "type": "object"
+      },
+      "TrackType": {
+        "description": "The kinds of timeline lane a composition may carry.",
+        "enum": [
+          "video",
+          "audio",
+          "music",
+          "extractedAudio"
+        ],
+        "title": "TrackType",
+        "type": "string"
+      },
+      "Transform": {
+        "additionalProperties": false,
+        "description": "The position, scale, and rotation of one visual element.",
+        "properties": {
+          "rotation": {
+            "title": "Rotation",
+            "type": "number"
+          },
+          "scale": {
+            "exclusiveMinimum": 0.0,
+            "title": "Scale",
+            "type": "number"
+          },
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "scale",
+          "rotation"
+        ],
+        "title": "Transform",
+        "type": "object"
       },
       "ValidationError": {
         "properties": {
@@ -976,6 +2220,100 @@
           "type"
         ],
         "title": "ValidationError",
+        "type": "object"
+      },
+      "VideoOverlay": {
+        "additionalProperties": false,
+        "description": "A B-roll or supporting video placed over the main timeline.",
+        "properties": {
+          "assetId": {
+            "format": "uuid",
+            "title": "Assetid",
+            "type": "string"
+          },
+          "blendMode": {
+            "$ref": "#/components/schemas/BlendMode"
+          },
+          "id": {
+            "maxLength": 128,
+            "minLength": 1,
+            "pattern": "^[A-Za-z0-9._:-]+$",
+            "title": "Id",
+            "type": "string"
+          },
+          "keyframes": {
+            "items": {
+              "$ref": "#/components/schemas/Keyframe"
+            },
+            "title": "Keyframes",
+            "type": "array"
+          },
+          "motion": {
+            "$ref": "#/components/schemas/MotionPreset"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "origin": {
+            "$ref": "#/components/schemas/Origin"
+          },
+          "placement": {
+            "$ref": "#/components/schemas/Placement"
+          },
+          "preserveDialogueAudio": {
+            "title": "Preservedialogueaudio",
+            "type": "boolean"
+          },
+          "sourceInMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Sourceinms",
+            "type": "integer"
+          },
+          "sourceOutMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Sourceoutms",
+            "type": "integer"
+          },
+          "timelineEndMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelineendms",
+            "type": "integer"
+          },
+          "timelineStartMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Timelinestartms",
+            "type": "integer"
+          },
+          "type": {
+            "const": "video",
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "timelineStartMs",
+          "timelineEndMs",
+          "placement",
+          "opacity",
+          "keyframes",
+          "type",
+          "assetId",
+          "sourceInMs",
+          "sourceOutMs",
+          "blendMode",
+          "motion",
+          "preserveDialogueAudio",
+          "origin"
+        ],
+        "title": "VideoOverlay",
         "type": "object"
       },
       "WorkspaceCollectionResponse": {
@@ -1274,6 +2612,176 @@
         "summary": "Show",
         "tags": [
           "dashboard"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}": {
+      "get": {
+        "description": "Read one Edit, hiding another Workspace's Edit behind the same absence.",
+        "operationId": "show_api_v1_edits__edit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "edits"
+        ]
+      },
+      "put": {
+        "description": "Append one composition as the next Revision, or refuse a stale expectation.",
+        "operationId": "save_api_v1_edits__edit_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SaveRevisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Save",
+        "tags": [
+          "edits"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/revisions": {
+      "get": {
+        "description": "List one Edit's Revisions, newest first.",
+        "operationId": "history_api_v1_edits__edit_id__revisions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionHistoryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "History",
+        "tags": [
+          "edits"
         ]
       }
     },
@@ -2126,6 +3634,70 @@
         "summary": "Show",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/edits": {
+      "post": {
+        "description": "Open the one Edit belonging to a reviewed candidate, or reach the existing one.",
+        "operationId": "create_api_v1_projects__project_id__candidates__candidate_id__edits_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "edits"
         ]
       }
     },

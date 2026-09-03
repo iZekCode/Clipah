@@ -26,6 +26,10 @@ TYPED_OPERATIONS = (
     ("/api/v1/projects/{project_id}", "get", "200"),
     ("/api/v1/projects/{project_id}", "patch", "200"),
     ("/api/v1/dashboard/summary", "get", "200"),
+    ("/api/v1/edits/{edit_id}", "get", "200"),
+    ("/api/v1/edits/{edit_id}", "put", "200"),
+    ("/api/v1/edits/{edit_id}/revisions", "get", "200"),
+    ("/api/v1/projects/{project_id}/candidates/{candidate_id}/edits", "post", "200"),
 )
 
 

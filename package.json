@@ -9,7 +9,10 @@
     "lint": "pnpm --filter clipah-frontend lint",
     "typecheck": "pnpm --filter clipah-frontend typecheck",
     "test": "pnpm --filter clipah-frontend test",
-    "generate:api": "pnpm --filter clipah-frontend generate:api"
+    "generate:api": "pnpm --filter clipah-frontend generate:api",
+    "generate:composition": "pnpm --filter clipah-frontend generate:composition",
+    "generate:contracts": "scripts/export-openapi.sh && scripts/export-composition-schema.sh && pnpm generate:api && pnpm generate:composition",
+    "check:contracts": "scripts/check-contracts-clean.sh"
   },
   "packageManager": "pnpm@11.25.0"
 }

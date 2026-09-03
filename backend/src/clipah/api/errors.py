@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from types import MappingProxyType
 
 from starlette.responses import JSONResponse
@@ -19,6 +20,7 @@ class ApiError(Exception):
         code: str,
         message: str | None = None,
         retry_after_seconds: int | None = None,
+        headers: Mapping[str, str] | None = None,
     ) -> None:
         """Preserve a compatibility-only message argument without retaining it publicly."""
         del message
@@ -26,6 +28,8 @@ class ApiError(Exception):
         self.status_code = status_code
         self.code = code
         self.retry_after_seconds = retry_after_seconds
+        # Only values the application computed itself belong here; never provider text.
+        self.headers = dict(headers or {})
 
 
 _PUBLIC_MESSAGES = MappingProxyType(
@@ -51,12 +55,20 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "SOURCE_TOO_LONG": "This video exceeds the supported duration.",
         "SOURCE_TLS_FAILED": "The video source could not be verified securely.",
         "SOURCE_UNAVAILABLE": "The video source is temporarily unavailable.",
+        "EDIT_REVISION_CONFLICT": "This clip changed since you opened it.",
+        "COMPOSITION_INVALID": "This edit could not be saved as a valid composition.",
+        "COMPOSITION_ASSET_FORBIDDEN": "This edit uses media that is not available here.",
     }
 )
 
 
 def error_response(
-    *, status_code: int, code: str, request_id: str, retry_after_seconds: int | None = None
+    *,
+    status_code: int,
+    code: str,
+    request_id: str,
+    retry_after_seconds: int | None = None,
+    extra_headers: Mapping[str, str] | None = None,
 ) -> JSONResponse:
     """Build the one public error-envelope shape used by the HTTP application."""
     content = {
@@ -69,4 +81,5 @@ def error_response(
     headers = {REQUEST_ID_HEADER: request_id}
     if retry_after_seconds is not None:
         headers["Retry-After"] = str(retry_after_seconds)
+    headers.update(extra_headers or {})
     return JSONResponse(status_code=status_code, content=content, headers=headers)

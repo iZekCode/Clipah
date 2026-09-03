@@ -19,6 +19,7 @@ from clipah.api.routes import analysis as analysis_routes
 from clipah.api.routes import auth as auth_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import dashboard as dashboard_routes
+from clipah.api.routes import edits as edit_routes
 from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
@@ -97,6 +98,7 @@ def create_app(
             code=error.code,
             request_id=request_id_for(request),
             retry_after_seconds=error.retry_after_seconds,
+            extra_headers=error.headers,
         )
 
     @app.exception_handler(StarletteHTTPException)
@@ -153,6 +155,7 @@ def create_app(
     app.include_router(candidate_routes.router)
     app.include_router(playback_routes.router)
     app.include_router(dashboard_routes.router)
+    app.include_router(edit_routes.router)
     return app
 
 

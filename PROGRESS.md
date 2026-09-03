@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 21 is ready to commit, together with a pipeline-chaining fix that Phase B needed. **Task 22 follows.**
+**Current position:** Task 22 is ready to commit. **Task 23 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -50,8 +50,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 18 | Build authentication and project dashboard UX | `[x]` (`af04a94`) |
 | 19 | Build resumable upload and safe YouTube import UX | `[x]` (`8e7add7`) |
 | 20 | Build ranked clips review UX | `[x]` (`c4d73e3`) |
-| 21 | Run the editor-engine bake-off and record the adoption decision | `[~]` (ready to commit; ADR Accepted — Mediabunny selected) |
-| 22 | Implement composition validation and immutable edit revisions | `[ ]` |
+| 21 | Run the editor-engine bake-off and record the adoption decision | `[x]` (`9af7f62`, `8c0e206`; ADR Accepted — Mediabunny selected) |
+| 22 | Implement composition validation and immutable edit revisions | `[~]` (ready to commit) |
 | 23 | Build the basic non-destructive editor and autosave | `[ ]` |
 
 ## Phase D — Advanced editor parity (Tasks 24-26)
@@ -881,6 +881,89 @@ Still not run end to end against live providers: transcription and analysis need
 offline adapters.
 
 
+### Task 22 — Versioned compositions and immutable Edit Revisions
+
+`editor/models.py` holds composition version 1 as data. Every part of the document is a
+frozen model that forbids unknown fields, so a client cannot smuggle an attribute past the
+schema and a member cannot lose one to a silent drop. The document expresses what Section 9
+requires the editor to produce: video, audio, music, and extracted-audio tracks; karaoke
+caption words with their own type; video, image, text, and citation overlays; transform,
+crop, opacity, blend, and motion with keyframes; template and Brand Kit references carrying
+their versions; placement origin with its suggestion and provenance references; bookmarks;
+and the two audio gains.
+
+It refuses more than it accepts, and each refusal is a rule the renderer would otherwise
+discover too late: another `schemaVersion`, an unknown track type, a canvas outside the four
+export presets, an unsupported font, blend mode, motion preset, or font weight, a colour that
+is not a hex triplet, a non-finite number anywhere, a reversed source range, an item running
+past the composition, two items overlapping on one track, overlapping caption words, a
+keyframe out of order or past the element it animates, a keyframe that animates nothing, a
+repeated identifier, a B-roll origin with no suggestion, a source origin claiming one, a
+citation with no evidence record, a media overlay with no asset, and a text overlay carrying
+one. `collect_asset_ids` reports every asset a composition depends on, because whether media
+may be used is a question about the Project, not about the document, and the two are decided
+separately.
+
+`canonical_json` serializes a composition to sorted, compact, non-escaped UTF-8 bytes, and
+`composition_hash` is the SHA-256 of exactly those bytes. Two documents that differ only in
+key order hash identically; one that differs in a value does not. Those bytes are what is
+stored, so a stored Revision and its hash can never disagree, and Task 24's render artifacts
+can be keyed by composition hash safely.
+
+`editor/repository.py` and `editor/use_cases.py` add the Edit itself. Creating an Edit from a
+reviewed candidate takes an advisory lock on the candidate, so two tabs opening the editor
+converge on one Edit rather than forking one clip into two histories, and the first Revision
+is derived from the candidate alone: its own span of the source, the transcript words wholly
+inside that span shifted to clip time, and nothing invented on the member's behalf. Saving
+locks the Edit row, validates the composition, authorizes every asset it names against the
+Project that owns them, and only then appends the next Revision. The Edit row is locked on
+its own and its Project and current Revision are read afterwards — reading them in the same
+statement would answer from the snapshot the lock was taken under, where a competing save's
+Revision does not exist yet, and the loser would look like a missing Edit rather than a
+conflict. A save whose composition hashes to the Revision already stored appends nothing,
+because autosave repeats itself constantly and an unchanged document is not a new version.
+
+`api/routes/edits.py` serves the four endpoints: creating an Edit from a candidate (201 the
+first time, 200 for every replay), reading one, saving the next Revision, and listing the
+history. `EDIT_REVISION_CONFLICT`, `COMPOSITION_INVALID`, and `COMPOSITION_ASSET_FORBIDDEN`
+join the fixed public-message table. **One deliberate protocol decision:** the error envelope
+is fixed at `{code, message, requestId}`, so a conflict reports the Revision to reconcile
+against in an `X-Clipah-Current-Revision` response header rather than by widening the body.
+`ApiError` gained the header carrier this needs; only values the application computed itself
+are ever put there.
+
+The composition contract is generated, never hand-written, and there is one source for it.
+`backend/tools/export_composition_schema.py` writes `CompositionV1`'s own JSON Schema to
+`contracts/composition.schema.json` — the version is published as a constant, so a browser
+generating types from it cannot even express a document the backend would refuse — and
+`pnpm generate:composition` turns that schema into
+`frontend/features/editor/composition.generated.ts`. `scripts/check-contracts-clean.sh`
+snapshots the four generated outputs, regenerates all of them, and fails if any changed; it
+compares files on disk rather than git, so it answers the same way before a commit and inside
+CI, and it was negative-controlled by appending one line to a generated file. Wiring it into
+a CI workflow belongs to Task 47, which owns CI.
+
+Sixty-one backend schema tests and twenty-one integration tests were written and watched fail
+before the implementation existed, covering every field and every refusal above, the canonical
+bytes, replayed and concurrent Edit creation, appended history, stale expectations, two clients
+racing on Revision 2, unchanged saves, invalid and unauthorized compositions, CSRF, the
+reviewer/editor role split, tenant scoping, an unreviewable candidate, an unknown Edit, a
+candidate whose source Asset belongs to another Project, and a damaged transcript that must
+still yield an editable clip. Five frontend tests cover the published schema and type the
+generated `CompositionV1` without a single assertion. Four deliberate breaks were then made
+and each failed the matching test: dropping the Edit row lock, dropping the candidate advisory
+lock, dropping the unchanged-composition check, and removing the schema's version constant and
+one object's closedness.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 928 backend tests passed
+with five environment-gated skips at 94.83% coverage, with complete line and branch coverage on
+`editor/models.py`, `editor/repository.py`, `editor/use_cases.py`, and `api/routes/edits.py`;
+`pnpm lint`, `pnpm typecheck`, `pnpm test` (116 passed), and `pnpm build` all passed, and
+`scripts/check-contracts-clean.sh` exits zero. `contracts/openapi.json` was re-exported and the
+client regenerated. No commit was created; the required owner commit message is
+`feat: add versioned clip compositions`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -892,7 +975,11 @@ oversight.
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
 | Removing `@elah/core` and `elah-adapter.ts` — the ADR selected Mediabunny, but both adapters are retained until Task 24 discharges the FFmpeg parity gate, so the comparison can be re-run if that gate fails | Task 24 |
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
-| Creating an Edit from a reviewed candidate, and the idempotency of doing it twice — the review surface is complete without it, but `create_edit_from_candidate` and `POST /projects/{project_id}/candidates/{candidate_id}/edits` belong to the composition domain. The repository owner decided Task 20 would not start that domain early; the Playwright scenario is marked `test.fixme` | Task 22 (`plan.md:1214-1236`) |
+| The Playwright scenario `a reviewer turns a candidate into an edit exactly once` — Task 22 built the route and covers creating an Edit once, twice, and from two clients racing, all through the real HTTP API. The browser scenario needs a seeded reviewable candidate and a UI path into the editor, neither of which exists until the editor screen does | Task 23 (`plan.md:1238-1262`) |
+| Assets a composition may use are the owning Project's own Assets. A Workspace-wide library — a Brand Kit logo, or B-roll reused across Projects — will need the authorization set widened beyond one Project | Tasks 29 and 33 |
+| Revision history is returned newest-first with a fixed ceiling of 100 entries and no cursor; a clip edited past that will need pagination | Task 25, with full timeline editing |
+| Wiring `scripts/check-contracts-clean.sh` into a CI workflow; the check exists and is negative-controlled, but no CI configuration exists yet | Task 47 |
+| Reconciling the bake-off fixture `contracts/fixtures/editor/parity-composition.json`, which is frame-based, with composition version 1, which is millisecond-based; the fixture drives the engine contract test rather than the product | Task 24, with the FFmpeg parity gate |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Cookie-based authenticated YouTube import, including its consent and ownership-attestation UI; the public form deliberately offers no cookie control while the server capability and feature flag are off | Task 27 (`plan.md:1333-1360`) |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
