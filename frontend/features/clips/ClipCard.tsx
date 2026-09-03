@@ -1,8 +1,14 @@
 'use client'
 
+import { useMutation } from '@tanstack/react-query'
+import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
-import type { CandidateResponse } from '@/lib/api/generated/model'
+import { ErrorNotice } from '@/components/error-notice'
+import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
+import type { ApiError } from '@/lib/api/client'
+import { createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost } from '@/lib/api/generated/edits/edits'
+import type { CandidateResponse, EditResponse } from '@/lib/api/generated/model'
 
 import { ClipPreview } from './ClipPreview'
 
@@ -39,6 +45,22 @@ const SCORE_DIMENSIONS = [
  */
 export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
   const [previewing, setPreviewing] = useState(false)
+  const { active } = useWorkspaceScope()
+  const router = useRouter()
+
+  // One clip has one Edit: the backend converges a repeated request on the Edit it
+  // already created, so a second click opens the same work rather than a rival copy.
+  const open = useMutation<EditResponse, ApiError, void>({
+    mutationFn: () =>
+      createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost(
+        candidate.projectId,
+        candidate.id,
+        { workspace_id: active.id },
+      ),
+    onSuccess: (created) => {
+      router.push(`/editor/${created.id}?workspace_id=${active.id}`)
+    },
+  })
 
   return (
     <li className="space-y-3 px-4 py-4">
@@ -110,14 +132,25 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
         </ul>
       )}
 
-      <button
-        type="button"
-        aria-expanded={previewing}
-        onClick={() => setPreviewing((open) => !open)}
-        className="rounded-md border px-3 py-1 text-sm"
-      >
-        Preview clip
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          aria-expanded={previewing}
+          onClick={() => setPreviewing((open) => !open)}
+          className="rounded-md border px-3 py-1 text-sm"
+        >
+          Preview clip
+        </button>
+        <button
+          type="button"
+          disabled={open.isPending}
+          onClick={() => open.mutate()}
+          className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+        >
+          {open.isPending ? 'Opening the editor…' : 'Edit this clip'}
+        </button>
+      </div>
+      {open.isError ? <ErrorNotice error={open.error} /> : null}
       {previewing ? (
         <ClipPreview
           projectId={candidate.projectId}

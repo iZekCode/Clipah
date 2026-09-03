@@ -1,5 +1,7 @@
 import type {
   CandidateResponse,
+  CompositionV1,
+  EditResponse,
   CurrentUserResponse,
   ProjectResponse,
   WorkspaceResponse,
@@ -76,6 +78,88 @@ export function candidate(overrides: Partial<CandidateResponse> = {}): Candidate
     contextWarnings: ['Needs a source overlay.'],
     visualOpportunities: ['Show the workflow chart.'],
     createdAt: '2026-02-01T00:00:00+00:00',
+    ...overrides,
+  }
+}
+
+/** One caption word as the first Revision of an Edit carries it. */
+function captionWord(id: string, startMs: number, text: string): CompositionV1['captions']['words'][number] {
+  return { id, startMs, endMs: startMs + 900, text, speaker: 'SPEAKER_00' }
+}
+
+/** One composition, shaped exactly as `create_edit_from_candidate` produces it. */
+export function composition(overrides: Partial<CompositionV1> = {}): CompositionV1 {
+  return {
+    schemaVersion: 1,
+    sourceAssetId: '66666666-6666-4666-8666-666666666666',
+    durationMs: 30_000,
+    canvas: { width: 1080, height: 1920, background: '#000000' },
+    sourceRange: { inMs: 1_000, outMs: 31_000 },
+    template: null,
+    brandKit: null,
+    tracks: [
+      {
+        id: 'main-video',
+        type: 'video',
+        items: [
+          {
+            id: 'scene-1',
+            sourceAssetId: '66666666-6666-4666-8666-666666666666',
+            timelineStartMs: 0,
+            sourceInMs: 1_000,
+            sourceOutMs: 31_000,
+            transform: { x: 0.5, y: 0.5, scale: 1, rotation: 0 },
+            crop: null,
+            opacity: 1,
+            blendMode: 'normal',
+            motion: 'none',
+            origin: { type: 'source', suggestionId: null, provenanceId: null },
+            keyframes: [],
+          },
+        ],
+      },
+    ],
+    captions: {
+      mode: 'karaoke',
+      words: [
+        captionWord('w000001', 0, 'Ini'),
+        captionWord('w000002', 1_000, 'cara'),
+        captionWord('w000003', 12_000, 'kerja'),
+        captionWord('w000004', 20_000, 'editornya'),
+      ],
+      style: {
+        fontFamily: 'Montserrat',
+        fontSize: 64,
+        color: '#FFFFFF',
+        highlightColor: '#FFD166',
+        align: 'center',
+        weight: 700,
+        italic: false,
+        decoration: 'none',
+        letterSpacing: 0,
+        lineHeight: 1.2,
+        backgroundEnabled: false,
+        backgroundColor: '#000000',
+      },
+    },
+    overlays: [],
+    audio: { gainDb: 0, musicGainDb: -18 },
+    bookmarks: [],
+    ...overrides,
+  }
+}
+
+/** One Edit, as `GET /api/v1/edits/{id}` returns it. */
+export function edit(overrides: Partial<EditResponse> = {}): EditResponse {
+  return {
+    id: '77777777-7777-4777-8777-777777777777',
+    projectId: project().id,
+    candidateId: candidate().id,
+    currentRevision: 1,
+    composition: composition(),
+    compositionHash: 'a'.repeat(64),
+    createdAt: '2026-02-01T00:00:00+00:00',
+    updatedAt: '2026-02-01T00:00:00+00:00',
     ...overrides,
   }
 }

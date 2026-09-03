@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 22 is ready to commit. **Task 23 follows.**
+**Current position:** Task 23 is ready to commit. **Task 24 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -51,8 +51,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 19 | Build resumable upload and safe YouTube import UX | `[x]` (`8e7add7`) |
 | 20 | Build ranked clips review UX | `[x]` (`c4d73e3`) |
 | 21 | Run the editor-engine bake-off and record the adoption decision | `[x]` (`9af7f62`, `8c0e206`; ADR Accepted — Mediabunny selected) |
-| 22 | Implement composition validation and immutable edit revisions | `[~]` (ready to commit) |
-| 23 | Build the basic non-destructive editor and autosave | `[ ]` |
+| 22 | Implement composition validation and immutable edit revisions | `[x]` (`fe76bad`) |
+| 23 | Build the basic non-destructive editor and autosave | `[~]` (ready to commit) |
 
 ## Phase D — Advanced editor parity (Tasks 24-26)
 
@@ -964,6 +964,77 @@ client regenerated. No commit was created; the required owner commit message is
 `feat: add versioned clip compositions`.
 
 
+### Task 23 — The basic non-destructive editor
+
+`features/editor/store.ts` is the editor's state, and the composition document is all of
+it. Trim, crop, aspect, caption text, caption style, split, and delete each produce a new
+document from the old one through Immer, and the patches Immer reports are the history:
+undo restores exactly the fields a change altered rather than a snapshot that may have
+drifted from them. The invariants the backend enforces are maintained here too — items lie
+end to end from zero, `durationMs` follows them, caption words are re-timed with the
+timeline, and a trim is clamped into the source the clip was cut from — because a document
+that would be refused on save is not worth editing. Nothing in the module touches source or
+proxy media; a trim moves two numbers.
+
+Three rules are worth naming. A trim is a removal from the timeline, so the caption words
+covering what was removed go with it and the rest move earlier by the same amount, which
+keeps karaoke aligned through head trims, tail trims, and deletions alike. A caption word's
+text is editable and its timing is not, because transcription produced those timestamps and
+highlighting is only honest while they still describe when the word was said. And the last
+remaining item cannot be deleted, because a composition with no items is not a clip.
+
+`features/editor/autosave.ts` saves against the Revision the browser believes is current,
+750 ms after the last change, one request at a time. An unsent composition is kept in a
+draft store — local storage in the product, injectable in tests — so a dropped connection or
+a closed tab does not take a member's work with it, and the draft is forgotten only once the
+backend has accepted it. A stale Revision is the one failure that stops autosaving: retrying
+it would fail identically forever, so the editor reports the conflict and lets the member
+choose. `ApiError` now carries `currentRevision`, read from the `X-Clipah-Current-Revision`
+header Task 22 answers a conflict with, so "keep my version" can save against the Revision
+the backend actually holds instead of guessing at it.
+
+`features/editor/engine.ts` is the playback boundary the ADR's decision needs: the screen
+talks to a `PreviewEngine`, and the implementation shipped here is the browser's own media
+element playing the five-minute signed proxy. Frame-accurate compositing through Mediabunny
+is a second implementation of that port rather than a change to the screen, and it belongs
+with the advanced editor. `Player.tsx` maps clip time onto source time through the items
+themselves, so a trimmed or split clip plays what it says it plays; `Timeline.tsx` draws the
+ruler, the playhead, zoom, and one selectable button per item, all read from the document;
+`CaptionsPanel.tsx` edits word text and the caption type; `Inspector.tsx` carries the trim
+numbers, the crop, the four aspect presets, split, delete, undo, redo, save, and the save
+state a member reads. `app/editor/[editId]/page.tsx` is the distraction-free route from
+Section 9, deliberately outside the dashboard shell.
+
+Keyboard shortcuts cover play/pause, undo, redo, split, delete, zoom, and save, and every
+one of them is inert while a member is typing: an editor that treats `s` inside a caption as
+a split is an editor that eats words.
+
+**One addition beyond the task's file list, and one beyond its checkboxes.** `engine.ts` is
+the adapter boundary the task's own interface section requires, and `EditorScreen.tsx` holds
+the screen so the route file stays a route and the screen stays testable. Beyond the
+checkboxes, `ClipCard` gained an "Edit this clip" control: without it the editor route is
+unreachable from the product, and the Task 22 endpoint it calls converges a repeated click
+on the Edit that already exists.
+
+Thirty-seven tests were written and watched fail before any of it existed — twenty over the
+store, seven over autosave, and ten over the screen — covering immutable updates, patch-based
+undo and redo, clamped trims, caption re-timing, split and delete, aspect presets and centred
+crops, dirty-state transitions, the 750 ms debounce, one request in flight, offline queueing
+and retry, revision conflict and resume, draft restoration, the rendered save labels, proxy
+playback, conflict recovery in both directions, and an Edit that is not there. Four
+deliberate breaks were then made: dropping caption re-timing, removing the debounce, removing
+the text-field guard from the shortcuts, and the guard test's own first version — which
+passed against the broken code and was strengthened until it failed — each failed the
+matching test.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (153 passed), and `pnpm build`
+all passed, and `scripts/check-contracts-clean.sh` exits zero. No backend file was touched,
+so the backend gates were not re-run. The Playwright suite in `frontend/e2e/editor-basic.spec.ts`
+was written but not run here: it needs Postgres, the backend, the frontend, and browser
+binaries running together. No commit was created; the required owner commit message is
+`feat: add non-destructive clip editor`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -975,7 +1046,11 @@ oversight.
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
 | Removing `@elah/core` and `elah-adapter.ts` — the ADR selected Mediabunny, but both adapters are retained until Task 24 discharges the FFmpeg parity gate, so the comparison can be re-run if that gate fails | Task 24 |
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
-| The Playwright scenario `a reviewer turns a candidate into an edit exactly once` — Task 22 built the route and covers creating an Edit once, twice, and from two clients racing, all through the real HTTP API. The browser scenario needs a seeded reviewable candidate and a UI path into the editor, neither of which exists until the editor screen does | Task 23 (`plan.md:1238-1262`) |
+| The two Playwright scenarios that need a real analysed Project — `a reviewer turns a candidate into an edit exactly once` and `a member trims a real clip and the Revision survives a reload`. Both are covered at the component and integration level; the browser versions need a seed helper that can drive ingest, transcription, and analysis, because no API can stage a Clip Candidate | the repository owner, before Phase C is signed off |
+| Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |
+| Dragging trim handles and items on the timeline; the basic editor trims through numeric fields, which a keyboard and a screen reader can both use, and splits at the playhead | Task 25 (`plan.md:1287-1310`) |
+| Waveforms, snapping, bookmarks, ripple editing, and scene organization in the timeline | Task 25 |
+| Re-deriving caption timings when a trim extends an item back out again; the words removed by the earlier trim are gone from the document, and recovering them means reading the Transcript rather than the composition | Task 25, with caption editing |
 | Assets a composition may use are the owning Project's own Assets. A Workspace-wide library — a Brand Kit logo, or B-roll reused across Projects — will need the authorization set widened beyond one Project | Tasks 29 and 33 |
 | Revision history is returned newest-first with a fixed ceiling of 100 entries and no cursor; a clip edited past that will need pagination | Task 25, with full timeline editing |
 | Wiring `scripts/check-contracts-clean.sh` into a CI workflow; the check exists and is negative-controlled, but no CI configuration exists yet | Task 47 |

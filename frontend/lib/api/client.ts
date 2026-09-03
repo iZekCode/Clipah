@@ -9,6 +9,7 @@
  */
 
 export const CSRF_HEADER = 'X-CSRF-Token'
+export const CURRENT_REVISION_HEADER = 'X-Clipah-Current-Revision'
 export const CSRF_COOKIE_NAMES = ['__Host-clipah_csrf', 'clipah_csrf'] as const
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const UNKNOWN_ERROR_CODE = 'UNKNOWN_ERROR'
@@ -21,23 +22,32 @@ export interface ApiErrorEnvelope {
   requestId: string | null
 }
 
-/** A failed API call, carrying only fields that are safe to show a user. */
+/**
+ * A failed API call, carrying only fields that are safe to show a user.
+ *
+ * `currentRevision` is the one piece of state a refusal reports outside the envelope: an
+ * Edit save that lost a race answers `EDIT_REVISION_CONFLICT` and names, in a header, the
+ * Revision the caller has to reconcile against.
+ */
 export class ApiError extends Error {
   readonly status: number
   readonly code: string
   readonly requestId: string | null
+  readonly currentRevision: number | null
 
   constructor({
     status,
     code,
     message,
     requestId,
-  }: ApiErrorEnvelope & { status: number }) {
+    currentRevision = null,
+  }: ApiErrorEnvelope & { status: number; currentRevision?: number | null }) {
     super(message)
     this.name = 'ApiError'
     this.status = status
     this.code = code
     this.requestId = requestId
+    this.currentRevision = currentRevision
   }
 }
 
@@ -97,7 +107,21 @@ export async function apiFetch<T>(url: string, init: RequestInit = {}): Promise<
 /** Turn a failed response into the typed error the UI renders. */
 async function toApiError(response: Response): Promise<ApiError> {
   const envelope = await readEnvelope(response)
-  return new ApiError({ status: response.status, ...envelope })
+  return new ApiError({
+    status: response.status,
+    ...envelope,
+    currentRevision: readCurrentRevision(response),
+  })
+}
+
+/** Read the Revision a conflicting write says the resource now holds. */
+function readCurrentRevision(response: Response): number | null {
+  const raw = response.headers.get(CURRENT_REVISION_HEADER)
+  if (raw === null) {
+    return null
+  }
+  const revision = Number.parseInt(raw, 10)
+  return Number.isSafeInteger(revision) && revision > 0 ? revision : null
 }
 
 /** Read the error envelope, tolerating a body written by something other than the API. */
