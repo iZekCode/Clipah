@@ -473,15 +473,23 @@ describe('the media submission panel', () => {
     expect(api.calls.some((call) => call.path.endsWith('/uploads'))).toBe(false)
   })
 
-  test('uploads the picked file and then asks the backend to find moments', async () => {
+  test('uploads the picked file and leaves the pipeline to start the work', async () => {
     const user = userEvent.setup()
     const api = signedInApi()
 
     renderPanel()
     await user.upload(await screen.findByLabelText(/video file/i), realFile())
 
-    await waitFor(() => expect(api.calls.some((call) => call.path === `/api/v1/projects/${PROJECT_ID}/analysis`)).toBe(true))
-    expect(await screen.findByRole('status')).toHaveTextContent(/finding moments|queued/i)
+    // Waiting for the settled state, not for the request, so the assertion below cannot
+    // pass merely by running before the panel had a chance to misbehave.
+    await screen.findByRole('button', { name: /find moments again/i })
+    expect(api.calls.some((call) => call.path.endsWith(`/uploads/${UPLOAD_ID}/complete`))).toBe(
+      true,
+    )
+    // Completing the upload is what starts ingest, and the backend refuses an analysis
+    // that early. Asking for one here produced a 409 on every upload.
+    expect(api.calls.some((call) => call.path.endsWith('/analysis'))).toBe(false)
+    expect(await screen.findByRole('status')).toHaveTextContent(/queued|waiting/i)
   })
 
   test('names each stage the work is really in, up to a project that is ready', async () => {
@@ -558,16 +566,18 @@ describe('the media submission panel', () => {
     expect(screen.getAllByText(/importing media/i)).toHaveLength(1)
   })
 
-  test('asks for analysis under one key however many times it is submitted', async () => {
+  test('asks for analysis under one key however many times a member retries it', async () => {
     const user = userEvent.setup()
     const api = signedInApi()
 
     renderPanel()
     await user.upload(await screen.findByLabelText(/video file/i), realFile())
+    const retry = await screen.findByRole('button', { name: /find moments again/i })
+    await user.click(retry)
     await waitFor(() =>
       expect(api.calls.filter((call) => call.path.endsWith('/analysis'))).toHaveLength(1),
     )
-    await user.click(await screen.findByRole('button', { name: /find moments again/i }))
+    await user.click(screen.getByRole('button', { name: /find moments again/i }))
 
     await waitFor(() =>
       expect(api.calls.filter((call) => call.path.endsWith('/analysis'))).toHaveLength(2),

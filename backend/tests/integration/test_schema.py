@@ -92,7 +92,9 @@ WORKER_TABLE_PRIVILEGES = {
     "workspace_memberships": {"SELECT"},
     "projects": {"SELECT", "UPDATE"},
     "assets": {"SELECT", "INSERT", "UPDATE"},
-    "jobs": {"SELECT", "UPDATE"},
+    # A worker creates exactly one kind of row here: the stage that follows the one it
+    # just finished. Nothing else joins the pipeline, so nothing else could.
+    "jobs": {"SELECT", "INSERT", "UPDATE"},
     "source_imports": {"SELECT", "UPDATE"},
     "multipart_uploads": {"SELECT", "UPDATE"},
     "job_events": {"SELECT", "INSERT"},

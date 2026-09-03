@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 21 is ready to commit; the bake-off ran and selected an engine. **Task 22 follows.**
+**Current position:** Task 21 is ready to commit, together with a pipeline-chaining fix that Phase B needed. **Task 22 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -825,6 +825,62 @@ Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (111 passed), and
 all pass, and `scripts/check-editor-licenses.sh` exits zero. No backend file was touched.
 
 
+
+### Out-of-band — the pipeline had no conveyor belt
+
+Found while answering when the whole pipeline could first be run end to end, and fixed
+before Task 22 so the editor is not built on a pipeline nobody has watched work.
+
+Every stage runner was registered and tested, and nothing joined them. No code anywhere
+constructed a `JobKind.INGEST` or a `JobKind.TRANSCRIBE`; only the YouTube route created a
+SOURCE_IMPORT and the analysis route an ANALYZE. Completing an upload dispatched nothing at
+all. Worse, nothing ever set `ingesting` or `transcribing`, so `start_analysis`'s
+precondition — a Project in `transcribing` holding exactly one transcript — could not be
+satisfied by any path, and the analysis endpoint could only ever answer 409. Phase B's exit
+gate, "a fixture video becomes ranked candidates", was therefore not met despite Tasks 10-16
+being marked landed.
+
+`jobs/pipeline.py` is now the one place that knows the order of the pipeline and the only
+place that moves a Project between stages: SOURCE_IMPORT to INGEST to TRANSCRIBE to ANALYZE,
+each arrival setting the status that stage means. The successor's idempotency key names the
+Job it follows, so a completion delivered twice buys one stage rather than two, and it is
+committed in the same transaction as the completion, so a Project can never be recorded as
+finished with one stage and stranded before the next. Broker dispatch happens afterwards and
+is only a wakeup. A deleted Project is never revived and a failed one is never carried on.
+
+Completing an upload is what puts a Project on the belt, keyed by the upload it followed.
+
+**One security boundary moved, deliberately.** The worker role had SELECT and UPDATE on
+`jobs` but no INSERT, because the API created every Job. The actor that knows a stage
+succeeded is the worker that ran it, so migration `0009` grants the worker INSERT on `jobs`
+and nothing else — it already held the budget grant a metered stage reserves, and it already
+inserts the Assets, Transcripts, and Clip Candidates of the same Project. The least-privilege
+guardrail in `test_schema.py` was updated to state the new matrix rather than relaxed.
+
+Ten integration tests cover it: each stage starting its successor and moving the Project
+into that status, the last stage starting nothing, a replayed completion starting one
+successor, a deleted Project stopping, a failed Project staying failed, one key admitting
+one stage, and an upload completion putting a Project on the belt. Each was watched fail
+first, and four deliberate breaks — dropping the status write, dropping the settled-status
+guard, ignoring the completed Job in the key, and restoring the frontend's premature
+analysis call — each failed the matching test.
+
+**A Task 19 defect fell out of the same reading.** `UploadPanel` asked for an analysis the
+moment an upload completed, which the backend refused every time because the Project had not
+been transcribed. It no longer does: completing the upload starts ingest, and the panel
+follows the pipeline it already watches. The manual retry is unchanged and still carries one
+idempotency key.
+
+Verification: Ruff check, Ruff format check, strict mypy, and 838 backend tests passed with
+five environment-gated skips at 94.35% coverage; `pnpm lint`, `pnpm typecheck`,
+`pnpm test` (111 passed), and `pnpm build` all passed. `contracts/openapi.json` was
+re-exported and the client regenerated; no JSON shape changed.
+
+Still not run end to end against live providers: transcription and analysis need
+`CLIPAH_ASSEMBLYAI_API_KEY` and `CLIPAH_GROQ_API_KEY`, and every run so far has used the
+offline adapters.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -855,6 +911,7 @@ oversight.
 | Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
 | The evaluation audio corpus itself — Task 15 checks in sanitized synthetic transcripts, not the two hours of source audio the plan asks for before a provider is frozen, nor the five hours asked for before public launch; the manifests record the shortfall in their audio-coverage fields | the repository owner, before the provider decision in Task 16 and before public launch |
 | Measuring a live provider — the checked-in run uses the offline adapters, so the recorded scores prove the harness rather than any provider's quality | the repository owner, after supplying the real-audio corpus and explicit live credentials |
+| Running the whole pipeline against live providers — the belt exists and every stage is wired, but no run has used real AssemblyAI or Groq credentials | the repository owner, before trusting Phase B's exit gate |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

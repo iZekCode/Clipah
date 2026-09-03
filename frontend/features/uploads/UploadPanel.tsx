@@ -149,8 +149,10 @@ function SubmissionPanel({
         workspaceId,
         onProgress: (uploadedBytes, totalBytes) => setUploading({ uploadedBytes, totalBytes }),
       })
+      // Completing the upload is what puts the Project on the pipeline: the backend
+      // starts ingest, and transcription and analysis follow it. Asking for an analysis
+      // here refused every time, because the Project has not been transcribed yet.
       setUploadId(uploaded.uploadId)
-      await findMoments(uploaded.uploadId)
     } catch (error) {
       setFailure(error)
     } finally {
@@ -258,7 +260,7 @@ function submissionLabel({
     return jobLabel(job)
   }
   if (analysisPending || uploadId !== null) {
-    return 'Queued'
+    return 'Queued — waiting for the workspace to start'
   }
   return 'Nothing has been submitted yet.'
 }

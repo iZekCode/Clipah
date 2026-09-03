@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import suppress
 from typing import Annotated
 from uuid import UUID
 
@@ -13,8 +14,10 @@ from clipah.api.dependencies import (
     DatabaseSession,
     auth_components_for,
     object_store_for,
+    rate_limiter_for,
     require_csrf,
     require_workspace,
+    settings_for,
 )
 from clipah.api.errors import ApiError
 from clipah.assets.storage import CompletedPart, ObjectStore
@@ -29,6 +32,10 @@ from clipah.assets.uploads import (
     create_upload,
     sign_part,
 )
+from clipah.jobs.admission import ConcurrencyLimitError, admission_policy
+from clipah.jobs.pipeline import pipeline_key, start_stage
+from clipah.models import JobKind
+from clipah.source_imports.dispatch import JobDispatcher
 from clipah.workspaces.models import WorkspaceAction
 
 router = APIRouter(prefix="/api/v1", tags=["uploads"])
@@ -168,6 +175,32 @@ def complete(
         raise ApiError(status_code=409, code="CONFLICT") from error
     except UploadValidationError as error:
         raise ApiError(status_code=422, code="VALIDATION_ERROR") from error
+
+    # Finishing an upload is what puts a Project on the pipeline; nothing else does. The
+    # stage is committed with the completion so media can never arrive with no work
+    # queued against it, and the broker is only woken afterwards.
+    try:
+        stage = start_stage(
+            session,
+            policy=admission_policy(settings_for(request), rate_limiter_for(request)),
+            access=workspace.access,
+            project_id=project_id,
+            kind=JobKind.INGEST,
+            idempotency_key=pipeline_key(after_job_id=upload_id, kind=JobKind.INGEST),
+            now=auth_components_for(request).now(),
+        )
+    except ConcurrencyLimitError as error:
+        raise ApiError(status_code=429, code="CONCURRENCY_LIMIT") from error
+    session.commit()
+    if stage is not None:
+        dispatcher: JobDispatcher = request.app.state.job_dispatcher
+        with suppress(Exception):
+            dispatcher.dispatch(
+                job_id=stage.job_id,
+                workspace_id=workspace.access.workspace_id,
+                user_id=workspace.access.user_id,
+                kind=JobKind.INGEST,
+            )
     return {
         "id": str(completed.upload_id),
         "contentType": completed.object.content_type,

@@ -19,16 +19,19 @@ from clipah.celery_app import (
     RETRY_BASE_SECONDS,
     RETRY_MAX_SECONDS,
     create_celery_app,
+    queue_for,
     settings_for,
 )
 from clipah.config import Settings
 from clipah.db import RuntimeRole, session_scope
+from clipah.jobs.admission import admission_policy
 from clipah.jobs.events import (
     JobEventNotifier,
     PollingJobEventNotifier,
     RedisJobEventNotifier,
 )
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
+from clipah.jobs.pipeline import advance_after
 from clipah.jobs.use_cases import cancel_job, complete_job_after_runner, fail_job, start_job
 from clipah.models import JobKind, JobStatus
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
@@ -126,8 +129,40 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
             job_id=job,
             now=_now(),
         )
+        # The successor is committed in the same transaction as the completion, so a
+        # Project can never be recorded as finished with one stage and stranded before
+        # the next. Dispatch happens afterwards, and is only a wakeup: the durable row
+        # is what a sweep would find.
+        following = advance_after(
+            session,
+            policy=admission_policy(settings),
+            access=DatabaseWorkspaceAuthorizer(session).access_for(
+                user_id=user, workspace_id=workspace
+            ),
+            project_id=snapshot.project_id,
+            completed_kind=snapshot.kind,
+            completed_job_id=job,
+            now=_now(),
+        )
+        following_id = None if following is None else following.job_id
+        following_kind = None if following is None else following.kind
     _announce(notifier, workspace_id=workspace, job_id=job)
+    if following_id is not None and following_kind is not None:
+        _dispatch_next(
+            job_id=following_id, workspace_id=workspace, user_id=user, kind=following_kind
+        )
+        _announce(notifier, workspace_id=workspace, job_id=following_id)
     return completed.status.value
+
+
+def _dispatch_next(*, job_id: UUID, workspace_id: UUID, user_id: UUID, kind: JobKind) -> None:
+    """Wake the next stage without letting a broker failure undo finished work."""
+    try:
+        run_job.apply_async(
+            args=(str(job_id), str(workspace_id), str(user_id)), queue=queue_for(kind)
+        )
+    except Exception:
+        return
 
 
 def _end_attempt(
