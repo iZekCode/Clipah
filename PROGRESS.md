@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 20 is ready to commit. **Task 21 follows.**
+**Current position:** Task 21 is ready to commit; the bake-off ran and selected an engine. **Task 22 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -49,8 +49,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 17 | Move the product UI into one clean Next.js frontend | `[x]` (`e45a3fe`) |
 | 18 | Build authentication and project dashboard UX | `[x]` (`af04a94`) |
 | 19 | Build resumable upload and safe YouTube import UX | `[x]` (`8e7add7`) |
-| 20 | Build ranked clips review UX | `[~]` (ready to commit) |
-| 21 | Run the editor-engine bake-off and record the adoption decision | `[ ]` |
+| 20 | Build ranked clips review UX | `[x]` (`c4d73e3`) |
+| 21 | Run the editor-engine bake-off and record the adoption decision | `[~]` (ready to commit; ADR Accepted — Mediabunny selected) |
 | 22 | Implement composition validation and immutable edit revisions | `[ ]` |
 | 23 | Build the basic non-destructive editor and autosave | `[ ]` |
 
@@ -713,6 +713,118 @@ backend, the frontend, and browser binaries running together. No commit was crea
 required owner commit message is `feat: add ranked clip review`.
 
 
+
+### Task 21 — Editor-engine bake-off
+
+The bake-off ran as far as this environment allows, and the ADR says exactly where that
+stopped.
+
+`BrowserEditorEngine` is the port every candidate is measured through: the seven members
+`plan.md` names, plus the editing operations and the composition read-back that the gate's
+byte-for-byte comparison needs. No candidate's types appear in it. One contract test runs
+thirty-one assertions against every candidate — load and give the fixture back unchanged,
+seek to exact frame boundaries, play and pause, trim, split a media item and a caption,
+edit karaoke words without moving their timings, apply a 9:16 crop, undo and redo one step
+at a time, hand a history over and take it back, render a preview frame or name the
+capability it needs, read a waveform or name the capability it needs, and go inert once
+disposed — and then requires every candidate to end the same operation sequence holding a
+byte-identical canonical composition. It was watched fail with no adapter, exactly as the
+task's second checkbox asks. Both adapters now pass all of it.
+
+The Elah adapter drives `@elah/core`'s real `TimelineEngine` for tracks, clips, trimming,
+splitting, and history. The comparison adapter implements OpenReel's approach — own the
+timeline, reach for Mediabunny only at the media boundary — as Clipah's own arithmetic.
+
+Three findings cost something, and all three are in the ADR. Elah has no model for caption
+word timings, karaoke, or a crop rectangle, so Clipah keeps a parallel model beside it.
+Elah's own undo cannot restore what Elah never held, so its history is unusable for
+Clipah's composition and the adapter rebuilds the timeline from Clipah's snapshot instead.
+And `@elah/core` publishes ESM with extensionless internal imports that Node's resolver
+refuses, which `vitest.config.ts` records rather than works around silently.
+
+`scripts/check-editor-licenses.sh` scans all 754 resolved packages and fails on GPL-family
+licenses, unstated licenses, and commercial licenses with no recorded owner and renewal
+cost. It passes, and it reports the weak-copyleft obligations it found — `mediabunny` and
+`axe-core` under MPL-2.0, and an LGPL native binary that never reaches the browser bundle.
+It records that OpenVideo Editor and Remotion require separate license review, and it was
+negative-controlled: inverted to forbid MIT, it reports 629 blocking dependencies and exits
+non-zero.
+
+**No engine was selected, and the ADR is `Proposed`.** Every mandatory gate — initial load
+under five seconds, median seek under 150 ms, memory under 1.5 GiB, no leaked workers after
+`dispose()`, Safari codec fallback, one-hour proxy playback, and frame and timing parity
+against native FFmpeg — needs browser binaries, long-form proxy media, and `ffmpeg`, none of
+which exist here. `frontend/e2e/editor-engine-parity.spec.ts` runs all of them against both
+candidates and skips loudly until `CLIPAH_EDITOR_PROXY_URL` and
+`CLIPAH_EDITOR_REFERENCE_MACHINE` are set, and `verdict()` reports an unobserved gate as
+unmeasured rather than passed, so an under-equipped run fails instead of quietly certifying
+nothing. Elah leads on the evidence that does exist — 67 KiB gzipped against 397 KiB, a real
+timeline engine, Apache-2.0 — but it is three months old, and the unmeasured gates are
+precisely the ones that would expose that. The repository owner decided the selection would
+not be guessed at; the ADR names the four commands that finish it.
+
+Both adapters therefore stay, and the task's instruction to delete the unused spike
+dependency is deferred with the decision it depends on.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (111 passed), and `pnpm build`
+all passed, and `scripts/check-editor-licenses.sh` exits zero. No backend file was touched,
+so the backend gates were not re-run. Two weaknesses the contract test had were found by
+breaking the implementation on purpose — a caption split and a disposed engine both passed
+for the wrong reason — and both were closed before the gates were declared green. No commit
+was created; the required owner commit message is `docs: select browser editor foundation`.
+
+
+
+### Task 21 addendum — the bake-off was actually run
+
+The first pass of Task 21 delivered a benchmark that could not measure what it claimed.
+Both adapters returned a stubbed `renderPreviewFrame` after a capability check, no adapter
+ever fetched media, `CLIPAH_EDITOR_PROXY_URL` was read only to decide whether to skip, and
+the measurement ran in the Node test process rather than in the page. It would have reported
+a two-millisecond seek and cleared every gate while timing JSON mutation. That is recorded
+here rather than quietly fixed, because the ADR had described it as runnable.
+
+The harness was rebuilt. Both adapters now decode for real — Elah through
+`createDefaultDemuxerFactory` into `GpuRenderer`, waiting until `VideoLayer`'s provider
+actually holds the requested source frame, and the Mediabunny adapter through `UrlSource`
+into `CanvasSink`. `PreviewFrame` carries whether media was decoded; a seek that decoded
+nothing is recorded as a failure and withholds the seek gate entirely. The load gate now
+measures time to first decoded frame, because `load()` alone was 0–1 ms and measured
+nothing a person waits for. Worker counts are read through CDP around the run. Every timing
+is taken inside `page.evaluate`.
+
+Chromium and WebKit binaries were installed, and 30- and 60-minute H.264/AAC proxies were
+generated with Task 11's own encoder settings and served over a range-capable local server.
+
+Two measurement mistakes were caught before they became conclusions. The first headless runs
+put Elah's median seek at 432 ms, but headless Chromium falls back to SwiftShader, and Elah
+is GPU-composited while the Mediabunny path is decode-to-canvas — so software rendering
+penalised one candidate and not the other. On the real GPU Elah's median seek is 108 ms. The
+suite now records the graphics renderer string with every measurement. The second was a
+reported Elah crash at 60 minutes on Chromium that did not reproduce standalone; it is
+recorded in the ADR as unresolved rather than as an engine failure.
+
+**The decision is Mediabunny, and Safari decided it.** On real Apple GPU hardware in WebKit,
+Elah's median seek is 409 ms against a 150 ms gate, and a one-hour timeline never completes
+— it timed out after fifteen minutes. Mediabunny clears every observable gate in both
+browsers at both lengths: 38–110 ms median seek, 29–142 ms to first frame, 109–132 MiB heap,
+zero leaked workers, every sampled frame decoded. Safari also turned out to support
+WebCodecs, so the codec-fallback gate passes because the capability is present rather than
+because a fallback was exercised.
+
+Three findings beyond the timings weighed on it: Elah holds none of Clipah's caption, crop,
+or karaoke state; its undo cannot restore what it never held, so `TimelineEngine.undo` goes
+unused; and it publishes no waveform API at all. Of the three capabilities worth borrowing,
+two are Mediabunny underneath in either candidate.
+
+`docs/adr/0001-browser-editor-engine.md` is now `Accepted` and carries the full matrix. One
+gate remains outstanding — FFmpeg frame and timing parity — because its fixture renderer is
+Task 24's. Both adapters are retained until that gate is discharged.
+
+Final verification: `pnpm lint`, `pnpm typecheck`, `pnpm test` (111 passed), and `pnpm build`
+all pass, and `scripts/check-editor-licenses.sh` exits zero. No backend file was touched.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -721,7 +833,9 @@ oversight.
 | Deferred | Owner |
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
-| Running the Playwright suite — `frontend/e2e/auth-projects.spec.ts`, `frontend/e2e/upload-analysis.spec.ts`, and `frontend/e2e/clips-review.spec.ts` exist and `pnpm test:e2e` runs them, but no run happened in the Task 18, 19, or 20 sessions because a full stack and browser binaries were not available | the repository owner, before Task 21 |
+| Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
+| Removing `@elah/core` and `elah-adapter.ts` — the ADR selected Mediabunny, but both adapters are retained until Task 24 discharges the FFmpeg parity gate, so the comparison can be re-run if that gate fails | Task 24 |
+| Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
 | Creating an Edit from a reviewed candidate, and the idempotency of doing it twice — the review surface is complete without it, but `create_edit_from_candidate` and `POST /projects/{project_id}/candidates/{candidate_id}/edits` belong to the composition domain. The repository owner decided Task 20 would not start that domain early; the Playwright scenario is marked `test.fixme` | Task 22 (`plan.md:1214-1236`) |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Cookie-based authenticated YouTube import, including its consent and ownership-attestation UI; the public form deliberately offers no cookie control while the server capability and feature flag are off | Task 27 (`plan.md:1333-1360`) |

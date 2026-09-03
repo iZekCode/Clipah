@@ -1,4 +1,4 @@
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Browser tests run against a real stack: Postgres, the FastAPI backend, and this
@@ -17,6 +17,12 @@ export default defineConfig({
     baseURL,
     trace: 'retain-on-failure',
   },
+  // Two engines are named because one of the adoption gates in `plan.md` is about how
+  // Safari degrades when a codec is unsupported, and only WebKit can answer that.
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    { name: 'webkit', use: { ...devices['Desktop Safari'] } },
+  ],
   webServer: process.env.CLIPAH_E2E_BASE_URL
     ? undefined
     : {

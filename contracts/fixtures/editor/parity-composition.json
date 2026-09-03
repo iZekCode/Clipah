@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "frameRate": 30,
+  "canvas": { "width": 1920, "height": 1080, "aspect": "16:9" },
+  "tracks": [
+    {
+      "id": "track-video",
+      "kind": "video",
+      "items": [
+        {
+          "id": "item-source",
+          "kind": "video",
+          "assetId": "asset-proxy",
+          "startFrame": 0,
+          "durationFrames": 900,
+          "sourceStartFrame": 3600,
+          "crop": null,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "track-audio",
+      "kind": "audio",
+      "items": [
+        {
+          "id": "item-dialogue",
+          "kind": "audio",
+          "assetId": "asset-proxy",
+          "startFrame": 0,
+          "durationFrames": 900,
+          "sourceStartFrame": 3600,
+          "crop": null,
+          "opacity": 1
+        }
+      ]
+    },
+    {
+      "id": "track-captions",
+      "kind": "caption",
+      "items": [
+        {
+          "id": "item-caption",
+          "kind": "caption",
+          "startFrame": 0,
+          "durationFrames": 900,
+          "words": [
+            { "id": "w000001", "text": "Ini", "startFrame": 0, "durationFrames": 12 },
+            { "id": "w000002", "text": "cara", "startFrame": 12, "durationFrames": 15 },
+            { "id": "w000003", "text": "kerja", "startFrame": 27, "durationFrames": 18 },
+            { "id": "w000004", "text": "editornya", "startFrame": 45, "durationFrames": 24 }
+          ],
+          "style": {
+            "fontFamily": "Inter",
+            "fontSize": 64,
+            "color": "#FFFFFF",
+            "highlightColor": "#FFD166"
+          }
+        }
+      ]
+    }
+  ]
+}

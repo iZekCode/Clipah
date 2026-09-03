@@ -9,6 +9,10 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['tests/**/*.test.{ts,tsx}'],
+    // `@elah/core` publishes ESM with extensionless internal imports, which Node's own
+    // resolver refuses. Letting Vite process it is what a bundler does in the browser;
+    // the bake-off records the constraint rather than working around it silently.
+    server: { deps: { inline: ['@elah/core'] } },
     restoreMocks: true,
   },
 })
