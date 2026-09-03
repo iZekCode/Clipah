@@ -26,3 +26,14 @@ def derived_asset_key(
     if kind not in {AssetKind.PROXY, AssetKind.THUMBNAIL, AssetKind.TRANSCRIPTION_AUDIO}:
         raise ValueError("unsupported ingest derivative kind")
     return f"workspaces/{workspace_id}/projects/{project_id}/derived/{source_asset_id}/{kind.value}"
+
+
+def render_artifact_key(
+    *, workspace_id: UUID, project_id: UUID, revision_id: UUID, preset: str
+) -> str:
+    """Return the deterministic private key one export of one Revision is stored under."""
+    if not all(isinstance(value, UUID) for value in (workspace_id, project_id, revision_id)):
+        raise TypeError("storage identifiers must be UUID values")
+    if not preset or any(character not in "0123456789x" for character in preset):
+        raise ValueError("a render preset names a frame size and nothing else")
+    return f"workspaces/{workspace_id}/projects/{project_id}/renders/{revision_id}/{preset}.mp4"

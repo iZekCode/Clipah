@@ -848,6 +848,49 @@ class RenderArtifact(Base):
     )
 
 
+class RenderRequest(Base):
+    """What one admitted render Job was created to produce, written where it can be read."""
+
+    __tablename__ = "render_requests"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_render_requests_workspace_id_id"),
+        UniqueConstraint("workspace_id", "job_id", name="uq_render_requests_workspace_job"),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_render_requests_workspace_revision_clip_edit_revisions",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "job_id"],
+            ["jobs.workspace_id", "jobs.id"],
+            name="fk_render_requests_workspace_id_job_id_jobs",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_render_requests_workspace_job", "workspace_id", "job_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    clip_edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    preset: Mapped[str] = mapped_column(String(64), nullable=False)
+    composition_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    requested_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class AuditEvent(Base):
     __tablename__ = "audit_events"
     __table_args__ = (

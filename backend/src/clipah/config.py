@@ -88,6 +88,8 @@ class Settings(BaseSettings):
     analysis_deduplication_excerpt_cosine: float = Field(default=0.90, ge=0, le=1)
     analysis_candidates_kept: int = Field(default=30, gt=0)
     analysis_candidates_exposed: int = Field(default=10, gt=0)
+    # The brand mark burned into every export, or nothing when a deployment burns none.
+    render_watermark_text: str | None = Field(default=None, max_length=64)
 
     job_event_poll_seconds: float = 1.0
     job_event_heartbeat_seconds: float = 15.0

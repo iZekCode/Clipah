@@ -1735,6 +1735,157 @@
         "title": "QuotaResource",
         "type": "string"
       },
+      "RenderDownloadResponse": {
+        "additionalProperties": false,
+        "description": "One time-bounded capability to read a finished export.",
+        "properties": {
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt"
+        ],
+        "title": "RenderDownloadResponse",
+        "type": "object"
+      },
+      "RenderPreset": {
+        "description": "The export presets a member may render a clip into.",
+        "enum": [
+          "1080x1920",
+          "1920x1080",
+          "1080x1080",
+          "1080x1350"
+        ],
+        "title": "RenderPreset",
+        "type": "string"
+      },
+      "RenderRequestBody": {
+        "additionalProperties": false,
+        "description": "The one thing a member chooses when they export a clip.",
+        "properties": {
+          "preset": {
+            "$ref": "#/components/schemas/RenderPreset"
+          }
+        },
+        "required": [
+          "preset"
+        ],
+        "title": "RenderRequestBody",
+        "type": "object"
+      },
+      "RenderResponse": {
+        "additionalProperties": false,
+        "description": "One export: the finished file, or the Job that is producing it.",
+        "properties": {
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "editId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editid"
+          },
+          "id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Id"
+          },
+          "jobId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobid"
+          },
+          "preset": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RenderPreset"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "revisionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revisionid"
+          },
+          "sizeBytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sizebytes"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "title": "RenderResponse",
+        "type": "object"
+      },
       "RevisionHistoryResponse": {
         "additionalProperties": false,
         "description": "One Edit's Revisions, newest first.",
@@ -2728,6 +2879,81 @@
         "summary": "Save",
         "tags": [
           "edits"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/renders": {
+      "post": {
+        "description": "Hand back an identical export, or admit the durable Job that produces one.",
+        "operationId": "create_api_v1_edits__edit_id__renders_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RenderRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "renders"
         ]
       }
     },
@@ -4181,6 +4407,114 @@
         "summary": "Create",
         "tags": [
           "source-imports"
+        ]
+      }
+    },
+    "/api/v1/renders/{render_id}": {
+      "get": {
+        "description": "Read one export, hiding another Workspace's export behind the same absence.",
+        "operationId": "show_api_v1_renders__render_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "render_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Render Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "renders"
+        ]
+      }
+    },
+    "/api/v1/renders/{render_id}/download-url": {
+      "get": {
+        "description": "Sign one five-minute capability for an export this member may read.",
+        "operationId": "download_api_v1_renders__render_id__download_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "render_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Render Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RenderDownloadResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Download",
+        "tags": [
+          "renders"
         ]
       }
     },

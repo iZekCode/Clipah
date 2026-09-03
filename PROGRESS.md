@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 23 is ready to commit. **Task 24 follows.**
+**Current position:** Task 24 is ready to commit. **Task 25 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -52,13 +52,13 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 20 | Build ranked clips review UX | `[x]` (`c4d73e3`) |
 | 21 | Run the editor-engine bake-off and record the adoption decision | `[x]` (`9af7f62`, `8c0e206`; ADR Accepted — Mediabunny selected) |
 | 22 | Implement composition validation and immutable edit revisions | `[x]` (`fe76bad`) |
-| 23 | Build the basic non-destructive editor and autosave | `[~]` (ready to commit) |
+| 23 | Build the basic non-destructive editor and autosave | `[x]` (`4bc5523`) |
 
 ## Phase D — Advanced editor parity (Tasks 24-26)
 
 | # | Task | Status |
 | --- | --- | --- |
-| 24 | Implement render-plan compilation and safe FFmpeg export | `[ ]` |
+| 24 | Implement render-plan compilation and safe FFmpeg export | `[~]` (ready to commit) |
 | 25 | Add complete timeline, asset, sound, text, and scene editing | `[ ]` |
 | 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[ ]` |
 
@@ -1035,6 +1035,85 @@ binaries running together. No commit was created; the required owner commit mess
 `feat: add non-destructive clip editor`.
 
 
+### Task 24 — Render-plan compilation and safe FFmpeg export
+
+`renders/compiler.py` turns one composition into one complete FFmpeg plan: the files that
+are opened, the filter graph that is applied, the text files that graph reads, and nothing
+else. Two rules decide its shape.
+
+**Text is content, never syntax.** FFmpeg's filter language would happily read a caption as
+an instruction, so caption words become an ASS subtitle file, overlay and citation text
+become UTF-8 files read by `drawtext=textfile=`, and the watermark is treated as exactly the
+same kind of text. A member's words never reach an argument, an option, or a shell — there is
+no shell at all — and the ASS writer additionally neutralizes the override braces and
+backslashes that would otherwise restyle the whole export. The tests drive a deliberately
+hostile string (`:drop; {\an8} 'quoted' %s` with a newline) through captions, a text overlay,
+and a citation, and assert it appears in files and nowhere else.
+
+**An effect this renderer cannot reproduce is refused.** A render that silently dropped a
+keyframe would hand a member a file that does not match the preview they approved, so the
+compiler refuses scale and rotation keyframes, blend modes other than normal, motion presets
+outside the supported set, motion or keyframes on a base timeline item, animated text
+overlays, a crop of media whose dimensions are unknown, and any asset the caller did not
+authorize. What it does reproduce is the rest of the basic editor: the four export presets,
+trims resolved as `trim`/`atrim`, normalized crops resolved into pixels, per-item concat,
+karaoke and block captions, image and video B-roll overlays, Ken Burns and pan motion for
+stills through `zoompan`, fades and per-overlay opacity through alpha, piecewise-linear
+position and opacity keyframes as expressions over time, dialogue gain, music beds delayed to
+their own moment, and `preserveDialogueAudio` — true keeps the speaker and mutes the B-roll;
+false ducks the dialogue for exactly the overlay's window and mixes the overlay's own audio in.
+
+`renders/ffmpeg_renderer.py` executes a plan and then checks its own work: the output is
+re-read and a file that drifts more than 250 ms from the composition is a failure rather than
+a delivery. The graph is handed over as a file, never as an argument. **One deviation from the
+task's wording is recorded here:** the checkbox names `-filter_complex_script`, which is what
+the pinned FFmpeg 7.1.5 image reads; FFmpeg 8 removed that spelling in favour of
+`-/filter_complex`, which reads the same file. The renderer asks the executable in front of it
+which one it understands and uses that, so the pinned production image runs exactly the
+mandated flag and a newer developer machine can still run a real export. Both branches are
+tested.
+
+`renders/use_cases.py` and `api/routes/renders.py` add the export endpoints. An export is
+deduplicated by `(composition_hash, preset)`: the same composition at the same preset is the
+same file, so a healthy artifact is handed straight back with 200 while a new one admits a
+durable RENDER Job with 202. `jobs/render_task.py` runs that Job — it recognizes an identical
+export before downloading a byte, downloads every authorized asset into the Job's own
+workspace, compiles, encodes, uploads, verifies the stored length and digest against what it
+wrote, and records the artifact. A redelivery converges on one row rather than a second file,
+and every failure leaves as its own stable code: `RENDER_FEATURE_UNSUPPORTED`,
+`RENDER_DURATION_MISMATCH`, `RENDER_ASSET_MISSING`, `RENDER_INTEGRITY`, `RENDER_TARGET_MISSING`,
+`RENDER_FAILED`, with storage outages and encoder timeouts retryable and everything else
+terminal.
+
+**One migration was needed.** A Job carries identifiers and no payload, by design, so nothing
+in the existing schema could say which Revision and preset a render Job was admitted for.
+Migration `0010` adds `render_requests` — RLS-protected, written by the API in the same
+transaction that creates the Job, and read back by the worker from the Job's own identifier.
+The API may insert and read it; the worker may only read it. The least-privilege guardrail in
+`test_schema.py` states the new matrix rather than relaxing to accommodate it.
+
+Fifty-three compiler tests and twenty-four pipeline tests were written and watched fail before
+the implementation existed. The pipeline tests include four **real FFmpeg renders** of fixture
+compositions — no B-roll, a stock still with Ken Burns, a stock video with the dialogue
+preserved, and a generated video with the dialogue ducked — each validated with ffprobe for
+frame size, codec, a mapped audio stream, and duration, plus a cancellation test that proves
+the encoder's process group actually stops. Three deliberate breaks were made and each failed
+the matching test: writing overlay text into a filter argument, accepting a scale keyframe, and
+dropping the deduplication check.
+
+**Not exercised here:** burned-in captions and drawn text were not rendered by real FFmpeg on
+this machine, because the local build ships without libass and libfreetype; those paths are
+covered by the compiler's own tests and by the pinned image, which carries both. The rendered
+scenarios therefore set captions to `off`.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1005 backend tests passed
+with five environment-gated skips at 94.91% coverage; migration `0010` downgrade and upgrade
+both ran, and the Alembic drift check passes. `pnpm lint`, `pnpm typecheck`, `pnpm test`
+(153 passed), and `pnpm build` all passed, and `scripts/check-contracts-clean.sh` exits zero
+after `contracts/openapi.json` was re-exported and the client regenerated. No commit was
+created; the required owner commit message is `feat: render versioned clip exports safely`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1044,7 +1123,11 @@ oversight.
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
-| Removing `@elah/core` and `elah-adapter.ts` — the ADR selected Mediabunny, but both adapters are retained until Task 24 discharges the FFmpeg parity gate, so the comparison can be re-run if that gate fails | Task 24 |
+| Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which this session does not have | the repository owner, then Task 25 |
+| A brand-mark policy: the watermark is compiled from one deployment-wide `CLIPAH_RENDER_WATERMARK_TEXT` setting, because composition version 1 carries no watermark field and Brand Kits do not exist yet | Task 33, with brand kits |
+| Rendering burned-in captions and drawn text through real FFmpeg; the local build has no libass or libfreetype, so those filters were exercised by the compiler's tests rather than by an encode | the repository owner, inside the pinned image |
+| A worker readiness gate for the filters the renderer depends on (`subtitles`, `drawtext`, `zoompan`); `validate_render_readiness` currently checks the pinned FFmpeg version only | Task 46, with the containerized processes |
+| Charging a metered Workspace budget for an export; a render spends a concurrency slot and no quota, because no render budget exists in the plan's limit table | Tasks 44-46, with operational cost accounting |
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
 | The two Playwright scenarios that need a real analysed Project — `a reviewer turns a candidate into an edit exactly once` and `a member trims a real clip and the Revision survives a reload`. Both are covered at the component and integration level; the browser versions need a seed helper that can drive ingest, transcription, and analysis, because no API can stage a Clip Candidate | the repository owner, before Phase C is signed off |
 | Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |

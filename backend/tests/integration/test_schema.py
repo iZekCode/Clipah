@@ -46,6 +46,7 @@ FOUNDATIONAL_TABLES = {
     "projects",
     "provider_usage",
     "render_artifacts",
+    "render_requests",
     "retention_tombstones",
     "source_imports",
     "transcripts",
@@ -81,6 +82,8 @@ API_TABLE_PRIVILEGES = {
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},
     "clip_edit_revisions": {"SELECT", "INSERT"},
     "render_artifacts": {"SELECT"},
+    # The API records what a render Job is for when it admits that Job, and never rewrites it.
+    "render_requests": {"SELECT", "INSERT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT"},
     "retention_tombstones": {"SELECT", "INSERT"},
@@ -103,6 +106,8 @@ WORKER_TABLE_PRIVILEGES = {
     "clip_edits": {"SELECT"},
     "clip_edit_revisions": {"SELECT"},
     "render_artifacts": {"SELECT", "INSERT"},
+    # The worker only reads back the target the API wrote for the Job it was handed.
+    "render_requests": {"SELECT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT", "INSERT", "UPDATE"},
     "retention_tombstones": {"SELECT", "UPDATE"},
