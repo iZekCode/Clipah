@@ -558,7 +558,7 @@ describe('editor screen', () => {
     await openEditor()
 
     const timeline = screen.getByRole('region', { name: /timeline/i })
-    expect(within(timeline).getAllByRole('button', { name: /scene/i })).toHaveLength(1)
+    expect(within(timeline).getAllByRole('button', { name: /^select scene/i })).toHaveLength(1)
 
     const captions = screen.getByRole('region', { name: /captions/i })
     expect(within(captions).getAllByRole('textbox', { name: /word at/i })).toHaveLength(4)
@@ -642,7 +642,7 @@ describe('editor screen', () => {
     await user.type(word, 'sesi')
 
     expect(screen.getByDisplayValue('sesi')).toBeVisible()
-    expect(within(timeline).getAllByRole('button', { name: /select/i })).toHaveLength(1)
+    expect(within(timeline).getAllByRole('button', { name: /^select scene/i })).toHaveLength(1)
     expect(screen.getByRole('button', { name: /^16:9$/ })).toHaveAttribute('aria-pressed', 'false')
   })
 

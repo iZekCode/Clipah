@@ -15,6 +15,7 @@ all of it:
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from itertools import pairwise
 from pathlib import Path
 from uuid import UUID
 
@@ -30,6 +31,7 @@ from clipah.editor.models import (
     MotionPreset,
     TextAlign,
     TextOverlay,
+    TrackItem,
     TrackType,
     VideoOverlay,
 )
@@ -133,17 +135,19 @@ class _Compiler:
 
     def _base_chains(self) -> tuple[str, str]:
         """Trim, frame, and concatenate every item of the timeline's video track."""
-        items = [
-            item
-            for track in self._composition.tracks
-            if track.type is TrackType.VIDEO
-            for item in track.items
-        ]
+        tracks = [track for track in self._composition.tracks if track.type is TrackType.VIDEO]
+        if len(tracks) > 1:
+            raise RenderCompilationError(
+                FEATURE_UNSUPPORTED, "more than one video track is not supported"
+            )
+        items = [item for track in tracks for item in track.items]
         if not items:
             raise RenderCompilationError(FEATURE_UNSUPPORTED, "no video track to render")
+        ordered = sorted(items, key=lambda entry: entry.timeline_start_ms)
+        _reject_a_gap_on_the_base_timeline(ordered)
         video_labels: list[str] = []
         audio_labels: list[str] = []
-        for index, item in enumerate(sorted(items, key=lambda entry: entry.timeline_start_ms)):
+        for index, item in enumerate(ordered):
             if item.keyframes:
                 raise RenderCompilationError(
                     FEATURE_UNSUPPORTED, "keyframes on a timeline item are not supported"
@@ -290,11 +294,20 @@ class _Compiler:
         return "[amix]"
 
     def _music_chains(self) -> list[str]:
-        """Place every music track item at its own moment, under the configured gain."""
+        """Place every sound track item at its own moment, under the gain it belongs to.
+
+        Extracted audio is speech the member detached from its picture, so it is levelled
+        with the dialogue; a music or sound track is a bed, and follows the music gain.
+        """
         labels: list[str] = []
         for track_index, track in enumerate(self._composition.tracks):
-            if track.type not in {TrackType.MUSIC, TrackType.AUDIO}:
+            if track.type is TrackType.VIDEO:
                 continue
+            gain = (
+                self._composition.audio.gain_db
+                if track.type is TrackType.EXTRACTED_AUDIO
+                else self._composition.audio.music_gain_db
+            )
             for item_index, item in enumerate(track.items):
                 asset = self._asset(item.source_asset_id)
                 stream = self._open(asset)
@@ -304,7 +317,7 @@ class _Compiler:
                     f"[{stream}:a]atrim=start={_seconds(item.source_in_ms)}:"
                     f"end={_seconds(item.source_out_ms)},asetpts=PTS-STARTPTS,"
                     f"adelay={delay}|{delay},"
-                    f"volume={self._composition.audio.music_gain_db:.2f}dB,"
+                    f"volume={gain:.2f}dB,"
                     f"aresample={RENDER_AUDIO_SAMPLE_RATE}[{label}]"
                 )
                 labels.append(label)
@@ -486,6 +499,24 @@ class _CaptionLine:
         """Hold the instants this line appears and disappears."""
         self.start_ms = start_ms
         self.end_ms = end_ms
+
+
+def _reject_a_gap_on_the_base_timeline(items: Sequence[TrackItem]) -> None:
+    """Refuse a hole in the base timeline, which concatenation would silently close.
+
+    The graph plays the video items one after another, so an item that the composition
+    places later than the previous one ends would arrive early in the file. That is a
+    different clip from the one the member approved in the preview.
+    """
+    if items and items[0].timeline_start_ms != 0:
+        raise RenderCompilationError(
+            FEATURE_UNSUPPORTED, "the base timeline must start at the beginning"
+        )
+    for earlier, later in pairwise(items):
+        if later.timeline_start_ms != earlier.timeline_end_ms:
+            raise RenderCompilationError(
+                FEATURE_UNSUPPORTED, "a gap on the base timeline is not supported"
+            )
 
 
 def _reject_unanimatable(frames: Sequence[Keyframe]) -> None:

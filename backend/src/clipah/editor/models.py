@@ -25,6 +25,9 @@ from pydantic.alias_generators import to_camel
 
 SCHEMA_VERSION = 1
 MAX_COMPOSITION_DURATION_MS = 600_000
+# The editor clamps every trim, resize, and split to this length, so anything shorter
+# arriving here is a mistake rather than an editing decision a member could have made.
+MIN_ITEM_DURATION_MS = 500
 SUPPORTED_CANVAS_SIZES: frozenset[tuple[int, int]] = frozenset(
     {(1080, 1920), (1920, 1080), (1080, 1080), (1080, 1350)}
 )
@@ -288,6 +291,8 @@ class TrackItem(CompositionModel):
         """Refuse reversed media bounds and keyframes the item never reaches."""
         if self.source_out_ms <= self.source_in_ms:
             raise ValueError("an item must end after it starts in its source")
+        if self.source_out_ms - self.source_in_ms < MIN_ITEM_DURATION_MS:
+            raise ValueError(f"an item must last at least {MIN_ITEM_DURATION_MS}ms")
         _reject_unordered_keyframes(self.keyframes, self.duration_ms)
         return self
 

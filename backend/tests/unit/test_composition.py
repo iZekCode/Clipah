@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from clipah.editor.models import (
+    MIN_ITEM_DURATION_MS,
     CompositionValidationError,
     canonical_json,
     collect_asset_ids,
@@ -724,3 +725,52 @@ def test_a_bookmark_past_the_composition_is_refused() -> None:
     document["bookmarks"][0]["timelineMs"] = 31_000
 
     assert rejects(document)
+
+
+@pytest.mark.unit
+def test_an_item_shorter_than_the_editor_can_produce_is_refused() -> None:
+    """A resize or a split that leaves a sliver is a mistake, not an editing decision."""
+    document = composition_document()
+    item = document["tracks"][0]["items"][0]
+    item["sourceOutMs"] = item["sourceInMs"] + 200
+
+    assert "at least" in rejects(document)
+
+
+@pytest.mark.unit
+def test_an_item_of_exactly_the_shortest_supported_duration_is_accepted() -> None:
+    """The editor clamps to this length, so the validator must accept what it produces."""
+    document = composition_document()
+    item = document["tracks"][0]["items"][0]
+    item["keyframes"] = []
+    item["sourceOutMs"] = item["sourceInMs"] + MIN_ITEM_DURATION_MS
+    document["tracks"][0]["items"][1]["timelineStartMs"] = MIN_ITEM_DURATION_MS
+
+    composition = parse_composition(document)
+
+    assert composition.tracks[0].items[0].duration_ms == MIN_ITEM_DURATION_MS
+
+
+@pytest.mark.unit
+def test_a_music_or_extracted_audio_track_may_start_after_the_timeline_does() -> None:
+    """A bed dropped at the playhead leaves a gap in front of it, and that is the point."""
+    document = composition_document()
+    document["tracks"][1]["items"][0]["timelineStartMs"] = 6_000
+    document["tracks"][1]["items"][0]["sourceOutMs"] = 36_000
+
+    composition = parse_composition(document)
+
+    assert composition.tracks[1].items[0].timeline_start_ms == 6_000
+
+
+@pytest.mark.unit
+def test_two_scene_labels_may_share_one_instant_but_never_one_identifier() -> None:
+    """Labelling a scene adds a marker, and two speakers can start at the same moment."""
+    document = composition_document()
+    document["bookmarks"].append(
+        {"id": "bookmark-2", "timelineMs": 6_000, "label": "SPEAKER_01 answers"}
+    )
+
+    composition = parse_composition(document)
+
+    assert [bookmark.timeline_ms for bookmark in composition.bookmarks] == [6_000, 6_000]

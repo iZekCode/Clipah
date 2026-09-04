@@ -787,6 +787,138 @@ def test_a_music_track_is_delayed_to_its_own_moment_and_mixed_under_the_dialogue
 
 
 @pytest.mark.unit
+def test_extracted_audio_is_mixed_at_the_dialogue_gain_rather_than_the_music_gain() -> None:
+    """Audio extracted from speech is dialogue, so a music bed's gain would mis-level it."""
+    document = composition_document(
+        audio={"gainDb": -6.0, "musicGainDb": -18.0},
+        tracks=[
+            *composition_document()["tracks"],
+            {
+                "id": "extracted-1",
+                "type": "extractedAudio",
+                "items": [
+                    item(
+                        id="extract-1",
+                        sourceAssetId=str(BROLL_VIDEO_ID),
+                        timelineStartMs=3_000,
+                        sourceInMs=0,
+                        sourceOutMs=6_000,
+                    )
+                ],
+            },
+        ],
+    )
+
+    plan = plan_for(document, table=assets(broll_video()))
+
+    assert "adelay=3000|3000" in plan.filter_script
+    assert plan.filter_script.count("volume=-6.00dB") == 2
+    assert "-18.00dB" not in plan.filter_script
+    assert "amix=inputs=2" in plan.filter_script
+
+
+@pytest.mark.unit
+def test_a_gap_between_two_video_items_is_refused_rather_than_silently_closed() -> None:
+    """Concatenation would move the second item earlier than the preview showed it."""
+    document = composition_document(
+        tracks=[
+            {
+                "id": "main-video",
+                "type": "video",
+                "items": [
+                    item(id="scene-1", sourceInMs=5_000, sourceOutMs=20_000),
+                    item(
+                        id="scene-2",
+                        timelineStartMs=16_000,
+                        sourceInMs=20_000,
+                        sourceOutMs=34_000,
+                    ),
+                ],
+            }
+        ]
+    )
+
+    assert refusal(document) == FEATURE_UNSUPPORTED
+
+
+@pytest.mark.unit
+def test_a_base_timeline_that_does_not_start_at_zero_is_refused() -> None:
+    """A clip that begins with a hole would begin early in the file instead."""
+    document = composition_document(
+        durationMs=35_000,
+        tracks=[
+            {
+                "id": "main-video",
+                "type": "video",
+                "items": [
+                    item(id="scene-1", timelineStartMs=5_000, sourceInMs=5_000, sourceOutMs=35_000)
+                ],
+            }
+        ],
+    )
+
+    assert refusal(document) == FEATURE_UNSUPPORTED
+
+
+@pytest.mark.unit
+def test_a_second_video_track_is_refused_because_this_renderer_plays_one_lane() -> None:
+    """Two video lanes are composited, not concatenated, and this graph concatenates."""
+    document = composition_document(
+        tracks=[
+            *composition_document()["tracks"],
+            {
+                "id": "second-video",
+                "type": "video",
+                "items": [
+                    item(
+                        id="scene-2",
+                        sourceAssetId=str(BROLL_VIDEO_ID),
+                        timelineStartMs=0,
+                        sourceInMs=0,
+                        sourceOutMs=6_000,
+                    )
+                ],
+            },
+        ]
+    )
+
+    assert refusal(document, table=assets(broll_video())) == FEATURE_UNSUPPORTED
+
+
+@pytest.mark.unit
+def test_a_duplicated_item_is_rendered_as_its_own_segment_of_the_export() -> None:
+    """Duplication is three plays of the same media, so the graph carries three segments."""
+    document = composition_document(
+        tracks=[
+            {
+                "id": "main-video",
+                "type": "video",
+                "items": [
+                    item(id="scene-1", sourceInMs=5_000, sourceOutMs=15_000),
+                    item(
+                        id="scene-1-copy",
+                        timelineStartMs=10_000,
+                        sourceInMs=5_000,
+                        sourceOutMs=15_000,
+                    ),
+                    item(
+                        id="scene-2",
+                        timelineStartMs=20_000,
+                        sourceInMs=15_000,
+                        sourceOutMs=25_000,
+                    ),
+                ],
+            }
+        ]
+    )
+
+    plan = plan_for(document)
+
+    assert "concat=n=3:v=1:a=1[vbase][abase]" in plan.filter_script
+    assert len(plan.inputs) == 3
+
+
+@pytest.mark.unit
 def test_a_faded_overlay_fades_its_alpha_in_and_out() -> None:
     """A fade is an alpha animation the renderer can reproduce exactly."""
     document = composition_document(overlays=[video_overlay(motion="fade")])

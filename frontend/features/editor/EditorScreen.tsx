@@ -14,13 +14,20 @@ import {
 import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
 import type { EditResponse, ProxyPlaybackResponse } from '@/lib/api/generated/model'
 
+import { AssetsPanel } from './AssetsPanel'
+import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
 import { Inspector } from './Inspector'
 import { Player } from './Player'
+import { SceneList } from './SceneList'
+import { SourceMonitor } from './SourceMonitor'
+import { TextPanel } from './TextPanel'
 import { Timeline, ZOOM_LEVELS } from './Timeline'
+import { TimelineToolbar } from './TimelineToolbar'
 import { Autosave, type SaveStatus } from './autosave'
 import type { PreviewEngine } from './engine'
 import {
+  MIN_ITEM_MS,
   canRedo,
   canUndo,
   editorReducer,
@@ -144,6 +151,8 @@ function LoadedEditor({
   onReload: () => Promise<EditResponse | null>
 }) {
   const [state, dispatch] = useReducer(editorReducer, edit.composition, initialEditorState)
+  const [snapping, setSnapping] = useState(true)
+  const [ripple, setRipple] = useState(false)
   const composition = state.composition
   const dirty = isDirty(state)
 
@@ -207,6 +216,23 @@ function LoadedEditor({
     }
     return proxy.width / proxy.height
   }, [proxy, composition.canvas.height, composition.canvas.width])
+
+  /** Move the playhead to the nearest marker in one direction, if there is one. */
+  const toMarker = useCallback(
+    (direction: 1 | -1) => {
+      const ordered = [...composition.bookmarks].sort(
+        (left, right) => left.timelineMs - right.timelineMs,
+      )
+      const next =
+        direction === 1
+          ? ordered.find((bookmark) => bookmark.timelineMs > state.playheadMs)
+          : [...ordered].reverse().find((bookmark) => bookmark.timelineMs < state.playheadMs)
+      if (next !== undefined) {
+        dispatch({ type: 'seek', ms: next.timelineMs })
+      }
+    },
+    [composition.bookmarks, state.playheadMs],
+  )
 
   useShortcuts({
     onPlayPause: () => onPlaying(!playing),
@@ -290,14 +316,83 @@ function LoadedEditor({
               onPlayingChange={onPlaying}
             />
           )}
+          <TimelineToolbar
+            snapping={snapping}
+            ripple={ripple}
+            hasSelection={state.selectedItemId !== null}
+            markerCount={composition.bookmarks.length}
+            onSnapping={setSnapping}
+            onRipple={setRipple}
+            onSplit={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'split', itemId: state.selectedItemId, atMs: state.playheadMs })
+            }
+            onSplitAwayLeft={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({
+                    type: 'splitSide',
+                    itemId: state.selectedItemId,
+                    atMs: state.playheadMs,
+                    keep: 'right',
+                  })
+            }
+            onSplitAwayRight={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({
+                    type: 'splitSide',
+                    itemId: state.selectedItemId,
+                    atMs: state.playheadMs,
+                    keep: 'left',
+                  })
+            }
+            onDuplicate={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'duplicateItem', itemId: state.selectedItemId })
+            }
+            onDelete={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'deleteItem', itemId: state.selectedItemId, ripple })
+            }
+            onAddMarker={(label) => dispatch({ type: 'addBookmark', label })}
+            onPreviousMarker={() => toMarker(-1)}
+            onNextMarker={() => toMarker(1)}
+            onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+          />
           <Timeline
             composition={composition}
             selectedItemId={state.selectedItemId}
+            selectedTrackId={state.selectedTrackId}
             playheadMs={state.playheadMs}
             zoom={zoom}
+            snapping={snapping}
+            lockedTrackIds={state.lockedTrackIds}
             onSelect={(itemId) => dispatch({ type: 'select', itemId })}
+            onSelectTrack={(trackId) => dispatch({ type: 'selectTrack', trackId })}
             onSeek={(ms) => dispatch({ type: 'seek', ms })}
             onZoom={onZoom}
+            onMove={(itemId, toMs) => dispatch({ type: 'moveItem', itemId, toMs })}
+            onResize={(itemId, edge, toMs) => dispatch({ type: 'resizeItem', itemId, edge, toMs })}
+            onRemoveMarker={(bookmarkId) => dispatch({ type: 'removeBookmark', bookmarkId })}
+          />
+          <SceneList
+            composition={composition}
+            onSeek={(ms) => dispatch({ type: 'seek', ms })}
+            onLabel={(atMs, label) => {
+              // Naming a scene twice renames its marker rather than leaving two.
+              const existing = composition.bookmarks.find(
+                (bookmark) => bookmark.timelineMs === atMs,
+              )
+              dispatch(
+                existing === undefined
+                  ? { type: 'addBookmark', label, atMs }
+                  : { type: 'renameBookmark', bookmarkId: existing.id, label },
+              )
+            }}
           />
         </div>
         <div className="flex flex-col gap-4">
@@ -334,6 +429,56 @@ function LoadedEditor({
             captions={composition.captions}
             onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
             onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
+          />
+          <TextPanel
+            overlays={composition.overlays}
+            onAdd={(text) => dispatch({ type: 'addText', text })}
+            onUpdate={(overlayId, patch) => dispatch({ type: 'updateOverlay', overlayId, patch })}
+            onMove={(overlayId, startMs, endMs) =>
+              dispatch({ type: 'moveOverlay', overlayId, startMs, endMs })
+            }
+            onRemove={(overlayId) => dispatch({ type: 'deleteOverlay', overlayId })}
+          />
+          <AudioPanel
+            composition={composition}
+            lockedTrackIds={state.lockedTrackIds}
+            onAudio={(patch) => dispatch({ type: 'audio', patch })}
+            onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+            onToggleLock={(trackId) => dispatch({ type: 'toggleTrackLock', trackId })}
+          />
+          <AssetsPanel
+            projectId={edit.projectId}
+            workspaceId={workspaceId}
+            onAdd={(asset) =>
+              dispatch({
+                type: 'addSound',
+                kind: 'music',
+                assetId: asset.id,
+                atMs: state.playheadMs,
+                sourceInMs: 0,
+                sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
+              })
+            }
+            onExtract={(asset) =>
+              dispatch({
+                type: 'addSound',
+                kind: 'extractedAudio',
+                assetId: asset.id,
+                atMs: state.playheadMs,
+                sourceInMs: 0,
+                sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
+              })
+            }
+          />
+          <SourceMonitor
+            composition={composition}
+            source={proxy}
+            markInMs={state.markInMs}
+            markOutMs={state.markOutMs}
+            onMarkIn={(ms) => dispatch({ type: 'markIn', ms })}
+            onMarkOut={(ms) => dispatch({ type: 'markOut', ms })}
+            onClear={() => dispatch({ type: 'clearMarks' })}
+            onAdd={() => dispatch({ type: 'addFromSource' })}
           />
         </div>
       </div>

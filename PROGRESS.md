@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 24 is ready to commit. **Task 25 follows.**
+**Current position:** Task 25 is ready to commit. **Task 26 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -58,8 +58,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 24 | Implement render-plan compilation and safe FFmpeg export | `[~]` (ready to commit) |
-| 25 | Add complete timeline, asset, sound, text, and scene editing | `[ ]` |
+| 24 | Implement render-plan compilation and safe FFmpeg export | `[x]` (`191f4ea`) |
+| 25 | Add complete timeline, asset, sound, text, and scene editing | `[~]` (ready to commit) |
 | 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[ ]` |
 
 ## Phase E — Source connections, B-roll, and differentiated workflows (Tasks 27-35)
@@ -1114,6 +1114,98 @@ after `contracts/openapi.json` was re-exported and the client regenerated. No co
 created; the required owner commit message is `feat: render versioned clip exports safely`.
 
 
+### Task 25 — Complete multi-track timeline, asset, sound, text, and scene editing
+
+The editor now carries the whole timeline Section 9 asks for, and it is still one
+composition document: a drag, a ripple delete, a music bed, a text overlay, and a scene
+label are all changes to that document, all reversible through the same Immer patches,
+and all expressed in integer milliseconds.
+
+`features/editor/store.ts` gained the operations and the arithmetic behind them.
+Duplicate, split-away-left, split-away-right, resize by either edge, move, ripple delete,
+add a lane, add a marked span of the source, place an asset on a sound lane, extract
+audio, set the two sound levels, write and move text, and leave, rename, and remove
+markers. Two rules run through all of it. **The base video lane is played by
+concatenation**, so items there stay end to end from zero: dragging on that lane reorders
+rather than repositions, and every caption word travels with the item it belongs to.
+**A sound lane is timed against the picture**, so a bed dropped at eight seconds stays at
+eight seconds; the earlier `relayout` packed every lane back to zero, which would have
+silently moved a member's music the first time they touched anything else. Nothing on a
+lane may overlap anything else on it — a drag or a resize is clamped to the space between
+its neighbours — because an overlap is refused on save, and a document that would be
+refused is not worth editing.
+
+Three things a member works with are deliberately *not* in the document: which lane is
+selected, which lanes are locked, and where the source monitor's marks sit. None of them
+change the clip. Locking is enforced in the reducer rather than only in the markup, so an
+operation aimed at a locked lane is refused wherever it came from; the timeline also marks
+those controls `aria-disabled` so the state is visible before a member tries.
+
+Scenes are derived rather than stored. The transcript already knows who was speaking and
+when, so `scenes()` reads speaker runs out of the caption words, and naming one leaves a
+marker on the timeline — a second, private idea of where a scene begins could only ever
+disagree with the transcript. Naming the same scene twice renames its marker instead of
+leaving two.
+
+Snapping is a fixed distance on screen — eight pixels — converted into time by the zoom
+level, so it feels the same at every zoom. The targets are the edges a member is aiming at:
+the start and end of the clip, every other item's boundaries, and every marker. The item
+being dragged never snaps to its own edges.
+
+Six panels were added — `AssetsPanel`, `SourceMonitor`, `TimelineToolbar`, `SceneList`,
+`TextPanel`, and `AudioPanel` — and `Timeline` was rebuilt with one row per lane, markers,
+pointer drag on an item's body, and a trim handle at each edge. Every gesture has a
+keyboard equivalent: the toolbar carries split, split-away-left and -right, duplicate,
+delete, snapping, ripple, markers and marker navigation, and adding a lane, while an item
+button moves with `Alt`+arrow and stretches with `Shift`+arrow.
+
+**One backend gap was closed inside this task, because the assets panel cannot exist
+without it.** `GET /api/v1/projects/{project_id}/assets` lists exactly the media a save
+would authorize — the Project's own source assets, never a proxy, thumbnail, waveform,
+transcription track, or render, and never another Project's media. A Project that was
+deleted, belongs to another Workspace, or never existed answers the same 404 with the same
+public message. Seven contract tests cover it, `contracts/openapi.json` was re-exported,
+and the client was regenerated.
+
+**The validator and the compiler were extended before the UI that produces those documents
+was enabled.** `MIN_ITEM_DURATION_MS` refuses an item shorter than the 500 ms the editor
+clamps to, so a sliver left by a resize or a split is refused at save rather than exported
+as a frame or two. The compiler now mixes an `extractedAudio` lane at the *dialogue* gain
+rather than dropping it silently — extracted speech is dialogue, and a music gain would
+mis-level it — and refuses two things it cannot reproduce faithfully: a second video track,
+which would have to be composited rather than concatenated, and a gap on the base timeline,
+which concatenation would silently close and hand back a clip that does not match the
+preview a member approved.
+
+Sixty-three frontend tests were written for this task — forty-five over the reducer and its
+pure arithmetic, eighteen driving the screen — covering every operation, undo and redo
+restoring byte-equivalent canonical JSON for each one, minimum item duration, collision
+clamping, ripple shifts, track locking, snapping and its threshold, bookmark navigation,
+keyboard and pointer drags, and the scene list. Four deliberate breaks were made and each
+failed the matching test: packing every lane back to zero, leaving a duplicate's captions
+where they were, dropping the collision clamp, and — the one that did *not* fail — removing
+the timeline's own lock guard, which is a courtesy on top of the reducer's refusal rather
+than the enforcement itself. That is recorded rather than papered over: the reducer is what
+protects a locked lane, and the test now also asserts the visible disabled state.
+
+Two existing assertions in `editor-basic.test.tsx` were narrowed from `/select/i` to
+`/^select scene/i`, because an item now carries two trim handles and a lane carries its own
+selection button. Nothing about the behaviour they describe changed.
+
+`frontend/e2e/editor-advanced.spec.ts` covers what a component test cannot see: the media
+endpoint refusing a Workspace the caller has no standing on, an anonymous caller refused,
+and an Edit of another Workspace refusing every save. Driving the timeline itself against a
+real clip stays a `test.fixme`, for the same reason Task 23's did — no API can stage a Clip
+Candidate.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1021 backend tests
+passed with five environment-gated skips at 94.96% coverage. `pnpm lint`, `pnpm typecheck`,
+`pnpm test` (216 passed), and `pnpm build` all passed, and `scripts/check-contracts-clean.sh`
+exits zero. The Playwright suite was written but not run here: it needs Postgres, the
+backend, the frontend, and browser binaries running together. No commit was created; the
+required owner commit message is `feat: complete multi-track timeline editing`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1123,7 +1215,7 @@ oversight.
 | --- | --- |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
-| Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which this session does not have | the repository owner, then Task 25 |
+| Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |
 | A brand-mark policy: the watermark is compiled from one deployment-wide `CLIPAH_RENDER_WATERMARK_TEXT` setting, because composition version 1 carries no watermark field and Brand Kits do not exist yet | Task 33, with brand kits |
 | Rendering burned-in captions and drawn text through real FFmpeg; the local build has no libass or libfreetype, so those filters were exercised by the compiler's tests rather than by an encode | the repository owner, inside the pinned image |
 | A worker readiness gate for the filters the renderer depends on (`subtitles`, `drawtext`, `zoompan`); `validate_render_readiness` currently checks the pinned FFmpeg version only | Task 46, with the containerized processes |
@@ -1131,11 +1223,12 @@ oversight.
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
 | The two Playwright scenarios that need a real analysed Project — `a reviewer turns a candidate into an edit exactly once` and `a member trims a real clip and the Revision survives a reload`. Both are covered at the component and integration level; the browser versions need a seed helper that can drive ingest, transcription, and analysis, because no API can stage a Clip Candidate | the repository owner, before Phase C is signed off |
 | Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |
-| Dragging trim handles and items on the timeline; the basic editor trims through numeric fields, which a keyboard and a screen reader can both use, and splits at the playhead | Task 25 (`plan.md:1287-1310`) |
-| Waveforms, snapping, bookmarks, ripple editing, and scene organization in the timeline | Task 25 |
-| Re-deriving caption timings when a trim extends an item back out again; the words removed by the earlier trim are gone from the document, and recovering them means reading the Transcript rather than the composition | Task 25, with caption editing |
+| Waveform display under a timeline item; nothing in the pipeline produces a `waveform` Asset yet, so there is no data to draw. Snapping, bookmarks, ripple editing, scene organization, and pointer drag/resize all landed in Task 25 | Task 26, once a waveform rendition exists |
+| Detaching a base video item's own audio. Composition version 1 carries no per-item mute, so a detached copy would play twice; Task 25's extract-audio places one asset's audio on its own extracted-audio lane instead | Task 26, with the per-item controls that would need the field |
+| Free positioning and multiple lanes of picture. The base video lane is played by concatenation, so dragging there reorders and the compiler refuses both a gap and a second video track rather than exporting a clip that does not match the preview | whichever task gives the renderer a compositing base timeline |
+| Re-deriving caption timings when a trim extends an item back out again, and captions for a span added from the source monitor or duplicated on the timeline; those words are not in the composition, and recovering them means reading the Transcript | Task 26, with karaoke and caption retiming |
 | Assets a composition may use are the owning Project's own Assets. A Workspace-wide library — a Brand Kit logo, or B-roll reused across Projects — will need the authorization set widened beyond one Project | Tasks 29 and 33 |
-| Revision history is returned newest-first with a fixed ceiling of 100 entries and no cursor; a clip edited past that will need pagination | Task 25, with full timeline editing |
+| Revision history is returned newest-first with a fixed ceiling of 100 entries and no cursor; a clip edited past that will need pagination | Task 26, with the styling and template history |
 | Wiring `scripts/check-contracts-clean.sh` into a CI workflow; the check exists and is negative-controlled, but no CI configuration exists yet | Task 47 |
 | Reconciling the bake-off fixture `contracts/fixtures/editor/parity-composition.json`, which is frame-based, with composition version 1, which is millisecond-based; the fixture drives the engine contract test rather than the product | Task 24, with the FFmpeg parity gate |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |

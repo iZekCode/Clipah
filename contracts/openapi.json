@@ -1528,6 +1528,96 @@
         "title": "Placement",
         "type": "string"
       },
+      "ProjectAssetResponse": {
+        "additionalProperties": false,
+        "description": "One asset of a Project, in the shape the editor needs to place it.",
+        "properties": {
+          "contentType": {
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "title": "Sizebytes",
+            "type": "integer"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "contentType",
+          "sizeBytes",
+          "durationMs",
+          "width",
+          "height",
+          "createdAt"
+        ],
+        "title": "ProjectAssetResponse",
+        "type": "object"
+      },
+      "ProjectAssetsResponse": {
+        "additionalProperties": false,
+        "description": "Every asset one Project holds that a composition is allowed to name.",
+        "properties": {
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectAssetResponse"
+            },
+            "title": "Assets",
+            "type": "array"
+          }
+        },
+        "required": [
+          "assets"
+        ],
+        "title": "ProjectAssetsResponse",
+        "type": "object"
+      },
       "ProjectCreateRequest": {
         "additionalProperties": false,
         "description": "Accept one strictly shaped Project creation payload.",
@@ -3714,6 +3804,60 @@
         "summary": "Create",
         "tags": [
           "analysis"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/assets": {
+      "get": {
+        "description": "List the placeable media of one Project this member may read.",
+        "operationId": "index_api_v1_projects__project_id__assets_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAssetsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index",
+        "tags": [
+          "assets"
         ]
       }
     },
