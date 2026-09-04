@@ -17,10 +17,14 @@ import type { EditResponse, ProxyPlaybackResponse } from '@/lib/api/generated/mo
 import { AssetsPanel } from './AssetsPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
+import { KaraokePanel } from './KaraokePanel'
+import { KeyframeEditor } from './KeyframeEditor'
+import { MotionPanel } from './MotionPanel'
 import { Inspector } from './Inspector'
 import { Player } from './Player'
 import { SceneList } from './SceneList'
 import { SourceMonitor } from './SourceMonitor'
+import { TemplatesPanel } from './TemplatesPanel'
 import { TextPanel } from './TextPanel'
 import { Timeline, ZOOM_LEVELS } from './Timeline'
 import { TimelineToolbar } from './TimelineToolbar'
@@ -429,6 +433,41 @@ function LoadedEditor({
             captions={composition.captions}
             onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
             onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
+          />
+          <TemplatesPanel
+            composition={composition}
+            onApply={(template) => dispatch({ type: 'applyTemplate', template })}
+          />
+          <KaraokePanel
+            captions={composition.captions}
+            playheadMs={state.playheadMs}
+            onRetime={(wordId, startMs, endMs) =>
+              dispatch({ type: 'retimeWord', wordId, startMs, endMs })
+            }
+            onMode={(mode) => dispatch({ type: 'captionMode', mode })}
+          />
+          <KeyframeEditor
+            item={selected}
+            playheadMs={state.playheadMs}
+            onAdd={(atMs, transform) =>
+              selected === null
+                ? undefined
+                : dispatch({ type: 'addKeyframe', targetId: selected.id, atMs, transform })
+            }
+            onMove={(atMs, toMs) =>
+              selected === null
+                ? undefined
+                : dispatch({ type: 'moveKeyframe', targetId: selected.id, atMs, toMs })
+            }
+            onRemove={(atMs) =>
+              selected === null
+                ? undefined
+                : dispatch({ type: 'removeKeyframe', targetId: selected.id, atMs })
+            }
+          />
+          <MotionPanel
+            composition={composition}
+            onMotion={(targetId, preset) => dispatch({ type: 'setMotion', targetId, preset })}
           />
           <TextPanel
             overlays={composition.overlays}

@@ -5,6 +5,9 @@ import { useState } from 'react'
 import { timecode } from './Player'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
+/** The weights every shipped font face carries. */
+const WEIGHTS = [300, 400, 500, 600, 700, 800, 900] as const
+
 /** The fonts a composition may name, offered in the order the Brand Kit will replace. */
 const FONTS: Array<CompositionV1['captions']['style']['fontFamily']> = [
   'Inter',
@@ -37,6 +40,19 @@ export function CaptionsPanel({
   // the field, so a half-typed word never becomes a Revision and an empty one never
   // becomes a caption.
   const [drafts, setDrafts] = useState<Record<string, string>>({})
+  // A half-typed measurement is not a measurement, so these two are committed when a
+  // member leaves the field rather than on every keystroke.
+  const [numbers, setNumbers] = useState<{ letterSpacing?: string; lineHeight?: string }>({})
+
+  /** Send one measurement, then let the composition own the field again. */
+  function commitNumber(field: 'letterSpacing' | 'lineHeight'): void {
+    const draft = numbers[field]
+    setNumbers((current) => ({ ...current, [field]: undefined }))
+    const value = Number(draft)
+    if (draft !== undefined && draft !== '' && Number.isFinite(value)) {
+      onStyle({ [field]: value })
+    }
+  }
 
   /** Commit one word, or put back the text that is still in the composition. */
   function commit(wordId: string): void {
@@ -121,6 +137,82 @@ export function CaptionsPanel({
             onChange={(event) => onStyle({ backgroundEnabled: event.currentTarget.checked })}
           />
           Background
+        </label>
+        <label className="flex items-center gap-1">
+          Weight
+          <select
+            aria-label="Caption weight"
+            value={captions.style.weight}
+            onChange={(event) => onStyle({ weight: Number(event.currentTarget.value) })}
+            className="rounded border px-1 py-0.5"
+          >
+            {WEIGHTS.map((weight) => (
+              <option key={weight} value={weight}>
+                {weight}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            aria-label="Caption italic"
+            checked={captions.style.italic}
+            onChange={(event) => onStyle({ italic: event.currentTarget.checked })}
+          />
+          Italic
+        </label>
+        <label className="flex items-center gap-1">
+          Decoration
+          <select
+            aria-label="Caption decoration"
+            value={captions.style.decoration}
+            onChange={(event) =>
+              onStyle({
+                decoration: event.currentTarget
+                  .value as CompositionV1['captions']['style']['decoration'],
+              })
+            }
+            className="rounded border px-1 py-0.5"
+          >
+            <option value="none">None</option>
+            <option value="underline">Underline</option>
+            <option value="strikethrough">Strikethrough</option>
+          </select>
+        </label>
+        <label className="flex items-center gap-1">
+          Letter spacing
+          <input
+            type="number"
+            aria-label="Caption letter spacing"
+            min={-10}
+            max={40}
+            step={0.5}
+            value={numbers.letterSpacing ?? captions.style.letterSpacing}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              setNumbers((current) => ({ ...current, letterSpacing: value }))
+            }}
+            onBlur={() => commitNumber('letterSpacing')}
+            className="w-20 rounded border px-1 py-0.5"
+          />
+        </label>
+        <label className="flex items-center gap-1">
+          Line height
+          <input
+            type="number"
+            aria-label="Caption line height"
+            min={0.5}
+            max={3}
+            step={0.1}
+            value={numbers.lineHeight ?? captions.style.lineHeight}
+            onChange={(event) => {
+              const value = event.currentTarget.value
+              setNumbers((current) => ({ ...current, lineHeight: value }))
+            }}
+            onBlur={() => commitNumber('lineHeight')}
+            className="w-20 rounded border px-1 py-0.5"
+          />
         </label>
       </div>
 

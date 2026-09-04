@@ -42,6 +42,7 @@ from clipah.renders.models import (
     PRESET_CANVAS,
     RENDER_AUDIO_SAMPLE_RATE,
     RENDER_FRAME_RATE,
+    TEMPLATE_UNKNOWN,
     RenderAsset,
     RenderCompilationError,
     RenderFile,
@@ -49,6 +50,11 @@ from clipah.renders.models import (
     RenderPlan,
     RenderPreset,
     Watermark,
+)
+from clipah.renders.templates import (
+    TemplateNotFoundError,
+    motion_definition,
+    reject_unknown_template,
 )
 
 VIDEO_OUTPUT_LABEL = "vout"
@@ -113,6 +119,7 @@ class _Compiler:
 
     def compile(self) -> RenderPlan:
         """Build the filter graph, the files it reads, and the inputs it opens."""
+        self._reject_a_look_nobody_published()
         video, audio = self._base_chains()
         video, mixes = self._apply_overlays(video)
         video = self._apply_captions(video)
@@ -133,6 +140,18 @@ class _Compiler:
             audio_label=AUDIO_OUTPUT_LABEL,
         )
 
+    def _reject_a_look_nobody_published(self) -> None:
+        """Refuse a Revision that names a built-in template version that never existed.
+
+        The look itself is already written into the document, so the reference is
+        provenance — but provenance that names nothing is not provenance, and a render
+        that ignored it would attribute the export to a template it never used.
+        """
+        try:
+            reject_unknown_template(self._composition)
+        except TemplateNotFoundError as error:
+            raise RenderCompilationError(TEMPLATE_UNKNOWN, f"unknown template {error}") from None
+
     def _base_chains(self) -> tuple[str, str]:
         """Trim, frame, and concatenate every item of the timeline's video track."""
         tracks = [track for track in self._composition.tracks if track.type is TrackType.VIDEO]
@@ -148,10 +167,6 @@ class _Compiler:
         video_labels: list[str] = []
         audio_labels: list[str] = []
         for index, item in enumerate(ordered):
-            if item.keyframes:
-                raise RenderCompilationError(
-                    FEATURE_UNSUPPORTED, "keyframes on a timeline item are not supported"
-                )
             if item.blend_mode is not BlendMode.NORMAL:
                 raise RenderCompilationError(FEATURE_UNSUPPORTED, "blend modes are not supported")
             if item.motion is not MotionPreset.NONE:
@@ -162,7 +177,7 @@ class _Compiler:
             stream = self._open(asset)
             start = _seconds(item.source_in_ms)
             end = _seconds(item.source_out_ms)
-            crop = _crop_filter(item.crop, asset)
+            crop = self._base_crop(item, asset)
             video_label = f"v{index}"
             audio_label = f"a{index}"
             self._stages.append(
@@ -182,6 +197,45 @@ class _Compiler:
         )
         self._stages.append(f"{pairs}concat=n={len(video_labels)}:v=1:a=1[vbase][abase]")
         return "[vbase]", "[abase]"
+
+    def _base_crop(self, item: TrackItem, asset: RenderAsset) -> str:
+        """Resolve one base item's framing, which may travel across the source over time.
+
+        Keyframes on a base item are how a smart-crop suggestion is expressed: the window
+        keeps its size and its centre moves. Anything else a keyframe could say — a scale,
+        a rotation, an opacity — has no meaning for the picture the whole clip is made of,
+        so it is refused rather than dropped.
+        """
+        if not item.keyframes:
+            return _crop_filter(item.crop, asset)
+        if item.crop is None:
+            raise RenderCompilationError(
+                FEATURE_UNSUPPORTED, "a moving crop needs the window it moves"
+            )
+        if any(frame.opacity is not None or frame.style is not None for frame in item.keyframes):
+            raise RenderCompilationError(
+                FEATURE_UNSUPPORTED, "only the framing of a timeline item can be animated"
+            )
+        # Every remaining keyframe carries a transform: one that animated nothing at all
+        # would have been refused by the validator before it reached a Revision.
+        moving = [frame for frame in item.keyframes if frame.transform is not None]
+        _reject_unanimatable(moving)
+        width = asset.width or 0
+        height = asset.height or 0
+        if width <= 0 or height <= 0:
+            raise RenderCompilationError(
+                FEATURE_UNSUPPORTED, "a crop needs the dimensions of the media it frames"
+            )
+        box_width = max(round(item.crop.width * width), 2)
+        box_height = max(round(item.crop.height * height), 2)
+        x_points = [(frame.at_ms, _window_offset(frame, "x", width, box_width)) for frame in moving]
+        y_points = [
+            (frame.at_ms, _window_offset(frame, "y", height, box_height)) for frame in moving
+        ]
+        return (
+            f"crop=w={box_width}:h={box_height}"
+            f":x='{_piecewise(x_points)}':y='{_piecewise(y_points)}',"
+        )
 
     def _apply_overlays(self, video: str) -> tuple[str, list[str]]:
         """Place every overlay over the base video and collect the audio it contributes."""
@@ -205,6 +259,7 @@ class _Compiler:
             raise RenderCompilationError(
                 FEATURE_UNSUPPORTED, f"motion {overlay.motion.value} is not supported here"
             )
+        _reject_an_illegible_movement(overlay.motion, overlay.duration_ms)
         if overlay.blend_mode is not BlendMode.NORMAL:
             raise RenderCompilationError(FEATURE_UNSUPPORTED, "blend modes are not supported")
         asset = self._asset(overlay.asset_id)
@@ -238,10 +293,12 @@ class _Compiler:
             raise RenderCompilationError(
                 FEATURE_UNSUPPORTED, "keyframes on a text overlay are not supported"
             )
-        if isinstance(overlay, TextOverlay) and overlay.motion not in VIDEO_MOTIONS:
-            raise RenderCompilationError(
-                FEATURE_UNSUPPORTED, f"motion {overlay.motion.value} is not supported here"
-            )
+        if isinstance(overlay, TextOverlay):
+            if overlay.motion not in VIDEO_MOTIONS:
+                raise RenderCompilationError(
+                    FEATURE_UNSUPPORTED, f"motion {overlay.motion.value} is not supported here"
+                )
+            _reject_an_illegible_movement(overlay.motion, overlay.duration_ms)
         path = self._write(f"overlay-{index}.txt", overlay.text)
         style = overlay.style
         label = f"vtext{index}"
@@ -501,6 +558,22 @@ class _CaptionLine:
         self.end_ms = end_ms
 
 
+def _reject_an_illegible_movement(preset: MotionPreset, duration_ms: int) -> None:
+    """Refuse a movement given less or more time than it reads in.
+
+    A Ken Burns drift over half a second is a jolt, and a pan stretched over a minute is
+    a still that never arrives. Each preset publishes the window it is legible within,
+    and an export outside that window is not the effect the member chose.
+    """
+    definition = motion_definition(preset)
+    if not definition.min_duration_ms <= duration_ms <= definition.max_duration_ms:
+        raise RenderCompilationError(
+            FEATURE_UNSUPPORTED,
+            f"motion {preset.value} needs between {definition.min_duration_ms}ms and "
+            f"{definition.max_duration_ms}ms",
+        )
+
+
 def _reject_a_gap_on_the_base_timeline(items: Sequence[TrackItem]) -> None:
     """Refuse a hole in the base timeline, which concatenation would silently close.
 
@@ -532,6 +605,13 @@ def _reject_unanimatable(frames: Sequence[Keyframe]) -> None:
     scales = {round(frame.transform.scale, 4) for frame in frames if frame.transform is not None}
     if len(scales) > 1:
         raise RenderCompilationError(FEATURE_UNSUPPORTED, "scale keyframes are not supported")
+
+
+def _window_offset(frame: Keyframe, axis: str, extent: int, box: int) -> float:
+    """Turn one normalized window centre into the pixel edge a crop starts at."""
+    transform = frame.transform
+    centre = 0.5 if transform is None else float(getattr(transform, axis))
+    return min(max(centre * extent - box / 2, 0.0), float(max(extent - box, 0)))
 
 
 def _position(frame: Keyframe, axis: str, extent: int) -> float:

@@ -13,7 +13,7 @@ set -eu
 repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 cd "$repository_root"
 
-targets="contracts/openapi.json contracts/composition.schema.json frontend/lib/api/generated frontend/features/editor/composition.generated.ts"
+targets="contracts/openapi.json contracts/composition.schema.json contracts/templates.json frontend/lib/api/generated frontend/features/editor/composition.generated.ts frontend/features/editor/templates.generated.json"
 
 snapshot=$(mktemp -d)
 trap 'rm -rf "$snapshot"' EXIT
@@ -24,6 +24,7 @@ done
 
 "$repository_root/scripts/export-openapi.sh"
 "$repository_root/scripts/export-composition-schema.sh"
+"$repository_root/scripts/export-templates.sh"
 pnpm --filter clipah-frontend generate:api
 pnpm --filter clipah-frontend generate:composition
 

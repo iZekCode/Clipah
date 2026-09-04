@@ -1,0 +1,24 @@
+{
+  "frames": {
+    "ken-burns.png": {
+      "atSeconds": "0.500",
+      "intent": "A still given the drift a static frame otherwise lacks.",
+      "sha256": "5186d6553798e12ad865305a17654f3c09ae9e1d46619e37a837b9275147acd5"
+    },
+    "overlay-opacity.png": {
+      "atSeconds": "0.500",
+      "intent": "An overlay blended over the picture at its own opacity.",
+      "sha256": "e8ec58f2838ffeb68882078c93ff29c6e1ee1933f70fd8f40f40e6abde665111"
+    },
+    "plain.png": {
+      "atSeconds": "0.500",
+      "intent": "The base timeline, framed and scaled into the export preset.",
+      "sha256": "e9851dfd5f058d36067e8f30b22067bc46d42e94d5905ea72aab622577fec8a8"
+    },
+    "smart-crop.png": {
+      "atSeconds": "0.150",
+      "intent": "A crop window that travels, which is what a smart-crop suggestion is.",
+      "sha256": "c7cd125e97913ec4516c353f3d4ed11045e7bf7a7ee9d661c5740980a5d6946a"
+    }
+  }
+}

@@ -388,6 +388,7 @@ def test_a_composition_naming_media_the_project_no_longer_owns_fails_terminally(
     ("scenario", "preset"),
     [
         ("no-broll", RenderPreset.PORTRAIT),
+        ("smart-crop", RenderPreset.PORTRAIT),
         ("stock-image", RenderPreset.PORTRAIT),
         ("stock-video", RenderPreset.LANDSCAPE),
         ("generated-video", RenderPreset.SQUARE),
@@ -946,6 +947,27 @@ def _fixture_composition(scenario: str) -> dict[str, Any]:
         "audio": {"gainDb": 0.0, "musicGainDb": -18.0},
         "bookmarks": [],
     }
+    if scenario == "smart-crop":
+        # A smart-crop suggestion: the window keeps its size and its centre travels, which
+        # is the one thing a keyframe on a base timeline item is allowed to say.
+        item = document["tracks"][0]["items"][0]
+        item["crop"] = {"x": 0.2, "y": 0.0, "width": 0.5, "height": 1.0}
+        item["keyframes"] = [
+            {
+                "atMs": 0,
+                "easing": "easeInOut",
+                "transform": {"x": 0.3, "y": 0.5, "scale": 1.0, "rotation": 0.0},
+                "opacity": None,
+                "style": None,
+            },
+            {
+                "atMs": 1_000,
+                "easing": "easeInOut",
+                "transform": {"x": 0.7, "y": 0.5, "scale": 1.0, "rotation": 0.0},
+                "opacity": None,
+                "style": None,
+            },
+        ]
     if scenario == "stock-image":
         document["overlays"] = [
             {

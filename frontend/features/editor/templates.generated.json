@@ -1,0 +1,151 @@
+{
+  "motions": [
+    {
+      "description": "The element is still.",
+      "maxDurationMs": 600000,
+      "minDurationMs": 0,
+      "preset": "none"
+    },
+    {
+      "description": "The element fades in and back out.",
+      "maxDurationMs": 600000,
+      "minDurationMs": 800,
+      "preset": "fade"
+    },
+    {
+      "description": "A still drifts slowly towards the viewer.",
+      "maxDurationMs": 30000,
+      "minDurationMs": 600,
+      "preset": "kenBurnsIn"
+    },
+    {
+      "description": "A still drifts slowly away from the viewer.",
+      "maxDurationMs": 30000,
+      "minDurationMs": 600,
+      "preset": "kenBurnsOut"
+    },
+    {
+      "description": "A still travels to the left.",
+      "maxDurationMs": 30000,
+      "minDurationMs": 600,
+      "preset": "panLeft"
+    },
+    {
+      "description": "A still travels to the right.",
+      "maxDurationMs": 30000,
+      "minDurationMs": 600,
+      "preset": "panRight"
+    },
+    {
+      "description": "The element arrives from below.",
+      "maxDurationMs": 15000,
+      "minDurationMs": 600,
+      "preset": "slideUp"
+    }
+  ],
+  "templates": [
+    {
+      "captionMode": "block",
+      "captionStyle": {
+        "align": "center",
+        "backgroundColor": "#101010",
+        "backgroundEnabled": true,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Inter",
+        "fontSize": 56,
+        "highlightColor": "#FFD166",
+        "italic": false,
+        "letterSpacing": 0.0,
+        "lineHeight": 1.2,
+        "weight": 600
+      },
+      "description": "Quiet type that stays out of the way of the picture.",
+      "id": "0f2a1b6c-0000-4000-8000-000000000001",
+      "name": "Clean captions",
+      "textStyle": {
+        "align": "center",
+        "backgroundColor": "#000000",
+        "backgroundEnabled": false,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Inter",
+        "fontSize": 42,
+        "italic": false,
+        "letterSpacing": 0.0,
+        "lineHeight": 1.2,
+        "weight": 500
+      },
+      "version": 1
+    },
+    {
+      "captionMode": "karaoke",
+      "captionStyle": {
+        "align": "center",
+        "backgroundColor": "#000000",
+        "backgroundEnabled": false,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Anton",
+        "fontSize": 72,
+        "highlightColor": "#FFD166",
+        "italic": false,
+        "letterSpacing": 1.0,
+        "lineHeight": 1.2,
+        "weight": 900
+      },
+      "description": "Heavy type that highlights each word as it is said.",
+      "id": "0f2a1b6c-0000-4000-8000-000000000002",
+      "name": "Bold karaoke",
+      "textStyle": {
+        "align": "center",
+        "backgroundColor": "#000000",
+        "backgroundEnabled": false,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Anton",
+        "fontSize": 56,
+        "italic": false,
+        "letterSpacing": 0.0,
+        "lineHeight": 1.2,
+        "weight": 900
+      },
+      "version": 1
+    },
+    {
+      "captionMode": "block",
+      "captionStyle": {
+        "align": "left",
+        "backgroundColor": "#000000",
+        "backgroundEnabled": true,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Roboto",
+        "fontSize": 48,
+        "highlightColor": "#FFD166",
+        "italic": false,
+        "letterSpacing": 0.0,
+        "lineHeight": 1.35,
+        "weight": 400
+      },
+      "description": "Left-aligned captions and a lower-third title face.",
+      "id": "0f2a1b6c-0000-4000-8000-000000000003",
+      "name": "Documentary",
+      "textStyle": {
+        "align": "left",
+        "backgroundColor": "#101010",
+        "backgroundEnabled": true,
+        "color": "#FFFFFF",
+        "decoration": "none",
+        "fontFamily": "Roboto",
+        "fontSize": 36,
+        "italic": false,
+        "letterSpacing": 0.0,
+        "lineHeight": 1.2,
+        "weight": 400
+      },
+      "version": 1
+    }
+  ],
+  "templatesVersion": 1
+}

@@ -24,12 +24,14 @@ from clipah.renders.models import (
     ASSET_MISSING,
     FEATURE_UNSUPPORTED,
     PRESET_CANVAS,
+    TEMPLATE_UNKNOWN,
     RenderAsset,
     RenderCompilationError,
     RenderPlan,
     RenderPreset,
     Watermark,
 )
+from clipah.renders.templates import BUILT_IN_TEMPLATES
 
 SOURCE_ASSET_ID = UUID("11111111-1111-4111-8111-111111111111")
 BROLL_VIDEO_ID = UUID("22222222-2222-4222-8222-222222222222")
@@ -916,6 +918,124 @@ def test_a_duplicated_item_is_rendered_as_its_own_segment_of_the_export() -> Non
 
     assert "concat=n=3:v=1:a=1[vbase][abase]" in plan.filter_script
     assert len(plan.inputs) == 3
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("motion", "start_ms", "end_ms", "duration_ms"),
+    [
+        pytest.param("fade", 8_000, 8_600, 30_000, id="fade-too-short"),
+        pytest.param("kenBurnsIn", 8_000, 8_400, 30_000, id="ken-burns-too-short"),
+        pytest.param("panLeft", 0, 40_000, 45_000, id="pan-too-long"),
+    ],
+)
+def test_a_movement_outside_the_window_it_reads_in_is_refused(
+    motion: str, start_ms: int, end_ms: int, duration_ms: int
+) -> None:
+    """A drift nobody can see, and one long enough to crawl, are both the wrong effect."""
+    document = composition_document(
+        durationMs=duration_ms,
+        overlays=[image_overlay(motion=motion, timelineStartMs=start_ms, timelineEndMs=end_ms)],
+    )
+
+    assert refusal(document, table=assets(broll_image())) == FEATURE_UNSUPPORTED
+
+
+@pytest.mark.unit
+def test_a_movement_inside_its_window_is_compiled_rather_than_refused() -> None:
+    """The bounds exist to keep an effect legible, not to make stills unusable."""
+    document = composition_document(
+        overlays=[image_overlay(motion="kenBurnsIn", timelineStartMs=8_000, timelineEndMs=14_000)]
+    )
+
+    plan = plan_for(document, table=assets(broll_image()))
+
+    assert "zoompan" in plan.filter_script
+
+
+@pytest.mark.unit
+def test_a_smart_crop_suggestion_becomes_a_window_that_travels_over_time() -> None:
+    """A crop keyframed onto a base item is the whole point of the smart-crop suggestion."""
+    document = composition_document(
+        tracks=[
+            {
+                "id": "main-video",
+                "type": "video",
+                "items": [
+                    item(
+                        crop={"x": 0.2, "y": 0.0, "width": 0.3, "height": 1.0},
+                        keyframes=[
+                            keyframe(
+                                0,
+                                transform={"x": 0.3, "y": 0.5, "scale": 1.0, "rotation": 0.0},
+                            ),
+                            keyframe(
+                                10_000,
+                                transform={"x": 0.7, "y": 0.5, "scale": 1.0, "rotation": 0.0},
+                            ),
+                        ],
+                    )
+                ],
+            }
+        ]
+    )
+
+    plan = plan_for(document)
+
+    assert "crop=w=576:h=1080:x='if(lt(t," in plan.filter_script
+    # 0.3 of a 1920-wide frame, less half of the 576-wide window, is 288 pixels in.
+    assert "288.000" in plan.filter_script
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "keyframes",
+    [
+        pytest.param([keyframe(0, opacity=0.5)], id="opacity"),
+        pytest.param([keyframe(0, style=text_style())], id="restyled"),
+    ],
+)
+def test_a_base_item_keyframe_that_is_not_a_framing_move_is_refused(
+    keyframes: list[dict[str, Any]],
+) -> None:
+    """The base picture is the whole clip; fading or restyling it means nothing."""
+    document = composition_document(
+        tracks=[
+            {
+                "id": "main-video",
+                "type": "video",
+                "items": [
+                    item(
+                        crop={"x": 0.2, "y": 0.0, "width": 0.3, "height": 1.0},
+                        keyframes=keyframes,
+                    )
+                ],
+            }
+        ]
+    )
+
+    assert refusal(document) == FEATURE_UNSUPPORTED
+
+
+@pytest.mark.unit
+def test_a_built_in_template_version_that_was_never_published_is_refused() -> None:
+    """A Revision naming a look nobody published cannot be reproduced faithfully."""
+    document = composition_document(
+        template={"id": str(BUILT_IN_TEMPLATES[0].id), "version": BUILT_IN_TEMPLATES[0].version + 4}
+    )
+
+    assert refusal(document) == TEMPLATE_UNKNOWN
+
+
+@pytest.mark.unit
+def test_a_published_template_reference_is_carried_through_without_comment() -> None:
+    """The reference is provenance; the look itself is already in the document."""
+    template = BUILT_IN_TEMPLATES[0]
+    document = composition_document(template={"id": str(template.id), "version": template.version})
+
+    plan = plan_for(document)
+
+    assert str(template.id) not in plan.filter_script
 
 
 @pytest.mark.unit

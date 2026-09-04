@@ -17,6 +17,7 @@
  */
 import { applyPatches, current, enablePatches, produceWithPatches, type Patch } from 'immer'
 
+import { motionFits, type TemplateDefinition } from './templates'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 enablePatches()
@@ -41,6 +42,9 @@ export const SNAP_THRESHOLD_PX = 8
 /** How long a new text overlay is on screen before a member changes it. */
 export const TEXT_OVERLAY_MS = 3_000
 
+/** The shortest a caption word may be retimed to, so karaoke still has a moment to paint. */
+export const MIN_WORD_MS = 100
+
 type Track = CompositionV1['tracks'][number]
 type TrackItem = Track['items'][number]
 type TrackKind = Track['type']
@@ -48,6 +52,9 @@ type Crop = TrackItem['crop']
 type CaptionStyle = CompositionV1['captions']['style']
 type CaptionWord = CompositionV1['captions']['words'][number]
 type Overlay = CompositionV1['overlays'][number]
+type Keyframe = TrackItem['keyframes'][number]
+type Transform = TrackItem['transform']
+type MotionPreset = TrackItem['motion']
 type TextOverlay = Extract<Overlay, { type: 'text' }>
 type TextStyle = TextOverlay['style']
 type AudioMix = CompositionV1['audio']
@@ -101,6 +108,7 @@ export type EditorAction =
   | { type: 'aspect'; aspect: Aspect; sourceAspect: number }
   | { type: 'captionText'; wordId: string; text: string }
   | { type: 'captionStyle'; patch: Partial<CaptionStyle> }
+  | { type: 'captionMode'; mode: CompositionV1['captions']['mode'] }
   | { type: 'split'; itemId: string; atMs: number }
   | { type: 'splitSide'; itemId: string; atMs: number; keep: 'left' | 'right' }
   | { type: 'duplicateItem'; itemId: string }
@@ -125,6 +133,12 @@ export type EditorAction =
   | { type: 'addBookmark'; label: string; atMs?: number }
   | { type: 'renameBookmark'; bookmarkId: string; label: string }
   | { type: 'removeBookmark'; bookmarkId: string }
+  | { type: 'retimeWord'; wordId: string; startMs: number; endMs: number }
+  | { type: 'applyTemplate'; template: TemplateDefinition }
+  | { type: 'setMotion'; targetId: string; preset: MotionPreset }
+  | { type: 'addKeyframe'; targetId: string; atMs: number; transform?: Transform; opacity?: number }
+  | { type: 'moveKeyframe'; targetId: string; atMs: number; toMs: number }
+  | { type: 'removeKeyframe'; targetId: string; atMs: number }
   | { type: 'undo' }
   | { type: 'redo' }
   | { type: 'markSaved'; composition: CompositionV1 }
@@ -255,6 +269,106 @@ export function scenes(composition: CompositionV1): Scene[] {
   }))
 }
 
+
+/** The caption word being said at one instant, if a word is being said at all. */
+export function activeWordAt(words: CaptionWord[], atMs: number): CaptionWord | null {
+  return words.find((word) => atMs >= word.startMs && atMs < word.endMs) ?? null
+}
+
+/**
+ * The animated values one element holds at one instant.
+ *
+ * Between two keyframes a value travels by the easing the earlier one names; outside them
+ * it is held, so an element never jumps to a value nobody asked for.
+ */
+export function interpolatedAt(
+  keyframes: Keyframe[],
+  atMs: number,
+): { transform: Transform | null; opacity: number | null } {
+  const ordered = [...keyframes].sort((left, right) => left.atMs - right.atMs)
+  return {
+    transform: interpolatedTransform(ordered, atMs),
+    opacity: interpolatedOpacity(ordered, atMs),
+  }
+}
+
+/** Where an element's framing sits at one instant. */
+function interpolatedTransform(ordered: Keyframe[], atMs: number): Transform | null {
+  const framing = ordered.filter((frame) => frame.transform !== null)
+  const first = framing[0]
+  const last = framing.at(-1)
+  if (first === undefined || last === undefined) {
+    return null
+  }
+  if (atMs <= first.atMs) {
+    return first.transform
+  }
+  if (atMs >= last.atMs) {
+    return last.transform
+  }
+  for (const [earlier, later] of pairs(framing)) {
+    if (atMs >= earlier.atMs && atMs <= later.atMs) {
+      const ratio = eased(earlier.easing, (atMs - earlier.atMs) / (later.atMs - earlier.atMs))
+      const from = earlier.transform as NonNullable<Transform>
+      const to = later.transform as NonNullable<Transform>
+      return {
+        x: from.x + (to.x - from.x) * ratio,
+        y: from.y + (to.y - from.y) * ratio,
+        scale: from.scale + (to.scale - from.scale) * ratio,
+        rotation: from.rotation + (to.rotation - from.rotation) * ratio,
+      }
+    }
+  }
+  return last.transform
+}
+
+/** How opaque an element is at one instant. */
+function interpolatedOpacity(ordered: Keyframe[], atMs: number): number | null {
+  const fading = ordered.filter((frame) => frame.opacity !== null)
+  const first = fading[0]
+  const last = fading.at(-1)
+  if (first === undefined || last === undefined) {
+    return null
+  }
+  if (atMs <= first.atMs) {
+    return first.opacity
+  }
+  if (atMs >= last.atMs) {
+    return last.opacity
+  }
+  for (const [earlier, later] of pairs(fading)) {
+    if (atMs >= earlier.atMs && atMs <= later.atMs) {
+      const ratio = eased(earlier.easing, (atMs - earlier.atMs) / (later.atMs - earlier.atMs))
+      const from = earlier.opacity ?? 0
+      const to = later.opacity ?? 0
+      return from + (to - from) * ratio
+    }
+  }
+  return last.opacity
+}
+
+/** Each consecutive pair of a list, so an interval can be searched for. */
+function pairs(frames: Keyframe[]): Array<[Keyframe, Keyframe]> {
+  return frames.slice(0, -1).map((frame, index) => [frame, frames[index + 1] as Keyframe])
+}
+
+/** How far along a movement is, once the easing it names has been applied. */
+function eased(easing: Keyframe['easing'], ratio: number): number {
+  const progress = Math.min(Math.max(ratio, 0), 1)
+  if (easing === 'easeIn') {
+    return progress * progress
+  }
+  if (easing === 'easeOut') {
+    return 1 - (1 - progress) * (1 - progress)
+  }
+  if (easing === 'easeInOut') {
+    return progress < 0.5
+      ? 2 * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 2) / 2
+  }
+  return progress
+}
+
 /**
  * The centred crop that fills one aspect from a source of another.
  *
@@ -374,6 +488,9 @@ function edit(draft: CompositionV1, action: EditorAction, state: EditorState): v
     case 'captionStyle':
       Object.assign(draft.captions.style, action.patch)
       return
+    case 'captionMode':
+      draft.captions.mode = action.mode
+      return
     case 'split':
       return split(draft, action)
     case 'splitSide':
@@ -411,6 +528,18 @@ function edit(draft: CompositionV1, action: EditorAction, state: EditorState): v
     case 'removeBookmark':
       draft.bookmarks = draft.bookmarks.filter((bookmark) => bookmark.id !== action.bookmarkId)
       return
+    case 'retimeWord':
+      return retimeWord(draft, action)
+    case 'applyTemplate':
+      return applyTemplate(draft, action.template)
+    case 'setMotion':
+      return setMotion(draft, action)
+    case 'addKeyframe':
+      return addKeyframe(draft, action)
+    case 'moveKeyframe':
+      return moveKeyframe(draft, action)
+    case 'removeKeyframe':
+      return removeKeyframe(draft, action)
     default:
       return
   }
@@ -897,6 +1026,162 @@ function renameBookmark(draft: CompositionV1, action: { bookmarkId: string; labe
   const bookmark = draft.bookmarks.find((candidate) => candidate.id === action.bookmarkId)
   if (bookmark !== undefined && named !== '') {
     bookmark.label = named
+  }
+}
+
+
+/**
+ * Move one caption word's own timing, inside the gap its neighbours leave it.
+ *
+ * Transcription produced these timestamps, so retiming is deliberate work rather than a
+ * side effect — and it may never produce two words that overlap, because karaoke would
+ * then have two active words at once.
+ */
+function retimeWord(
+  draft: CompositionV1,
+  action: { wordId: string; startMs: number; endMs: number },
+): void {
+  const index = draft.captions.words.findIndex((word) => word.id === action.wordId)
+  const word = draft.captions.words[index]
+  if (word === undefined) {
+    return
+  }
+  const earliest = draft.captions.words[index - 1]?.endMs ?? 0
+  const latest = draft.captions.words[index + 1]?.startMs ?? draft.durationMs
+  const startMs = clamp(Math.round(action.startMs), earliest, latest - MIN_WORD_MS)
+  const endMs = clamp(Math.round(action.endMs), startMs + MIN_WORD_MS, latest)
+  word.startMs = startMs
+  word.endMs = endMs
+}
+
+/**
+ * Write one published look into the document, and record the version it came from.
+ *
+ * Only type and colour change: a look is never allowed to touch the clip, its items, or
+ * the words the transcript produced.
+ */
+function applyTemplate(draft: CompositionV1, template: TemplateDefinition): void {
+  draft.template = { id: template.id, version: template.version }
+  draft.captions.mode = template.captionMode
+  draft.captions.style = { ...template.captionStyle }
+  for (const overlay of draft.overlays) {
+    if (overlay.type === 'text') {
+      overlay.style = { ...template.textStyle }
+    }
+  }
+}
+
+/** Give one element a movement, but only if it is on screen long enough to show it. */
+function setMotion(draft: CompositionV1, action: { targetId: string; preset: MotionPreset }): void {
+  const target = animatable(draft, action.targetId)
+  if (target === null) {
+    return
+  }
+  if (!motionFits(action.preset, target.durationMs)) {
+    return
+  }
+  target.setMotion(action.preset)
+}
+
+/** Add one keyframe at one instant, replacing any keyframe already standing there. */
+function addKeyframe(
+  draft: CompositionV1,
+  action: { targetId: string; atMs: number; transform?: Transform; opacity?: number },
+): void {
+  const target = animatable(draft, action.targetId)
+  if (target === null) {
+    return
+  }
+  if (action.transform === undefined && action.opacity === undefined) {
+    return
+  }
+  const atMs = clamp(Math.round(action.atMs), 0, target.durationMs)
+  const kept = target.keyframes().filter((frame) => frame.atMs !== atMs)
+  const added: Keyframe = {
+    atMs,
+    easing: 'easeInOut',
+    transform: action.transform ?? null,
+    opacity: action.opacity ?? null,
+    style: null,
+  }
+  target.setKeyframes([...kept, added].sort((left, right) => left.atMs - right.atMs))
+}
+
+/** Move one keyframe to another instant, unless another keyframe already holds it. */
+function moveKeyframe(
+  draft: CompositionV1,
+  action: { targetId: string; atMs: number; toMs: number },
+): void {
+  const target = animatable(draft, action.targetId)
+  if (target === null) {
+    return
+  }
+  const toMs = clamp(Math.round(action.toMs), 0, target.durationMs)
+  const frames = target.keyframes()
+  if (frames.some((frame) => frame.atMs === toMs) || !frames.some((f) => f.atMs === action.atMs)) {
+    return
+  }
+  target.setKeyframes(
+    frames
+      .map((frame) => (frame.atMs === action.atMs ? { ...frame, atMs: toMs } : frame))
+      .sort((left, right) => left.atMs - right.atMs),
+  )
+}
+
+/** Remove the keyframe standing at one instant. */
+function removeKeyframe(
+  draft: CompositionV1,
+  action: { targetId: string; atMs: number },
+): void {
+  const target = animatable(draft, action.targetId)
+  if (target === null) {
+    return
+  }
+  target.setKeyframes(target.keyframes().filter((frame) => frame.atMs !== action.atMs))
+}
+
+/**
+ * One element that can be animated, whichever kind of element it happens to be.
+ *
+ * An item and an overlay carry their keyframes in the same shape but describe their own
+ * length differently, so this is the one place that difference is spelled out.
+ */
+function animatable(
+  draft: CompositionV1,
+  targetId: string,
+): {
+  durationMs: number
+  keyframes: () => Keyframe[]
+  setKeyframes: (frames: Keyframe[]) => void
+  setMotion: (preset: MotionPreset) => void
+} | null {
+  const found = locate(draft, targetId)
+  if (found !== null) {
+    const { item } = found
+    return {
+      durationMs: item.sourceOutMs - item.sourceInMs,
+      keyframes: () => item.keyframes,
+      setKeyframes: (frames) => {
+        item.keyframes = frames
+      },
+      setMotion: (preset) => {
+        item.motion = preset
+      },
+    }
+  }
+  const overlay = draft.overlays.find((candidate) => candidate.id === targetId)
+  if (overlay === undefined || overlay.type === 'citation') {
+    return null
+  }
+  return {
+    durationMs: overlay.timelineEndMs - overlay.timelineStartMs,
+    keyframes: () => overlay.keyframes,
+    setKeyframes: (frames) => {
+      overlay.keyframes = frames
+    },
+    setMotion: (preset) => {
+      overlay.motion = preset
+    },
   }
 }
 

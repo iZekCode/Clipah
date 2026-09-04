@@ -36,6 +36,7 @@ source-import = [
 [dependency-groups]
 dev = [
     "mypy>=1.14,<2",
+    "numpy>=2,<3",
     "pytest>=8.3,<9",
     "pytest-cov>=6,<7",
     "pytest-timeout>=2.3,<3",

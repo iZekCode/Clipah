@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 25 is ready to commit. **Task 26 follows.**
+**Current position:** Task 26 is ready to commit. **Task 27 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -59,8 +59,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | # | Task | Status |
 | --- | --- | --- |
 | 24 | Implement render-plan compilation and safe FFmpeg export | `[x]` (`191f4ea`) |
-| 25 | Add complete timeline, asset, sound, text, and scene editing | `[~]` (ready to commit) |
-| 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[ ]` |
+| 25 | Add complete timeline, asset, sound, text, and scene editing | `[x]` (`131339f`) |
+| 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[~]` (ready to commit) |
 
 ## Phase E — Source connections, B-roll, and differentiated workflows (Tasks 27-35)
 
@@ -1206,6 +1206,90 @@ backend, the frontend, and browser binaries running together. No commit was crea
 required owner commit message is `feat: complete multi-track timeline editing`.
 
 
+### Task 26 — Styling, karaoke, keyframes, templates, motion, and smart crop
+
+**Templates and motion presets are published data, not code on two sides.**
+`renders/templates.py` holds three built-in looks and the seven motion presets, each with
+an explicit version and, for a movement, the window it is legible within. Applying a
+template writes its type and colour into the composition and records the exact version it
+came from, so the reference is provenance rather than a lookup the renderer depends on: a
+Revision renders identically forever even if the template is later replaced. The document
+is exported by `scripts/export-templates.sh` to `contracts/templates.json` and to the copy
+the frontend bundles, and `scripts/check-contracts-clean.sh` now fails when either drifts —
+negative-controlled by renaming a template and watching the check refuse the tree.
+
+**The renderer enforces what the editor offers.** The compiler refuses a built-in template
+version nobody published (`RENDER_TEMPLATE_UNKNOWN`), and refuses a movement given less or
+more time than it reads in — a Ken Burns drift under 600 ms is a lurch, and a pan stretched
+past thirty seconds is a still that never arrives. It also gained the one thing a keyframe
+on a *base* timeline item may say: the framing travels. That is compiled as an FFmpeg
+`crop` whose window keeps its size while its centre moves along a piecewise expression, and
+it is what a smart-crop suggestion produces. A keyframe on a base item that fades or
+restyles it is refused, because the base picture is the whole clip.
+
+**Smart crop is a suggestion made from evidence.** `assets/smart_crop.py` takes detected
+face boxes and the transcript's own speaker segments and proposes where a vertical clip
+should look. Three rules hold: an item that already carries keyframes is returned untouched
+with the reason; no confident face means the centred framing rather than an invention; and
+the proposed window never leaves the source frame and never travels faster than a third of
+the frame per second, because a swing across the picture reads as a mistake. Nothing here
+detects a face — detection is a provider's job — so the module is decided entirely by its
+own inputs and has 100% line and branch coverage.
+
+**The editor gained four panels.** `TemplatesPanel` applies a published look by name and
+marks the one in use. `KaraokePanel` names the word being said at the playhead and retimes
+one word inside the gap its neighbours leave it, because two words claiming one instant
+would give karaoke two active words and would be refused on save. `KeyframeEditor` adds,
+moves, and removes keyframes on the selected item and reports the framing at the playhead,
+interpolated with the easing each keyframe names. `MotionPanel` offers every published
+movement and refuses one an element is too short to show, saying which bounds it missed
+rather than accepting it now and failing at export. `CaptionsPanel` grew the style fields
+Section 9 names that it was missing — weight, italic, decoration, letter spacing, and line
+height.
+
+**The golden-frame gate exists and has been watched fail.** `tests/perceptual.py`
+implements structural similarity with a documented mask for the bands type is drawn into,
+because font rasterization is a property of the machine rather than of the composition. The
+threshold is 0.97, and seven unit tests hold the gate to it: an identical frame scores one,
+a frame one level darker passes, a shifted picture and full-frame noise fail, a masked
+region hides a difference, masking everything is refused rather than scored as a pass, and
+two frames of different sizes are refused. `tools/generate_golden_frames.py` writes the
+frames and a SHA-256 manifest; the suite verifies the digest before it compares, so a
+golden frame edited by hand is refused rather than trusted.
+
+Four scenarios have checked-in golden frames and pass on this machine — the plain base
+timeline, a travelling smart-crop window, a Ken Burns still, and a half-opacity overlay —
+and the suite proves the gate discriminates by scoring a deliberately wrong render against
+the plain golden and requiring it to fail. One measurement mistake was caught and recorded
+rather than papered over: the first smart-crop golden was sampled at the midpoint of an
+eased move from 0.3 to 0.7, which sits exactly where a centred crop would, and scored
+0.9969 against the plain frame. It is now sampled at 0.15 s, where the window is still left
+of centre.
+
+**Three scenarios are unmeasured here, and are skipped by name rather than passed.** The
+caption, karaoke, and drawn-text goldens need `subtitles` and `drawtext`, which need libass
+and libfreetype; the FFmpeg on this machine (9.0.1) carries neither, and the pinned render
+image carries both. The generator refuses to write a golden frame for a scenario this build
+cannot draw, so no machine can certify a picture nobody could have looked at.
+
+**One deviation from the task's wording is recorded here.** The checkbox asks for
+*preview*/render golden-frame fixtures. The render side is built and running; the preview
+side compares against a browser compositor that does not exist yet — the basic editor draws
+captions and crop over the proxy rather than compositing frames through Mediabunny, which
+was already deferred from Tasks 25 and 26. The gate is written so that the preview frames
+drop into the same comparison and the same threshold once that compositor exists.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1075 backend tests
+passed with eight environment-gated skips at 95.08% coverage. `pnpm lint`, `pnpm typecheck`,
+`pnpm test` (242 passed), and `pnpm build` all passed, and `scripts/check-contracts-clean.sh`
+exits zero. Four deliberate breaks were made against the new editor behaviour and each
+failed the matching test — a retime that ignores its neighbours, a template that records no
+version, a movement that ignores its window, and an easing that is not applied; the easing
+test was sharpened first, because its original midpoint assertion could not tell an eased
+move from a linear one. No commit was created; the required owner commit message is
+`feat: add advanced editor styling and smart crop`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1223,6 +1307,11 @@ oversight.
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
 | The two Playwright scenarios that need a real analysed Project — `a reviewer turns a candidate into an edit exactly once` and `a member trims a real clip and the Revision survives a reload`. Both are covered at the component and integration level; the browser versions need a seed helper that can drive ingest, transcription, and analysis, because no API can stage a Clip Candidate | the repository owner, before Phase C is signed off |
 | Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |
+| Detecting the faces smart crop reasons about, and the endpoint that would carry its suggestions into the editor. `assets/smart_crop.py` is the policy and is fully tested; nothing in the pipeline produces a face box yet, and no image in the plan pins a detector | the task that adds a face detector to the pinned image |
+| Preview-side golden frames. The gate compares an FFmpeg render against a signed-off frame; comparing a *browser preview* frame against the same golden needs the Mediabunny compositor that Tasks 25 and 26 both deferred | whichever task builds the frame-accurate preview compositor |
+| Golden frames for burned-in captions, karaoke, and drawn text; they need `subtitles` and `drawtext`, so the generator and the suite both skip them on a build without libass and libfreetype | the repository owner, inside the pinned image |
+| Failing CI below the perceptual threshold; the gate fails the suite, but no CI configuration exists to run it | Task 47 |
+| Blend modes other than `normal`, and scale or rotation keyframes. The schema can express them and the renderer cannot reproduce them faithfully, so the compiler refuses them and the editor does not offer them | whichever task can prove a faithful FFmpeg reproduction |
 | Waveform display under a timeline item; nothing in the pipeline produces a `waveform` Asset yet, so there is no data to draw. Snapping, bookmarks, ripple editing, scene organization, and pointer drag/resize all landed in Task 25 | Task 26, once a waveform rendition exists |
 | Detaching a base video item's own audio. Composition version 1 carries no per-item mute, so a detached copy would play twice; Task 25's extract-audio places one asset's audio on its own extracted-audio lane instead | Task 26, with the per-item controls that would need the field |
 | Free positioning and multiple lanes of picture. The base video lane is played by concatenation, so dragging there reorders and the compiler refuses both a gap and a second video track rather than exporting a clip that does not match the preview | whichever task gives the renderer a compositing base timeline |

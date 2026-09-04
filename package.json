@@ -11,7 +11,7 @@
     "test": "pnpm --filter clipah-frontend test",
     "generate:api": "pnpm --filter clipah-frontend generate:api",
     "generate:composition": "pnpm --filter clipah-frontend generate:composition",
-    "generate:contracts": "scripts/export-openapi.sh && scripts/export-composition-schema.sh && pnpm generate:api && pnpm generate:composition",
+    "generate:contracts": "scripts/export-openapi.sh && scripts/export-composition-schema.sh && scripts/export-templates.sh && pnpm generate:api && pnpm generate:composition",
     "check:contracts": "scripts/check-contracts-clean.sh"
   },
   "packageManager": "pnpm@11.25.0"
