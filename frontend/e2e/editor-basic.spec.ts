@@ -1,7 +1,13 @@
 import { expect, test, type Page } from '@playwright/test'
 
 import { alertOf } from './support/locators'
-import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
+import {
+  seedMember,
+  seedMemberWithClip,
+  signIn,
+  uniqueEmail,
+  type SeededMember,
+} from './support/seed'
 
 /**
  * The editor in a real browser, against a real backend.
@@ -60,8 +66,44 @@ test('saving an Edit is refused for a Workspace the member does not belong to', 
   expect((await refused.json()).error.code).toBe('NOT_FOUND')
 })
 
-// Opening a real clip in the editor needs a Project that has been ingested, transcribed,
-// and analysed, which no API can stage: the candidates a member edits are produced by the
-// pipeline. The scenario belongs with the seeding helper that can drive that pipeline end
-// to end, which the repository owner runs before Phase C is signed off.
-test.fixme('a member trims a real clip and the Revision survives a reload', async () => {})
+test('a member trims a real clip and the Revision survives a reload', async ({ page }) => {
+  const member = await seedMemberWithClip({
+    email: uniqueEmail('editor-trim'),
+    displayName: 'Editing Member',
+    workspaceName: 'Editing Workspace',
+    projectName: 'Edited Episode',
+  })
+  await signIn(page.context(), member, SITE)
+  const opened = await page.request.post(
+    `/api/v1/projects/${member.project.projectId}` +
+      `/candidates/${member.project.candidateId}/edits` +
+      `?workspace_id=${member.workspaceId}`,
+    { headers: { 'X-CSRF-Token': member.csrfToken, Origin: SITE } },
+  )
+  expect(opened.status()).toBe(201)
+  const editId = (await opened.json()).id as string
+
+  await page.goto(`/editor/${editId}?workspace_id=${member.workspaceId}`)
+  const inspector = page.getByRole('region', { name: /inspector/i })
+  await expect(inspector).toBeVisible()
+
+  // Trim through the control a member actually uses. The wait is on the save itself
+  // rather than on the words beside it: the editor already reads "Saved" before anything
+  // has been edited, so waiting for that text would prove nothing and reload too early.
+  const saved = page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response.url().includes(`/api/v1/edits/${editId}`) &&
+      response.status() === 200,
+  )
+  const endsAt = inspector.getByRole('spinbutton', { name: /clip ends at/i })
+  await endsAt.fill('20000')
+  await endsAt.blur()
+  await saved
+
+  await page.reload()
+
+  // The editor reopens on the Revision the backend kept, not on the seeded one.
+  const reopened = page.getByRole('region', { name: /inspector/i })
+  await expect(reopened.getByRole('spinbutton', { name: /clip ends at/i })).toHaveValue('20000')
+})

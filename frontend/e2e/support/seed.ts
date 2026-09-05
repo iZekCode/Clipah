@@ -18,6 +18,19 @@ export interface SeededMember {
   csrfToken: string
 }
 
+/** One analysed Project the backend staged, and the clip its editor opens on. */
+export interface SeededClip {
+  projectId: string
+  candidateId: string
+  sourceAssetId: string
+  name: string
+}
+
+/** A member who also owns a Project that has finished analysis. */
+export interface SeededMemberWithClip extends SeededMember {
+  project: SeededClip
+}
+
 /**
  * Create one signed-in member directly in the database.
  *
@@ -46,6 +59,40 @@ export async function seedMember(options: {
     { cwd: BACKEND_ROOT },
   )
   return JSON.parse(stdout.trim()) as SeededMember
+}
+
+/**
+ * Create one signed-in member who already owns a clip the analysis produced.
+ *
+ * No API can create a Clip Candidate, so the scenarios that edit, review, or illustrate
+ * a real clip cannot set themselves up through the product. The backend stages the rows
+ * its pipeline would have written; the media those rows name is never fetched.
+ */
+export async function seedMemberWithClip(options: {
+  email: string
+  displayName: string
+  workspaceName: string
+  projectName: string
+}): Promise<SeededMemberWithClip> {
+  const { stdout } = await run(
+    'uv',
+    [
+      'run',
+      'python',
+      '-m',
+      'clipah.dev.seed',
+      '--email',
+      options.email,
+      '--display-name',
+      options.displayName,
+      '--workspace-name',
+      options.workspaceName,
+      '--with-clip',
+      options.projectName,
+    ],
+    { cwd: BACKEND_ROOT },
+  )
+  return JSON.parse(stdout.trim()) as SeededMemberWithClip
 }
 
 /** Put a seeded member's cookies into one browser context, first-party to the site. */

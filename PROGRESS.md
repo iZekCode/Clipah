@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 30 is ready to commit. **Task 31 follows.**
+**Current position:** Tasks 1-30 have landed. **Task 31 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -67,9 +67,9 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | # | Task | Status |
 | --- | --- | --- |
 | 27 | Add feature-flagged authenticated YouTube connections | `[x]` (`a5955aa`) |
-| 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (ready to commit) |
-| 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (ready to commit) |
-| 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (ready to commit) |
+| 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (`dfa312e`) |
+| 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (`e81140a`) |
+| 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (`42ca150`) |
 | 31 | Add quota-aware generated-media fallback | `[ ]` |
 | 32 | Add context-safe clip variants and platform packaging | `[ ]` |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[ ]` |
@@ -1760,6 +1760,47 @@ What the twelve failures actually were, since the mix is the useful part:
   configuration.
 
 
+## Seeding an analysed Project, and the scenarios it unblocked
+
+Five browser scenarios had been `test.fixme` since Task 18 for one reason: no API can
+create a Clip Candidate, because it is the analysis worker's output, so nothing could
+stage a *real* clip to edit. `clipah.dev.seed --with-clip NAME` now writes what that
+pipeline would have written — a ready Project, its source and proxy Assets, a Transcript
+whose words are spaced across the clip so a trim has something to move, and one exposed
+Clip Candidate.
+
+**It writes them as the two roles that really own them.** The API may insert Projects and
+Assets; the worker may insert Transcripts and Clip Candidates; neither may do both, and
+an API process may not even open a worker engine. The seed therefore runs two
+transactions under two roles and refuses outright when it holds only one of the two
+logins. A seed that needed privileges no runtime role has would be staging a state the
+pipeline itself could never reach, which would make every scenario built on it a fiction.
+
+Four scenarios were converted from skipped to running, and one more was added:
+
+- a reviewer turns a candidate into an edit exactly once
+- a member trims a real clip and the Revision survives a reload
+- a member splits a real clip and the timeline shows both halves
+- a member writes a text overlay and it survives a reload
+- a clip with no plan yet offers to find B-roll and nothing else
+
+The suite is now **27 passed, 0 failed, 8 skipped on both Chromium and WebKit**, up from
+21 and 12.
+
+One of those tests caught a mistake worth recording, because it is the kind a browser
+test exists to catch. The trim scenario first waited for the editor to read "Saved" —
+which it already does before anything has been edited, so the wait returned instantly and
+the reload raced the autosave. The fix was to wait on the save's own response rather than
+on the words beside it. The product was correct throughout; the test was asserting a
+state that was never false.
+
+**Two scenarios stay `test.fixme`, for reasons that are not about seeding.** Removing a
+member needs the endpoint Task 35 builds. Accepting a B-roll suggestion needs one the
+planner actually produced, which means a language model and a stock provider: seeding a
+licensed picture would mean inventing provenance, and refusing to do that is the whole
+point of Task 29. The engine-parity gate still needs a reference machine.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1787,7 +1828,6 @@ oversight.
 | A worker readiness gate for the filters the renderer depends on (`subtitles`, `drawtext`, `zoompan`); `validate_render_readiness` currently checks the pinned FFmpeg version only | Task 46, with the containerized processes |
 | Charging a metered Workspace budget for an export; a render spends a concurrency slot and no quota, because no render budget exists in the plan's limit table | Tasks 44-46, with operational cost accounting |
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
-| The two Playwright scenarios that need a real analysed Project — `a reviewer turns a candidate into an edit exactly once` and `a member trims a real clip and the Revision survives a reload`. Both are covered at the component and integration level; the browser versions need a seed helper that can drive ingest, transcription, and analysis, because no API can stage a Clip Candidate | the repository owner, before Phase C is signed off |
 | Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |
 | Detecting the faces smart crop reasons about, and the endpoint that would carry its suggestions into the editor. `assets/smart_crop.py` is the policy and is fully tested; nothing in the pipeline produces a face box yet, and no image in the plan pins a detector | the task that adds a face detector to the pinned image |
 | Preview-side golden frames. The gate compares an FFmpeg render against a signed-off frame; comparing a *browser preview* frame against the same golden needs the Mediabunny compositor that Tasks 25 and 26 both deferred | whichever task builds the frame-accurate preview compositor |
@@ -1809,6 +1849,7 @@ oversight.
 | A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
 | The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
+| Accepting a B-roll suggestion in a browser, marked `test.fixme`. The seed stages the pipeline's output up to the clip; staging a licensed picture would mean inventing provenance, which Task 29 exists to refuse | the repository owner, with real Groq and stock credentials |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
 | Replacing `nixpacks.toml` with per-process Railway deployment configuration for the frontend and backend | Task 46 |

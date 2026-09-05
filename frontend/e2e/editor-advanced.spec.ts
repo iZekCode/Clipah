@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect, test, type Page } from '@playwright/test'
 
-import { seedMember, signIn, uniqueEmail } from './support/seed'
+import { seedMember, seedMemberWithClip, signIn, uniqueEmail } from './support/seed'
 
 /**
  * The advanced editor in a real browser, against a real backend.
@@ -65,9 +65,74 @@ test('an Edit of another Workspace refuses every save this editor could send', a
   expect(refused.status()).toBe(404)
 })
 
-// Driving the timeline itself needs a Project that has been ingested, transcribed, and
-// analysed, because the clip a member edits is produced by the pipeline and no API can
-// stage a Clip Candidate. These scenarios belong with the seeding helper that can drive
-// that pipeline end to end, which the repository owner runs before Phase C is signed off.
-test.fixme('a member drags, snaps, and ripple-deletes on a real clip', async () => {})
-test.fixme('a member adds a music bed and a text overlay and exports the result', async () => {})
+test('a member splits a real clip and the timeline shows both halves', async ({ page }) => {
+  const { page: editor, editId } = await openEditor(page, 'editor-split', 'Split Episode')
+  const timeline = editor.getByRole('region', { name: /timeline/i })
+  await expect(timeline.getByRole('button', { name: /^Select scene-1$/ })).toBeVisible()
+
+  // Put the playhead inside the clip, then cut there. Two items where there was one is
+  // the whole of what a split means to a member.
+  await editor.getByRole('slider', { name: /scrub the clip/i }).fill('10000')
+  const saved = savedResponse(editor, editId)
+  await editor.getByRole('button', { name: /^Split$/ }).click()
+  await saved
+
+  await expect(timeline.getByRole('button', { name: /^Select scene-/ })).toHaveCount(2)
+
+  await editor.reload()
+  await expect(
+    editor.getByRole('region', { name: /timeline/i }).getByRole('button', {
+      name: /^Select scene-/,
+    }),
+  ).toHaveCount(2)
+})
+
+test('a member writes a text overlay and it survives a reload', async ({ page }) => {
+  const { page: editor, editId } = await openEditor(page, 'editor-text', 'Titled Episode')
+  const panel = editor.getByRole('region', { name: /^Text$/ })
+
+  const saved = savedResponse(editor, editId)
+  await panel.getByRole('textbox', { name: /new text/i }).fill('A written title')
+  await panel.getByRole('button', { name: /add text/i }).click()
+  await saved
+
+  await editor.reload()
+  const reopened = editor.getByRole('region', { name: /^Text$/ })
+  await expect(reopened.getByRole('textbox', { name: /text of/i })).toHaveValue('A written title')
+})
+
+/** Resolve once the backend has accepted one save of this Edit. */
+function savedResponse(page: Page, editId: string): Promise<unknown> {
+  return page.waitForResponse(
+    (response) =>
+      response.request().method() === 'PUT' &&
+      response.url().includes(`/api/v1/edits/${editId}`) &&
+      response.status() === 200,
+  )
+}
+
+/** Seed an analysed clip, open its Edit, and land in the editor with it loaded. */
+async function openEditor(
+  page: Page,
+  prefix: string,
+  projectName: string,
+): Promise<{ page: Page; editId: string }> {
+  const member = await seedMemberWithClip({
+    email: uniqueEmail(prefix),
+    displayName: 'Editing Member',
+    workspaceName: 'Editing Workspace',
+    projectName,
+  })
+  await signIn(page.context(), member, SITE)
+  const opened = await page.request.post(
+    `/api/v1/projects/${member.project.projectId}` +
+      `/candidates/${member.project.candidateId}/edits` +
+      `?workspace_id=${member.workspaceId}`,
+    { headers: { 'X-CSRF-Token': member.csrfToken, Origin: SITE } },
+  )
+  expect(opened.status()).toBe(201)
+  const editId = (await opened.json()).id as string
+  await page.goto(`/editor/${editId}?workspace_id=${member.workspaceId}`)
+  await expect(page.getByRole('region', { name: /inspector/i })).toBeVisible()
+  return { page, editId }
+}

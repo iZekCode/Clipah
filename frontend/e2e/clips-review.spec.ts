@@ -1,6 +1,12 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
-import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
+import {
+  seedMember,
+  seedMemberWithClip,
+  signIn,
+  uniqueEmail,
+  type SeededMember,
+} from './support/seed'
 
 /**
  * Reviewing ranked clips in a browser, against a real backend.
@@ -94,7 +100,26 @@ test('the proxy a preview would play is refused without a session', async ({ pag
   expect((await anonymous.json()).error.code).toBe('UNAUTHENTICATED')
 })
 
-// Creating an Edit from a reviewed candidate needs the composition domain and the
-// `POST /projects/{projectId}/candidates/{candidateId}/edits` route that Task 22 builds.
-// The review surface is complete without it, and the scenario belongs with that task.
-test.fixme('a reviewer turns a candidate into an edit exactly once', async () => {})
+test('a reviewer turns a candidate into an edit exactly once', async ({ page }) => {
+  const member = await seedMemberWithClip({
+    email: uniqueEmail('review-edit'),
+    displayName: 'Reviewing Member',
+    workspaceName: 'Reviewing Workspace',
+    projectName: 'Reviewed Episode',
+  })
+  await signIn(page.context(), member, SITE)
+  const path =
+    `/api/v1/projects/${member.project.projectId}` +
+    `/candidates/${member.project.candidateId}/edits` +
+    `?workspace_id=${member.workspaceId}`
+  const headers = { 'X-CSRF-Token': member.csrfToken, Origin: SITE }
+
+  const first = await page.request.post(path, { headers })
+  const second = await page.request.post(path, { headers })
+
+  // The second click reaches the work already in progress rather than forking the clip
+  // into two histories, which is the whole point of opening an Edit being idempotent.
+  expect(first.status()).toBe(201)
+  expect(second.status()).toBe(200)
+  expect((await second.json()).id).toBe((await first.json()).id)
+})

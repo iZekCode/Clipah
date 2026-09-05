@@ -1,6 +1,12 @@
 import { expect, test, type APIRequestContext } from '@playwright/test'
 
-import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
+import {
+  seedMember,
+  seedMemberWithClip,
+  signIn,
+  uniqueEmail,
+  type SeededMember,
+} from './support/seed'
 
 /**
  * Deciding on B-roll in a browser, against a real backend.
@@ -111,8 +117,37 @@ test('asking for B-roll without CSRF proof is refused', async ({ page }) => {
   expect([401, 403]).toContain(response.status())
 })
 
-// Accepting a real suggestion needs a Project that has been ingested, transcribed,
-// analysed, and planned, and no API can stage a Clip Candidate. The whole decision
-// path is covered at the component and integration level; this scenario waits for the
-// seed helper that can drive the pipeline end to end.
+test('a clip with no plan yet offers to find B-roll and nothing else', async ({ page }) => {
+  const member = await seedMemberWithClip({
+    email: uniqueEmail('broll-panel'),
+    displayName: 'Deciding Member',
+    workspaceName: 'Deciding Workspace',
+    projectName: 'Illustrated Episode',
+  })
+  await signIn(page.context(), member, SITE)
+  const opened = await page.request.post(
+    `/api/v1/projects/${member.project.projectId}` +
+      `/candidates/${member.project.candidateId}/edits` +
+      `?workspace_id=${member.workspaceId}`,
+    { headers: { 'X-CSRF-Token': member.csrfToken, Origin: SITE } },
+  )
+  expect(opened.status()).toBe(201)
+  const editId = (await opened.json()).id as string
+
+  await page.goto(`/editor/${editId}?workspace_id=${member.workspaceId}`)
+  const panel = page.getByRole('region', { name: /b-roll/i })
+
+  await expect(panel).toBeVisible()
+  // Nothing has been planned, so there is nothing to decide on — and the coverage a
+  // member would choose stays inert until they ask for suggestions at all.
+  await expect(panel.getByText(/no b-roll suggestions yet/i)).toBeVisible()
+  await expect(panel.getByRole('combobox', { name: /coverage/i })).toBeDisabled()
+  await expect(panel.getByRole('button', { name: /suggest b-roll/i })).toBeEnabled()
+})
+
+// Accepting a real suggestion needs one the planner produced, which means a language
+// model and a stock provider. The seed stages the pipeline's own output up to the clip;
+// staging a licensed picture too would be inventing provenance, which is the one thing
+// Task 29 refuses to do. The decision path is covered at the component and integration
+// level, and this scenario waits for a run with real provider credentials.
 test.fixme('a member accepts a suggestion and the picture survives a reload', async () => {})
