@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 11A on Pexels",
+      "author": "Author 11A",
+      "author_url": "https://www.pexels.com/@author-11a",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office, grafik aktivasi naik",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-relevant-a",
+      "query": "grafik aktivasi naik",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-relevant-a/",
+      "tags": [
+        "grafik",
+        "aktivasi",
+        "naik",
+        "rising",
+        "analytics",
+        "chart"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11B on Pixabay",
+      "author": "Author 11B",
+      "author_url": "https://pixabay.com/@author-11b",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office seen from the side",
+      "download_url": "https://pixabay.com/download/en-activation-chart-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-activation-chart-relevant-b",
+      "query": "rising analytics chart",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-activation-chart-relevant-b/",
+      "tags": [
+        "rising",
+        "analytics",
+        "chart",
+        "grafik",
+        "aktivasi",
+        "naik"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11G on Pexels",
+      "author": "Author 11G",
+      "author_url": "https://www.pexels.com/@author-11g",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office, closer in",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-relevant-c",
+      "query": "grafik aktivasi naik",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-relevant-c/",
+      "tags": [
+        "rising",
+        "analytics",
+        "chart",
+        "grafik",
+        "aktivasi",
+        "naik"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11C on Pexels",
+      "author": "Author 11C",
+      "author_url": "https://www.pexels.com/@author-11c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11D on Pexels",
+      "author": "Author 11D",
+      "author_url": "https://www.pexels.com/@author-11d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11E on Pexels",
+      "author": "Author 11E",
+      "author_url": "https://www.pexels.com/@author-11e",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-unsafe",
+      "query": "grafik aktivasi naik",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-unsafe/",
+      "tags": [
+        "grafik",
+        "aktivasi",
+        "naik",
+        "rising",
+        "analytics",
+        "chart"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11A on Pexels",
+      "author": "Author 11A",
+      "author_url": "https://www.pexels.com/@author-11a",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office, another take",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-repetitive",
+      "query": "grafik aktivasi naik",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-repetitive/",
+      "tags": [
+        "grafik",
+        "aktivasi",
+        "naik",
+        "rising",
+        "analytics",
+        "chart"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 11F on Pexels",
+      "author": "Author 11F",
+      "author_url": "https://www.pexels.com/@author-11f",
+      "description": "a rising activation chart a line climbing across a dashboard an analytics screen in a dim office, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-activation-chart-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-activation-chart-panorama",
+      "query": "grafik aktivasi naik",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-activation-chart-panorama/",
+      "tags": [
+        "grafik",
+        "aktivasi",
+        "naik",
+        "rising",
+        "analytics",
+        "chart"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-activation-chart",
+  "intent": {
+    "action": "a line climbing across a dashboard",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "rising analytics chart"
+    ],
+    "search_terms_id": [
+      "grafik aktivasi naik"
+    ],
+    "setting": "an analytics screen in a dim office",
+    "subject": "a rising activation chart"
+  },
+  "language": "en"
+}

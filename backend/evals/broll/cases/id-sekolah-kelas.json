@@ -1,0 +1,278 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 20A on Pexels",
+      "author": "Author 20A",
+      "author_url": "https://www.pexels.com/@author-20a",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom, siswa angkat tangan kelas",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-relevant-a",
+      "query": "siswa angkat tangan kelas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-relevant-a/",
+      "tags": [
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas",
+        "students",
+        "raising",
+        "hands",
+        "classroom"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20B on Pixabay",
+      "author": "Author 20B",
+      "author_url": "https://pixabay.com/@author-20b",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom seen from the side",
+      "download_url": "https://pixabay.com/download/id-sekolah-kelas-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-sekolah-kelas-relevant-b",
+      "query": "students raising hands classroom",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-sekolah-kelas-relevant-b/",
+      "tags": [
+        "students",
+        "raising",
+        "hands",
+        "classroom",
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20G on Pexels",
+      "author": "Author 20G",
+      "author_url": "https://www.pexels.com/@author-20g",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom, closer in",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-relevant-c",
+      "query": "siswa angkat tangan kelas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-relevant-c/",
+      "tags": [
+        "students",
+        "raising",
+        "hands",
+        "classroom",
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20C on Pexels",
+      "author": "Author 20C",
+      "author_url": "https://www.pexels.com/@author-20c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20D on Pexels",
+      "author": "Author 20D",
+      "author_url": "https://www.pexels.com/@author-20d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20E on Pexels",
+      "author": "Author 20E",
+      "author_url": "https://www.pexels.com/@author-20e",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-unsafe",
+      "query": "siswa angkat tangan kelas",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-unsafe/",
+      "tags": [
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas",
+        "students",
+        "raising",
+        "hands",
+        "classroom"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20A on Pexels",
+      "author": "Author 20A",
+      "author_url": "https://www.pexels.com/@author-20a",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom, another take",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-repetitive",
+      "query": "siswa angkat tangan kelas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-repetitive/",
+      "tags": [
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas",
+        "students",
+        "raising",
+        "hands",
+        "classroom"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 20F on Pexels",
+      "author": "Author 20F",
+      "author_url": "https://www.pexels.com/@author-20f",
+      "description": "students raising their hands a teacher pointing at a whiteboard a bright primary classroom, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-sekolah-kelas-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sekolah-kelas-panorama",
+      "query": "siswa angkat tangan kelas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sekolah-kelas-panorama/",
+      "tags": [
+        "siswa",
+        "angkat",
+        "tangan",
+        "kelas",
+        "students",
+        "raising",
+        "hands",
+        "classroom"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-sekolah-kelas",
+  "intent": {
+    "action": "a teacher pointing at a whiteboard",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "students raising hands classroom"
+    ],
+    "search_terms_id": [
+      "siswa angkat tangan kelas"
+    ],
+    "setting": "a bright primary classroom",
+    "subject": "students raising their hands"
+  },
+  "language": "id"
+}

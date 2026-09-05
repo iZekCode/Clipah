@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 7A on Pexels",
+      "author": "Author 7A",
+      "author_url": "https://www.pexels.com/@author-7a",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain, banjir jalan perumahan",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-relevant-a",
+      "query": "banjir jalan perumahan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-relevant-a/",
+      "tags": [
+        "banjir",
+        "jalan",
+        "perumahan",
+        "flooded",
+        "residential",
+        "street"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7B on Pixabay",
+      "author": "Author 7B",
+      "author_url": "https://pixabay.com/@author-7b",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain seen from the side",
+      "download_url": "https://pixabay.com/download/id-banjir-street-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-banjir-street-relevant-b",
+      "query": "flooded residential street",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-banjir-street-relevant-b/",
+      "tags": [
+        "flooded",
+        "residential",
+        "street",
+        "banjir",
+        "jalan",
+        "perumahan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7G on Pexels",
+      "author": "Author 7G",
+      "author_url": "https://www.pexels.com/@author-7g",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain, closer in",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-relevant-c",
+      "query": "banjir jalan perumahan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-relevant-c/",
+      "tags": [
+        "flooded",
+        "residential",
+        "street",
+        "banjir",
+        "jalan",
+        "perumahan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7C on Pexels",
+      "author": "Author 7C",
+      "author_url": "https://www.pexels.com/@author-7c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7D on Pexels",
+      "author": "Author 7D",
+      "author_url": "https://www.pexels.com/@author-7d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7E on Pexels",
+      "author": "Author 7E",
+      "author_url": "https://www.pexels.com/@author-7e",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-unsafe",
+      "query": "banjir jalan perumahan",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-unsafe/",
+      "tags": [
+        "banjir",
+        "jalan",
+        "perumahan",
+        "flooded",
+        "residential",
+        "street"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7A on Pexels",
+      "author": "Author 7A",
+      "author_url": "https://www.pexels.com/@author-7a",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain, another take",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-repetitive",
+      "query": "banjir jalan perumahan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-repetitive/",
+      "tags": [
+        "banjir",
+        "jalan",
+        "perumahan",
+        "flooded",
+        "residential",
+        "street"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 7F on Pexels",
+      "author": "Author 7F",
+      "author_url": "https://www.pexels.com/@author-7f",
+      "description": "a flooded residential street residents wading through shallow floodwater a low-lying neighbourhood after rain, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-banjir-street-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-banjir-street-panorama",
+      "query": "banjir jalan perumahan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-banjir-street-panorama/",
+      "tags": [
+        "banjir",
+        "jalan",
+        "perumahan",
+        "flooded",
+        "residential",
+        "street"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-banjir-street",
+  "intent": {
+    "action": "residents wading through shallow floodwater",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "flooded residential street"
+    ],
+    "search_terms_id": [
+      "banjir jalan perumahan"
+    ],
+    "setting": "a low-lying neighbourhood after rain",
+    "subject": "a flooded residential street"
+  },
+  "language": "id"
+}

@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 21A on Pexels",
+      "author": "Author 21A",
+      "author_url": "https://www.pexels.com/@author-21a",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light, nelayan tarik jaring",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-relevant-a",
+      "query": "nelayan tarik jaring",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-relevant-a/",
+      "tags": [
+        "nelayan",
+        "tarik",
+        "jaring",
+        "fisher",
+        "hauling",
+        "net"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21B on Pixabay",
+      "author": "Author 21B",
+      "author_url": "https://pixabay.com/@author-21b",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light seen from the side",
+      "download_url": "https://pixabay.com/download/id-nelayan-jaring-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-nelayan-jaring-relevant-b",
+      "query": "fisher hauling net",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-nelayan-jaring-relevant-b/",
+      "tags": [
+        "fisher",
+        "hauling",
+        "net",
+        "nelayan",
+        "tarik",
+        "jaring"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21G on Pexels",
+      "author": "Author 21G",
+      "author_url": "https://www.pexels.com/@author-21g",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light, closer in",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-relevant-c",
+      "query": "nelayan tarik jaring",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-relevant-c/",
+      "tags": [
+        "fisher",
+        "hauling",
+        "net",
+        "nelayan",
+        "tarik",
+        "jaring"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21C on Pexels",
+      "author": "Author 21C",
+      "author_url": "https://www.pexels.com/@author-21c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21D on Pexels",
+      "author": "Author 21D",
+      "author_url": "https://www.pexels.com/@author-21d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21E on Pexels",
+      "author": "Author 21E",
+      "author_url": "https://www.pexels.com/@author-21e",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-unsafe",
+      "query": "nelayan tarik jaring",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-unsafe/",
+      "tags": [
+        "nelayan",
+        "tarik",
+        "jaring",
+        "fisher",
+        "hauling",
+        "net"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21A on Pexels",
+      "author": "Author 21A",
+      "author_url": "https://www.pexels.com/@author-21a",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light, another take",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-repetitive",
+      "query": "nelayan tarik jaring",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-repetitive/",
+      "tags": [
+        "nelayan",
+        "tarik",
+        "jaring",
+        "fisher",
+        "hauling",
+        "net"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 21F on Pexels",
+      "author": "Author 21F",
+      "author_url": "https://www.pexels.com/@author-21f",
+      "description": "a fisher hauling a net hands pulling a wet net over a gunwale a small boat at first light, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-nelayan-jaring-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-nelayan-jaring-panorama",
+      "query": "nelayan tarik jaring",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-nelayan-jaring-panorama/",
+      "tags": [
+        "nelayan",
+        "tarik",
+        "jaring",
+        "fisher",
+        "hauling",
+        "net"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-nelayan-jaring",
+  "intent": {
+    "action": "hands pulling a wet net over a gunwale",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "fisher hauling net"
+    ],
+    "search_terms_id": [
+      "nelayan tarik jaring"
+    ],
+    "setting": "a small boat at first light",
+    "subject": "a fisher hauling a net"
+  },
+  "language": "id"
+}

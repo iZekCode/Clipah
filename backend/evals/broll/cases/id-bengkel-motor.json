@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 24A on Pexels",
+      "author": "Author 24A",
+      "author_url": "https://www.pexels.com/@author-24a",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop, bengkel motor kunci pas",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-relevant-a",
+      "query": "bengkel motor kunci pas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-relevant-a/",
+      "tags": [
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas",
+        "mechanic",
+        "tightening",
+        "bolt"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24B on Pixabay",
+      "author": "Author 24B",
+      "author_url": "https://pixabay.com/@author-24b",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop seen from the side",
+      "download_url": "https://pixabay.com/download/id-bengkel-motor-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-bengkel-motor-relevant-b",
+      "query": "mechanic tightening bolt",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-bengkel-motor-relevant-b/",
+      "tags": [
+        "mechanic",
+        "tightening",
+        "bolt",
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24G on Pexels",
+      "author": "Author 24G",
+      "author_url": "https://www.pexels.com/@author-24g",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop, closer in",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-relevant-c",
+      "query": "bengkel motor kunci pas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-relevant-c/",
+      "tags": [
+        "mechanic",
+        "tightening",
+        "bolt",
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24C on Pexels",
+      "author": "Author 24C",
+      "author_url": "https://www.pexels.com/@author-24c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24D on Pexels",
+      "author": "Author 24D",
+      "author_url": "https://www.pexels.com/@author-24d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24E on Pexels",
+      "author": "Author 24E",
+      "author_url": "https://www.pexels.com/@author-24e",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-unsafe",
+      "query": "bengkel motor kunci pas",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-unsafe/",
+      "tags": [
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas",
+        "mechanic",
+        "tightening",
+        "bolt"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24A on Pexels",
+      "author": "Author 24A",
+      "author_url": "https://www.pexels.com/@author-24a",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop, another take",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-repetitive",
+      "query": "bengkel motor kunci pas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-repetitive/",
+      "tags": [
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas",
+        "mechanic",
+        "tightening",
+        "bolt"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 24F on Pexels",
+      "author": "Author 24F",
+      "author_url": "https://www.pexels.com/@author-24f",
+      "description": "a mechanic tightening a bolt a wrench turning on an engine a roadside motorbike workshop, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-bengkel-motor-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-bengkel-motor-panorama",
+      "query": "bengkel motor kunci pas",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-bengkel-motor-panorama/",
+      "tags": [
+        "bengkel",
+        "motor",
+        "kunci",
+        "pas",
+        "mechanic",
+        "tightening",
+        "bolt"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-bengkel-motor",
+  "intent": {
+    "action": "a wrench turning on an engine",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "mechanic tightening bolt"
+    ],
+    "search_terms_id": [
+      "bengkel motor kunci pas"
+    ],
+    "setting": "a roadside motorbike workshop",
+    "subject": "a mechanic tightening a bolt"
+  },
+  "language": "id"
+}

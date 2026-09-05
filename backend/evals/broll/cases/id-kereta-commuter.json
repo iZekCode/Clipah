@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 5A on Pexels",
+      "author": "Author 5A",
+      "author_url": "https://www.pexels.com/@author-5a",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform, penumpang krl commuter",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-relevant-a",
+      "query": "penumpang krl commuter",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-relevant-a/",
+      "tags": [
+        "penumpang",
+        "krl",
+        "commuter",
+        "commuters",
+        "boarding",
+        "train"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5B on Pixabay",
+      "author": "Author 5B",
+      "author_url": "https://pixabay.com/@author-5b",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform seen from the side",
+      "download_url": "https://pixabay.com/download/id-kereta-commuter-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-kereta-commuter-relevant-b",
+      "query": "commuters boarding train",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-kereta-commuter-relevant-b/",
+      "tags": [
+        "commuters",
+        "boarding",
+        "train",
+        "penumpang",
+        "krl",
+        "commuter"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5G on Pexels",
+      "author": "Author 5G",
+      "author_url": "https://www.pexels.com/@author-5g",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform, closer in",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-relevant-c",
+      "query": "penumpang krl commuter",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-relevant-c/",
+      "tags": [
+        "commuters",
+        "boarding",
+        "train",
+        "penumpang",
+        "krl",
+        "commuter"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5C on Pexels",
+      "author": "Author 5C",
+      "author_url": "https://www.pexels.com/@author-5c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5D on Pexels",
+      "author": "Author 5D",
+      "author_url": "https://www.pexels.com/@author-5d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5E on Pexels",
+      "author": "Author 5E",
+      "author_url": "https://www.pexels.com/@author-5e",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-unsafe",
+      "query": "penumpang krl commuter",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-unsafe/",
+      "tags": [
+        "penumpang",
+        "krl",
+        "commuter",
+        "commuters",
+        "boarding",
+        "train"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5A on Pexels",
+      "author": "Author 5A",
+      "author_url": "https://www.pexels.com/@author-5a",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform, another take",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-repetitive",
+      "query": "penumpang krl commuter",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-repetitive/",
+      "tags": [
+        "penumpang",
+        "krl",
+        "commuter",
+        "commuters",
+        "boarding",
+        "train"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 5F on Pexels",
+      "author": "Author 5F",
+      "author_url": "https://www.pexels.com/@author-5f",
+      "description": "commuters boarding a packed train passengers stepping through opening train doors a Jakarta commuter line platform, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-kereta-commuter-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kereta-commuter-panorama",
+      "query": "penumpang krl commuter",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kereta-commuter-panorama/",
+      "tags": [
+        "penumpang",
+        "krl",
+        "commuter",
+        "commuters",
+        "boarding",
+        "train"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-kereta-commuter",
+  "intent": {
+    "action": "passengers stepping through opening train doors",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "commuters boarding train"
+    ],
+    "search_terms_id": [
+      "penumpang krl commuter"
+    ],
+    "setting": "a Jakarta commuter line platform",
+    "subject": "commuters boarding a packed train"
+  },
+  "language": "id"
+}

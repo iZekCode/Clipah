@@ -37,3 +37,19 @@ def render_artifact_key(
     if not preset or any(character not in "0123456789x" for character in preset):
         raise ValueError("a render preset names a frame size and nothing else")
     return f"workspaces/{workspace_id}/projects/{project_id}/renders/{revision_id}/{preset}.mp4"
+
+
+def broll_asset_key(
+    *, workspace_id: UUID, project_id: UUID, asset_id: UUID, kind: AssetKind
+) -> str:
+    """Return the deterministic private key one retrieved B-roll asset is stored under.
+
+    Retrieved footage lives under its own prefix rather than beside the Project's source
+    media, so retention can expire unselected stock without walking the source tree, and
+    so nothing external is ever mistaken for something the member uploaded.
+    """
+    if not all(isinstance(value, UUID) for value in (workspace_id, project_id, asset_id)):
+        raise TypeError("storage identifiers must be UUID values")
+    if kind not in {AssetKind.BROLL, AssetKind.BROLL_PROXY}:
+        raise ValueError("unsupported B-roll asset kind")
+    return f"workspaces/{workspace_id}/projects/{project_id}/broll/{asset_id}/{kind.value}"

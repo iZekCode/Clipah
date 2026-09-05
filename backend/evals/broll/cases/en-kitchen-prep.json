@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 28A on Pexels",
+      "author": "Author 28A",
+      "author_url": "https://www.pexels.com/@author-28a",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen, dapur potong sayur",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-relevant-a",
+      "query": "dapur potong sayur",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-relevant-a/",
+      "tags": [
+        "dapur",
+        "potong",
+        "sayur",
+        "kitchen",
+        "vegetable",
+        "prep"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28B on Pixabay",
+      "author": "Author 28B",
+      "author_url": "https://pixabay.com/@author-28b",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen seen from the side",
+      "download_url": "https://pixabay.com/download/en-kitchen-prep-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-kitchen-prep-relevant-b",
+      "query": "kitchen vegetable prep",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-kitchen-prep-relevant-b/",
+      "tags": [
+        "kitchen",
+        "vegetable",
+        "prep",
+        "dapur",
+        "potong",
+        "sayur"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28G on Pexels",
+      "author": "Author 28G",
+      "author_url": "https://www.pexels.com/@author-28g",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen, closer in",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-relevant-c",
+      "query": "dapur potong sayur",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-relevant-c/",
+      "tags": [
+        "kitchen",
+        "vegetable",
+        "prep",
+        "dapur",
+        "potong",
+        "sayur"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28C on Pexels",
+      "author": "Author 28C",
+      "author_url": "https://www.pexels.com/@author-28c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28D on Pexels",
+      "author": "Author 28D",
+      "author_url": "https://www.pexels.com/@author-28d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28E on Pexels",
+      "author": "Author 28E",
+      "author_url": "https://www.pexels.com/@author-28e",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-unsafe",
+      "query": "dapur potong sayur",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-unsafe/",
+      "tags": [
+        "dapur",
+        "potong",
+        "sayur",
+        "kitchen",
+        "vegetable",
+        "prep"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28A on Pexels",
+      "author": "Author 28A",
+      "author_url": "https://www.pexels.com/@author-28a",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen, another take",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-repetitive",
+      "query": "dapur potong sayur",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-repetitive/",
+      "tags": [
+        "dapur",
+        "potong",
+        "sayur",
+        "kitchen",
+        "vegetable",
+        "prep"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 28F on Pexels",
+      "author": "Author 28F",
+      "author_url": "https://www.pexels.com/@author-28f",
+      "description": "vegetables sliced on a board a knife working through spring onions a stainless commercial kitchen, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-kitchen-prep-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-kitchen-prep-panorama",
+      "query": "dapur potong sayur",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-kitchen-prep-panorama/",
+      "tags": [
+        "dapur",
+        "potong",
+        "sayur",
+        "kitchen",
+        "vegetable",
+        "prep"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-kitchen-prep",
+  "intent": {
+    "action": "a knife working through spring onions",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "kitchen vegetable prep"
+    ],
+    "search_terms_id": [
+      "dapur potong sayur"
+    ],
+    "setting": "a stainless commercial kitchen",
+    "subject": "vegetables sliced on a board"
+  },
+  "language": "en"
+}

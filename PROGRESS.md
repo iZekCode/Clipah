@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 28 is ready to commit. **Task 29 follows.**
+**Current position:** Tasks 28 and 29 are ready to commit. **Task 30 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -68,7 +68,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | --- | --- | --- |
 | 27 | Add feature-flagged authenticated YouTube connections | `[x]` (`a5955aa`) |
 | 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (ready to commit) |
-| 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[ ]` |
+| 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (ready to commit) |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[ ]` |
 | 31 | Add quota-aware generated-media fallback | `[ ]` |
 | 32 | Add context-safe clip variants and platform packaging | `[ ]` |
@@ -1484,6 +1484,100 @@ after `contracts/openapi.json` was re-exported and the client regenerated. No co
 created; the required owner commit message is `feat: plan explainable broll suggestions`.
 
 
+### Task 29 — Provenance-aware stock B-roll retrieval
+
+Everything here answers one question a lawyer would ask a year after a clip is published:
+*was this footage ever licensed for this use?* If the answer cannot be produced from the
+database alone, the picture should never have been stored.
+
+**Provenance is a gate, not a record.** `provenance_of` in `broll/retriever.py` refuses a
+candidate that is missing its provider, asset identity, source URL, author, licence name,
+licence URL, terms snapshot, retrieval date, query, or attribution text, and refuses one
+that failed safe search whatever else it carries. It runs *before* anything is downloaded,
+and the asset row and its provenance row are written in the same transaction, so an
+untraceable asset cannot exist even for an instant. Migration `0013` gives the worker
+`INSERT` and nobody `UPDATE`: a licence snapshot that can be edited is not evidence.
+
+**The Workspace's own footage is searched first, and "sufficient" is decided by the
+reranker.** Counting local results is a poor test of enough — one clip that actually
+illustrates the beat is enough, and four that merely mention the right words are not — so
+`retrieve_candidates` takes an injectable sufficiency test and the retrieval Job passes one
+that reranks. A Workspace that already holds a good picture never pays a provider for a
+second one.
+
+**Only the selected candidate is downloaded.** Systematically fetching search results
+breaches both providers' terms; the code fetches inside the branch that stores, so it is
+not able to. Nothing is hotlinked either: the provider's `download_url` is used once and
+never persisted, and members are served Clipah's own copy behind signed URLs.
+
+**Two adapters, one candidate shape.** `pexels_adapter.py` and `pixabay_adapter.py` are the
+only modules that know their providers exist — different endpoints, different result keys,
+renditions as a list versus a dictionary, tags as a list versus one comma-separated string,
+a credential in a header versus a query parameter. An entry whose author, source page, or
+media file is missing is skipped rather than half-stored, and failures are classified by
+status alone onto stable codes that carry no provider text and no credential. 30 contract
+fixtures cover all of it with no network in CI.
+
+**Reranking is adapter-neutral and explains itself.** `reranker.py` scores semantic
+relevance, sampled-frame relevance, technical quality, 9:16 crop viability, local fit, and
+repetition, and refuses outright anything naming a brand exclusion, too small for a vertical
+export, or too wide to crop at all. A vision model, where one is configured, is reached
+through the `FrameRelevanceProvider` port and recorded by name and version beside every
+score; where none is, `frame_relevance` is `None` rather than zero, because a dimension
+nobody measured must not be reported as one that scored badly.
+
+**Caching serves both the terms and the budget.** `search_cache.py` stores normalized
+candidates — never raw payloads, so nothing credential-shaped reaches Redis — for the 24
+hours both providers ask for. An unreachable or unreadable cache is a missed saving and
+never a failed search.
+
+**Four decisions are worth recording.**
+
+- **Repetition became a ranking penalty rather than a relevance one.** Charging it against
+  the relevance floor dropped a good clip by a new author below the threshold simply
+  because two others had been seen first. Candidates are now scored on their own merits,
+  sorted, and only then charged for repetition — so the best clip by a photographer
+  survives and the fourth sinks.
+- **A total provider outage is retryable, not "nothing found".** Source failures are
+  absorbed per source so one outage does not empty a search, but they are counted; when
+  every source failed and nothing was found, the Job retries rather than telling a member
+  their beat has no visual opportunities.
+- **Local matching ignores provider chrome and two-letter tokens.** Matching attribution
+  lines and source URLs made the stopword "on" look like evidence that a signup-form clip
+  illustrated an activation chart.
+- **Migration `0013`, not the `0004` the plan names**, for the same sequential-revision
+  reason as Tasks 27 and 28. It also adds the `broll`/`broll_proxy` asset kinds and the
+  `stock` source type the plan's enumerations omitted, and a column-level `UPDATE` grant
+  letting the worker attach an asset while leaving `status` and `decided_at` API-only — a
+  retrieval Job can give a suggestion a picture and can never decide for the member.
+
+`backend/evals/broll/` holds 30 labeled Indonesian and English intents, each offered three
+relevant clips by different authors beside an irrelevant one, a culturally mismatched one,
+an unsafe one, a repeat by an author already used, and one too wide to crop to vertical. The
+manifest records a SHA-256 per case, so the baseline is hard to move without saying so, and
+`evals/broll/generate.py` reproduces every byte. `scripts/run-broll-eval.sh` scores it and
+exits non-zero on a violation. Both offline adapters pass all three gates: provenance
+completeness 1.0, zero unsafe selections, and top-three relevance 1.0 across 30 cases.
+
+`docs/legal/asset-provenance.md` records what is stored and why, each provider's licence and
+the obligations honoured, and five open items — provider credentials, a terms re-read at the
+configured version, attribution display, takedown handling, and what adding a third provider
+would involve.
+
+Every rule was re-checked by breaking the implementation on purpose. Storing an asset with
+incomplete provenance failed 13 tests; accepting an unsafe candidate failed 3; paying a
+provider when the Workspace already had a picture failed 3; ignoring brand exclusions failed
+2; and re-downloading footage already held failed 1.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1397 backend tests
+passed with ten environment-gated skips at 95.77% coverage, with 100% line and branch
+coverage on every module this task added. Migration `0013` upgrade, downgrade, and upgrade
+again all ran, and the Alembic drift check passes. `scripts/check-contracts-clean.sh` exits
+zero, and `scripts/run-broll-eval.sh` passes on both offline adapters. The live provider
+smoke test was written and left opt-in, and was not opted into. No commit was created; the
+required owner commit message is `feat: retrieve provenance-aware stock broll`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1491,6 +1585,11 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| Measuring a live stock provider. Every test uses fixtures or fakes, so the recorded behaviour proves the adapters rather than either provider's catalogue; `tests/slow/test_stock_provider_smoke.py` is written and opt-in | the repository owner, with Pexels and Pixabay credentials |
+| A real vision model behind `FrameRelevanceProvider`. The port, the recording of model and version, and the fake are all in place; no provider is wired, so sampled-frame relevance is reported as unmeasured in production | whichever task adopts a vision provider |
+| Richer user-asset search. A Workspace's own footage is matched on the query its provenance recorded, which covers reuse; genuinely user-uploaded B-roll carries no description to match on yet | Task 34, with the searchable content library |
+| Retrieving stock images as well as video. `MediaKind.IMAGE` exists and both adapters query the video endpoints only, because a still needs the pan/zoom treatment Task 31 owns | Tasks 30 and 31 |
+| Charging the monthly stock-request budget per provider request. `BROLL_RETRIEVE` reserves the `stock_requests` quota once per Job through the existing admission path; metering each provider call separately needs the per-request accounting Task 44 introduces | Task 44 |
 | Charging a metered Workspace budget for B-roll planning; a plan spends a concurrency slot and no quota, because the plan's limit table names no planning budget. This is the same gap the render deferral records | Tasks 44-46, with operational cost accounting |
 | Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
 | Retrieving media for a suggestion. Planning leaves `source_type`, `asset_id`, and `relevance_score` empty, because no source has been chosen at plan time | Task 29 |

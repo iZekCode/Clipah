@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 6A on Pexels",
+      "author": "Author 6A",
+      "author_url": "https://www.pexels.com/@author-6a",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop, kopi susu gula aren",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-relevant-a",
+      "query": "kopi susu gula aren",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-relevant-a/",
+      "tags": [
+        "kopi",
+        "susu",
+        "gula",
+        "aren",
+        "iced",
+        "coffee",
+        "pour"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6B on Pixabay",
+      "author": "Author 6B",
+      "author_url": "https://pixabay.com/@author-6b",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop seen from the side",
+      "download_url": "https://pixabay.com/download/id-kopi-pour-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-kopi-pour-relevant-b",
+      "query": "iced coffee pour",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-kopi-pour-relevant-b/",
+      "tags": [
+        "iced",
+        "coffee",
+        "pour",
+        "kopi",
+        "susu",
+        "gula",
+        "aren"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6G on Pexels",
+      "author": "Author 6G",
+      "author_url": "https://www.pexels.com/@author-6g",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop, closer in",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-relevant-c",
+      "query": "kopi susu gula aren",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-relevant-c/",
+      "tags": [
+        "iced",
+        "coffee",
+        "pour",
+        "kopi",
+        "susu",
+        "gula",
+        "aren"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6C on Pexels",
+      "author": "Author 6C",
+      "author_url": "https://www.pexels.com/@author-6c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6D on Pexels",
+      "author": "Author 6D",
+      "author_url": "https://www.pexels.com/@author-6d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6E on Pexels",
+      "author": "Author 6E",
+      "author_url": "https://www.pexels.com/@author-6e",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-unsafe",
+      "query": "kopi susu gula aren",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-unsafe/",
+      "tags": [
+        "kopi",
+        "susu",
+        "gula",
+        "aren",
+        "iced",
+        "coffee",
+        "pour"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6A on Pexels",
+      "author": "Author 6A",
+      "author_url": "https://www.pexels.com/@author-6a",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop, another take",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-repetitive",
+      "query": "kopi susu gula aren",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-repetitive/",
+      "tags": [
+        "kopi",
+        "susu",
+        "gula",
+        "aren",
+        "iced",
+        "coffee",
+        "pour"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 6F on Pexels",
+      "author": "Author 6F",
+      "author_url": "https://www.pexels.com/@author-6f",
+      "description": "coffee poured over ice a barista pouring espresso into a glass a small independent coffee shop, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-kopi-pour-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-kopi-pour-panorama",
+      "query": "kopi susu gula aren",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-kopi-pour-panorama/",
+      "tags": [
+        "kopi",
+        "susu",
+        "gula",
+        "aren",
+        "iced",
+        "coffee",
+        "pour"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-kopi-pour",
+  "intent": {
+    "action": "a barista pouring espresso into a glass",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "iced coffee pour"
+    ],
+    "search_terms_id": [
+      "kopi susu gula aren"
+    ],
+    "setting": "a small independent coffee shop",
+    "subject": "coffee poured over ice"
+  },
+  "language": "id"
+}

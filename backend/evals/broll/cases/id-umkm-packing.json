@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 9A on Pexels",
+      "author": "Author 9A",
+      "author_url": "https://www.pexels.com/@author-9a",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes, umkm packing pesanan online",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-relevant-a",
+      "query": "umkm packing pesanan online",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-relevant-a/",
+      "tags": [
+        "umkm",
+        "packing",
+        "pesanan",
+        "online",
+        "small",
+        "seller",
+        "parcels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9B on Pixabay",
+      "author": "Author 9B",
+      "author_url": "https://pixabay.com/@author-9b",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes seen from the side",
+      "download_url": "https://pixabay.com/download/id-umkm-packing-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-umkm-packing-relevant-b",
+      "query": "small seller packing parcels",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-umkm-packing-relevant-b/",
+      "tags": [
+        "small",
+        "seller",
+        "packing",
+        "parcels",
+        "umkm",
+        "pesanan",
+        "online"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9G on Pexels",
+      "author": "Author 9G",
+      "author_url": "https://www.pexels.com/@author-9g",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes, closer in",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-relevant-c",
+      "query": "umkm packing pesanan online",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-relevant-c/",
+      "tags": [
+        "small",
+        "seller",
+        "packing",
+        "parcels",
+        "umkm",
+        "pesanan",
+        "online"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9C on Pexels",
+      "author": "Author 9C",
+      "author_url": "https://www.pexels.com/@author-9c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9D on Pexels",
+      "author": "Author 9D",
+      "author_url": "https://www.pexels.com/@author-9d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9E on Pexels",
+      "author": "Author 9E",
+      "author_url": "https://www.pexels.com/@author-9e",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-unsafe",
+      "query": "umkm packing pesanan online",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-unsafe/",
+      "tags": [
+        "umkm",
+        "packing",
+        "pesanan",
+        "online",
+        "small",
+        "seller",
+        "parcels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9A on Pexels",
+      "author": "Author 9A",
+      "author_url": "https://www.pexels.com/@author-9a",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes, another take",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-repetitive",
+      "query": "umkm packing pesanan online",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-repetitive/",
+      "tags": [
+        "umkm",
+        "packing",
+        "pesanan",
+        "online",
+        "small",
+        "seller",
+        "parcels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 9F on Pexels",
+      "author": "Author 9F",
+      "author_url": "https://www.pexels.com/@author-9f",
+      "description": "a seller packing online orders hands taping parcels shut beside a laptop a home workspace stacked with boxes, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-umkm-packing-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-umkm-packing-panorama",
+      "query": "umkm packing pesanan online",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-umkm-packing-panorama/",
+      "tags": [
+        "umkm",
+        "packing",
+        "pesanan",
+        "online",
+        "small",
+        "seller",
+        "parcels"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-umkm-packing",
+  "intent": {
+    "action": "hands taping parcels shut beside a laptop",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "small seller packing parcels"
+    ],
+    "search_terms_id": [
+      "umkm packing pesanan online"
+    ],
+    "setting": "a home workspace stacked with boxes",
+    "subject": "a seller packing online orders"
+  },
+  "language": "id"
+}

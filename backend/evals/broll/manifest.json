@@ -1,0 +1,186 @@
+{
+  "cases": [
+    {
+      "case_id": "id-warung-queue",
+      "language": "id",
+      "path": "cases/id-warung-queue.json",
+      "sha256": "b19dc087df4e2da9e06a480eaf0746c0a8fe961476ec0bb1673e42101690e3cd"
+    },
+    {
+      "case_id": "id-ojek-helmet",
+      "language": "id",
+      "path": "cases/id-ojek-helmet.json",
+      "sha256": "f107eeeeb2988731cc888a1c5f63fa2b66a4c1bc523ac12aec6ac2bc06231851"
+    },
+    {
+      "case_id": "id-pasar-scale",
+      "language": "id",
+      "path": "cases/id-pasar-scale.json",
+      "sha256": "c4dac57464ab433a6d79cfb9dda69f30994ee123bfc89ab4e33579c4914ab5d3"
+    },
+    {
+      "case_id": "id-sawah-drone",
+      "language": "id",
+      "path": "cases/id-sawah-drone.json",
+      "sha256": "e765b8cb8e7b5ac8bac518c81989c71ff646e573ed458b1217cc32011c703f1d"
+    },
+    {
+      "case_id": "id-qris-payment",
+      "language": "id",
+      "path": "cases/id-qris-payment.json",
+      "sha256": "2bc180d2152756e8ace055a77bff0da47186944c26d8dfc83c3f215bfc438e71"
+    },
+    {
+      "case_id": "id-kereta-commuter",
+      "language": "id",
+      "path": "cases/id-kereta-commuter.json",
+      "sha256": "6708e67e43c4d68956c65dc1c78ba8d27a3087a38fb99cce4ad78f889cf1f956"
+    },
+    {
+      "case_id": "id-kopi-pour",
+      "language": "id",
+      "path": "cases/id-kopi-pour.json",
+      "sha256": "1bf46a891f1c0d9bf51ac5c0defa94d9683dbeefcb83280502aac1a35db88f93"
+    },
+    {
+      "case_id": "id-banjir-street",
+      "language": "id",
+      "path": "cases/id-banjir-street.json",
+      "sha256": "d5a6984c114a691f00b8f226a2765437e22439738cb9a5d39fe7c796bb0b5325"
+    },
+    {
+      "case_id": "id-batik-hand",
+      "language": "id",
+      "path": "cases/id-batik-hand.json",
+      "sha256": "9eb14d26dd6d1b5852ac1574351ed18fe71389a008666395a00400a410697a2b"
+    },
+    {
+      "case_id": "id-umkm-packing",
+      "language": "id",
+      "path": "cases/id-umkm-packing.json",
+      "sha256": "bd2aa02f42c2f38cedba8979bd879df74b7d321aa449ee630840ee631b6e8466"
+    },
+    {
+      "case_id": "en-signup-form",
+      "language": "en",
+      "path": "cases/en-signup-form.json",
+      "sha256": "7a28a4c472e76a6ce5742eb19765f5a747ca5e95c4aba243abaa474ffeef2286"
+    },
+    {
+      "case_id": "en-activation-chart",
+      "language": "en",
+      "path": "cases/en-activation-chart.json",
+      "sha256": "5ed217edf40276d270f937e35abcd2480df3a2a6938cffdbb876bb9eeb025b16"
+    },
+    {
+      "case_id": "en-whiteboard-plan",
+      "language": "en",
+      "path": "cases/en-whiteboard-plan.json",
+      "sha256": "bfd0609c6a488e209483f8f5d46f4ed469b06ee4ef141a7efe1cc5c5605aee70"
+    },
+    {
+      "case_id": "en-server-rack",
+      "language": "en",
+      "path": "cases/en-server-rack.json",
+      "sha256": "daa844b9b61b71bf47ddbe59019109d72d5039e38efa044e20c77cc414cac4e1"
+    },
+    {
+      "case_id": "en-handwritten-notes",
+      "language": "en",
+      "path": "cases/en-handwritten-notes.json",
+      "sha256": "769b5b1c173092de4aef7c521715ed30aa16794f87790c228194b30e08c28ff9"
+    },
+    {
+      "case_id": "en-warehouse-scan",
+      "language": "en",
+      "path": "cases/en-warehouse-scan.json",
+      "sha256": "586d48bc2d350be3c57f5961764d6000127f9191e66d2622a232e452cdc57caf"
+    },
+    {
+      "case_id": "en-video-editing",
+      "language": "en",
+      "path": "cases/en-video-editing.json",
+      "sha256": "a39cf92c1baad9728a2c16aa2d3b39b398fca89e5d0afe64c4857b4f71251150"
+    },
+    {
+      "case_id": "en-solar-panels",
+      "language": "en",
+      "path": "cases/en-solar-panels.json",
+      "sha256": "f64a5e3b88a63c47d8cd4ee3dfe97ffba729f77a9efd949994c9bb5bfb02241f"
+    },
+    {
+      "case_id": "en-night-market",
+      "language": "en",
+      "path": "cases/en-night-market.json",
+      "sha256": "2784bf5bbb40e0737c0ca243cffc943244cc1d99ad1f55ec78e6eb767636c7d0"
+    },
+    {
+      "case_id": "en-bank-queue",
+      "language": "en",
+      "path": "cases/en-bank-queue.json",
+      "sha256": "d53633f23124a17aaee006f6876db5731ff3363c1644dd8f4e9c0ba713562b6c"
+    },
+    {
+      "case_id": "id-sekolah-kelas",
+      "language": "id",
+      "path": "cases/id-sekolah-kelas.json",
+      "sha256": "0454bbbe5776f71e5ffa89c4448a49bfab34e03ba61fab119145c73603734f9b"
+    },
+    {
+      "case_id": "id-nelayan-jaring",
+      "language": "id",
+      "path": "cases/id-nelayan-jaring.json",
+      "sha256": "66843b9f0ebccde393f39d39a7ca4938c6bae41996d077e06418fc3f3af2a7a1"
+    },
+    {
+      "case_id": "id-konstruksi-helm",
+      "language": "id",
+      "path": "cases/id-konstruksi-helm.json",
+      "sha256": "aa094563630fad711d5574a705e13a778248e37af08bf7af988d44eb48e6e437"
+    },
+    {
+      "case_id": "id-apotek-obat",
+      "language": "id",
+      "path": "cases/id-apotek-obat.json",
+      "sha256": "43fcfe5773261c9ff1fec51d171af82bcf826fa17738fa05702d185e15f50b0c"
+    },
+    {
+      "case_id": "id-bengkel-motor",
+      "language": "id",
+      "path": "cases/id-bengkel-motor.json",
+      "sha256": "aa80ccad6c9f4313a3e3436cd362eecce9631b56e4f80922660b65d8732bc7df"
+    },
+    {
+      "case_id": "en-podcast-mic",
+      "language": "en",
+      "path": "cases/en-podcast-mic.json",
+      "sha256": "bba203a42f7b68fe8cc8060bb00d3f4d46f5b0692b7030f51e89f3b8321f391b"
+    },
+    {
+      "case_id": "en-airport-board",
+      "language": "en",
+      "path": "cases/en-airport-board.json",
+      "sha256": "e6aebb8d3d047e4935f55e00e07828a80cbe4769bdeeb81b782c4cff04c497e0"
+    },
+    {
+      "case_id": "en-library-shelf",
+      "language": "en",
+      "path": "cases/en-library-shelf.json",
+      "sha256": "fca9701334bf9eae46d9f9a3aeb485c2b7b49f85cc077e914dd55920205c61ef"
+    },
+    {
+      "case_id": "en-kitchen-prep",
+      "language": "en",
+      "path": "cases/en-kitchen-prep.json",
+      "sha256": "6e7a6b2b31ee5515b3273985822bd143edb3d6cdf0161df4c0e5d9f8eeb4222d"
+    },
+    {
+      "case_id": "en-cyclist-commute",
+      "language": "en",
+      "path": "cases/en-cyclist-commute.json",
+      "sha256": "b98fb72d5cf63b11039b5861de10093b821b4ded33eccadf3c384444b8f7165f"
+    }
+  ],
+  "description": "Sanitized synthetic B-roll intents and labeled candidate pools. No provider was queried to produce them and no real provider metadata is reproduced.",
+  "version": "broll-eval-cases/1"
+}

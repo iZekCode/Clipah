@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 3A on Pexels",
+      "author": "Author 3A",
+      "author_url": "https://www.pexels.com/@author-3a",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java, sawah terasering pagi",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-relevant-a",
+      "query": "sawah terasering pagi",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-relevant-a/",
+      "tags": [
+        "sawah",
+        "terasering",
+        "pagi",
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3B on Pixabay",
+      "author": "Author 3B",
+      "author_url": "https://pixabay.com/@author-3b",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java seen from the side",
+      "download_url": "https://pixabay.com/download/id-sawah-drone-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-sawah-drone-relevant-b",
+      "query": "terraced rice fields sunrise",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-sawah-drone-relevant-b/",
+      "tags": [
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise",
+        "sawah",
+        "terasering",
+        "pagi"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3G on Pexels",
+      "author": "Author 3G",
+      "author_url": "https://www.pexels.com/@author-3g",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java, closer in",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-relevant-c",
+      "query": "sawah terasering pagi",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-relevant-c/",
+      "tags": [
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise",
+        "sawah",
+        "terasering",
+        "pagi"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3C on Pexels",
+      "author": "Author 3C",
+      "author_url": "https://www.pexels.com/@author-3c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3D on Pexels",
+      "author": "Author 3D",
+      "author_url": "https://www.pexels.com/@author-3d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3E on Pexels",
+      "author": "Author 3E",
+      "author_url": "https://www.pexels.com/@author-3e",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-unsafe",
+      "query": "sawah terasering pagi",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-unsafe/",
+      "tags": [
+        "sawah",
+        "terasering",
+        "pagi",
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3A on Pexels",
+      "author": "Author 3A",
+      "author_url": "https://www.pexels.com/@author-3a",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java, another take",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-repetitive",
+      "query": "sawah terasering pagi",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-repetitive/",
+      "tags": [
+        "sawah",
+        "terasering",
+        "pagi",
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 3F on Pexels",
+      "author": "Author 3F",
+      "author_url": "https://www.pexels.com/@author-3f",
+      "description": "terraced rice fields at sunrise mist lifting off flooded paddies a hillside in rural Java, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-sawah-drone-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-sawah-drone-panorama",
+      "query": "sawah terasering pagi",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-sawah-drone-panorama/",
+      "tags": [
+        "sawah",
+        "terasering",
+        "pagi",
+        "terraced",
+        "rice",
+        "fields",
+        "sunrise"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-sawah-drone",
+  "intent": {
+    "action": "mist lifting off flooded paddies",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "terraced rice fields sunrise"
+    ],
+    "search_terms_id": [
+      "sawah terasering pagi"
+    ],
+    "setting": "a hillside in rural Java",
+    "subject": "terraced rice fields at sunrise"
+  },
+  "language": "id"
+}

@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 1A on Pexels",
+      "author": "Author 1A",
+      "author_url": "https://www.pexels.com/@author-1a",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes, ojek online helm hijau",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-relevant-a",
+      "query": "ojek online helm hijau",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-relevant-a/",
+      "tags": [
+        "ojek",
+        "online",
+        "helm",
+        "hijau",
+        "motorbike",
+        "courier",
+        "helmet"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1B on Pixabay",
+      "author": "Author 1B",
+      "author_url": "https://pixabay.com/@author-1b",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes seen from the side",
+      "download_url": "https://pixabay.com/download/id-ojek-helmet-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-ojek-helmet-relevant-b",
+      "query": "motorbike courier helmet",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-ojek-helmet-relevant-b/",
+      "tags": [
+        "motorbike",
+        "courier",
+        "helmet",
+        "ojek",
+        "online",
+        "helm",
+        "hijau"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1G on Pexels",
+      "author": "Author 1G",
+      "author_url": "https://www.pexels.com/@author-1g",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes, closer in",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-relevant-c",
+      "query": "ojek online helm hijau",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-relevant-c/",
+      "tags": [
+        "motorbike",
+        "courier",
+        "helmet",
+        "ojek",
+        "online",
+        "helm",
+        "hijau"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1C on Pexels",
+      "author": "Author 1C",
+      "author_url": "https://www.pexels.com/@author-1c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1D on Pexels",
+      "author": "Author 1D",
+      "author_url": "https://www.pexels.com/@author-1d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1E on Pexels",
+      "author": "Author 1E",
+      "author_url": "https://www.pexels.com/@author-1e",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-unsafe",
+      "query": "ojek online helm hijau",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-unsafe/",
+      "tags": [
+        "ojek",
+        "online",
+        "helm",
+        "hijau",
+        "motorbike",
+        "courier",
+        "helmet"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1A on Pexels",
+      "author": "Author 1A",
+      "author_url": "https://www.pexels.com/@author-1a",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes, another take",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-repetitive",
+      "query": "ojek online helm hijau",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-repetitive/",
+      "tags": [
+        "ojek",
+        "online",
+        "helm",
+        "hijau",
+        "motorbike",
+        "courier",
+        "helmet"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 1F on Pexels",
+      "author": "Author 1F",
+      "author_url": "https://www.pexels.com/@author-1f",
+      "description": "a rider fastening a green helmet a motorbike courier preparing to set off a city street with parked motorbikes, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-ojek-helmet-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-ojek-helmet-panorama",
+      "query": "ojek online helm hijau",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-ojek-helmet-panorama/",
+      "tags": [
+        "ojek",
+        "online",
+        "helm",
+        "hijau",
+        "motorbike",
+        "courier",
+        "helmet"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-ojek-helmet",
+  "intent": {
+    "action": "a motorbike courier preparing to set off",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "motorbike courier helmet"
+    ],
+    "search_terms_id": [
+      "ojek online helm hijau"
+    ],
+    "setting": "a city street with parked motorbikes",
+    "subject": "a rider fastening a green helmet"
+  },
+  "language": "id"
+}

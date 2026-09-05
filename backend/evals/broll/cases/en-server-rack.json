@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 13A on Pexels",
+      "author": "Author 13A",
+      "author_url": "https://www.pexels.com/@author-13a",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor, ruang server rak",
+      "download_url": "https://www.pexels.com/download/en-server-rack-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-relevant-a",
+      "query": "ruang server rak",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-relevant-a/",
+      "tags": [
+        "ruang",
+        "server",
+        "rak",
+        "racks",
+        "data",
+        "centre"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13B on Pixabay",
+      "author": "Author 13B",
+      "author_url": "https://pixabay.com/@author-13b",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor seen from the side",
+      "download_url": "https://pixabay.com/download/en-server-rack-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-server-rack-relevant-b",
+      "query": "server racks data centre",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-server-rack-relevant-b/",
+      "tags": [
+        "server",
+        "racks",
+        "data",
+        "centre",
+        "ruang",
+        "rak"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13G on Pexels",
+      "author": "Author 13G",
+      "author_url": "https://www.pexels.com/@author-13g",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor, closer in",
+      "download_url": "https://www.pexels.com/download/en-server-rack-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-relevant-c",
+      "query": "ruang server rak",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-relevant-c/",
+      "tags": [
+        "server",
+        "racks",
+        "data",
+        "centre",
+        "ruang",
+        "rak"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13C on Pexels",
+      "author": "Author 13C",
+      "author_url": "https://www.pexels.com/@author-13c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-server-rack-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13D on Pexels",
+      "author": "Author 13D",
+      "author_url": "https://www.pexels.com/@author-13d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-server-rack-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13E on Pexels",
+      "author": "Author 13E",
+      "author_url": "https://www.pexels.com/@author-13e",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-server-rack-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-unsafe",
+      "query": "ruang server rak",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-server-rack-unsafe/",
+      "tags": [
+        "ruang",
+        "server",
+        "rak",
+        "racks",
+        "data",
+        "centre"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13A on Pexels",
+      "author": "Author 13A",
+      "author_url": "https://www.pexels.com/@author-13a",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor, another take",
+      "download_url": "https://www.pexels.com/download/en-server-rack-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-repetitive",
+      "query": "ruang server rak",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-repetitive/",
+      "tags": [
+        "ruang",
+        "server",
+        "rak",
+        "racks",
+        "data",
+        "centre"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 13F on Pexels",
+      "author": "Author 13F",
+      "author_url": "https://www.pexels.com/@author-13f",
+      "description": "a row of server racks status lights blinking in a cold aisle a data centre corridor, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-server-rack-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-server-rack-panorama",
+      "query": "ruang server rak",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-server-rack-panorama/",
+      "tags": [
+        "ruang",
+        "server",
+        "rak",
+        "racks",
+        "data",
+        "centre"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-server-rack",
+  "intent": {
+    "action": "status lights blinking in a cold aisle",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "server racks data centre"
+    ],
+    "search_terms_id": [
+      "ruang server rak"
+    ],
+    "setting": "a data centre corridor",
+    "subject": "a row of server racks"
+  },
+  "language": "en"
+}

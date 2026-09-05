@@ -1,0 +1,260 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 19A on Pexels",
+      "author": "Author 19A",
+      "author_url": "https://www.pexels.com/@author-19a",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior, antrean nasabah bank",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-relevant-a",
+      "query": "antrean nasabah bank",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-relevant-a/",
+      "tags": [
+        "antrean",
+        "nasabah",
+        "bank",
+        "service",
+        "counter"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19B on Pixabay",
+      "author": "Author 19B",
+      "author_url": "https://pixabay.com/@author-19b",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior seen from the side",
+      "download_url": "https://pixabay.com/download/en-bank-queue-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-bank-queue-relevant-b",
+      "query": "bank service counter",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-bank-queue-relevant-b/",
+      "tags": [
+        "bank",
+        "service",
+        "counter",
+        "antrean",
+        "nasabah"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19G on Pexels",
+      "author": "Author 19G",
+      "author_url": "https://www.pexels.com/@author-19g",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior, closer in",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-relevant-c",
+      "query": "antrean nasabah bank",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-relevant-c/",
+      "tags": [
+        "bank",
+        "service",
+        "counter",
+        "antrean",
+        "nasabah"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19C on Pexels",
+      "author": "Author 19C",
+      "author_url": "https://www.pexels.com/@author-19c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19D on Pexels",
+      "author": "Author 19D",
+      "author_url": "https://www.pexels.com/@author-19d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19E on Pexels",
+      "author": "Author 19E",
+      "author_url": "https://www.pexels.com/@author-19e",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-unsafe",
+      "query": "antrean nasabah bank",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-unsafe/",
+      "tags": [
+        "antrean",
+        "nasabah",
+        "bank",
+        "service",
+        "counter"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19A on Pexels",
+      "author": "Author 19A",
+      "author_url": "https://www.pexels.com/@author-19a",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior, another take",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-repetitive",
+      "query": "antrean nasabah bank",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-repetitive/",
+      "tags": [
+        "antrean",
+        "nasabah",
+        "bank",
+        "service",
+        "counter"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 19F on Pexels",
+      "author": "Author 19F",
+      "author_url": "https://www.pexels.com/@author-19f",
+      "description": "a customer at a service counter a teller sliding a document across a bank branch interior, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-bank-queue-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-bank-queue-panorama",
+      "query": "antrean nasabah bank",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-bank-queue-panorama/",
+      "tags": [
+        "antrean",
+        "nasabah",
+        "bank",
+        "service",
+        "counter"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-bank-queue",
+  "intent": {
+    "action": "a teller sliding a document across",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "bank service counter"
+    ],
+    "search_terms_id": [
+      "antrean nasabah bank"
+    ],
+    "setting": "a bank branch interior",
+    "subject": "a customer at a service counter"
+  },
+  "language": "en"
+}

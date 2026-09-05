@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 8A on Pexels",
+      "author": "Author 8A",
+      "author_url": "https://www.pexels.com/@author-8a",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric, membatik tulis canting",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-relevant-a",
+      "query": "membatik tulis canting",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-relevant-a/",
+      "tags": [
+        "membatik",
+        "tulis",
+        "canting",
+        "batik",
+        "artisan",
+        "wax"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8B on Pixabay",
+      "author": "Author 8B",
+      "author_url": "https://pixabay.com/@author-8b",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric seen from the side",
+      "download_url": "https://pixabay.com/download/id-batik-hand-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-batik-hand-relevant-b",
+      "query": "batik artisan wax",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-batik-hand-relevant-b/",
+      "tags": [
+        "batik",
+        "artisan",
+        "wax",
+        "membatik",
+        "tulis",
+        "canting"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8G on Pexels",
+      "author": "Author 8G",
+      "author_url": "https://www.pexels.com/@author-8g",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric, closer in",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-relevant-c",
+      "query": "membatik tulis canting",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-relevant-c/",
+      "tags": [
+        "batik",
+        "artisan",
+        "wax",
+        "membatik",
+        "tulis",
+        "canting"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8C on Pexels",
+      "author": "Author 8C",
+      "author_url": "https://www.pexels.com/@author-8c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8D on Pexels",
+      "author": "Author 8D",
+      "author_url": "https://www.pexels.com/@author-8d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8E on Pexels",
+      "author": "Author 8E",
+      "author_url": "https://www.pexels.com/@author-8e",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-unsafe",
+      "query": "membatik tulis canting",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-unsafe/",
+      "tags": [
+        "membatik",
+        "tulis",
+        "canting",
+        "batik",
+        "artisan",
+        "wax"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8A on Pexels",
+      "author": "Author 8A",
+      "author_url": "https://www.pexels.com/@author-8a",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric, another take",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-repetitive",
+      "query": "membatik tulis canting",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-repetitive/",
+      "tags": [
+        "membatik",
+        "tulis",
+        "canting",
+        "batik",
+        "artisan",
+        "wax"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 8F on Pexels",
+      "author": "Author 8F",
+      "author_url": "https://www.pexels.com/@author-8f",
+      "description": "a hand drawing wax onto cloth an artisan applying hot wax with a canting a workshop bench with dyed fabric, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-batik-hand-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-batik-hand-panorama",
+      "query": "membatik tulis canting",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-batik-hand-panorama/",
+      "tags": [
+        "membatik",
+        "tulis",
+        "canting",
+        "batik",
+        "artisan",
+        "wax"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-batik-hand",
+  "intent": {
+    "action": "an artisan applying hot wax with a canting",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "batik artisan wax"
+    ],
+    "search_terms_id": [
+      "membatik tulis canting"
+    ],
+    "setting": "a workshop bench with dyed fabric",
+    "subject": "a hand drawing wax onto cloth"
+  },
+  "language": "id"
+}

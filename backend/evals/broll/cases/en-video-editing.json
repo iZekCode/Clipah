@@ -1,0 +1,254 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 16A on Pexels",
+      "author": "Author 16A",
+      "author_url": "https://www.pexels.com/@author-16a",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors, mengedit timeline video",
+      "download_url": "https://www.pexels.com/download/en-video-editing-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-relevant-a",
+      "query": "mengedit timeline video",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-relevant-a/",
+      "tags": [
+        "mengedit",
+        "timeline",
+        "video",
+        "editing"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16B on Pixabay",
+      "author": "Author 16B",
+      "author_url": "https://pixabay.com/@author-16b",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors seen from the side",
+      "download_url": "https://pixabay.com/download/en-video-editing-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-video-editing-relevant-b",
+      "query": "video editing timeline",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-video-editing-relevant-b/",
+      "tags": [
+        "video",
+        "editing",
+        "timeline",
+        "mengedit"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16G on Pexels",
+      "author": "Author 16G",
+      "author_url": "https://www.pexels.com/@author-16g",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors, closer in",
+      "download_url": "https://www.pexels.com/download/en-video-editing-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-relevant-c",
+      "query": "mengedit timeline video",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-relevant-c/",
+      "tags": [
+        "video",
+        "editing",
+        "timeline",
+        "mengedit"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16C on Pexels",
+      "author": "Author 16C",
+      "author_url": "https://www.pexels.com/@author-16c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-video-editing-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16D on Pexels",
+      "author": "Author 16D",
+      "author_url": "https://www.pexels.com/@author-16d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-video-editing-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16E on Pexels",
+      "author": "Author 16E",
+      "author_url": "https://www.pexels.com/@author-16e",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-video-editing-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-unsafe",
+      "query": "mengedit timeline video",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-video-editing-unsafe/",
+      "tags": [
+        "mengedit",
+        "timeline",
+        "video",
+        "editing"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16A on Pexels",
+      "author": "Author 16A",
+      "author_url": "https://www.pexels.com/@author-16a",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors, another take",
+      "download_url": "https://www.pexels.com/download/en-video-editing-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-repetitive",
+      "query": "mengedit timeline video",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-repetitive/",
+      "tags": [
+        "mengedit",
+        "timeline",
+        "video",
+        "editing"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 16F on Pexels",
+      "author": "Author 16F",
+      "author_url": "https://www.pexels.com/@author-16f",
+      "description": "a timeline being trimmed a cursor dragging a clip edge an editing suite with two monitors, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-video-editing-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-video-editing-panorama",
+      "query": "mengedit timeline video",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-video-editing-panorama/",
+      "tags": [
+        "mengedit",
+        "timeline",
+        "video",
+        "editing"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-video-editing",
+  "intent": {
+    "action": "a cursor dragging a clip edge",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "video editing timeline"
+    ],
+    "search_terms_id": [
+      "mengedit timeline video"
+    ],
+    "setting": "an editing suite with two monitors",
+    "subject": "a timeline being trimmed"
+  },
+  "language": "en"
+}

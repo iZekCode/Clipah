@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 26A on Pexels",
+      "author": "Author 26A",
+      "author_url": "https://www.pexels.com/@author-26a",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse, papan keberangkatan bandara",
+      "download_url": "https://www.pexels.com/download/en-airport-board-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-relevant-a",
+      "query": "papan keberangkatan bandara",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-relevant-a/",
+      "tags": [
+        "papan",
+        "keberangkatan",
+        "bandara",
+        "airport",
+        "departures",
+        "board"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26B on Pixabay",
+      "author": "Author 26B",
+      "author_url": "https://pixabay.com/@author-26b",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse seen from the side",
+      "download_url": "https://pixabay.com/download/en-airport-board-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-airport-board-relevant-b",
+      "query": "airport departures board",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-airport-board-relevant-b/",
+      "tags": [
+        "airport",
+        "departures",
+        "board",
+        "papan",
+        "keberangkatan",
+        "bandara"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26G on Pexels",
+      "author": "Author 26G",
+      "author_url": "https://www.pexels.com/@author-26g",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse, closer in",
+      "download_url": "https://www.pexels.com/download/en-airport-board-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-relevant-c",
+      "query": "papan keberangkatan bandara",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-relevant-c/",
+      "tags": [
+        "airport",
+        "departures",
+        "board",
+        "papan",
+        "keberangkatan",
+        "bandara"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26C on Pexels",
+      "author": "Author 26C",
+      "author_url": "https://www.pexels.com/@author-26c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-airport-board-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26D on Pexels",
+      "author": "Author 26D",
+      "author_url": "https://www.pexels.com/@author-26d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-airport-board-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26E on Pexels",
+      "author": "Author 26E",
+      "author_url": "https://www.pexels.com/@author-26e",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-airport-board-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-unsafe",
+      "query": "papan keberangkatan bandara",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-airport-board-unsafe/",
+      "tags": [
+        "papan",
+        "keberangkatan",
+        "bandara",
+        "airport",
+        "departures",
+        "board"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26A on Pexels",
+      "author": "Author 26A",
+      "author_url": "https://www.pexels.com/@author-26a",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse, another take",
+      "download_url": "https://www.pexels.com/download/en-airport-board-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-repetitive",
+      "query": "papan keberangkatan bandara",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-repetitive/",
+      "tags": [
+        "papan",
+        "keberangkatan",
+        "bandara",
+        "airport",
+        "departures",
+        "board"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 26F on Pexels",
+      "author": "Author 26F",
+      "author_url": "https://www.pexels.com/@author-26f",
+      "description": "a departures board updating letters flipping to a new destination an airport concourse, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-airport-board-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-airport-board-panorama",
+      "query": "papan keberangkatan bandara",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-airport-board-panorama/",
+      "tags": [
+        "papan",
+        "keberangkatan",
+        "bandara",
+        "airport",
+        "departures",
+        "board"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-airport-board",
+  "intent": {
+    "action": "letters flipping to a new destination",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "airport departures board"
+    ],
+    "search_terms_id": [
+      "papan keberangkatan bandara"
+    ],
+    "setting": "an airport concourse",
+    "subject": "a departures board updating"
+  },
+  "language": "en"
+}

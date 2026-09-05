@@ -32,6 +32,7 @@ from support import (
 
 FOUNDATIONAL_TABLES = {
     "alembic_version",
+    "asset_provenance",
     "assets",
     "audit_events",
     "auth_identities",
@@ -83,6 +84,8 @@ API_TABLE_PRIVILEGES = {
     "job_events": {"SELECT", "INSERT"},
     "transcripts": {"SELECT"},
     "clip_candidates": {"SELECT"},
+    # Retrieval writes provenance; a member only ever reads it, and nobody rewrites it.
+    "asset_provenance": {"SELECT"},
     # Planning is worker work. The API reads suggestions and, once accepting them lands,
     # records the member's decision on a row it never created.
     # The API records what a planning Job is for when it admits that Job.
@@ -116,6 +119,7 @@ WORKER_TABLE_PRIVILEGES = {
     "job_events": {"SELECT", "INSERT"},
     "transcripts": {"SELECT", "INSERT"},
     "clip_candidates": {"SELECT", "INSERT"},
+    "asset_provenance": {"SELECT", "INSERT"},
     # A worker proposes suggestions and can never rewrite one a member has decided on.
     # The worker only reads back the target the API wrote for the Job it was handed.
     "broll_plan_requests": {"SELECT"},
@@ -157,8 +161,16 @@ EXPECTED_ENUMS = {
         "waveform",
         "transcription_audio",
         "render",
+        "broll",
+        "broll_proxy",
     ),
-    "asset_source_type": ("user_upload", "source_import", "derived", "generated"),
+    "asset_source_type": (
+        "user_upload",
+        "source_import",
+        "derived",
+        "generated",
+        "stock",
+    ),
     "job_kind": (
         "source_import",
         "ingest",
@@ -1907,3 +1919,23 @@ def test_initial_migration_can_upgrade_downgrade_and_upgrade_again(engine: Engin
         assert set(inspect(upgraded_engine).get_table_names()) >= FOUNDATIONAL_TABLES
     finally:
         upgraded_engine.dispose()
+
+
+@pytest.mark.integration
+def test_the_worker_may_attach_a_broll_asset_but_never_decide_for_a_member(
+    engine: Engine,
+) -> None:
+    """Retrieval fills in which picture was chosen; only a member changes its status."""
+    with engine.connect() as connection:
+        granted = {
+            row.column_name
+            for row in connection.execute(
+                text(
+                    "SELECT column_name FROM information_schema.column_privileges "
+                    "WHERE grantee = 'clipah_worker' AND table_name = 'broll_suggestions' "
+                    "AND privilege_type = 'UPDATE'"
+                )
+            )
+        }
+
+    assert granted == {"source_type", "asset_id", "relevance_score", "provider_metadata"}

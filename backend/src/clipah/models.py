@@ -109,6 +109,10 @@ class AssetKind(StrEnum):
     WAVEFORM = "waveform"
     TRANSCRIPTION_AUDIO = "transcription_audio"
     RENDER = "render"
+    # Retrieved or generated footage a suggestion may place over the dialogue, and the
+    # normalized rendition the editor plays instead of the original.
+    BROLL = "broll"
+    BROLL_PROXY = "broll_proxy"
 
 
 class AssetSourceType(StrEnum):
@@ -116,6 +120,7 @@ class AssetSourceType(StrEnum):
     SOURCE_IMPORT = "source_import"
     DERIVED = "derived"
     GENERATED = "generated"
+    STOCK = "stock"
 
 
 class SourceConnectionProvider(StrEnum):
@@ -841,6 +846,63 @@ class ClipCandidate(Base):
     )
     visual_opportunities: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
     model_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AssetProvenance(Base):
+    """Where one retrieved or generated asset came from, and under what licence.
+
+    This row is the only record that can answer, a year later, whether a picture in a
+    published clip was ever licensed for that use. It is written in the same transaction
+    that stores the media, and the plan forbids it from ever carrying a secret.
+    """
+
+    __tablename__ = "asset_provenance"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_asset_provenance_workspace_id_id"),
+        UniqueConstraint("workspace_id", "asset_id", name="uq_asset_provenance_workspace_asset"),
+        ForeignKeyConstraint(
+            ["workspace_id", "asset_id"],
+            ["assets.workspace_id", "assets.id"],
+            name="fk_asset_provenance_workspace_id_asset_id_assets",
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_asset_provenance_workspace_provider_asset",
+            "workspace_id",
+            "provider",
+            "provider_asset_id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    asset_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    provider: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_asset_id: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    author: Mapped[str] = mapped_column(Text, nullable=False)
+    author_url: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    license_name: Mapped[str] = mapped_column(Text, nullable=False)
+    license_url: Mapped[str] = mapped_column(Text, nullable=False)
+    terms_snapshot: Mapped[str] = mapped_column(Text, nullable=False)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    query: Mapped[str] = mapped_column(Text, nullable=False, server_default=text("''"))
+    # Generation fills these where retrieval leaves them empty, and the reverse.
+    prompt: Mapped[str | None] = mapped_column(Text)
+    model: Mapped[str | None] = mapped_column(Text)
+    model_version: Mapped[str | None] = mapped_column(Text)
+    seed: Mapped[str | None] = mapped_column(Text)
+    moderation_result: Mapped[str] = mapped_column(String(32), nullable=False)
+    attribution_text: Mapped[str] = mapped_column(Text, nullable=False)
+    checksum: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

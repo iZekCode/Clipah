@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 4A on Pexels",
+      "author": "Author 4A",
+      "author_url": "https://www.pexels.com/@author-4a",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter, pembayaran qris warung",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-relevant-a",
+      "query": "pembayaran qris warung",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-relevant-a/",
+      "tags": [
+        "pembayaran",
+        "qris",
+        "warung",
+        "phone",
+        "scanning",
+        "payment",
+        "code"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4B on Pixabay",
+      "author": "Author 4B",
+      "author_url": "https://pixabay.com/@author-4b",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter seen from the side",
+      "download_url": "https://pixabay.com/download/id-qris-payment-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-qris-payment-relevant-b",
+      "query": "phone scanning payment code",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-qris-payment-relevant-b/",
+      "tags": [
+        "phone",
+        "scanning",
+        "payment",
+        "code",
+        "pembayaran",
+        "qris",
+        "warung"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4G on Pexels",
+      "author": "Author 4G",
+      "author_url": "https://www.pexels.com/@author-4g",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter, closer in",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-relevant-c",
+      "query": "pembayaran qris warung",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-relevant-c/",
+      "tags": [
+        "phone",
+        "scanning",
+        "payment",
+        "code",
+        "pembayaran",
+        "qris",
+        "warung"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4C on Pexels",
+      "author": "Author 4C",
+      "author_url": "https://www.pexels.com/@author-4c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4D on Pexels",
+      "author": "Author 4D",
+      "author_url": "https://www.pexels.com/@author-4d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4E on Pexels",
+      "author": "Author 4E",
+      "author_url": "https://www.pexels.com/@author-4e",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-unsafe",
+      "query": "pembayaran qris warung",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-unsafe/",
+      "tags": [
+        "pembayaran",
+        "qris",
+        "warung",
+        "phone",
+        "scanning",
+        "payment",
+        "code"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4A on Pexels",
+      "author": "Author 4A",
+      "author_url": "https://www.pexels.com/@author-4a",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter, another take",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-repetitive",
+      "query": "pembayaran qris warung",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-repetitive/",
+      "tags": [
+        "pembayaran",
+        "qris",
+        "warung",
+        "phone",
+        "scanning",
+        "payment",
+        "code"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 4F on Pexels",
+      "author": "Author 4F",
+      "author_url": "https://www.pexels.com/@author-4f",
+      "description": "a phone scanning a QRIS code a customer paying by scanning a printed code a small shop counter, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-qris-payment-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-qris-payment-panorama",
+      "query": "pembayaran qris warung",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-qris-payment-panorama/",
+      "tags": [
+        "pembayaran",
+        "qris",
+        "warung",
+        "phone",
+        "scanning",
+        "payment",
+        "code"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-qris-payment",
+  "intent": {
+    "action": "a customer paying by scanning a printed code",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "phone scanning payment code"
+    ],
+    "search_terms_id": [
+      "pembayaran qris warung"
+    ],
+    "setting": "a small shop counter",
+    "subject": "a phone scanning a QRIS code"
+  },
+  "language": "id"
+}

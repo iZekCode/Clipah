@@ -94,6 +94,17 @@ class Settings(BaseSettings):
     broll_max_shot_ms: int = Field(default=5_000, gt=0)
     broll_hook_guard_ms: int = Field(default=3_000, ge=0)
     broll_min_confidence: float = Field(default=0.5, ge=0, le=1)
+    # Retrieval and reranking: how hard Clipah looks locally before paying a provider,
+    # and how sure it must be about a picture before offering it at all.
+    broll_sufficient_local_results: int = Field(default=4, gt=0)
+    broll_max_provider_requests: int = Field(default=2, ge=0)
+    broll_min_relevance: float = Field(default=0.5, ge=0, le=1)
+    broll_min_asset_width: int = Field(default=320, gt=0)
+    broll_min_asset_height: int = Field(default=320, gt=0)
+    broll_max_aspect_ratio: float = Field(default=2.0, gt=0)
+    broll_repetition_penalty: float = Field(default=0.15, ge=0, le=1)
+    pexels_api_key: SecretStr | None = None
+    pixabay_api_key: SecretStr | None = None
     # The brand mark burned into every export, or nothing when a deployment burns none.
     render_watermark_text: str | None = Field(default=None, max_length=64)
 

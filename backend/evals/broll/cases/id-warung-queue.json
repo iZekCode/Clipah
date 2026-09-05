@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 0A on Pexels",
+      "author": "Author 0A",
+      "author_url": "https://www.pexels.com/@author-0a",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk, antrean warung makan",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-relevant-a",
+      "query": "antrean warung makan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-relevant-a/",
+      "tags": [
+        "antrean",
+        "warung",
+        "makan",
+        "street",
+        "food",
+        "stall",
+        "queue"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0B on Pixabay",
+      "author": "Author 0B",
+      "author_url": "https://pixabay.com/@author-0b",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk seen from the side",
+      "download_url": "https://pixabay.com/download/id-warung-queue-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-warung-queue-relevant-b",
+      "query": "street food stall queue",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-warung-queue-relevant-b/",
+      "tags": [
+        "street",
+        "food",
+        "stall",
+        "queue",
+        "antrean",
+        "warung",
+        "makan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0G on Pexels",
+      "author": "Author 0G",
+      "author_url": "https://www.pexels.com/@author-0g",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk, closer in",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-relevant-c",
+      "query": "antrean warung makan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-relevant-c/",
+      "tags": [
+        "street",
+        "food",
+        "stall",
+        "queue",
+        "antrean",
+        "warung",
+        "makan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0C on Pexels",
+      "author": "Author 0C",
+      "author_url": "https://www.pexels.com/@author-0c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0D on Pexels",
+      "author": "Author 0D",
+      "author_url": "https://www.pexels.com/@author-0d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0E on Pexels",
+      "author": "Author 0E",
+      "author_url": "https://www.pexels.com/@author-0e",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-unsafe",
+      "query": "antrean warung makan",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-unsafe/",
+      "tags": [
+        "antrean",
+        "warung",
+        "makan",
+        "street",
+        "food",
+        "stall",
+        "queue"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0A on Pexels",
+      "author": "Author 0A",
+      "author_url": "https://www.pexels.com/@author-0a",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk, another take",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-repetitive",
+      "query": "antrean warung makan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-repetitive/",
+      "tags": [
+        "antrean",
+        "warung",
+        "makan",
+        "street",
+        "food",
+        "stall",
+        "queue"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 0F on Pexels",
+      "author": "Author 0F",
+      "author_url": "https://www.pexels.com/@author-0f",
+      "description": "a queue outside a small warung customers waiting to order at a street food stall a busy Jakarta street at dusk, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-warung-queue-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-warung-queue-panorama",
+      "query": "antrean warung makan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-warung-queue-panorama/",
+      "tags": [
+        "antrean",
+        "warung",
+        "makan",
+        "street",
+        "food",
+        "stall",
+        "queue"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-warung-queue",
+  "intent": {
+    "action": "customers waiting to order at a street food stall",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "street food stall queue"
+    ],
+    "search_terms_id": [
+      "antrean warung makan"
+    ],
+    "setting": "a busy Jakarta street at dusk",
+    "subject": "a queue outside a small warung"
+  },
+  "language": "id"
+}

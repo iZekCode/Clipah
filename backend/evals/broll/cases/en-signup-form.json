@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 10A on Pexels",
+      "author": "Author 10A",
+      "author_url": "https://www.pexels.com/@author-10a",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk, formulir pendaftaran singkat",
+      "download_url": "https://www.pexels.com/download/en-signup-form-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-relevant-a",
+      "query": "formulir pendaftaran singkat",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-relevant-a/",
+      "tags": [
+        "formulir",
+        "pendaftaran",
+        "singkat",
+        "signup",
+        "form",
+        "on",
+        "laptop"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10B on Pixabay",
+      "author": "Author 10B",
+      "author_url": "https://pixabay.com/@author-10b",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk seen from the side",
+      "download_url": "https://pixabay.com/download/en-signup-form-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-signup-form-relevant-b",
+      "query": "signup form on laptop",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-signup-form-relevant-b/",
+      "tags": [
+        "signup",
+        "form",
+        "on",
+        "laptop",
+        "formulir",
+        "pendaftaran",
+        "singkat"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10G on Pexels",
+      "author": "Author 10G",
+      "author_url": "https://www.pexels.com/@author-10g",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk, closer in",
+      "download_url": "https://www.pexels.com/download/en-signup-form-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-relevant-c",
+      "query": "formulir pendaftaran singkat",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-relevant-c/",
+      "tags": [
+        "signup",
+        "form",
+        "on",
+        "laptop",
+        "formulir",
+        "pendaftaran",
+        "singkat"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10C on Pexels",
+      "author": "Author 10C",
+      "author_url": "https://www.pexels.com/@author-10c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-signup-form-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10D on Pexels",
+      "author": "Author 10D",
+      "author_url": "https://www.pexels.com/@author-10d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-signup-form-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10E on Pexels",
+      "author": "Author 10E",
+      "author_url": "https://www.pexels.com/@author-10e",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-signup-form-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-unsafe",
+      "query": "formulir pendaftaran singkat",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-signup-form-unsafe/",
+      "tags": [
+        "formulir",
+        "pendaftaran",
+        "singkat",
+        "signup",
+        "form",
+        "on",
+        "laptop"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10A on Pexels",
+      "author": "Author 10A",
+      "author_url": "https://www.pexels.com/@author-10a",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk, another take",
+      "download_url": "https://www.pexels.com/download/en-signup-form-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-repetitive",
+      "query": "formulir pendaftaran singkat",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-repetitive/",
+      "tags": [
+        "formulir",
+        "pendaftaran",
+        "singkat",
+        "signup",
+        "form",
+        "on",
+        "laptop"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 10F on Pexels",
+      "author": "Author 10F",
+      "author_url": "https://www.pexels.com/@author-10f",
+      "description": "a shortened signup form a hand deleting fields from a form a laptop screen on a desk, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-signup-form-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-signup-form-panorama",
+      "query": "formulir pendaftaran singkat",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-signup-form-panorama/",
+      "tags": [
+        "formulir",
+        "pendaftaran",
+        "singkat",
+        "signup",
+        "form",
+        "on",
+        "laptop"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-signup-form",
+  "intent": {
+    "action": "a hand deleting fields from a form",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "signup form on laptop"
+    ],
+    "search_terms_id": [
+      "formulir pendaftaran singkat"
+    ],
+    "setting": "a laptop screen on a desk",
+    "subject": "a shortened signup form"
+  },
+  "language": "en"
+}

@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 18A on Pexels",
+      "author": "Author 18A",
+      "author_url": "https://www.pexels.com/@author-18a",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane, pasar malam jajanan",
+      "download_url": "https://www.pexels.com/download/en-night-market-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-relevant-a",
+      "query": "pasar malam jajanan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-relevant-a/",
+      "tags": [
+        "pasar",
+        "malam",
+        "jajanan",
+        "night",
+        "market",
+        "food",
+        "stalls"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18B on Pixabay",
+      "author": "Author 18B",
+      "author_url": "https://pixabay.com/@author-18b",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane seen from the side",
+      "download_url": "https://pixabay.com/download/en-night-market-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-night-market-relevant-b",
+      "query": "night market food stalls",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-night-market-relevant-b/",
+      "tags": [
+        "night",
+        "market",
+        "food",
+        "stalls",
+        "pasar",
+        "malam",
+        "jajanan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18G on Pexels",
+      "author": "Author 18G",
+      "author_url": "https://www.pexels.com/@author-18g",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane, closer in",
+      "download_url": "https://www.pexels.com/download/en-night-market-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-relevant-c",
+      "query": "pasar malam jajanan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-relevant-c/",
+      "tags": [
+        "night",
+        "market",
+        "food",
+        "stalls",
+        "pasar",
+        "malam",
+        "jajanan"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18C on Pexels",
+      "author": "Author 18C",
+      "author_url": "https://www.pexels.com/@author-18c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-night-market-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18D on Pexels",
+      "author": "Author 18D",
+      "author_url": "https://www.pexels.com/@author-18d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-night-market-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18E on Pexels",
+      "author": "Author 18E",
+      "author_url": "https://www.pexels.com/@author-18e",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-night-market-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-unsafe",
+      "query": "pasar malam jajanan",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-night-market-unsafe/",
+      "tags": [
+        "pasar",
+        "malam",
+        "jajanan",
+        "night",
+        "market",
+        "food",
+        "stalls"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18A on Pexels",
+      "author": "Author 18A",
+      "author_url": "https://www.pexels.com/@author-18a",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane, another take",
+      "download_url": "https://www.pexels.com/download/en-night-market-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-repetitive",
+      "query": "pasar malam jajanan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-repetitive/",
+      "tags": [
+        "pasar",
+        "malam",
+        "jajanan",
+        "night",
+        "market",
+        "food",
+        "stalls"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 18F on Pexels",
+      "author": "Author 18F",
+      "author_url": "https://www.pexels.com/@author-18f",
+      "description": "food stalls lit at night steam rising from a grill a crowded night market lane, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-night-market-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-night-market-panorama",
+      "query": "pasar malam jajanan",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-night-market-panorama/",
+      "tags": [
+        "pasar",
+        "malam",
+        "jajanan",
+        "night",
+        "market",
+        "food",
+        "stalls"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-night-market",
+  "intent": {
+    "action": "steam rising from a grill",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "night market food stalls"
+    ],
+    "search_terms_id": [
+      "pasar malam jajanan"
+    ],
+    "setting": "a crowded night market lane",
+    "subject": "food stalls lit at night"
+  },
+  "language": "en"
+}

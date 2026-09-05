@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 12A on Pexels",
+      "author": "Author 12A",
+      "author_url": "https://www.pexels.com/@author-12a",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls, rapat tim papan tulis",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-relevant-a",
+      "query": "rapat tim papan tulis",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-relevant-a/",
+      "tags": [
+        "rapat",
+        "tim",
+        "papan",
+        "tulis",
+        "team",
+        "whiteboard",
+        "planning"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12B on Pixabay",
+      "author": "Author 12B",
+      "author_url": "https://pixabay.com/@author-12b",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls seen from the side",
+      "download_url": "https://pixabay.com/download/en-whiteboard-plan-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-whiteboard-plan-relevant-b",
+      "query": "team whiteboard planning",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-whiteboard-plan-relevant-b/",
+      "tags": [
+        "team",
+        "whiteboard",
+        "planning",
+        "rapat",
+        "tim",
+        "papan",
+        "tulis"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12G on Pexels",
+      "author": "Author 12G",
+      "author_url": "https://www.pexels.com/@author-12g",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls, closer in",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-relevant-c",
+      "query": "rapat tim papan tulis",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-relevant-c/",
+      "tags": [
+        "team",
+        "whiteboard",
+        "planning",
+        "rapat",
+        "tim",
+        "papan",
+        "tulis"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12C on Pexels",
+      "author": "Author 12C",
+      "author_url": "https://www.pexels.com/@author-12c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12D on Pexels",
+      "author": "Author 12D",
+      "author_url": "https://www.pexels.com/@author-12d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12E on Pexels",
+      "author": "Author 12E",
+      "author_url": "https://www.pexels.com/@author-12e",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-unsafe",
+      "query": "rapat tim papan tulis",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-unsafe/",
+      "tags": [
+        "rapat",
+        "tim",
+        "papan",
+        "tulis",
+        "team",
+        "whiteboard",
+        "planning"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12A on Pexels",
+      "author": "Author 12A",
+      "author_url": "https://www.pexels.com/@author-12a",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls, another take",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-repetitive",
+      "query": "rapat tim papan tulis",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-repetitive/",
+      "tags": [
+        "rapat",
+        "tim",
+        "papan",
+        "tulis",
+        "team",
+        "whiteboard",
+        "planning"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 12F on Pexels",
+      "author": "Author 12F",
+      "author_url": "https://www.pexels.com/@author-12f",
+      "description": "a team planning on a whiteboard a person drawing boxes and arrows a meeting room with glass walls, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-whiteboard-plan-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-whiteboard-plan-panorama",
+      "query": "rapat tim papan tulis",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-whiteboard-plan-panorama/",
+      "tags": [
+        "rapat",
+        "tim",
+        "papan",
+        "tulis",
+        "team",
+        "whiteboard",
+        "planning"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-whiteboard-plan",
+  "intent": {
+    "action": "a person drawing boxes and arrows",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "team whiteboard planning"
+    ],
+    "search_terms_id": [
+      "rapat tim papan tulis"
+    ],
+    "setting": "a meeting room with glass walls",
+    "subject": "a team planning on a whiteboard"
+  },
+  "language": "en"
+}

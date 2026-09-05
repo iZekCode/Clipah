@@ -1,0 +1,272 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 2A on Pexels",
+      "author": "Author 2A",
+      "author_url": "https://www.pexels.com/@author-2a",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting, timbangan cabai pasar",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-relevant-a",
+      "query": "timbangan cabai pasar",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-relevant-a/",
+      "tags": [
+        "timbangan",
+        "cabai",
+        "pasar",
+        "market",
+        "vendor",
+        "weighing",
+        "chillies"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2B on Pixabay",
+      "author": "Author 2B",
+      "author_url": "https://pixabay.com/@author-2b",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting seen from the side",
+      "download_url": "https://pixabay.com/download/id-pasar-scale-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "id-pasar-scale-relevant-b",
+      "query": "market vendor weighing chillies",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/id-pasar-scale-relevant-b/",
+      "tags": [
+        "market",
+        "vendor",
+        "weighing",
+        "chillies",
+        "timbangan",
+        "cabai",
+        "pasar"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2G on Pexels",
+      "author": "Author 2G",
+      "author_url": "https://www.pexels.com/@author-2g",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting, closer in",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-relevant-c",
+      "query": "timbangan cabai pasar",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-relevant-c/",
+      "tags": [
+        "market",
+        "vendor",
+        "weighing",
+        "chillies",
+        "timbangan",
+        "cabai",
+        "pasar"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2C on Pexels",
+      "author": "Author 2C",
+      "author_url": "https://www.pexels.com/@author-2c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2D on Pexels",
+      "author": "Author 2D",
+      "author_url": "https://www.pexels.com/@author-2d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2E on Pexels",
+      "author": "Author 2E",
+      "author_url": "https://www.pexels.com/@author-2e",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-unsafe",
+      "query": "timbangan cabai pasar",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-unsafe/",
+      "tags": [
+        "timbangan",
+        "cabai",
+        "pasar",
+        "market",
+        "vendor",
+        "weighing",
+        "chillies"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2A on Pexels",
+      "author": "Author 2A",
+      "author_url": "https://www.pexels.com/@author-2a",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting, another take",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-repetitive",
+      "query": "timbangan cabai pasar",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-repetitive/",
+      "tags": [
+        "timbangan",
+        "cabai",
+        "pasar",
+        "market",
+        "vendor",
+        "weighing",
+        "chillies"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 2F on Pexels",
+      "author": "Author 2F",
+      "author_url": "https://www.pexels.com/@author-2f",
+      "description": "a vendor weighing chillies on a scale hands placing chillies onto a market scale a wet market stall under strip lighting, ultrawide",
+      "download_url": "https://www.pexels.com/download/id-pasar-scale-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "id-pasar-scale-panorama",
+      "query": "timbangan cabai pasar",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/id-pasar-scale-panorama/",
+      "tags": [
+        "timbangan",
+        "cabai",
+        "pasar",
+        "market",
+        "vendor",
+        "weighing",
+        "chillies"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "id-pasar-scale",
+  "intent": {
+    "action": "hands placing chillies onto a market scale",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "market vendor weighing chillies"
+    ],
+    "search_terms_id": [
+      "timbangan cabai pasar"
+    ],
+    "setting": "a wet market stall under strip lighting",
+    "subject": "a vendor weighing chillies on a scale"
+  },
+  "language": "id"
+}

@@ -1,0 +1,266 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 17A on Pexels",
+      "author": "Author 17A",
+      "author_url": "https://www.pexels.com/@author-17a",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city, panel surya atap",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-relevant-a",
+      "query": "panel surya atap",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-relevant-a/",
+      "tags": [
+        "panel",
+        "surya",
+        "atap",
+        "rooftop",
+        "solar",
+        "panels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17B on Pixabay",
+      "author": "Author 17B",
+      "author_url": "https://pixabay.com/@author-17b",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city seen from the side",
+      "download_url": "https://pixabay.com/download/en-solar-panels-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-solar-panels-relevant-b",
+      "query": "rooftop solar panels",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-solar-panels-relevant-b/",
+      "tags": [
+        "rooftop",
+        "solar",
+        "panels",
+        "panel",
+        "surya",
+        "atap"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17G on Pexels",
+      "author": "Author 17G",
+      "author_url": "https://www.pexels.com/@author-17g",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city, closer in",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-relevant-c",
+      "query": "panel surya atap",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-relevant-c/",
+      "tags": [
+        "rooftop",
+        "solar",
+        "panels",
+        "panel",
+        "surya",
+        "atap"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17C on Pexels",
+      "author": "Author 17C",
+      "author_url": "https://www.pexels.com/@author-17c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17D on Pexels",
+      "author": "Author 17D",
+      "author_url": "https://www.pexels.com/@author-17d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17E on Pexels",
+      "author": "Author 17E",
+      "author_url": "https://www.pexels.com/@author-17e",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-unsafe",
+      "query": "panel surya atap",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-unsafe/",
+      "tags": [
+        "panel",
+        "surya",
+        "atap",
+        "rooftop",
+        "solar",
+        "panels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17A on Pexels",
+      "author": "Author 17A",
+      "author_url": "https://www.pexels.com/@author-17a",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city, another take",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-repetitive",
+      "query": "panel surya atap",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-repetitive/",
+      "tags": [
+        "panel",
+        "surya",
+        "atap",
+        "rooftop",
+        "solar",
+        "panels"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 17F on Pexels",
+      "author": "Author 17F",
+      "author_url": "https://www.pexels.com/@author-17f",
+      "description": "solar panels on a rooftop sunlight moving across panel rows a flat roof above a city, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-solar-panels-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-solar-panels-panorama",
+      "query": "panel surya atap",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-solar-panels-panorama/",
+      "tags": [
+        "panel",
+        "surya",
+        "atap",
+        "rooftop",
+        "solar",
+        "panels"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-solar-panels",
+  "intent": {
+    "action": "sunlight moving across panel rows",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "rooftop solar panels"
+    ],
+    "search_terms_id": [
+      "panel surya atap"
+    ],
+    "setting": "a flat roof above a city",
+    "subject": "solar panels on a rooftop"
+  },
+  "language": "en"
+}

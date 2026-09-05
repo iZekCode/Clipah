@@ -1,0 +1,260 @@
+{
+  "candidates": [
+    {
+      "attribution_text": "Video by Author 15A on Pexels",
+      "author": "Author 15A",
+      "author_url": "https://www.pexels.com/@author-15a",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates, gudang pindai barcode",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-relevant-a.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-relevant-a",
+      "query": "gudang pindai barcode",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-relevant-a/",
+      "tags": [
+        "gudang",
+        "pindai",
+        "barcode",
+        "warehouse",
+        "scanner"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15B on Pixabay",
+      "author": "Author 15B",
+      "author_url": "https://pixabay.com/@author-15b",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates seen from the side",
+      "download_url": "https://pixabay.com/download/en-warehouse-scan-relevant-b.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pixabay Content License",
+        "snapshot": "Pixabay Content License. Free to use without attribution.",
+        "url": "https://pixabay.com/service/license-summary/"
+      },
+      "media_kind": "video",
+      "provider": "pixabay",
+      "provider_asset_id": "en-warehouse-scan-relevant-b",
+      "query": "warehouse barcode scanner",
+      "safe": true,
+      "source_url": "https://pixabay.com/video/en-warehouse-scan-relevant-b/",
+      "tags": [
+        "warehouse",
+        "barcode",
+        "scanner",
+        "gudang",
+        "pindai"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15G on Pexels",
+      "author": "Author 15G",
+      "author_url": "https://www.pexels.com/@author-15g",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates, closer in",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-relevant-c.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "relevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-relevant-c",
+      "query": "gudang pindai barcode",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-relevant-c/",
+      "tags": [
+        "warehouse",
+        "barcode",
+        "scanner",
+        "gudang",
+        "pindai"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15C on Pexels",
+      "author": "Author 15C",
+      "author_url": "https://www.pexels.com/@author-15c",
+      "description": "an empty beach at sunset with nobody on it",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-irrelevant.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "irrelevant",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-irrelevant",
+      "query": "beach sunset",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-irrelevant/",
+      "tags": [
+        "beach",
+        "sunset",
+        "sand"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15D on Pexels",
+      "author": "Author 15D",
+      "author_url": "https://www.pexels.com/@author-15d",
+      "description": "a corporate handshake in a glass lobby",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-mismatched.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "culturally_mismatched",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-mismatched",
+      "query": "corporate handshake",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-mismatched/",
+      "tags": [
+        "handshake",
+        "corporate",
+        "lobby"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15E on Pexels",
+      "author": "Author 15E",
+      "author_url": "https://www.pexels.com/@author-15e",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates, flagged by safe search",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-unsafe.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "unsafe",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-unsafe",
+      "query": "gudang pindai barcode",
+      "safe": false,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-unsafe/",
+      "tags": [
+        "gudang",
+        "pindai",
+        "barcode",
+        "warehouse",
+        "scanner"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15A on Pexels",
+      "author": "Author 15A",
+      "author_url": "https://www.pexels.com/@author-15a",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates, another take",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-repetitive.mp4",
+      "duration_ms": 9000,
+      "height": 1920,
+      "label": "repetitive",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-repetitive",
+      "query": "gudang pindai barcode",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-repetitive/",
+      "tags": [
+        "gudang",
+        "pindai",
+        "barcode",
+        "warehouse",
+        "scanner"
+      ],
+      "width": 1080
+    },
+    {
+      "attribution_text": "Video by Author 15F on Pexels",
+      "author": "Author 15F",
+      "author_url": "https://www.pexels.com/@author-15f",
+      "description": "a worker scanning a barcode a handheld scanner reading a shelf label a warehouse aisle of stacked crates, ultrawide",
+      "download_url": "https://www.pexels.com/download/en-warehouse-scan-panorama.mp4",
+      "duration_ms": 9000,
+      "height": 1080,
+      "label": "portrait_incompatible",
+      "license": {
+        "attribution_required": false,
+        "name": "Pexels License",
+        "snapshot": "Pexels License. Free to use for commercial and non-commercial purposes.",
+        "url": "https://www.pexels.com/license/"
+      },
+      "media_kind": "video",
+      "provider": "pexels",
+      "provider_asset_id": "en-warehouse-scan-panorama",
+      "query": "gudang pindai barcode",
+      "safe": true,
+      "source_url": "https://www.pexels.com/video/en-warehouse-scan-panorama/",
+      "tags": [
+        "gudang",
+        "pindai",
+        "barcode",
+        "warehouse",
+        "scanner"
+      ],
+      "width": 5120
+    }
+  ],
+  "case_id": "en-warehouse-scan",
+  "intent": {
+    "action": "a handheld scanner reading a shelf label",
+    "confidence": 0.85,
+    "exclusions": [
+      "corporate handshake"
+    ],
+    "factual_risk_flags": [],
+    "mood": "observational",
+    "portrait_suitable": true,
+    "search_terms_en": [
+      "warehouse barcode scanner"
+    ],
+    "search_terms_id": [
+      "gudang pindai barcode"
+    ],
+    "setting": "a warehouse aisle of stacked crates",
+    "subject": "a worker scanning a barcode"
+  },
+  "language": "en"
+}
