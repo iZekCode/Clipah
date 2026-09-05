@@ -55,7 +55,7 @@ test('a member uploads a video and the Project starts working on it', async ({ p
   await page.goto(`/dashboard/projects/${projectId}`)
   await page.getByLabel(/video file/i).setInputFiles(FIXTURE)
 
-  await expect(page.getByRole('status')).toHaveText(/queued|importing|transcribing|finding moments/i, {
+  await expect(page.getByRole('main').getByRole('status').last()).toHaveText(/queued|importing|transcribing|finding moments/i, {
     timeout: 60_000,
   })
 })
@@ -81,7 +81,7 @@ test('the browser refuses an address that is not YouTube without asking the back
   await page.getByLabel(/youtube video url/i).fill('https://vimeo.com/12345')
   await page.getByRole('button', { name: /import video/i }).click()
 
-  await expect(page.getByRole('alert')).toContainText(/youtube/i)
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(/youtube/i)
   expect(attempted).toEqual([])
 })
 
@@ -100,7 +100,7 @@ test('the backend refuses a source form it does not support, in its own words', 
   await page.getByLabel(/youtube video url/i).fill('https://www.youtube.com/playlist?list=PL1')
   await page.getByRole('button', { name: /import video/i }).click()
 
-  const alert = page.getByRole('alert')
+  const alert = page.getByRole('main').getByRole('alert')
   await expect(alert).toContainText(/not supported|not publicly accessible/i)
   await expect(alert).not.toContainText(/traceback|yt-dlp|sql/i)
 })

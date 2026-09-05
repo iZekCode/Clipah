@@ -9,13 +9,15 @@ from __future__ import annotations
 
 import json
 from contextlib import AbstractContextManager
+from typing import Any
 from uuid import UUID, uuid4
 
 import pytest
 from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session
 
-from clipah.db import RuntimeRole, session_scope
+from clipah.api.dependencies import open_database_session
+from clipah.db import RuntimeRole, get_engine, session_scope
 from clipah.jobs.admission import admission_policy
 from clipah.jobs.models import JobEventType
 from clipah.jobs.use_cases import create_job, start_job, succeed_job
@@ -254,3 +256,65 @@ def _worker_session(workspace_id: UUID, user_id: UUID) -> AbstractContextManager
         user_id=user_id,
         runtime_role=RuntimeRole.WORKER,
     )
+
+
+@pytest.mark.integration
+def test_an_open_stream_holds_no_request_scoped_database_connection(
+    engine: Engine, clean_database: None
+) -> None:
+    """A stream lives as long as a browser tab, so it must not pin a pooled connection.
+
+    FastAPI keeps a yield-dependency alive until the response completes, and a streaming
+    response completes only when the stream ends. A stream authorized through the
+    ordinary request session would therefore hold one connection — inside an open
+    transaction — for hours, and a Workspace with a handful of open job centers would
+    exhaust the pool for every other caller.
+    """
+    del clean_database
+    clock = Clock(NOW)
+    browser, workspace_id = _signed_in_workspace(clock)
+    user_id = _owner_of(engine, workspace_id)
+    _queued_job(workspace_id, user_id, clock, key="stream-holds-nothing")
+    checked_out: list[int] = []
+
+    browser.stream(
+        f"{STREAM_PATH}?workspace_id={workspace_id}",
+        limit=1,
+        while_open=lambda: checked_out.append(
+            get_engine(runtime_settings(), runtime_role=RuntimeRole.API).pool.checkedout()
+        ),
+    )
+
+    assert checked_out == [0]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize("path", ["/api/v1/jobs/events", "/api/v1/jobs/{job_id}/events"])
+def test_no_streaming_route_depends_on_the_request_scoped_session(path: str) -> None:
+    """State the rule where it can be checked, so a future stream cannot reintroduce it.
+
+    Both streams are authorized against the database, but neither may reach it through
+    the dependency that lives as long as the response does.
+    """
+    clock = Clock(NOW)
+    app, _, _ = build_app(clock, StubGoogleProvider(clock))
+    route = next(entry for entry in _routes(app.routes) if getattr(entry, "path", None) == path)
+
+    assert open_database_session not in _dependency_calls(route.dependant)
+
+
+def _routes(routes: Any) -> list[Any]:
+    """Flatten the routing tree, because an included router is itself one entry."""
+    found: list[Any] = []
+    for entry in routes:
+        included = getattr(entry, "original_router", None)
+        found.extend(_routes(included.routes) if included is not None else [entry])
+    return found
+
+
+def _dependency_calls(dependant: Any) -> set[Any]:
+    """Every callable one route resolves before its handler runs."""
+    found = {dependant.call}
+    for child in dependant.dependencies:
+        found |= _dependency_calls(child)
+    return found

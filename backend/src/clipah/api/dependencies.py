@@ -203,6 +203,34 @@ class CurrentWorkspace:
     user: CurrentUser
 
 
+def authorize_workspace(
+    request: Request,
+    session: Session,
+    user: CurrentUser,
+    workspace_id: UUID,
+    action: WorkspaceAction,
+) -> CurrentWorkspace:
+    """Prove one Membership and install this tenant's context on the given transaction."""
+    components = auth_components_for(request)
+    try:
+        access = DatabaseWorkspaceAuthorizer(session).require(
+            user_id=user.user_id, workspace_id=workspace_id, action=action
+        )
+    except WorkspaceNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except WorkspacePermissionError as error:
+        raise ApiError(status_code=403, code="FORBIDDEN") from error
+
+    if requires_recent_authentication(action) and not user.session.has_recent_authentication(
+        policy=components.policy, now=components.now()
+    ):
+        raise ApiError(status_code=403, code="RECENT_AUTHENTICATION_REQUIRED")
+
+    # Every Workspace-scoped statement below runs under this tenant's row policies.
+    set_workspace_context(session, workspace_id=workspace_id)
+    return CurrentWorkspace(access=access, user=user)
+
+
 def require_workspace(
     action: WorkspaceAction,
 ) -> Callable[[Request, Session, CurrentUser, UUID], CurrentWorkspace]:
@@ -214,24 +242,30 @@ def require_workspace(
         user: CurrentUserDependency,
         workspace_id: UUID,
     ) -> CurrentWorkspace:
-        components = auth_components_for(request)
-        try:
-            access = DatabaseWorkspaceAuthorizer(session).require(
-                user_id=user.user_id, workspace_id=workspace_id, action=action
-            )
-        except WorkspaceNotFoundError as error:
-            raise ApiError(status_code=404, code="NOT_FOUND") from error
-        except WorkspacePermissionError as error:
-            raise ApiError(status_code=403, code="FORBIDDEN") from error
+        return authorize_workspace(request, session, user, workspace_id, action)
 
-        if requires_recent_authentication(action) and not user.session.has_recent_authentication(
-            policy=components.policy, now=components.now()
-        ):
-            raise ApiError(status_code=403, code="RECENT_AUTHENTICATION_REQUIRED")
+    return dependency
 
-        # Every Workspace-scoped statement below runs under this tenant's row policies.
-        set_workspace_context(session, workspace_id=workspace_id)
-        return CurrentWorkspace(access=access, user=user)
+
+def require_workspace_for_stream(
+    action: WorkspaceAction,
+) -> Callable[[Request, UUID], CurrentWorkspace]:
+    """Build the same authorization for a route that answers with an endless response.
+
+    A dependency that yields is torn down only once the response is complete, and a
+    streaming response completes only when the stream itself ends. Authorizing a stream
+    through the ordinary request session would therefore pin one pooled connection —
+    inside an open transaction — for as long as a browser tab stayed open, so a Workspace
+    with a handful of job centers would starve every other caller. This dependency opens
+    its own transaction, proves the same Membership in it, and closes it before the first
+    frame is written; the stream then takes a connection only for the moment each poll
+    needs one.
+    """
+
+    def dependency(request: Request, workspace_id: UUID) -> CurrentWorkspace:
+        with auth_components_for(request).open_session() as session:
+            user = require_authenticated_user(request, session)
+            return authorize_workspace(request, session, user, workspace_id, action)
 
     return dependency
 

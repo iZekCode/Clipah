@@ -28,7 +28,7 @@ test('an Edit that does not exist is not explained away', async ({ page }) => {
 
   await open(page, member, `/editor/${UNKNOWN_EDIT_ID}?workspace_id=${member.workspaceId}`)
 
-  await expect(page.getByRole('alert')).toContainText(/not found/i)
+  await expect(page.getByRole('main').getByRole('alert')).toContainText(/not found/i)
   await expect(page.getByRole('region', { name: /timeline/i })).toHaveCount(0)
 })
 

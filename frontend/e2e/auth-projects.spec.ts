@@ -137,7 +137,7 @@ test("another Workspace's Project URL answers like a Project that never existed"
 
   await open(page, outsider, `/dashboard/projects/${projectId}`)
 
-  const alert = page.getByRole('alert')
+  const alert = page.getByRole('main').getByRole('alert')
   await expect(alert).toContainText(/not found/i)
   await expect(alert).not.toContainText(/permission|member|workspace/i)
 })

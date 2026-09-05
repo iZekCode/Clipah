@@ -23,6 +23,7 @@ from clipah.api.dependencies import (
     auth_components_for,
     require_csrf,
     require_workspace,
+    require_workspace_for_stream,
     settings_for,
 )
 from clipah.api.errors import ApiError
@@ -53,6 +54,11 @@ ReadableWorkspace = Annotated[
 WritableWorkspace = Annotated[
     CurrentWorkspace, Depends(require_workspace(WorkspaceAction.PROJECT_WRITE))
 ]
+# A stream is authorized in its own short transaction rather than the request's, because a
+# request-scoped session would stay open for as long as the stream does.
+StreamableWorkspace = Annotated[
+    CurrentWorkspace, Depends(require_workspace_for_stream(WorkspaceAction.PROJECT_READ))
+]
 LastEventId = Annotated[str | None, Header(alias="Last-Event-ID")]
 SSE_MEDIA_TYPE = "text/event-stream"
 TERMINAL_EVENTS = frozenset({JobEventType.SUCCEEDED, JobEventType.FAILED, JobEventType.CANCELED})
@@ -62,12 +68,10 @@ WORKSPACE_EVENT_BATCH = 100
 @router.get("/jobs/events")
 def stream_workspace(
     request: Request,
-    session: DatabaseSession,
-    workspace: ReadableWorkspace,
+    workspace: StreamableWorkspace,
     last_event_id: LastEventId = None,
 ) -> StreamingResponse:
     """Stream every Job of one Workspace on the single connection its job center holds."""
-    del session
     frames = _workspace_event_frames(
         components=auth_components_for(request),
         settings=settings_for(request),
@@ -108,14 +112,21 @@ def cancel(
 def stream(
     request: Request,
     job_id: UUID,
-    session: DatabaseSession,
-    workspace: ReadableWorkspace,
+    workspace: StreamableWorkspace,
     last_event_id: LastEventId = None,
 ) -> StreamingResponse:
     """Stream one job's durable history, resuming from whatever the client already holds."""
-    _load(session, workspace, job_id)
+    components = auth_components_for(request)
+    # The Job is proven to exist in its own short transaction, which ends before the first
+    # frame is written, so an open stream holds no connection between polls.
+    with _tenant_session(
+        components,
+        workspace_id=workspace.access.workspace_id,
+        user_id=workspace.user.user_id,
+    ) as session:
+        _load(session, workspace, job_id)
     frames = _event_frames(
-        components=auth_components_for(request),
+        components=components,
         settings=settings_for(request),
         notifier=job_event_notifier_for(request),
         workspace_id=workspace.access.workspace_id,

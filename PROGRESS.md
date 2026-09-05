@@ -1669,6 +1669,49 @@ after `contracts/openapi.json` was re-exported and the client regenerated. No co
 created; the required owner commit message is `feat: add editable broll copilot`.
 
 
+### Defect fixed during Task 30 — an open stream pinned a database connection
+
+Found by running the Playwright suite against a real stack for the first time. The
+backend log carried repeated `sqlalchemy.exc.TimeoutError: QueuePool limit of size 5
+overflow 10 reached`, raised from the Workspace job stream's own poll.
+
+**Root cause.** FastAPI tears a yield-dependency down only once the response is
+complete, and a `StreamingResponse` completes only when its stream ends. Both job
+streams were authorized through `require_workspace`, which depends on the request-scoped
+`DatabaseSession`, and `session_scope` opens a transaction as soon as it is entered. So
+every open stream held one pooled connection — inside an open Postgres transaction —
+for as long as a browser tab stayed open. The pool is 5 plus 10 overflow, so the
+sixteenth concurrent stream, or any ordinary request made while fifteen job centers were
+open, waited the full thirty seconds and failed. `stream_workspace` even did `del
+session`, which shows the author did not want it; deleting the name does not release the
+dependency.
+
+Task 8 had recorded the right intent — "each poll opens its own short tenant-scoped
+transaction, so an open stream holds no database connection" — and the per-poll
+`_tenant_session` honours it exactly. The route-level dependency silently defeated it.
+
+**The fix.** `authorize_workspace` is now a plain function, and `require_workspace_for_stream`
+is a second dependency that opens its own transaction, proves the same Membership in it,
+and closes it before the first frame is written. Both streaming routes use it and neither
+takes a request-scoped session any more; the per-job stream proves its Job exists inside
+one short `_tenant_session` instead. Authorization is unchanged — the same Membership,
+the same refusals, the same tenant context — only its transaction is now short.
+
+**Measured, not assumed.** Before: while one stream was open the API engine reported
+exactly one connection checked out. After: zero. Against the real stack the same run
+that had produced repeated pool timeouts produced none across fifteen stream opens, and
+every API backend in `pg_stat_activity` sat `idle` rather than `idle in transaction`.
+Three browser tests that had been failing on starvation — the Workspace switch, the
+empty clip review, and the unsupported-source refusal — went green without being
+touched, which is what confirms they were symptoms rather than test bugs.
+
+Two tests hold the rule. `test_an_open_stream_holds_no_request_scoped_database_connection`
+watches the pool while a stream is open, and
+`test_no_streaming_route_depends_on_the_request_scoped_session` asserts the invariant over
+both streaming routes' dependency graphs, so a future stream cannot reintroduce it. Both
+were watched failing first, and both fail again when the fix is reverted.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1676,6 +1719,9 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| Three browser scenarios still failing after the stream fix — a Project created through the UI not appearing, an unknown Edit's refusal, and the upload panel's first working state. They are Tasks 18, 19, and 23's own surfaces and have not yet been triaged into test bugs or product defects | the repository owner, before Phase C is signed off |
+| Serving the API as a process. `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
+| Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
 | Retrieving stock images, so a member can accept a still. The editor accepts one as an image overlay with pan and zoom, and the golden frame proves it renders; both adapters still query the video endpoints only | Task 31 |
 | Offering genuinely new alternatives for a replacement. Replacement swaps to another asset the Project owns, because only the selected candidate is ever downloaded | whichever task can pay for a second search inside the providers' terms |
@@ -1688,7 +1734,6 @@ oversight.
 | Generating a suggestion when retrieval finds nothing, and the browser surface for it. Task 30 landed accepting, rejecting, replacing, and removing | Task 31 |
 | Measuring a live planning provider. Every test uses the fake provider, so the recorded behaviour proves the pipeline rather than any model's judgement about what deserves a picture | the repository owner, with real Groq credentials |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
-| Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
 | Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |
 | A brand-mark policy: the watermark is compiled from one deployment-wide `CLIPAH_RENDER_WATERMARK_TEXT` setting, because composition version 1 carries no watermark field and Brand Kits do not exist yet | Task 33, with brand kits |
 | Rendering burned-in captions and drawn text through real FFmpeg; the local build has no libass or libfreetype, so those filters were exercised by the compiler's tests rather than by an encode | the repository owner, inside the pinned image |

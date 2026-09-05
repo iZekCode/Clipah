@@ -8,7 +8,7 @@ real client would use.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -179,12 +179,22 @@ class Browser:
         headers: dict[str, str] | None = None,
         limit: int | None = None,
         comments: bool = False,
+        while_open: Callable[[], None] | None = None,
     ) -> list[ServerSentEvent]:
-        """Read one Server-Sent Events response until it closes or ``limit`` frames arrive."""
-        return asyncio.run(self._stream(path, dict(headers or {}), limit, comments))
+        """Read one Server-Sent Events response until it closes or ``limit`` frames arrive.
+
+        ``while_open`` is called once the first frame has arrived and before the client
+        disconnects, so a test can observe what the server is holding open on its behalf.
+        """
+        return asyncio.run(self._stream(path, dict(headers or {}), limit, comments, while_open))
 
     async def _stream(
-        self, path: str, headers: dict[str, str], limit: int | None, comments: bool
+        self,
+        path: str,
+        headers: dict[str, str],
+        limit: int | None,
+        comments: bool,
+        while_open: Callable[[], None] | None = None,
     ) -> list[ServerSentEvent]:
         """Drive the ASGI application directly, because a test client buffers whole bodies.
 
@@ -210,6 +220,8 @@ class Browser:
                 if frame is None or (frame.comment is not None and not comments):
                     continue
                 frames.append(frame)
+                if len(frames) == 1 and while_open is not None:
+                    while_open()
                 if limit is not None and len(frames) >= limit:
                     disconnected.set()
 

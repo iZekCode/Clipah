@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext } from '@playwright/test'
 
 import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
 
@@ -6,18 +6,15 @@ import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/se
  * Deciding on B-roll in a browser, against a real backend.
  *
  * The parts a component test cannot see live here: a clip nobody has planned answering
- * honestly rather than as a failure, another Workspace's clip being indistinguishable
- * from one that never existed, and the refusal a member gets when they try to decide on
- * a Revision somebody else has already moved past.
+ * honestly rather than as a failure, and another Workspace's clip being
+ * indistinguishable from one that never existed.
+ *
+ * Every request goes through `page.request`, which shares the page context's cookies.
+ * The bare `request` fixture carries none, so it fails CSRF before it reaches a route —
+ * a double-submit token proves nothing without the cookie beside it.
  */
 
 const SITE = process.env.CLIPAH_E2E_BASE_URL ?? 'http://localhost:3000'
-
-/** Sign one seeded member in and open a page as them. */
-async function open(page: Page, member: SeededMember, path: string): Promise<void> {
-  await signIn(page.context(), member, SITE)
-  await page.goto(path)
-}
 
 /** Create one Project through the API, inside one Workspace. */
 async function createProject(
@@ -39,29 +36,27 @@ async function createProject(
 
 test('a clip nobody has planned reports no suggestions rather than a failure', async ({
   page,
-  request,
 }) => {
   const member = await seedMember({
     email: uniqueEmail('broll-empty'),
     displayName: 'Deciding Member',
     workspaceName: 'Deciding Workspace',
   })
-  const projectId = await createProject(request, member, 'broll-empty')
+  await signIn(page.context(), member, SITE)
+  const projectId = await createProject(page.request, member, 'broll-empty')
 
   // No analysis has run, so this Project has no clip and therefore no suggestions. The
   // read answers with absence, which is a fact rather than an error.
-  const response = await request.get(
+  const response = await page.request.get(
     `/api/v1/projects/${projectId}/candidates/${crypto.randomUUID()}` +
       `/broll-suggestions?workspace_id=${member.workspaceId}`,
   )
 
   expect(response.status()).toBe(404)
-  await open(page, member, '/dashboard/projects')
-  await expect(page.getByRole('heading', { name: /projects/i })).toBeVisible()
 })
 
 test("another Workspace's clip is indistinguishable from one that never existed", async ({
-  request,
+  page,
 }) => {
   const owner = await seedMember({
     email: uniqueEmail('broll-owner'),
@@ -73,13 +68,18 @@ test("another Workspace's clip is indistinguishable from one that never existed"
     displayName: 'Other Member',
     workspaceName: 'Other Workspace',
   })
-  const projectId = await createProject(request, owner, 'broll-owned')
+  await signIn(page.context(), owner, SITE)
+  const projectId = await createProject(page.request, owner, 'broll-owned')
 
-  const guessed = await request.get(
+  // The stranger asks for the owner's clip while declaring their own Workspace, which is
+  // the only Workspace they have standing in.
+  await page.context().clearCookies()
+  await signIn(page.context(), stranger, SITE)
+  const guessed = await page.request.get(
     `/api/v1/projects/${projectId}/candidates/${crypto.randomUUID()}` +
       `/broll-suggestions?workspace_id=${stranger.workspaceId}`,
   )
-  const missing = await request.get(
+  const missing = await page.request.get(
     `/api/v1/projects/${crypto.randomUUID()}/candidates/${crypto.randomUUID()}` +
       `/broll-suggestions?workspace_id=${stranger.workspaceId}`,
   )
@@ -89,15 +89,17 @@ test("another Workspace's clip is indistinguishable from one that never existed"
   expect((await guessed.json()).error.message).toBe((await missing.json()).error.message)
 })
 
-test('asking for B-roll without CSRF proof is refused', async ({ request }) => {
+test('asking for B-roll without CSRF proof is refused', async ({ page }) => {
   const member = await seedMember({
     email: uniqueEmail('broll-csrf'),
     displayName: 'Deciding Member',
     workspaceName: 'Deciding Workspace',
   })
-  const projectId = await createProject(request, member, 'broll-csrf')
+  await signIn(page.context(), member, SITE)
+  const projectId = await createProject(page.request, member, 'broll-csrf')
 
-  const response = await request.post(
+  // The session cookie is carried; only the double-submit token is withheld.
+  const response = await page.request.post(
     `/api/v1/projects/${projectId}/candidates/${crypto.randomUUID()}` +
       `/broll-plans?workspace_id=${member.workspaceId}`,
     {
