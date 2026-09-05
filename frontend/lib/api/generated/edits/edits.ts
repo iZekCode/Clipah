@@ -24,7 +24,9 @@ import type {
 } from '@tanstack/react-query';
 
 import type {
+  BrollDecisionRequest,
   CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams,
+  DecideApiV1EditsEditIdBrollDecisionsPostParams,
   EditResponse,
   HTTPValidationError,
   HistoryApiV1EditsEditIdRevisionsGetParams,
@@ -236,6 +238,88 @@ export const useSaveApiV1EditsEditIdPut = <TError = HTTPValidationError,
       > => {
 
       const mutationOptions = getSaveApiV1EditsEditIdPutMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Record one B-roll decision and the Revision it produced, in one transaction.
+ * @summary Decide
+ */
+export const getDecideApiV1EditsEditIdBrollDecisionsPostUrl = (editId: string,
+    params: DecideApiV1EditsEditIdBrollDecisionsPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/edits/${editId}/broll-decisions?${stringifiedParams}` : `/api/v1/edits/${editId}/broll-decisions`
+}
+
+export const decideApiV1EditsEditIdBrollDecisionsPost = async (editId: string,
+    brollDecisionRequest: BrollDecisionRequest,
+    params: DecideApiV1EditsEditIdBrollDecisionsPostParams, options?: RequestInit): Promise<EditResponse> => {
+  
+  return apiFetch<EditResponse>(getDecideApiV1EditsEditIdBrollDecisionsPostUrl(editId,params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      brollDecisionRequest,)
+  }
+);}
+
+
+
+
+export const getDecideApiV1EditsEditIdBrollDecisionsPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>, TError,{editId: string;data: BrollDecisionRequest;params: DecideApiV1EditsEditIdBrollDecisionsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>, TError,{editId: string;data: BrollDecisionRequest;params: DecideApiV1EditsEditIdBrollDecisionsPostParams}, TContext> => {
+
+const mutationKey = ['decideApiV1EditsEditIdBrollDecisionsPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>, {editId: string;data: BrollDecisionRequest;params: DecideApiV1EditsEditIdBrollDecisionsPostParams}> = (props) => {
+          const {editId,data,params} = props ?? {};
+
+          return  decideApiV1EditsEditIdBrollDecisionsPost(editId,data,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DecideApiV1EditsEditIdBrollDecisionsPostMutationResult = NonNullable<Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>>
+    export type DecideApiV1EditsEditIdBrollDecisionsPostMutationBody = BrollDecisionRequest
+    export type DecideApiV1EditsEditIdBrollDecisionsPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Decide
+ */
+export const useDecideApiV1EditsEditIdBrollDecisionsPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>, TError,{editId: string;data: BrollDecisionRequest;params: DecideApiV1EditsEditIdBrollDecisionsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof decideApiV1EditsEditIdBrollDecisionsPost>>,
+        TError,
+        {editId: string;data: BrollDecisionRequest;params: DecideApiV1EditsEditIdBrollDecisionsPostParams},
+        TContext
+      > => {
+
+      const mutationOptions = getDecideApiV1EditsEditIdBrollDecisionsPostMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

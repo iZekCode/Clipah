@@ -20,11 +20,15 @@ from clipah.api.errors import ApiError
 from clipah.editor.models import CompositionV1, CompositionValidationError
 from clipah.editor.repository import EditDetail, EditRepository, RevisionSummary
 from clipah.editor.use_cases import (
+    BrollDecision,
+    BrollDecisionError,
+    BrollSuggestionNotFoundError,
     CandidateNotEditableError,
     CompositionAssetError,
     EditNotFoundError,
     EditRevisionConflictError,
     create_edit_from_candidate,
+    decide_on_suggestion,
     get_edit,
     list_revisions,
     save_revision,
@@ -93,6 +97,28 @@ class SaveRevisionRequest(BaseModel):
 
     expected_revision: int = Field(alias="expectedRevision", ge=1)
     composition: dict[str, object]
+
+
+class BrollDecisionBody(BaseModel):
+    """What one member decided about one proposed picture."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    suggestion_id: UUID = Field(alias="suggestionId")
+    action: BrollDecision
+    # Only a replacement names media; every other decision is about the picture the
+    # suggestion already holds.
+    asset_id: UUID | None = Field(alias="assetId", default=None)
+
+
+class BrollDecisionRequest(BaseModel):
+    """One decision and the composition it produced, offered as the next Revision."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    expected_revision: int = Field(alias="expectedRevision", ge=1)
+    composition: dict[str, object]
+    decision: BrollDecisionBody
 
 
 @router.post(
@@ -164,6 +190,48 @@ def save(
         raise ApiError(status_code=404, code="NOT_FOUND") from error
     except CompositionValidationError as error:
         raise ApiError(status_code=422, code="COMPOSITION_INVALID") from error
+    except CompositionAssetError as error:
+        raise ApiError(status_code=422, code="COMPOSITION_ASSET_FORBIDDEN") from error
+    except EditRevisionConflictError as error:
+        raise ApiError(
+            status_code=409,
+            code="EDIT_REVISION_CONFLICT",
+            headers={CURRENT_REVISION_HEADER: str(error.current_revision)},
+        ) from error
+    return _edit_body(detail)
+
+
+@router.post(
+    "/edits/{edit_id}/broll-decisions",
+    response_model=EditResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def decide(
+    request: Request,
+    edit_id: UUID,
+    body: BrollDecisionRequest,
+    session: DatabaseSession,
+    workspace: EditableWorkspace,
+) -> EditResponse:
+    """Record one B-roll decision and the Revision it produced, in one transaction."""
+    try:
+        detail = decide_on_suggestion(
+            EditRepository(session),
+            access=workspace.access,
+            edit_id=edit_id,
+            suggestion_id=body.decision.suggestion_id,
+            action=body.decision.action,
+            replacement_asset_id=body.decision.asset_id,
+            expected_revision=body.expected_revision,
+            document=dict(body.composition),
+            now=auth_components_for(request).now(),
+        )
+    except (EditNotFoundError, BrollSuggestionNotFoundError) as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except CompositionValidationError as error:
+        raise ApiError(status_code=422, code="COMPOSITION_INVALID") from error
+    except BrollDecisionError as error:
+        raise ApiError(status_code=422, code="BROLL_DECISION_INVALID") from error
     except CompositionAssetError as error:
         raise ApiError(status_code=422, code="COMPOSITION_ASSET_FORBIDDEN") from error
     except EditRevisionConflictError as error:

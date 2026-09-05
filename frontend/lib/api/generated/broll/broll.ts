@@ -28,6 +28,7 @@ import type {
   BrollPlanJobResponse,
   BrollSuggestionListResponse,
   CreatePlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPostParams,
+  CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams,
   HTTPValidationError,
   ListCollectionApiV1ProjectsProjectIdCandidatesCandidateIdBrollSuggestionsGetParams
 } from '.././model';
@@ -120,6 +121,90 @@ export const useCreatePlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansP
       > => {
 
       const mutationOptions = getCreatePlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Commit the intent to find pictures for one plan before dispatching the search.
+ * @summary Create Retrieval
+ */
+export const getCreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostUrl = (projectId: string,
+    candidateId: string,
+    params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/candidates/${candidateId}/broll-retrievals?${stringifiedParams}` : `/api/v1/projects/${projectId}/candidates/${candidateId}/broll-retrievals`
+}
+
+export const createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost = async (projectId: string,
+    candidateId: string,
+    brollPlanBody: BrollPlanBody,
+    params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams, options?: RequestInit): Promise<BrollPlanJobResponse> => {
+  
+  return apiFetch<BrollPlanJobResponse>(getCreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostUrl(projectId,candidateId,params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      brollPlanBody,)
+  }
+);}
+
+
+
+
+export const getCreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>, TError,{projectId: string;candidateId: string;data: BrollPlanBody;params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>, TError,{projectId: string;candidateId: string;data: BrollPlanBody;params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams}, TContext> => {
+
+const mutationKey = ['createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>, {projectId: string;candidateId: string;data: BrollPlanBody;params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams}> = (props) => {
+          const {projectId,candidateId,data,params} = props ?? {};
+
+          return  createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost(projectId,candidateId,data,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>>
+    export type CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostMutationBody = BrollPlanBody
+    export type CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Create Retrieval
+ */
+export const useCreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>, TError,{projectId: string;candidateId: string;data: BrollPlanBody;params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost>>,
+        TError,
+        {projectId: string;candidateId: string;data: BrollPlanBody;params: CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

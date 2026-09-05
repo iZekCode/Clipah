@@ -19,10 +19,12 @@ import pytest
 from httpx import Response
 from sqlalchemy import Engine, text, update
 
+from clipah.broll.models import BrollSuggestionStatus
 from clipah.models import (
     Asset,
     AssetKind,
     AssetSourceType,
+    BrollSuggestion,
     ClipCandidate,
     Project,
     ProjectStatus,
@@ -775,3 +777,671 @@ def test_an_unreadable_transcript_still_produces_an_editable_clip(
 
     assert created.status_code == 201
     assert created.json()["composition"]["captions"]["words"] == []
+
+
+@pytest.mark.integration
+def test_accepting_a_suggestion_places_it_and_records_the_decision(engine: Engine) -> None:
+    """A decision and the Revision it produces must land together or not at all."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="cutaway")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, asset_id),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["currentRevision"] == 2
+    stored = _stored_suggestion(engine, suggestion_id)
+    assert stored.status is BrollSuggestionStatus.PLACED
+    assert stored.edit_id == UUID(edit["id"])
+    assert stored.decided_at is not None
+
+
+@pytest.mark.integration
+def test_a_proposed_suggestion_changes_nothing_until_it_is_accepted(engine: Engine) -> None:
+    """A proposal a member has not agreed to must not reach the preview or the export."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="untouched")
+    _suggestion(engine, fixture, asset_id=asset_id)
+
+    current = browser.get(_path(f"/edits/{edit['id']}", fixture)).json()
+
+    assert current["composition"]["overlays"] == []
+    assert current["currentRevision"] == 1
+
+
+@pytest.mark.integration
+def test_accepting_one_suggestion_twice_places_it_once(engine: Engine) -> None:
+    """A second click on the same suggestion must not stack a second picture."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="once")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    composition = _with_broll(edit["composition"], suggestion_id, asset_id)
+    first = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=composition,
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    second = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=2,
+        composition=composition,
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert first.json()["currentRevision"] == 2
+    assert second.json()["currentRevision"] == 2
+    assert len(second.json()["composition"]["overlays"]) == 1
+
+
+@pytest.mark.integration
+def test_a_stale_expected_revision_refuses_a_decision_and_leaves_it_undecided(
+    engine: Engine,
+) -> None:
+    """Two tabs must not both place one suggestion; the loser is told to reconcile."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="stale")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    _save(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_edited(edit["composition"], gain_db=-3.0),
+    )
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, asset_id),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=409, code="EDIT_REVISION_CONFLICT")
+    assert response.headers[CURRENT_REVISION_HEADER] == "2"
+    assert _stored_suggestion(engine, suggestion_id).status is BrollSuggestionStatus.PROPOSED
+
+
+@pytest.mark.integration
+def test_two_tabs_accepting_one_suggestion_leave_exactly_one_placement(engine: Engine) -> None:
+    """Concurrency is decided in Postgres, so a race cannot place one picture twice."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="race")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    composition = _with_broll(edit["composition"], suggestion_id, asset_id)
+
+    first, second = _race(
+        lambda client: _decide(
+            client,
+            fixture,
+            edit["id"],
+            expected_revision=1,
+            composition=composition,
+            suggestion_id=suggestion_id,
+            action="accept",
+        ),
+        browser,
+        stage.peer(),
+    )
+
+    assert sorted([first.status_code, second.status_code]) == [200, 409]
+    history = browser.get(_path(f"/edits/{edit['id']}/revisions", fixture)).json()
+    assert [entry["revision"] for entry in history["revisions"]] == [2, 1]
+
+
+@pytest.mark.integration
+def test_accepting_a_suggestion_the_composition_does_not_carry_is_refused(
+    engine: Engine,
+) -> None:
+    """A decision that claims a placement the document does not show is not a placement."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="absent")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=edit["composition"],
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=422, code="BROLL_DECISION_INVALID")
+    assert _stored_suggestion(engine, suggestion_id).status is BrollSuggestionStatus.PROPOSED
+
+
+@pytest.mark.integration
+def test_accepting_a_suggestion_that_has_no_media_yet_is_refused(engine: Engine) -> None:
+    """A beat with no licensed picture behind it has nothing a member could accept."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="unattached")
+    suggestion_id = _suggestion(engine, fixture, asset_id=None)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, asset_id),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=422, code="BROLL_DECISION_INVALID")
+
+
+@pytest.mark.integration
+def test_an_accepted_overlay_must_name_the_media_the_suggestion_holds(engine: Engine) -> None:
+    """Accepting must place the picture that was licensed, not some other asset."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    licensed = _broll_asset(engine, fixture, name="licensed")
+    other = _broll_asset(engine, fixture, name="other")
+    suggestion_id = _suggestion(engine, fixture, asset_id=licensed)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, other),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=422, code="BROLL_DECISION_INVALID")
+
+
+@pytest.mark.integration
+def test_replacing_a_placed_suggestion_keeps_the_revision_that_placed_it(
+    engine: Engine,
+) -> None:
+    """Swapping a picture must leave the earlier decision legible in the history."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    first_asset = _broll_asset(engine, fixture, name="first-pick")
+    second_asset = _broll_asset(engine, fixture, name="second-pick")
+    suggestion_id = _suggestion(engine, fixture, asset_id=first_asset)
+    _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, first_asset),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=2,
+        composition=_with_broll(edit["composition"], suggestion_id, second_asset),
+        suggestion_id=suggestion_id,
+        action="replace",
+        asset_id=second_asset,
+    )
+
+    assert response.status_code == 200
+    assert response.json()["currentRevision"] == 3
+    stored = _stored_suggestion(engine, suggestion_id)
+    assert stored.status is BrollSuggestionStatus.REPLACED
+    assert stored.asset_id == second_asset
+    history = browser.get(_path(f"/edits/{edit['id']}/revisions", fixture)).json()
+    assert [entry["revision"] for entry in history["revisions"]] == [3, 2, 1]
+
+
+@pytest.mark.integration
+def test_replacing_with_media_the_project_does_not_own_is_refused(engine: Engine) -> None:
+    """A replacement is still a composition, so the asset rule holds exactly as before."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    licensed = _broll_asset(engine, fixture, name="owned-pick")
+    suggestion_id = _suggestion(engine, fixture, asset_id=licensed)
+    _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, licensed),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+    foreign = uuid4()
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=2,
+        composition=_with_broll(edit["composition"], suggestion_id, foreign),
+        suggestion_id=suggestion_id,
+        action="replace",
+        asset_id=foreign,
+    )
+
+    assert_error(response, status_code=422, code="COMPOSITION_ASSET_FORBIDDEN")
+    assert _stored_suggestion(engine, suggestion_id).asset_id == licensed
+
+
+@pytest.mark.integration
+def test_removing_a_placed_suggestion_deletes_only_its_overlay(engine: Engine) -> None:
+    """Removing one picture must leave every other decision on the timeline alone."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="removable")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    placed = _with_broll(edit["composition"], suggestion_id, asset_id)
+    placed["overlays"].append(_text_overlay())
+    _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=placed,
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+    without = copy.deepcopy(placed)
+    without["overlays"] = [overlay for overlay in without["overlays"] if overlay["type"] == "text"]
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=2,
+        composition=without,
+        suggestion_id=suggestion_id,
+        action="remove",
+    )
+
+    assert response.status_code == 200, response.json()
+    overlays = response.json()["composition"]["overlays"]
+    assert [overlay["type"] for overlay in overlays] == ["text"]
+    assert _stored_suggestion(engine, suggestion_id).status is BrollSuggestionStatus.REMOVED
+
+
+@pytest.mark.integration
+def test_removing_a_suggestion_the_composition_still_carries_is_refused(
+    engine: Engine,
+) -> None:
+    """A removal that leaves the picture on screen is a lie about what the member did."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="still-there")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    placed = _with_broll(edit["composition"], suggestion_id, asset_id)
+    _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=placed,
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=2,
+        composition=placed,
+        suggestion_id=suggestion_id,
+        action="remove",
+    )
+
+    assert_error(response, status_code=422, code="BROLL_DECISION_INVALID")
+
+
+@pytest.mark.integration
+def test_rejecting_a_suggestion_records_the_refusal_without_a_revision(
+    engine: Engine,
+) -> None:
+    """Saying no is a decision about a proposal, not an edit to the clip."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="declined")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=edit["composition"],
+        suggestion_id=suggestion_id,
+        action="reject",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["currentRevision"] == 1
+    assert _stored_suggestion(engine, suggestion_id).status is BrollSuggestionStatus.REJECTED
+
+
+@pytest.mark.integration
+def test_a_suggestion_belonging_to_another_clip_is_hidden_like_a_missing_one(
+    engine: Engine,
+) -> None:
+    """A suggestion is only decidable through the Edit of the clip that owns it."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="foreign-clip")
+    foreign = _suggestion(
+        engine, fixture, asset_id=asset_id, candidate_id=fixture.hidden_candidate_id
+    )
+
+    guessed = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], foreign, asset_id),
+        suggestion_id=foreign,
+        action="accept",
+    )
+    missing = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=edit["composition"],
+        suggestion_id=uuid4(),
+        action="reject",
+    )
+
+    assert_error(guessed, status_code=404, code="NOT_FOUND")
+    assert_error(missing, status_code=404, code="NOT_FOUND")
+    assert guessed.json()["error"]["message"] == missing.json()["error"]["message"]
+
+
+@pytest.mark.integration
+def test_a_reviewer_may_not_decide_on_a_suggestion(engine: Engine) -> None:
+    """Placing a picture edits the clip, so it needs the authority an edit needs."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="reviewer")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    _set_role(engine, browser, fixture, WorkspaceRole.REVIEWER)
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, asset_id),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert response.status_code in {403, 404}
+
+
+@pytest.mark.integration
+def test_a_decision_without_csrf_proof_is_refused(engine: Engine) -> None:
+    """A decision changes durable state, so it carries the same proof every write does."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="csrf")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+
+    response = browser.request(
+        "POST",
+        _path(f"/edits/{edit['id']}/broll-decisions", fixture),
+        json={
+            "expectedRevision": 1,
+            "composition": _with_broll(edit["composition"], suggestion_id, asset_id),
+            "decision": {"suggestionId": str(suggestion_id), "action": "accept"},
+        },
+        csrf_token="",
+    )
+
+    assert response.status_code in {401, 403}
+
+
+def _decide(
+    browser: Browser,
+    fixture: EditFixture,
+    edit_id: str,
+    *,
+    expected_revision: int,
+    composition: dict[str, Any],
+    suggestion_id: UUID,
+    action: str,
+    asset_id: UUID | None = None,
+) -> Response:
+    """Record one accept, replace, remove, or reject beside the composition it produced."""
+    decision: dict[str, Any] = {"suggestionId": str(suggestion_id), "action": action}
+    if asset_id is not None:
+        decision["assetId"] = str(asset_id)
+    return browser.request(
+        "POST",
+        _path(f"/edits/{edit_id}/broll-decisions", fixture),
+        json={
+            "expectedRevision": expected_revision,
+            "composition": composition,
+            "decision": decision,
+        },
+    )
+
+
+def _with_broll(composition: dict[str, Any], suggestion_id: UUID, asset_id: UUID) -> dict[str, Any]:
+    """Return the same composition with one accepted suggestion drawn over the clip."""
+    document = copy.deepcopy(composition)
+    document["overlays"] = [
+        overlay
+        for overlay in document["overlays"]
+        if overlay.get("origin", {}).get("suggestionId") != str(suggestion_id)
+    ]
+    document["overlays"].append(
+        {
+            "id": f"broll-{suggestion_id.hex[:8]}",
+            "type": "video",
+            "assetId": str(asset_id),
+            "timelineStartMs": 2_000,
+            "timelineEndMs": 6_000,
+            "sourceInMs": 0,
+            "sourceOutMs": 4_000,
+            "placement": "cover",
+            "opacity": 1.0,
+            "blendMode": "normal",
+            "motion": "none",
+            "preserveDialogueAudio": True,
+            "origin": {
+                "type": "brollSuggestion",
+                "suggestionId": str(suggestion_id),
+                "provenanceId": None,
+            },
+            "keyframes": [],
+        }
+    )
+    return document
+
+
+def _text_overlay() -> dict[str, Any]:
+    """Build one unrelated overlay a B-roll decision must never disturb."""
+    return {
+        "id": "text-1",
+        "type": "text",
+        "timelineStartMs": 10_000,
+        "timelineEndMs": 13_000,
+        "placement": "center",
+        "opacity": 1.0,
+        "keyframes": [],
+        "motion": "none",
+        "text": "A member wrote this",
+        "style": {
+            "fontFamily": "Montserrat",
+            "fontSize": 48,
+            "color": "#FFFFFF",
+            "align": "center",
+            "weight": 700,
+            "italic": False,
+            "decoration": "none",
+            "letterSpacing": 0.0,
+            "lineHeight": 1.2,
+            "backgroundEnabled": False,
+            "backgroundColor": "#000000",
+        },
+    }
+
+
+def _broll_asset(engine: Engine, fixture: EditFixture, *, name: str) -> UUID:
+    """Give the Project one retrieved B-roll asset a suggestion could point at."""
+    asset_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            Asset.__table__.insert().values(
+                _asset_values(
+                    asset_id=asset_id,
+                    workspace_id=fixture.workspace_id,
+                    project_id=fixture.project_id,
+                    kind=AssetKind.BROLL,
+                    name=name,
+                )
+            )
+        )
+    return asset_id
+
+
+def _suggestion(
+    engine: Engine,
+    fixture: EditFixture,
+    *,
+    asset_id: UUID | None,
+    candidate_id: UUID | None = None,
+) -> UUID:
+    """Persist one planned suggestion, with or without the picture retrieval found."""
+    suggestion_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            BrollSuggestion.__table__.insert().values(
+                id=suggestion_id,
+                workspace_id=fixture.workspace_id,
+                project_id=fixture.project_id,
+                candidate_id=candidate_id or fixture.candidate_id,
+                planner_version="broll-plan/1",
+                coverage="balanced",
+                beat_start_word_id="w000002",
+                beat_end_word_id="w000003",
+                start_ms=2_000,
+                end_ms=6_000,
+                visual_intent={
+                    "subject": "a shortened signup form",
+                    "action": "a hand deleting form fields",
+                    "setting": "a laptop screen on a desk",
+                    "mood": "focused",
+                    "portrait_suitable": True,
+                    "factual_risk_flags": [],
+                    "confidence": 0.8,
+                },
+                search_terms={"id": ["formulir pendaftaran"], "en": ["signup form"]},
+                exclusions=[],
+                status="proposed",
+                placement_reason="The sentence names an object the viewer cannot see",
+                source_type=None if asset_id is None else "stock",
+                asset_id=asset_id,
+                provider_metadata={},
+                created_at=NOW,
+            )
+        )
+    return suggestion_id
+
+
+def _stored_suggestion(engine: Engine, suggestion_id: UUID) -> Any:
+    """Read one suggestion straight from the database, past every API projection."""
+    with engine.begin() as connection:
+        return connection.execute(
+            BrollSuggestion.__table__.select().where(BrollSuggestion.id == suggestion_id)
+        ).one()
+
+
+@pytest.mark.integration
+def test_a_decision_on_an_unknown_edit_answers_like_a_missing_one(engine: Engine) -> None:
+    """An unissued Edit identifier must teach a caller nothing, on this route too."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="unknown-edit")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+
+    response = _decide(
+        browser,
+        fixture,
+        str(uuid4()),
+        expected_revision=1,
+        composition=_with_broll(edit["composition"], suggestion_id, asset_id),
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=404, code="NOT_FOUND")
+
+
+@pytest.mark.integration
+def test_a_decision_carrying_an_invalid_composition_is_refused(engine: Engine) -> None:
+    """A decision cannot smuggle past the composition rules an ordinary save obeys."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    edit = _create_edit(browser, fixture).json()
+    asset_id = _broll_asset(engine, fixture, name="invalid-document")
+    suggestion_id = _suggestion(engine, fixture, asset_id=asset_id)
+    broken = _with_broll(edit["composition"], suggestion_id, asset_id)
+    broken["schemaVersion"] = 99
+
+    response = _decide(
+        browser,
+        fixture,
+        edit["id"],
+        expected_revision=1,
+        composition=broken,
+        suggestion_id=suggestion_id,
+        action="accept",
+    )
+
+    assert_error(response, status_code=422, code="COMPOSITION_INVALID")
+    assert _stored_suggestion(engine, suggestion_id).status is BrollSuggestionStatus.PROPOSED

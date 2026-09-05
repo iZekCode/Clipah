@@ -3,11 +3,13 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
 
+import { BrollPanel, type DecisionRequest } from '@/features/broll/BrollPanel'
 import { ErrorNotice } from '@/components/error-notice'
 import { RequireSession } from '@/features/auth/require-session'
 import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import {
+  decideApiV1EditsEditIdBrollDecisionsPost,
   saveApiV1EditsEditIdPut,
   showApiV1EditsEditIdGet,
 } from '@/lib/api/generated/edits/edits'
@@ -39,6 +41,7 @@ import {
   isDirty,
   timelineItems,
   type Aspect,
+  type EditorAction,
 } from './store'
 
 /** One editor screen, inside a confirmed Session and the Workspace that owns the Edit. */
@@ -207,6 +210,53 @@ function LoadedEditor({
   const save = useCallback(() => {
     void autosave.flush()
   }, [autosave])
+
+  const [deciding, setDeciding] = useState(false)
+
+  /**
+   * Answer one B-roll proposal, and save the document that answer produced.
+   *
+   * The decision and its Revision are one event, so they travel in one request: the
+   * next composition is computed here rather than read back from React state, because
+   * the backend must be told exactly the document the member's click produced.
+   */
+  const decide = useCallback(
+    async (request: DecisionRequest) => {
+      const change = compositionChangeFor(request)
+      const next = change === null ? state : editorReducer(state, change)
+      if (change !== null) {
+        dispatch(change)
+      }
+      setDeciding(true)
+      try {
+        const saved = await decideApiV1EditsEditIdBrollDecisionsPost(
+          edit.id,
+          {
+            expectedRevision: autosave.expectedRevision,
+            composition: next.composition as unknown as Record<string, unknown>,
+            decision: {
+              suggestionId: request.suggestion.id,
+              action: request.action,
+              ...(request.assetId === undefined ? {} : { assetId: request.assetId }),
+            },
+          },
+          { workspace_id: workspaceId },
+        )
+        autosave.accept(saved.currentRevision)
+        dispatch({ type: 'markSaved', composition: saved.composition })
+      } catch (error) {
+        const refused = error as ApiError
+        if (refused.code === 'EDIT_REVISION_CONFLICT') {
+          onConflict({ revision: refused.currentRevision })
+          return
+        }
+        throw error
+      } finally {
+        setDeciding(false)
+      }
+    },
+    [autosave, edit.id, onConflict, state, workspaceId],
+  )
 
   const selected = useMemo(
     () =>
@@ -429,6 +479,16 @@ function LoadedEditor({
             onRedo={() => dispatch({ type: 'redo' })}
             onSave={save}
           />
+          <BrollPanel
+            projectId={edit.projectId}
+            candidateId={edit.candidateId}
+            workspaceId={workspaceId}
+            clipStartMs={composition.sourceRange.inMs}
+            deciding={deciding}
+            onDecide={(request) => {
+              void decide(request)
+            }}
+          />
           <CaptionsPanel
             captions={composition.captions}
             onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
@@ -523,6 +583,29 @@ function LoadedEditor({
       </div>
     </main>
   )
+}
+
+/**
+ * The document change one B-roll decision makes, or nothing when it makes none.
+ *
+ * Rejecting a proposal is an answer about the proposal rather than an edit to the clip,
+ * so it changes no document and produces no Revision.
+ */
+function compositionChangeFor(request: DecisionRequest): EditorAction | null {
+  if (request.action === 'accept' && request.placement !== undefined) {
+    return { type: 'acceptSuggestion', placement: request.placement }
+  }
+  if (request.action === 'replace' && request.assetId !== undefined) {
+    return {
+      type: 'replaceSuggestionMedia',
+      suggestionId: request.suggestion.id,
+      assetId: request.assetId,
+    }
+  }
+  if (request.action === 'remove') {
+    return { type: 'removeSuggestion', suggestionId: request.suggestion.id }
+  }
+  return null
 }
 
 /**

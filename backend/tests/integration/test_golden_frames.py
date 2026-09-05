@@ -37,6 +37,7 @@ MANIFEST_PATH = GOLDEN_ROOT / "manifest.json"
 LANDSCAPE = MEDIA_ROOT / "landscape.mp4"
 SOURCE_ASSET_ID = "11111111-1111-4111-8111-111111111111"
 BROLL_IMAGE_ID = "33333333-3333-4333-8333-333333333333"
+BROLL_VIDEO_ID = "44444444-4444-4444-8444-444444444444"
 
 
 @pytest.mark.integration
@@ -159,6 +160,38 @@ def _stage_inputs(
             kind=AssetKind.SOURCE,
             content_type="image/png",
             duration_ms=None,
+            width=640,
+            height=360,
+        )
+    if scenario.needs_broll_video:
+        video_id = UUID(BROLL_VIDEO_ID)
+        clip = tmp_path / f"{scenario.name}-broll.mp4"
+        subprocess.run(
+            [
+                "ffmpeg",
+                "-nostdin",
+                "-v",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "smptebars=size=640x360:rate=25:duration=1",
+                "-c:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                str(clip),
+            ],
+            check=True,
+            capture_output=True,
+        )
+        shutil.copy(clip, input_path(workspace, video_id))
+        assets[video_id] = RenderAsset(
+            asset_id=video_id,
+            kind=AssetKind.BROLL,
+            content_type="video/mp4",
+            duration_ms=1_000,
             width=640,
             height=360,
         )

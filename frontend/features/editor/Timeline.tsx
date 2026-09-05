@@ -286,6 +286,28 @@ export function Timeline({
               })}
           </div>
         ))}
+        {composition.overlays.length === 0 ? null : (
+          <div role="group" aria-label="Overlays lane" className="relative h-10">
+            {composition.overlays.map((overlay) => (
+              <button
+                key={overlay.id}
+                type="button"
+                aria-label={overlayLabel(overlay)}
+                onClick={() => onSeek(overlay.timelineStartMs)}
+                className="absolute top-0 h-10 truncate rounded border border-dashed px-2 text-left text-xs"
+                style={{
+                  left: overlay.timelineStartMs * pixelsPerMs,
+                  width: Math.max(
+                    (overlay.timelineEndMs - overlay.timelineStartMs) * pixelsPerMs,
+                    32,
+                  ),
+                }}
+              >
+                {overlayLabel(overlay)}
+              </button>
+            ))}
+          </div>
+        )}
         <div
           data-testid="editor-playhead"
           aria-hidden
@@ -295,6 +317,23 @@ export function Timeline({
       </div>
     </section>
   )
+}
+
+/**
+ * What one overlay is called on the timeline, and when it is on screen.
+ *
+ * An accepted suggestion is named for what it is rather than for the proposal behind it:
+ * once a member has agreed to a picture it is theirs, and the record of which suggestion
+ * it answers belongs in the document rather than on the lane.
+ */
+function overlayLabel(overlay: CompositionV1['overlays'][number]): string {
+  const window = `from ${timecode(overlay.timelineStartMs)} to ${timecode(overlay.timelineEndMs)}`
+  if (overlay.type === 'text' || overlay.type === 'citation') {
+    return `Text ${window}`
+  }
+  return overlay.origin.type === 'brollSuggestion'
+    ? `B-roll ${window}`
+    : `Overlay ${window}`
 }
 
 /** The next zoom level in one direction, staying inside the levels that exist. */

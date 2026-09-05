@@ -15,8 +15,10 @@ from uuid import UUID, uuid4
 from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
+from clipah.broll.models import BrollSuggestionStatus
 from clipah.models import (
     Asset,
+    BrollSuggestion,
     ClipCandidate,
     ClipEdit,
     ClipEditRevision,
@@ -73,6 +75,15 @@ class EditDetail:
     composition_hash: bytes
     created_at: datetime
     updated_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class DecidableSuggestion:
+    """One B-roll proposal a member may decide on through the Edit of its own clip."""
+
+    suggestion_id: UUID
+    asset_id: UUID | None
+    status: BrollSuggestionStatus
 
 
 @dataclass(frozen=True, slots=True)
@@ -156,6 +167,69 @@ class EditRepository:
                     Asset.workspace_id == workspace_id, Asset.project_id == project_id
                 )
             )
+        )
+
+    def suggestion_for_edit(
+        self, *, workspace_id: UUID, edit_id: UUID, suggestion_id: UUID
+    ) -> DecidableSuggestion | None:
+        """Lock one proposal, but only through the Edit of the clip that owns it.
+
+        The join to the Edit's own candidate is what makes another clip's suggestion
+        indistinguishable from one that was never planned: a member may decide only on
+        the beats of the clip they have open.
+        """
+        row = self._session.execute(
+            select(BrollSuggestion)
+            .join(
+                ClipEdit,
+                (ClipEdit.workspace_id == BrollSuggestion.workspace_id)
+                & (ClipEdit.candidate_id == BrollSuggestion.candidate_id),
+            )
+            .where(
+                BrollSuggestion.workspace_id == workspace_id,
+                BrollSuggestion.id == suggestion_id,
+                ClipEdit.id == edit_id,
+            )
+            .with_for_update(of=BrollSuggestion)
+        ).first()
+        if row is None:
+            return None
+        suggestion = row[0]
+        return DecidableSuggestion(
+            suggestion_id=suggestion.id,
+            asset_id=suggestion.asset_id,
+            status=suggestion.status,
+        )
+
+    def record_decision(
+        self,
+        *,
+        workspace_id: UUID,
+        suggestion_id: UUID,
+        status: BrollSuggestionStatus,
+        asset_id: UUID | None,
+        edit_id: UUID | None,
+        now: datetime,
+    ) -> None:
+        """Write what the member decided, in the transaction that saved their Revision.
+
+        A `None` for either identifier means the decision does not concern that column,
+        never that the column should be cleared: a rejected proposal keeps the picture
+        retrieval found for it, and every decision but a replacement keeps the asset it
+        was already holding.
+        """
+        values: dict[str, Any] = {"status": status, "decided_at": now}
+        if asset_id is not None:
+            values["asset_id"] = asset_id
+        if edit_id is not None:
+            values["edit_id"] = edit_id
+        self._session.execute(
+            update(BrollSuggestion)
+            .where(
+                BrollSuggestion.workspace_id == workspace_id,
+                BrollSuggestion.id == suggestion_id,
+            )
+            .values(**values)
         )
 
     def edit_for_candidate(self, *, workspace_id: UUID, candidate_id: UUID) -> EditDetail | None:

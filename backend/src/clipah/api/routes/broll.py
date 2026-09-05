@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
+from math import ceil
 from typing import Annotated
 from uuid import UUID
 
@@ -21,14 +22,15 @@ from clipah.api.dependencies import (
 )
 from clipah.api.errors import ApiError
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
-from clipah.broll.repository import BrollRepository, SuggestionSummary
+from clipah.broll.repository import BrollRepository, ProvenanceSummary, SuggestionSummary
 from clipah.broll.use_cases import (
     BrollPlanConflictError,
     BrollTargetNotFoundError,
     list_suggestions,
     start_broll_plan,
+    start_broll_retrieval,
 )
-from clipah.jobs.admission import ConcurrencyLimitError, admission_policy
+from clipah.jobs.admission import ConcurrencyLimitError, QuotaExceededError, admission_policy
 from clipah.models import JobKind, JobStatus
 from clipah.source_imports.dispatch import JobDispatcher
 from clipah.workspaces.models import WorkspaceAction
@@ -83,6 +85,21 @@ class SearchTermsResponse(BaseModel):
     en: tuple[str, ...]
 
 
+class ProvenanceResponse(BaseModel):
+    """Where one accepted picture came from, in the words a reviewer may be shown."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    provider: str
+    author: str
+    author_url: str = Field(alias="authorUrl")
+    source_url: str = Field(alias="sourceUrl")
+    license_name: str = Field(alias="licenseName")
+    license_url: str = Field(alias="licenseUrl")
+    attribution_text: str = Field(alias="attributionText")
+    generated: bool
+
+
 class BrollSuggestionResponse(BaseModel):
     """One strict allowlist of B-roll proposal evidence."""
 
@@ -104,6 +121,8 @@ class BrollSuggestionResponse(BaseModel):
     status: BrollSuggestionStatus
     placement_reason: str = Field(alias="placementReason")
     source_type: BrollSourceType | None = Field(alias="sourceType")
+    asset_id: UUID | None = Field(alias="assetId")
+    provenance: ProvenanceResponse | None
     relevance_score: float | None = Field(alias="relevanceScore")
     created_at: datetime = Field(alias="createdAt")
     decided_at: datetime | None = Field(alias="decidedAt")
@@ -173,6 +192,59 @@ def create_plan(
     return BrollPlanJobResponse(jobId=snapshot.job_id, status=snapshot.status)
 
 
+@router.post(
+    "/projects/{project_id}/candidates/{candidate_id}/broll-retrievals",
+    status_code=202,
+    response_model=BrollPlanJobResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def create_retrieval(
+    request: Request,
+    project_id: UUID,
+    candidate_id: UUID,
+    body: BrollPlanBody,
+    session: DatabaseSession,
+    workspace: WritableWorkspace,
+    idempotency_key: IdempotencyHeader,
+) -> BrollPlanJobResponse:
+    """Commit the intent to find pictures for one plan before dispatching the search."""
+    dispatcher: JobDispatcher = request.app.state.job_dispatcher
+    try:
+        snapshot = start_broll_retrieval(
+            session,
+            policy=admission_policy(settings_for(request), rate_limiter_for(request)),
+            access=workspace.access,
+            project_id=project_id,
+            candidate_id=candidate_id,
+            coverage=body.coverage,
+            idempotency_key=idempotency_key,
+            now=auth_components_for(request).now(),
+        )
+    except BrollTargetNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except BrollPlanConflictError as error:
+        raise ApiError(status_code=409, code="CONFLICT") from error
+    except QuotaExceededError as error:
+        raise ApiError(
+            status_code=429,
+            code="QUOTA_EXCEEDED",
+            retry_after_seconds=max(ceil(error.retry_after.total_seconds()), 1),
+        ) from error
+    except ConcurrencyLimitError as error:
+        raise ApiError(status_code=429, code="CONCURRENCY_LIMIT") from error
+
+    session.commit()
+    if snapshot.status is JobStatus.QUEUED:
+        with suppress(Exception):
+            dispatcher.dispatch(
+                job_id=snapshot.job_id,
+                workspace_id=workspace.access.workspace_id,
+                user_id=workspace.access.user_id,
+                kind=JobKind.BROLL_RETRIEVE,
+            )
+    return BrollPlanJobResponse(jobId=snapshot.job_id, status=snapshot.status)
+
+
 @router.get(
     "/projects/{project_id}/candidates/{candidate_id}/broll-suggestions",
     response_model=BrollSuggestionListResponse,
@@ -230,7 +302,25 @@ def _suggestion_body(suggestion: SuggestionSummary) -> BrollSuggestionResponse:
         status=suggestion.status,
         placementReason=suggestion.placement_reason,
         sourceType=suggestion.source_type,
+        assetId=suggestion.asset_id,
+        provenance=_provenance_body(suggestion.provenance),
         relevanceScore=suggestion.relevance_score,
         createdAt=suggestion.created_at,
         decidedAt=suggestion.decided_at,
+    )
+
+
+def _provenance_body(provenance: ProvenanceSummary | None) -> ProvenanceResponse | None:
+    """Render the attribution of one picture, or report that there is none to show."""
+    if provenance is None:
+        return None
+    return ProvenanceResponse(
+        provider=provenance.provider,
+        author=provenance.author,
+        authorUrl=provenance.author_url,
+        sourceUrl=provenance.source_url,
+        licenseName=provenance.license_name,
+        licenseUrl=provenance.license_url,
+        attributionText=provenance.attribution_text,
+        generated=provenance.generated,
     )

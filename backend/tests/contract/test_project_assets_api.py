@@ -86,6 +86,27 @@ def test_derived_renditions_are_not_offered_as_editable_media(
 
 
 @pytest.mark.integration
+def test_retrieved_broll_is_offered_as_editable_media(engine: Engine, clean_database: None) -> None:
+    """Replacing an accepted suggestion's picture means naming another asset this clip holds."""
+    del clean_database
+    clock = Clock(NOW)
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock))
+    browser = Browser(app)
+    sign_in(browser, flow)
+    fixture = _ready_project(engine, browser)
+    source_id = _asset(engine, fixture, kind=AssetKind.SOURCE, name="episode.mp4")
+    broll_id = _asset(engine, fixture, kind=AssetKind.BROLL, name="cutaway.mp4")
+    _asset(engine, fixture, kind=AssetKind.BROLL_PROXY, name="cutaway-proxy.mp4")
+
+    response = browser.get(_path(fixture))
+
+    assert {entry["id"] for entry in response.json()["assets"]} == {
+        str(source_id),
+        str(broll_id),
+    }
+
+
+@pytest.mark.integration
 def test_another_project_of_the_same_workspace_contributes_nothing(
     engine: Engine, clean_database: None
 ) -> None:

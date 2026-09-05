@@ -4,9 +4,11 @@
  * Clipah API
  * OpenAPI spec version: 0.1.0
  */
+import type { BrollSuggestionResponseAssetId } from './brollSuggestionResponseAssetId';
 import type { BrollCoverage } from './brollCoverage';
 import type { BrollSuggestionResponseCreatedAt } from './brollSuggestionResponseCreatedAt';
 import type { BrollSuggestionResponseDecidedAt } from './brollSuggestionResponseDecidedAt';
+import type { BrollSuggestionResponseProvenance } from './brollSuggestionResponseProvenance';
 import type { BrollSuggestionResponseRelevanceScore } from './brollSuggestionResponseRelevanceScore';
 import type { SearchTermsResponse } from './searchTermsResponse';
 import type { BrollSuggestionResponseSourceType } from './brollSuggestionResponseSourceType';
@@ -17,6 +19,7 @@ import type { VisualIntentResponse } from './visualIntentResponse';
  * One strict allowlist of B-roll proposal evidence.
  */
 export interface BrollSuggestionResponse {
+  assetId: BrollSuggestionResponseAssetId;
   beatEndWordId: string;
   beatStartWordId: string;
   candidateId: string;
@@ -30,6 +33,7 @@ export interface BrollSuggestionResponse {
   placementReason: string;
   plannerVersion: string;
   projectId: string;
+  provenance: BrollSuggestionResponseProvenance;
   relevanceScore: BrollSuggestionResponseRelevanceScore;
   searchTerms: SearchTermsResponse;
   sourceType: BrollSuggestionResponseSourceType;

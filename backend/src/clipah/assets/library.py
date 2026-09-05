@@ -19,8 +19,10 @@ from clipah.models import Asset, AssetKind, Project
 from clipah.workspaces.models import WorkspaceAccess
 
 # Proxies, thumbnails, waveforms, transcription audio, and renders are produced by the
-# pipeline for the pipeline. A member never places one on a timeline.
-PLACEABLE_KINDS: frozenset[AssetKind] = frozenset({AssetKind.SOURCE})
+# pipeline for the pipeline. A member never places one on a timeline. Retrieved B-roll is
+# the exception among non-source media: a member chose it, and replacing an accepted
+# suggestion's picture means naming another asset this Project already holds.
+PLACEABLE_KINDS: frozenset[AssetKind] = frozenset({AssetKind.SOURCE, AssetKind.BROLL})
 
 
 class ProjectNotFoundError(Exception):

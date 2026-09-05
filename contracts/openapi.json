@@ -135,6 +135,75 @@
         "title": "BrollCoverage",
         "type": "string"
       },
+      "BrollDecision": {
+        "description": "What a member may decide about one proposed picture.",
+        "enum": [
+          "accept",
+          "replace",
+          "remove",
+          "reject"
+        ],
+        "title": "BrollDecision",
+        "type": "string"
+      },
+      "BrollDecisionBody": {
+        "additionalProperties": false,
+        "description": "What one member decided about one proposed picture.",
+        "properties": {
+          "action": {
+            "$ref": "#/components/schemas/BrollDecision"
+          },
+          "assetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetid"
+          },
+          "suggestionId": {
+            "format": "uuid",
+            "title": "Suggestionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "suggestionId",
+          "action"
+        ],
+        "title": "BrollDecisionBody",
+        "type": "object"
+      },
+      "BrollDecisionRequest": {
+        "additionalProperties": false,
+        "description": "One decision and the composition it produced, offered as the next Revision.",
+        "properties": {
+          "composition": {
+            "additionalProperties": true,
+            "title": "Composition",
+            "type": "object"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/BrollDecisionBody"
+          },
+          "expectedRevision": {
+            "minimum": 1.0,
+            "title": "Expectedrevision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "expectedRevision",
+          "composition",
+          "decision"
+        ],
+        "title": "BrollDecisionRequest",
+        "type": "object"
+      },
       "BrollPlanBody": {
         "additionalProperties": false,
         "description": "The one choice a member makes when asking for B-roll: how busy the cut should be.",
@@ -199,6 +268,18 @@
         "additionalProperties": false,
         "description": "One strict allowlist of B-roll proposal evidence.",
         "properties": {
+          "assetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetid"
+          },
           "beatEndWordId": {
             "title": "Beatendwordid",
             "type": "string"
@@ -270,6 +351,16 @@
             "title": "Projectid",
             "type": "string"
           },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProvenanceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "relevanceScore": {
             "anyOf": [
               {
@@ -322,6 +413,8 @@
           "status",
           "placementReason",
           "sourceType",
+          "assetId",
+          "provenance",
           "relevanceScore",
           "createdAt",
           "decidedAt"
@@ -1982,6 +2075,56 @@
         "title": "ProjectStatus",
         "type": "string"
       },
+      "ProvenanceResponse": {
+        "additionalProperties": false,
+        "description": "Where one accepted picture came from, in the words a reviewer may be shown.",
+        "properties": {
+          "attributionText": {
+            "title": "Attributiontext",
+            "type": "string"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "authorUrl": {
+            "title": "Authorurl",
+            "type": "string"
+          },
+          "generated": {
+            "title": "Generated",
+            "type": "boolean"
+          },
+          "licenseName": {
+            "title": "Licensename",
+            "type": "string"
+          },
+          "licenseUrl": {
+            "title": "Licenseurl",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "author",
+          "authorUrl",
+          "sourceUrl",
+          "licenseName",
+          "licenseUrl",
+          "attributionText",
+          "generated"
+        ],
+        "title": "ProvenanceResponse",
+        "type": "object"
+      },
       "ProxyPlaybackResponse": {
         "additionalProperties": false,
         "description": "One expiring proxy URL and the media shape a player needs before it loads.",
@@ -3410,6 +3553,70 @@
         ]
       }
     },
+    "/api/v1/edits/{edit_id}/broll-decisions": {
+      "post": {
+        "description": "Record one B-roll decision and the Revision it produced, in one transaction.",
+        "operationId": "decide_api_v1_edits__edit_id__broll_decisions_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrollDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EditResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Decide",
+        "tags": [
+          "edits"
+        ]
+      }
+    },
     "/api/v1/edits/{edit_id}/renders": {
       "post": {
         "description": "Hand back an identical export, or admit the durable Job that produces one.",
@@ -4525,6 +4732,91 @@
           }
         },
         "summary": "Create Plan",
+        "tags": [
+          "broll"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/broll-retrievals": {
+      "post": {
+        "description": "Commit the intent to find pictures for one plan before dispatching the search.",
+        "operationId": "create_retrieval_api_v1_projects__project_id__candidates__candidate_id__broll_retrievals_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrollPlanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrollPlanJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Retrieval",
         "tags": [
           "broll"
         ]

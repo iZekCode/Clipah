@@ -15,7 +15,9 @@ from perceptual import MaskedRegion
 
 SOURCE_ASSET_ID = "11111111-1111-4111-8111-111111111111"
 BROLL_IMAGE_ID = "33333333-3333-4333-8333-333333333333"
+BROLL_VIDEO_ID = "44444444-4444-4444-8444-444444444444"
 PROVENANCE_ID = "88888888-8888-4888-8888-888888888888"
+SUGGESTION_ID = "99999999-9999-4999-8999-999999999999"
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,6 +29,7 @@ class GoldenScenario:
     at_seconds: float
     required_filters: tuple[str, ...] = ()
     needs_image: bool = False
+    needs_broll_video: bool = False
     masked: tuple[MaskedRegion, ...] = field(default=())
     intent: str = ""
 
@@ -126,6 +129,37 @@ def _image_overlay(**overrides: Any) -> dict[str, Any]:
     return values
 
 
+def _broll_origin() -> dict[str, Any]:
+    """The origin an accepted B-roll suggestion leaves on the overlay it produced."""
+    return {
+        "type": "brollSuggestion",
+        "suggestionId": SUGGESTION_ID,
+        "provenanceId": PROVENANCE_ID,
+    }
+
+
+def _broll_video_overlay(**overrides: Any) -> dict[str, Any]:
+    """One retrieved stock clip drawn over the speaker, with the dialogue kept."""
+    values: dict[str, Any] = {
+        "id": "broll-1",
+        "type": "video",
+        "assetId": BROLL_VIDEO_ID,
+        "timelineStartMs": 100,
+        "timelineEndMs": 900,
+        "sourceInMs": 0,
+        "sourceOutMs": 800,
+        "placement": "cover",
+        "opacity": 1.0,
+        "blendMode": "normal",
+        "motion": "none",
+        "preserveDialogueAudio": True,
+        "origin": _broll_origin(),
+        "keyframes": [],
+    }
+    values.update(overrides)
+    return values
+
+
 def _words() -> list[dict[str, Any]]:
     """Two caption words, long enough to be drawn at the sampled instant."""
     return [
@@ -170,6 +204,28 @@ GOLDEN_SCENARIOS: tuple[GoldenScenario, ...] = (
         required_filters=("zoompan",),
         needs_image=True,
         intent="A still given the drift a static frame otherwise lacks.",
+    ),
+    GoldenScenario(
+        name="broll-stock-video",
+        document=_document(overlays=[_broll_video_overlay()]),
+        at_seconds=0.5,
+        needs_broll_video=True,
+        intent=(
+            "An accepted stock clip drawn over the speaker. The dialogue is preserved, so "
+            "the picture changes and the sound does not."
+        ),
+    ),
+    GoldenScenario(
+        name="broll-stock-still",
+        document=_document(overlays=[_image_overlay(motion="kenBurnsIn", origin=_broll_origin())]),
+        at_seconds=0.5,
+        required_filters=("zoompan",),
+        needs_image=True,
+        intent=(
+            "An accepted stock still, which needs the pan and zoom a frozen frame lacks. "
+            "It renders identically to any other moving still: the origin is a record, "
+            "never a rendering instruction."
+        ),
     ),
     GoldenScenario(
         name="overlay-opacity",

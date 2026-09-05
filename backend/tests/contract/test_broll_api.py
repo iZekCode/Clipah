@@ -9,10 +9,13 @@ from uuid import UUID, uuid4
 import pytest
 from sqlalchemy import Engine, update
 
+from clipah.broll.models import BrollCoverage
 from clipah.models import (
     Asset,
     AssetKind,
+    AssetProvenance,
     AssetSourceType,
+    BrollPlanRequest,
     BrollSuggestion,
     ClipCandidate,
     Job,
@@ -237,6 +240,8 @@ def test_a_suggestion_exposes_review_evidence_and_no_private_provider_metadata(
             "status": "proposed",
             "placementReason": "The sentence names an object the viewer cannot see",
             "sourceType": None,
+            "assetId": None,
+            "provenance": None,
             "relevanceScore": None,
             "createdAt": NOW.isoformat(),
             "decidedAt": None,
@@ -504,4 +509,300 @@ def test_replaying_a_key_whose_job_already_started_does_not_dispatch_it_again(
     second = _plan(browser, fixture, key="plan-running")
 
     assert second.status_code == 202
+    assert second.json() == {"jobId": first.json()["jobId"], "status": "running"}
+
+
+@pytest.mark.integration
+def test_retrieval_admits_one_durable_job_for_a_planned_clip(
+    engine: Engine, clean_database: None
+) -> None:
+    """Suggestions without media are proposals nobody can act on, so retrieval is reachable."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _store_suggestion(engine, fixture)
+
+    response = _retrieve(browser, fixture, key="retrieve-1")
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "queued"
+    with engine.begin() as connection:
+        job = connection.execute(
+            Job.__table__.select().where(Job.id == UUID(response.json()["jobId"]))
+        ).one()
+    assert job.kind is JobKind.BROLL_RETRIEVE
+
+
+@pytest.mark.integration
+def test_retrieval_records_which_plan_the_worker_must_illustrate(
+    engine: Engine, clean_database: None
+) -> None:
+    """The worker reads its clip and coverage from a request row, never from the broker."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _store_suggestion(engine, fixture)
+
+    response = _retrieve(browser, fixture, key="retrieve-request")
+
+    with engine.begin() as connection:
+        request = connection.execute(
+            BrollPlanRequest.__table__.select().where(
+                BrollPlanRequest.job_id == UUID(response.json()["jobId"])
+            )
+        ).one()
+    assert request.candidate_id == fixture.candidate_id
+    assert request.coverage is BrollCoverage.BALANCED
+
+
+@pytest.mark.integration
+def test_repeating_one_retrieval_key_returns_the_first_job(
+    engine: Engine, clean_database: None
+) -> None:
+    """A second click must not buy a second search of the same provider catalogue."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _store_suggestion(engine, fixture)
+
+    first = _retrieve(browser, fixture, key="retrieve-repeat")
+    second = _retrieve(browser, fixture, key="retrieve-repeat")
+
+    assert first.json()["jobId"] == second.json()["jobId"]
+
+
+@pytest.mark.integration
+def test_a_retrieval_key_bound_to_planning_is_refused(engine: Engine, clean_database: None) -> None:
+    """One key names one piece of work; reusing it across kinds must not silently replay."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _store_suggestion(engine, fixture)
+    _plan(browser, fixture, key="shared-key")
+
+    response = _retrieve(browser, fixture, key="shared-key")
+
+    assert_error(response, status_code=409, code="CONFLICT")
+
+
+@pytest.mark.integration
+def test_retrieval_requires_csrf_proof(engine: Engine, clean_database: None) -> None:
+    """Retrieval spends a Workspace's stock budget, so it is a state-changing method."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+
+    response = browser.request(
+        "POST",
+        _retrieve_path(fixture),
+        headers={"Idempotency-Key": "retrieve-csrf"},
+        json={"coverage": "balanced"},
+        csrf_token="",
+    )
+
+    assert response.status_code in {401, 403}
+
+
+@pytest.mark.integration
+def test_retrieval_hides_a_hidden_guessed_and_missing_clip_identically(
+    engine: Engine, clean_database: None
+) -> None:
+    """A guessed clip identifier must teach a caller nothing about what exists."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+
+    hidden = browser.request(
+        "POST",
+        f"/api/v1/projects/{fixture.project_id}/candidates/{fixture.hidden_candidate_id}"
+        f"/broll-retrievals?workspace_id={fixture.workspace_id}",
+        headers={"Idempotency-Key": "retrieve-hidden"},
+        json={"coverage": "balanced"},
+    )
+    missing = browser.request(
+        "POST",
+        f"/api/v1/projects/{fixture.project_id}/candidates/{uuid4()}"
+        f"/broll-retrievals?workspace_id={fixture.workspace_id}",
+        headers={"Idempotency-Key": "retrieve-missing"},
+        json={"coverage": "balanced"},
+    )
+
+    assert_error(hidden, status_code=404, code="NOT_FOUND")
+    assert_error(missing, status_code=404, code="NOT_FOUND")
+    assert hidden.json()["error"]["message"] == missing.json()["error"]["message"]
+
+
+@pytest.mark.integration
+def test_a_suggestion_carrying_media_reports_its_asset_and_provenance(
+    engine: Engine, clean_database: None
+) -> None:
+    """A reviewer decides on licensed footage, so the licence must reach the screen."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    suggestion_id = _store_suggestion(engine, fixture)
+    asset_id = _store_broll_asset(engine, fixture)
+    _attach(engine, suggestion_id=suggestion_id, asset_id=asset_id)
+
+    response = browser.get(_suggestions_path(fixture))
+
+    body = response.json()["suggestions"][0]
+    assert body["assetId"] == str(asset_id)
+    assert body["provenance"] == {
+        "provider": "pexels",
+        "author": "A Photographer",
+        "authorUrl": "https://example.test/authors/1",
+        "sourceUrl": "https://example.test/videos/1",
+        "licenseName": "Pexels License",
+        "licenseUrl": "https://example.test/license",
+        "attributionText": "Video by A Photographer on Pexels",
+        "generated": False,
+    }
+
+
+@pytest.mark.integration
+def test_a_suggestion_without_media_reports_no_provenance(
+    engine: Engine, clean_database: None
+) -> None:
+    """An unmeasured licence must read as absent rather than as an empty one."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _store_suggestion(engine, fixture)
+
+    response = browser.get(_suggestions_path(fixture))
+
+    body = response.json()["suggestions"][0]
+    assert body["assetId"] is None
+    assert body["provenance"] is None
+
+
+def _retrieve_path(fixture: ClipFixture) -> str:
+    """Name the retrieval endpoint for one clip inside its Workspace."""
+    return (
+        f"/api/v1/projects/{fixture.project_id}/candidates/{fixture.candidate_id}"
+        f"/broll-retrievals?workspace_id={fixture.workspace_id}"
+    )
+
+
+def _retrieve(browser: Browser, fixture: ClipFixture, *, key: str) -> Any:
+    """Ask for pictures for the balanced plan under one idempotency key."""
+    return browser.request(
+        "POST",
+        _retrieve_path(fixture),
+        headers={"Idempotency-Key": key},
+        json={"coverage": "balanced"},
+    )
+
+
+def _store_broll_asset(engine: Engine, fixture: ClipFixture) -> UUID:
+    """Persist one licensed B-roll asset and the provenance that traces it."""
+    asset_id = uuid4()
+    with engine.begin() as connection:
+        connection.execute(
+            Asset.__table__.insert().values(
+                id=asset_id,
+                workspace_id=fixture.workspace_id,
+                project_id=fixture.project_id,
+                kind=AssetKind.BROLL,
+                source_type=AssetSourceType.STOCK,
+                storage_key=f"workspaces/{fixture.workspace_id}/broll/{asset_id}/original",
+                content_type="video/mp4",
+                size_bytes=2_048,
+                duration_ms=6_000,
+                width=1080,
+                height=1920,
+                sha256=b"b" * 32,
+            )
+        )
+        connection.execute(
+            AssetProvenance.__table__.insert().values(
+                workspace_id=fixture.workspace_id,
+                asset_id=asset_id,
+                provider="pexels",
+                provider_asset_id="1",
+                source_url="https://example.test/videos/1",
+                author="A Photographer",
+                author_url="https://example.test/authors/1",
+                license_name="Pexels License",
+                license_url="https://example.test/license",
+                terms_snapshot="terms as read at retrieval",
+                retrieved_at=NOW,
+                query="signup form",
+                moderation_result="passed",
+                attribution_text="Video by A Photographer on Pexels",
+                checksum=b"b" * 32,
+            )
+        )
+    return asset_id
+
+
+def _attach(engine: Engine, *, suggestion_id: UUID, asset_id: UUID) -> None:
+    """Give one proposal the picture a retrieval Job would have found for it."""
+    with engine.begin() as connection:
+        connection.execute(
+            BrollSuggestion.__table__.update()
+            .where(BrollSuggestion.id == suggestion_id)
+            .values(asset_id=asset_id, source_type="stock", relevance_score=0.91)
+        )
+
+
+@pytest.mark.integration
+def test_retrieval_is_refused_when_the_workspace_is_already_at_its_job_limit(
+    engine: Engine, clean_database: None
+) -> None:
+    """A full Workspace must be told to wait rather than quietly admitted anyway."""
+    del clean_database
+    clock = Clock(NOW)
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), concurrent_jobs_per_workspace=1)
+    browser = Browser(app)
+    sign_in(browser, flow)
+    fixture = _ready_clip(engine, browser)
+    with engine.begin() as connection:
+        connection.execute(
+            Job.__table__.insert().values(
+                id=uuid4(),
+                workspace_id=fixture.workspace_id,
+                project_id=fixture.project_id,
+                kind=JobKind.INGEST,
+                status="running",
+                stage="queued",
+                progress=0,
+                attempt=1,
+                idempotency_key="occupying-retrieval",
+            )
+        )
+
+    response = _retrieve(browser, fixture, key="retrieve-concurrency")
+
+    assert_error(response, status_code=429, code="CONCURRENCY_LIMIT")
+
+
+@pytest.mark.integration
+def test_retrieval_is_refused_when_the_monthly_stock_budget_is_spent(
+    engine: Engine, clean_database: None
+) -> None:
+    """A Workspace out of stock requests must not buy one more from a provider."""
+    del clean_database
+    clock = Clock(NOW)
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), monthly_stock_requests=0)
+    browser = Browser(app)
+    sign_in(browser, flow)
+    fixture = _ready_clip(engine, browser)
+
+    response = _retrieve(browser, fixture, key="retrieve-quota")
+
+    assert_error(response, status_code=429, code="QUOTA_EXCEEDED")
+    assert int(response.headers["Retry-After"]) > 0
+
+
+@pytest.mark.integration
+def test_replaying_a_retrieval_key_whose_job_already_started_does_not_dispatch_it_again(
+    engine: Engine, clean_database: None
+) -> None:
+    """A search a worker already claimed must be reported, not queued a second time."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    first = _retrieve(browser, fixture, key="retrieve-running")
+    with engine.begin() as connection:
+        connection.execute(
+            Job.__table__.update()
+            .where(Job.id == UUID(first.json()["jobId"]))
+            .values(status="running")
+        )
+
+    second = _retrieve(browser, fixture, key="retrieve-running")
+
     assert second.json() == {"jobId": first.json()["jobId"], "status": "running"}

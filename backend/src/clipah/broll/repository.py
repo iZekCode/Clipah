@@ -19,6 +19,7 @@ from clipah.broll.models import (
 from clipah.jobs.models import JobSnapshot
 from clipah.jobs.repository import snapshot_of
 from clipah.models import (
+    AssetProvenance,
     BrollPlanRequest,
     BrollSuggestion,
     ClipCandidate,
@@ -49,6 +50,25 @@ class PlanRequest:
 
 
 @dataclass(frozen=True, slots=True)
+class ProvenanceSummary:
+    """The attribution a reviewer is shown before deciding on a picture.
+
+    Only the fields a member or a lawyer would read appear here. The terms snapshot,
+    the moderation result, and the checksum stay in the database: they are evidence for
+    an audit rather than something to draw beside a thumbnail.
+    """
+
+    provider: str
+    author: str
+    author_url: str
+    source_url: str
+    license_name: str
+    license_url: str
+    attribution_text: str
+    generated: bool
+
+
+@dataclass(frozen=True, slots=True)
 class SuggestionSummary:
     """The proposal evidence safe to carry outside SQLAlchemy."""
 
@@ -67,6 +87,8 @@ class SuggestionSummary:
     status: BrollSuggestionStatus
     placement_reason: str
     source_type: BrollSourceType | None
+    asset_id: UUID | None
+    provenance: ProvenanceSummary | None
     relevance_score: float | None
     created_at: datetime
     decided_at: datetime | None
@@ -247,19 +269,29 @@ class BrollRepository:
     def suggestions_for_candidate(
         self, *, workspace_id: UUID, candidate_id: UUID
     ) -> tuple[SuggestionSummary, ...]:
-        """Read one candidate's proposals in the order they occur in the clip."""
-        rows = self._session.scalars(
-            select(BrollSuggestion)
+        """Read one candidate's proposals, each beside the licence that traces its picture.
+
+        The provenance is read in the same query as the suggestion because the two are
+        never separately useful: a picture whose licence cannot be shown is a picture a
+        member must not be asked to accept.
+        """
+        rows = self._session.execute(
+            select(BrollSuggestion, AssetProvenance)
+            .outerjoin(
+                AssetProvenance,
+                (AssetProvenance.workspace_id == BrollSuggestion.workspace_id)
+                & (AssetProvenance.asset_id == BrollSuggestion.asset_id),
+            )
             .where(
                 BrollSuggestion.workspace_id == workspace_id,
                 BrollSuggestion.candidate_id == candidate_id,
             )
             .order_by(BrollSuggestion.start_ms, BrollSuggestion.id)
         )
-        return tuple(_summary(row) for row in rows)
+        return tuple(_summary(row, provenance) for row, provenance in rows)
 
 
-def _summary(row: BrollSuggestion) -> SuggestionSummary:
+def _summary(row: BrollSuggestion, provenance: AssetProvenance | None) -> SuggestionSummary:
     """Detach only public proposal evidence from one persisted suggestion."""
     return SuggestionSummary(
         suggestion_id=row.id,
@@ -277,7 +309,23 @@ def _summary(row: BrollSuggestion) -> SuggestionSummary:
         status=row.status,
         placement_reason=row.placement_reason,
         source_type=row.source_type,
+        asset_id=row.asset_id,
+        provenance=None if provenance is None else _provenance(row, provenance),
         relevance_score=None if row.relevance_score is None else float(row.relevance_score),
         created_at=row.created_at,
         decided_at=row.decided_at,
+    )
+
+
+def _provenance(row: BrollSuggestion, provenance: AssetProvenance) -> ProvenanceSummary:
+    """Report where one accepted picture came from, and whether a model drew it."""
+    return ProvenanceSummary(
+        provider=provenance.provider,
+        author=provenance.author,
+        author_url=provenance.author_url,
+        source_url=provenance.source_url,
+        license_name=provenance.license_name,
+        license_url=provenance.license_url,
+        attribution_text=provenance.attribution_text,
+        generated=row.source_type is BrollSourceType.GENERATED,
     )

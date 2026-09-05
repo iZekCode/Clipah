@@ -70,6 +70,20 @@ export interface PlacedItem {
   endMs: number
 }
 
+/**
+ * One accepted B-roll suggestion, as the planner placed it.
+ *
+ * The times are the source's own, because that is the frame the backend plans in; the
+ * store converts them to timeline time so a member never has to know the difference.
+ */
+export interface BrollPlacement {
+  suggestionId: string
+  assetId: string
+  mediaKind: 'video' | 'image'
+  startMs: number
+  endMs: number
+}
+
 /** One stretch of the clip in which one speaker is talking. */
 export interface Scene {
   id: string
@@ -130,6 +144,9 @@ export type EditorAction =
   | { type: 'updateOverlay'; overlayId: string; patch: Partial<Pick<TextOverlay, 'text'>> & { style?: Partial<TextStyle>; placement?: TextOverlay['placement'] } }
   | { type: 'moveOverlay'; overlayId: string; startMs: number; endMs: number }
   | { type: 'deleteOverlay'; overlayId: string }
+  | { type: 'acceptSuggestion'; placement: BrollPlacement }
+  | { type: 'replaceSuggestionMedia'; suggestionId: string; assetId: string }
+  | { type: 'removeSuggestion'; suggestionId: string }
   | { type: 'addBookmark'; label: string; atMs?: number }
   | { type: 'renameBookmark'; bookmarkId: string; label: string }
   | { type: 'removeBookmark'; bookmarkId: string }
@@ -518,6 +535,12 @@ function edit(draft: CompositionV1, action: EditorAction, state: EditorState): v
       return updateOverlay(draft, action)
     case 'moveOverlay':
       return moveOverlay(draft, action)
+    case 'acceptSuggestion':
+      return acceptSuggestion(draft, action.placement)
+    case 'replaceSuggestionMedia':
+      return replaceSuggestionMedia(draft, action)
+    case 'removeSuggestion':
+      return removeSuggestion(draft, action.suggestionId)
     case 'deleteOverlay':
       draft.overlays = draft.overlays.filter((overlay) => overlay.id !== action.overlayId)
       return
@@ -968,6 +991,97 @@ function addText(draft: CompositionV1, text: string, playheadMs: number): void {
     text: written,
     style: defaultTextStyle(draft),
   })
+}
+
+/**
+ * Draw one accepted suggestion over the clip, at the time the planner chose for it.
+ *
+ * This is the only moment a proposal becomes part of the document. Everything after it
+ * is ordinary overlay editing: the result carries no mark that distinguishes it from an
+ * overlay a member placed by hand, except the origin that says which suggestion it
+ * answers — which is the audit link an export must keep.
+ */
+function acceptSuggestion(draft: CompositionV1, placement: BrollPlacement): void {
+  if (drawnFor(draft, placement.suggestionId) !== undefined) {
+    return
+  }
+  const offset = draft.sourceRange.inMs
+  const endMs = clamp(Math.round(placement.endMs - offset), MIN_ITEM_MS, draft.durationMs)
+  const startMs = clamp(Math.round(placement.startMs - offset), 0, endMs - MIN_ITEM_MS)
+  if (endMs - startMs < MIN_ITEM_MS) {
+    return
+  }
+  const shared = {
+    id: nextBrollOverlayId(draft),
+    assetId: placement.assetId,
+    timelineStartMs: startMs,
+    timelineEndMs: endMs,
+    placement: 'cover' as const,
+    opacity: 1,
+    blendMode: 'normal' as const,
+    keyframes: [],
+    origin: {
+      type: 'brollSuggestion' as const,
+      suggestionId: placement.suggestionId,
+      provenanceId: null,
+    },
+  }
+  draft.overlays.push(
+    placement.mediaKind === 'image'
+      ? // A still has nothing to play, so it is given the slow move that keeps a static
+        // picture from reading as a frozen frame.
+        { ...shared, type: 'image', motion: 'kenBurnsIn' }
+      : {
+          ...shared,
+          type: 'video',
+          motion: 'none',
+          sourceInMs: 0,
+          sourceOutMs: endMs - startMs,
+          preserveDialogueAudio: true,
+        },
+  )
+}
+
+/** Point one accepted suggestion's overlay at different media, keeping everything else. */
+function replaceSuggestionMedia(
+  draft: CompositionV1,
+  action: { suggestionId: string; assetId: string },
+): void {
+  const overlay = drawnFor(draft, action.suggestionId)
+  if (overlay === undefined) {
+    return
+  }
+  overlay.assetId = action.assetId
+}
+
+/** Take one accepted suggestion off the timeline, leaving every other overlay alone. */
+function removeSuggestion(draft: CompositionV1, suggestionId: string): void {
+  const overlay = drawnFor(draft, suggestionId)
+  if (overlay === undefined) {
+    return
+  }
+  draft.overlays = draft.overlays.filter((candidate) => candidate.id !== overlay.id)
+}
+
+/** The one overlay drawn for a suggestion, if a member has accepted it. */
+function drawnFor(
+  composition: CompositionV1,
+  suggestionId: string,
+): Extract<Overlay, { assetId: string }> | undefined {
+  return composition.overlays.find(
+    (overlay): overlay is Extract<Overlay, { assetId: string }> =>
+      'assetId' in overlay && overlay.origin.suggestionId === suggestionId,
+  )
+}
+
+/** Name a new B-roll overlay so no two overlays share an identifier. */
+function nextBrollOverlayId(composition: CompositionV1): string {
+  const taken = new Set(composition.overlays.map((overlay) => overlay.id))
+  let suffix = 1
+  while (taken.has(`broll-${suffix}`)) {
+    suffix += 1
+  }
+  return `broll-${suffix}`
 }
 
 /** Change what one text overlay says, or how it is drawn. */

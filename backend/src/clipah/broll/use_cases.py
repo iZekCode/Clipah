@@ -41,11 +41,69 @@ def start_broll_plan(
     now: datetime,
 ) -> JobSnapshot:
     """Create one durable BROLL_PLAN Job after proving the clip is reviewable."""
+    return _admit(
+        session,
+        policy=policy,
+        access=access,
+        project_id=project_id,
+        candidate_id=candidate_id,
+        coverage=coverage,
+        kind=JobKind.BROLL_PLAN,
+        idempotency_key=idempotency_key,
+        now=now,
+    )
+
+
+def start_broll_retrieval(
+    session: Session,
+    *,
+    policy: AdmissionPolicy,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    candidate_id: UUID,
+    coverage: BrollCoverage,
+    idempotency_key: str,
+    now: datetime,
+) -> JobSnapshot:
+    """Create one durable BROLL_RETRIEVE Job to give a plan's beats their pictures.
+
+    Planning and retrieval are two Jobs rather than one because they fail differently:
+    a plan that cannot reach its language model is worth retrying on its own, and a
+    search that finds nothing must not throw away beats a member can still read. Both
+    read the clip and coverage they were admitted for from the same request row, so the
+    worker never learns what to illustrate from the broker.
+    """
+    return _admit(
+        session,
+        policy=policy,
+        access=access,
+        project_id=project_id,
+        candidate_id=candidate_id,
+        coverage=coverage,
+        kind=JobKind.BROLL_RETRIEVE,
+        idempotency_key=idempotency_key,
+        now=now,
+    )
+
+
+def _admit(
+    session: Session,
+    *,
+    policy: AdmissionPolicy,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    candidate_id: UUID,
+    coverage: BrollCoverage,
+    kind: JobKind,
+    idempotency_key: str,
+    now: datetime,
+) -> JobSnapshot:
+    """Bind one idempotency key to one Job over one reviewable clip, exactly once."""
     repository = BrollRepository(session)
     repository.lock_idempotency(workspace_id=access.workspace_id, key=idempotency_key)
     existing = repository.job_by_key(workspace_id=access.workspace_id, key=idempotency_key)
     if existing is not None:
-        if existing.kind is not JobKind.BROLL_PLAN or existing.project_id != project_id:
+        if existing.kind is not kind or existing.project_id != project_id:
             raise BrollPlanConflictError(idempotency_key)
         return existing
 
@@ -62,7 +120,7 @@ def start_broll_plan(
         policy=policy,
         access=access,
         project_id=project_id,
-        kind=JobKind.BROLL_PLAN,
+        kind=kind,
         idempotency_key=idempotency_key,
         now=now,
     )

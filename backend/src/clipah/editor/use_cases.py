@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from clipah.broll.models import BrollSuggestionStatus
 from clipah.editor.models import (
     SCHEMA_VERSION,
     AudioMix,
@@ -23,6 +25,7 @@ from clipah.editor.models import (
     CaptionWord,
     CompositionV1,
     FontFamily,
+    ImageOverlay,
     MotionPreset,
     Origin,
     OriginType,
@@ -33,12 +36,19 @@ from clipah.editor.models import (
     TrackItem,
     TrackType,
     Transform,
+    VideoOverlay,
     canonical_json,
     collect_asset_ids,
     composition_hash,
     parse_composition,
 )
-from clipah.editor.repository import CandidateSeed, EditDetail, EditRepository, RevisionSummary
+from clipah.editor.repository import (
+    CandidateSeed,
+    DecidableSuggestion,
+    EditDetail,
+    EditRepository,
+    RevisionSummary,
+)
 from clipah.workspaces.models import WorkspaceAccess
 
 DEFAULT_CANVAS = Canvas(width=1080, height=1920, background="#000000")
@@ -62,6 +72,33 @@ class CompositionAssetError(Exception):
         """Carry the offending asset identity for the audit trail, never for the client."""
         super().__init__("composition names unauthorized assets")
         self.unauthorized = unauthorized
+
+
+class BrollSuggestionNotFoundError(Exception):
+    """The suggestion does not exist, or belongs to a clip this Edit does not cover."""
+
+
+class BrollDecisionError(Exception):
+    """The decision contradicts the composition the caller sent with it."""
+
+
+class BrollDecision(StrEnum):
+    """What a member may decide about one proposed picture."""
+
+    ACCEPT = "accept"
+    REPLACE = "replace"
+    REMOVE = "remove"
+    REJECT = "reject"
+
+
+# Accepting places a picture, so there is no moment in which a suggestion is agreed to
+# but not on the timeline: the composition that carries it is saved in the same call.
+_DECIDED_STATUS: dict[BrollDecision, BrollSuggestionStatus] = {
+    BrollDecision.ACCEPT: BrollSuggestionStatus.PLACED,
+    BrollDecision.REPLACE: BrollSuggestionStatus.REPLACED,
+    BrollDecision.REMOVE: BrollSuggestionStatus.REMOVED,
+    BrollDecision.REJECT: BrollSuggestionStatus.REJECTED,
+}
 
 
 class EditRevisionConflictError(Exception):
@@ -180,6 +217,95 @@ def save_revision(
     ):  # pragma: no cover - the row lock above already decided this
         raise EditRevisionConflictError(locked.current_revision)
     return get_edit(repository, access=access, edit_id=edit_id)
+
+
+def decide_on_suggestion(
+    repository: EditRepository,
+    *,
+    access: WorkspaceAccess,
+    edit_id: UUID,
+    suggestion_id: UUID,
+    action: BrollDecision,
+    replacement_asset_id: UUID | None,
+    expected_revision: int,
+    document: dict[str, Any],
+    now: datetime,
+) -> EditDetail:
+    """Record one B-roll decision and the composition it produced, together or not at all.
+
+    A decision and its Revision are the same event seen twice: the member's answer to a
+    proposal, and the document that answer produced. Writing one without the other would
+    leave a suggestion the timeline contradicts, so both happen in this transaction and
+    the same optimistic concurrency that guards every save guards this one — which is
+    what stops two tabs from placing one picture twice.
+    """
+    locked = repository.lock(workspace_id=access.workspace_id, edit_id=edit_id)
+    if locked is None:
+        raise EditNotFoundError(str(edit_id))
+    suggestion = repository.suggestion_for_edit(
+        workspace_id=access.workspace_id, edit_id=edit_id, suggestion_id=suggestion_id
+    )
+    if suggestion is None:
+        raise BrollSuggestionNotFoundError(str(suggestion_id))
+    composition = parse_composition(document)
+    _reject_inconsistent_decision(
+        composition,
+        suggestion=suggestion,
+        action=action,
+        replacement_asset_id=replacement_asset_id,
+    )
+    detail = save_revision(
+        repository,
+        access=access,
+        edit_id=edit_id,
+        expected_revision=expected_revision,
+        document=document,
+        now=now,
+    )
+    repository.record_decision(
+        workspace_id=access.workspace_id,
+        suggestion_id=suggestion_id,
+        status=_DECIDED_STATUS[action],
+        # Only a replacement changes which picture a suggestion holds. Every other
+        # decision is about the picture already chosen, so it leaves that column alone.
+        asset_id=replacement_asset_id if action is BrollDecision.REPLACE else None,
+        edit_id=None if action is BrollDecision.REJECT else edit_id,
+        now=now,
+    )
+    return detail
+
+
+def _reject_inconsistent_decision(
+    composition: CompositionV1,
+    *,
+    suggestion: DecidableSuggestion,
+    action: BrollDecision,
+    replacement_asset_id: UUID | None,
+) -> None:
+    """Prove the decision and the composition describe the same clip.
+
+    The document is the evidence. A member who says they accepted a suggestion must have
+    sent a composition that draws it, and a member who says they removed one must have
+    sent a composition that does not — otherwise the stored decision would describe a
+    clip nobody would ever see.
+    """
+    drawn = tuple(
+        overlay
+        for overlay in composition.overlays
+        if isinstance(overlay, VideoOverlay | ImageOverlay)
+        and overlay.origin.suggestion_id == suggestion.suggestion_id
+    )
+    if action in {BrollDecision.REMOVE, BrollDecision.REJECT}:
+        if drawn:
+            raise BrollDecisionError("the composition still draws this suggestion")
+        return
+    if len(drawn) != 1:
+        raise BrollDecisionError("an accepted suggestion is drawn exactly once")
+    expected = suggestion.asset_id if action is BrollDecision.ACCEPT else replacement_asset_id
+    if expected is None:
+        raise BrollDecisionError("this decision names no media")
+    if drawn[0].asset_id != expected:
+        raise BrollDecisionError("the overlay draws media this decision did not choose")
 
 
 def initial_composition(seed: CandidateSeed) -> CompositionV1:

@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 28 and 29 are ready to commit. **Task 30 follows.**
+**Current position:** Task 30 is ready to commit. **Task 31 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -69,7 +69,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 27 | Add feature-flagged authenticated YouTube connections | `[x]` (`a5955aa`) |
 | 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (ready to commit) |
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (ready to commit) |
-| 30 | Integrate editable B-roll suggestions into the clip editor | `[ ]` |
+| 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (ready to commit) |
 | 31 | Add quota-aware generated-media fallback | `[ ]` |
 | 32 | Add context-safe clip variants and platform packaging | `[ ]` |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[ ]` |
@@ -1578,6 +1578,97 @@ smoke test was written and left opt-in, and was not opted into. No commit was cr
 required owner commit message is `feat: retrieve provenance-aware stock broll`.
 
 
+### Task 30 — Editable B-roll in the clip editor
+
+A proposal is not an edit. Everything here follows from that: the planner's suggestions
+reach the preview, the timeline, and the export at exactly one moment, which is the
+moment a member says yes, and never before it.
+
+**Two gaps had to be closed before the editor could be built, and both are recorded
+here rather than buried.** Task 29 shipped a `BROLL_RETRIEVE` runner that nothing could
+start: no route admitted the Job, so every suggestion sat with an empty `asset_id` and
+nothing was acceptable. `POST /projects/{id}/candidates/{cid}/broll-retrievals` now
+admits it through the existing path, so the `stock_requests` quota is reserved in the
+API where every other metered Job reserves it rather than inside a worker. Planning and
+retrieval stay two Jobs because they fail differently — a plan that cannot reach its
+model is worth retrying on its own, and a search that finds nothing must not throw away
+beats a member can still read — and the panel chains them, so a member still presses one
+button. And `PLACEABLE_KINDS` gained `AssetKind.BROLL`, because replacing an accepted
+picture means naming another asset the Project already holds, and until now the assets
+the save-time check would accept and the assets the editor offered had drifted apart.
+
+**One decision, one Revision, one transaction.** `POST /edits/{edit_id}/broll-decisions`
+takes the decision and the composition it produced together, because they are the same
+event seen twice: the member's answer, and the document that answer made. The decision
+is refused unless the document agrees with it — an accept whose composition draws no
+overlay for that suggestion, an accept whose overlay names media the suggestion does not
+hold, and a remove whose composition still draws the picture are all
+`BROLL_DECISION_INVALID`. Without that check the database would end up describing a clip
+nobody would ever see. The same optimistic concurrency that guards every save guards
+this one, which is what stops two tabs from placing one picture twice: the loser gets
+`EDIT_REVISION_CONFLICT` with the Revision to reconcile against, and its suggestion is
+left exactly as it was.
+
+**Three decisions are worth recording.**
+
+- **Replacement swaps to another asset the Project owns, and never re-searches.** Task 29
+  downloads only the candidate it selected, because systematically fetching search
+  results breaches both providers' terms — so there is no stored alternative to offer.
+  Re-running retrieval per click would spend a provider budget nobody agreed to. The
+  repository owner chose the swap; the earlier decision stays legible in the Revision
+  chain, which is where an Edit's history has always lived.
+- **Rejecting writes no Revision.** Saying no is an answer about a proposal rather than
+  an edit to the clip, so it records `rejected` and leaves the document byte-identical.
+  A suggestion that found no picture can still be rejected: refusing to let a member
+  dismiss a beat because retrieval failed would punish them for the world's problem.
+- **A 404 from the suggestions read renders as "no suggestions yet", not as an error.**
+  Absence is the backend's one answer for a clip nobody has planned and for a clip the
+  caller has no standing on, and only the first is possible on a clip they already have
+  open. This is the judgement Task 20 recorded for candidates, applied again.
+
+**In the browser, an accepted suggestion stops being a suggestion.** `acceptSuggestion`
+converts the planner's source-relative beat into timeline time — the backend plans in
+the source's own frame, the composition starts at `sourceRange.inMs`, and a member
+should never have to know the difference — and writes one overlay with
+`preserveDialogueAudio` true. After that it is an ordinary overlay: it trims, moves, and
+deletes through the operations Task 25 already built, it appears on the timeline's
+overlay lane, and undo restores the exact prior document because the decision is one
+Immer patch like every other change. Accepting twice writes nothing the second time.
+A still is given `kenBurnsIn`, because a frozen frame reads as a stall.
+
+**Provenance is shown where a member decides and where they check.** Each card names
+what the shot should show, why the beat wants a picture, how sure the planner was, and,
+behind one control, the provider, author, licence, and attribution. Media a model drew
+carries an AI-generated badge. The clip page answers the different question — *what am I
+publishing?* — by listing only the pictures actually in the clip, since a proposal
+somebody refused licenses nothing. Every word on those cards was written by a language
+model reading someone else's transcript, so all of it renders as React children: a
+subject containing an `img` tag appears as that text and produces no element.
+
+Two golden frames were added and looked at before they were signed off:
+`broll-stock-video`, an accepted stock clip drawn over the speaker with the dialogue
+kept, and `broll-stock-still`, an accepted still with the pan and zoom. The third case
+the task names — an edit with no B-roll — is the existing `plain` scenario. The origin
+is a record and never a rendering instruction, which is why the still renders
+identically to any other moving still.
+
+Every rule was re-checked by breaking the implementation on purpose. Removing the
+decision-consistency check failed four backend tests; widening the suggestion lookup past
+the Edit's own clip failed one; turning off dialogue preservation failed two frontend
+tests; dropping the idempotent accept failed one; and enabling the coverage control
+before a member had asked failed one.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1429 backend tests
+passed with ten environment-gated skips at 95.82% coverage, with 100% line and branch
+coverage on every module this task touched. The golden-frame gate passed seven scenarios
+including both new ones, skipping the three that need libass and libfreetype. Alembic
+reports no drift and this task needed no migration: the API has held `UPDATE` on
+`broll_suggestions` since `0012`. `pnpm lint`, `pnpm typecheck`, `pnpm test` (283
+passed), and `pnpm build` all passed, and `scripts/check-contracts-clean.sh` exits zero
+after `contracts/openapi.json` was re-exported and the client regenerated. No commit was
+created; the required owner commit message is `feat: add editable broll copilot`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1585,15 +1676,16 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
+| Retrieving stock images, so a member can accept a still. The editor accepts one as an image overlay with pan and zoom, and the golden frame proves it renders; both adapters still query the video endpoints only | Task 31 |
+| Offering genuinely new alternatives for a replacement. Replacement swaps to another asset the Project owns, because only the selected candidate is ever downloaded | whichever task can pay for a second search inside the providers' terms |
 | Measuring a live stock provider. Every test uses fixtures or fakes, so the recorded behaviour proves the adapters rather than either provider's catalogue; `tests/slow/test_stock_provider_smoke.py` is written and opt-in | the repository owner, with Pexels and Pixabay credentials |
 | A real vision model behind `FrameRelevanceProvider`. The port, the recording of model and version, and the fake are all in place; no provider is wired, so sampled-frame relevance is reported as unmeasured in production | whichever task adopts a vision provider |
 | Richer user-asset search. A Workspace's own footage is matched on the query its provenance recorded, which covers reuse; genuinely user-uploaded B-roll carries no description to match on yet | Task 34, with the searchable content library |
-| Retrieving stock images as well as video. `MediaKind.IMAGE` exists and both adapters query the video endpoints only, because a still needs the pan/zoom treatment Task 31 owns | Tasks 30 and 31 |
 | Charging the monthly stock-request budget per provider request. `BROLL_RETRIEVE` reserves the `stock_requests` quota once per Job through the existing admission path; metering each provider call separately needs the per-request accounting Task 44 introduces | Task 44 |
 | Charging a metered Workspace budget for B-roll planning; a plan spends a concurrency slot and no quota, because the plan's limit table names no planning budget. This is the same gap the render deferral records | Tasks 44-46, with operational cost accounting |
 | Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
-| Retrieving media for a suggestion. Planning leaves `source_type`, `asset_id`, and `relevance_score` empty, because no source has been chosen at plan time | Task 29 |
-| Accepting, rejecting, replacing, and generating a suggestion, and the browser surface for all four. Task 28 owns the plan and list endpoints only | Tasks 30 and 31 |
+| Generating a suggestion when retrieval finds nothing, and the browser surface for it. Task 30 landed accepting, rejecting, replacing, and removing | Task 31 |
 | Measuring a live planning provider. Every test uses the fake provider, so the recorded behaviour proves the pipeline rather than any model's judgement about what deserves a picture | the repository owner, with real Groq credentials |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
