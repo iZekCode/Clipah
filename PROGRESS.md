@@ -1712,6 +1712,54 @@ both streaming routes' dependency graphs, so a future stream cannot reintroduce 
 were watched failing first, and both fail again when the fix is reverted.
 
 
+### Defect fixed after Task 30 — a Project could not be created in a browser
+
+The second finding from the first browser run. `POST /api/v1/projects` requires an
+`Idempotency-Key`, and the create form sent none, so the request was refused with a
+`VALIDATION_ERROR` every time: **creating a Project through the UI had never worked.**
+Only the API path was ever exercised, because the browser tests had not been run and the
+component tests stub `fetch` and never assert the header.
+
+The form now mints one key per submission and holds it until the submission succeeds, so
+a retry of a failed attempt converges on the Project the first attempt created while a
+later submission is new work. Two tests hold it: one asserts the header is sent at all,
+one that two separate submissions carry two different keys.
+
+The other routes that require the header — analysis, renders, B-roll, and YouTube
+imports — were checked. Every caller that exists sends one; nothing in the browser calls
+the render route yet.
+
+## Browser suite: first run, and what it found
+
+`pnpm test:e2e` had never been run since the specs were written in Task 18. Running it
+needed two things that did not exist: `uvicorn` is in no lockfile, because every test
+until now drove the application in process, so the API was served with
+`uv run --with uvicorn` against a scratch entrypoint rather than by changing the
+lockfile; and `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation
+races the five-second assertion timeout, so the suite was run against a production build.
+
+The first run was 9 passed and 12 failed. The final state is **21 passed, 0 failed, and
+12 skipped on both Chromium and WebKit** — the skips being the seven `test.fixme`
+scenarios and the engine-parity gates that need a reference machine.
+
+What the twelve failures actually were, since the mix is the useful part:
+
+- **Six were symptoms of the connection-pool defect above.** They went green when the
+  stream fix landed, without being touched.
+- **One was a product defect**: the create form's missing idempotency key.
+- **Four were test bugs.** Three specs matched Next's own injected
+  `<div role="alert" id="__next-route-announcer__">` with a bare `getByRole('alert')`,
+  which Playwright refuses in strict mode; `e2e/support/locators.ts` now excludes it by
+  id, because scoping to `main` is wrong for a page that is nothing but an error and
+  renders no landmark. And `broll-review.spec.ts` used the bare `request` fixture, which
+  carries no cookies, so its setup failed CSRF before reaching a route — a pattern copied
+  from `clips-review.spec.ts`, now `page.request` in both.
+- **One was environmental**: the object store was not configured for the run, so uploads
+  answered `503`. The browser suite needs `CLIPAH_OBJECT_STORE_*` and a provisioned
+  bucket, which is recorded below rather than fixed, because Task 46 owns process
+  configuration.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1719,8 +1767,7 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
-| Three browser scenarios still failing after the stream fix — a Project created through the UI not appearing, an unknown Edit's refusal, and the upload panel's first working state. They are Tasks 18, 19, and 23's own surfaces and have not yet been triaged into test bugs or product defects | the repository owner, before Phase C is signed off |
-| Serving the API as a process. `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
+| Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket). `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
 | Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
 | Retrieving stock images, so a member can accept a still. The editor accepts one as an image overlay with pan and zoom, and the golden frame proves it renders; both adapters still query the video endpoints only | Task 31 |
@@ -1759,6 +1806,7 @@ oversight.
 | Enabling authenticated YouTube import in production. The feature is built and tested, and `docs/security/youtube-import.md` records four open items — legal approval, data retention, incident response, and whether production wraps data keys with a managed key — each of which blocks enablement | the repository owner |
 | A managed key-management store for wrapping data keys. `LocalSecretStore` wraps with key material this deployment holds; `CLIPAH_SECRET_MANAGER_KEY_NAME` is configured for but not yet implemented against | Task 36, which needs the same envelope for OAuth grants |
 | Sweeping expired source connections. A connection past its window is reported as expired and refuses every lease, but the row and its material are removed only when a member revokes it | Task 45, with retention |
+| A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
 | The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |

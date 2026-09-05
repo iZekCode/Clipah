@@ -1,5 +1,6 @@
 import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
 
+import { alertOf } from './support/locators'
 import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
 
 /**
@@ -137,7 +138,7 @@ test("another Workspace's Project URL answers like a Project that never existed"
 
   await open(page, outsider, `/dashboard/projects/${projectId}`)
 
-  const alert = page.getByRole('main').getByRole('alert')
+  const alert = alertOf(page)
   await expect(alert).toContainText(/not found/i)
   await expect(alert).not.toContainText(/permission|member|workspace/i)
 })

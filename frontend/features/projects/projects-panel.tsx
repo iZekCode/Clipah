@@ -2,7 +2,7 @@
 
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
-import { useId, useState, type FormEvent } from 'react'
+import { useId, useRef, useState, type FormEvent } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { mayWriteProjects } from '@/features/workspaces/roles'
@@ -262,13 +262,22 @@ function CreateProject() {
   const [name, setName] = useState('')
   const fieldId = useId()
 
+  // One key per submission: a retry of the same submission converges on the Project the
+  // first attempt created, while a later submission is new work and gets a new key. The
+  // route requires the header, so a request without one is refused outright.
+  const submission = useRef<string | null>(null)
+
   const create = useMutation<ProjectResponse, ApiError, string>({
-    mutationFn: (projectName) =>
-      createApiV1ProjectsPost(
+    mutationFn: (projectName) => {
+      submission.current ??= crypto.randomUUID()
+      return createApiV1ProjectsPost(
         { name: projectName, sourceKind: 'upload' },
         { workspace_id: active.id },
-      ),
+        { headers: { 'Idempotency-Key': `projects:create:${submission.current}` } },
+      )
+    },
     onSuccess: () => {
+      submission.current = null
       setOpen(false)
       setName('')
       void queryClient.invalidateQueries({ queryKey: projectsQueryKey(active.id) })

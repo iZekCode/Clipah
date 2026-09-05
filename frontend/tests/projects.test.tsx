@@ -352,3 +352,62 @@ describe('one project', () => {
     expect(alert).not.toHaveTextContent(/permission|member|workspace/i)
   })
 })
+
+describe('starting a project', () => {
+  test('the create request carries an idempotency key', async () => {
+    // The backend requires one on this route, so a browser that omits it cannot create a
+    // Project at all — a refusal no stubbed test would ever see.
+    const user = userEvent.setup()
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECTS]: { body: { projects: [], nextCursor: null } },
+      'POST /api/v1/projects': { status: 201, body: project({ name: 'Episode 12' }) },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <ProjectsPanel />
+      </WorkspaceProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: /create project/i }))
+    await user.type(screen.getByRole('textbox', { name: /new project name/i }), 'Episode 12')
+    await user.click(screen.getByRole('button', { name: /start project/i }))
+
+    await waitFor(() => {
+      expect(api.calls.some((call) => call.method === 'POST')).toBe(true)
+    })
+    const created = api.calls.find((call) => call.method === 'POST')
+    expect(created?.headers.get('Idempotency-Key')).toMatch(/.+/)
+  })
+
+  test('two separate submissions are two different pieces of work', async () => {
+    const user = userEvent.setup()
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECTS]: { body: { projects: [], nextCursor: null } },
+      'POST /api/v1/projects': { status: 201, body: project() },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <ProjectsPanel />
+      </WorkspaceProvider>,
+    )
+    for (const name of ['Episode 12', 'Episode 13']) {
+      await user.click(await screen.findByRole('button', { name: /create project/i }))
+      await user.type(screen.getByRole('textbox', { name: /new project name/i }), name)
+      await user.click(screen.getByRole('button', { name: /start project/i }))
+      await waitFor(() => {
+        expect(api.calls.filter((call) => call.method === 'POST').length).toBeGreaterThan(0)
+      })
+    }
+
+    const keys = api.calls
+      .filter((call) => call.method === 'POST')
+      .map((call) => call.headers.get('Idempotency-Key'))
+    expect(keys).toHaveLength(2)
+    expect(new Set(keys).size).toBe(2)
+  })
+})
