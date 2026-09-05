@@ -5,6 +5,8 @@ from __future__ import annotations
 import socket
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
+from datetime import UTC, datetime
+from uuid import UUID
 
 from sqlalchemy.orm import Session
 
@@ -25,6 +27,12 @@ from clipah.jobs.models import (
 )
 from clipah.jobs.workspace import job_workspace
 from clipah.models import Asset, AssetKind, AssetSourceType, SourceImport, SourceImportStatus
+from clipah.source_connectors.authenticated_youtube import AuthenticatedYtDlpSourceImporter
+from clipah.source_connectors.connections import (
+    SourceConnectionService,
+    SourceConnectionUnusableError,
+)
+from clipah.source_connectors.secrets import SecretLease, SecretStore, local_secret_store
 from clipah.source_connectors.yt_dlp_adapter import (
     HttpxSourcePreflight,
     SubprocessCommandRunner,
@@ -34,6 +42,8 @@ from clipah.source_imports.repository import SourceImportRepository
 
 ImporterFactory = Callable[[Settings], SourceImporter]
 SourceValidator = Callable[[str], NormalizedYouTubeUrl]
+SecretStoreFactory = Callable[[Settings], SecretStore]
+SOURCE_CONNECTION_UNAVAILABLE = "SOURCE_CONNECTION_UNAVAILABLE"
 
 
 class SourceImportIntegrityError(Exception):
@@ -48,10 +58,12 @@ class SourceImportStageRunner:
         *,
         importer_factory: ImporterFactory,
         validator: SourceValidator = validate_youtube_url,
+        secret_store_factory: SecretStoreFactory | None = None,
     ) -> None:
-        """Bind provider creation and DNS validation to this stage runner."""
+        """Bind provider creation, DNS validation, and secret unwrapping to this runner."""
         self._importer_factory = importer_factory
         self._validator = validator
+        self._secret_store_factory = secret_store_factory or _production_secret_store
 
     def __call__(self, context: JobContext) -> None:
         """Run one isolated attempt and expose only stable coded failures."""
@@ -60,8 +72,9 @@ class SourceImportStageRunner:
             source_import = self._mark_downloading(context)
             source = self._validator(source_import.normalized_source_url)
             object_key = _object_key(context, source_import)
+            importer = self._importer(context, source_import)
             with job_workspace(context.job_id) as workspace:
-                stored = self._importer_factory(context.settings).import_source(
+                stored = importer.import_source(
                     source,
                     workspace=workspace,
                     object_key=object_key,
@@ -77,6 +90,43 @@ class SourceImportStageRunner:
             if error.retryable:
                 raise RetryableJobError(error.code) from None
             raise TerminalJobError(error.code) from None
+
+    def _importer(self, context: JobContext, source_import: SourceImport) -> SourceImporter:
+        """Build the importer this attempt may use, leasing a credential only if one is named.
+
+        A retry reads the connection off the same durable row, so an attempt can never
+        substitute another member's credential for the one the import was admitted with.
+        """
+        importer = self._importer_factory(context.settings)
+        if source_import.source_connection_id is None:
+            return importer
+        lease = self._lease(context, source_import.source_connection_id)
+        return AuthenticatedYtDlpSourceImporter(
+            importer,  # type: ignore[arg-type]
+            lease=lease,
+            now=lambda: datetime.now(tz=UTC),
+        )
+
+    def _lease(self, context: JobContext, connection_id: UUID) -> SecretLease:
+        """Borrow the credential for this Job, or end the attempt with a stable code."""
+        try:
+            store = self._secret_store_factory(context.settings)
+        except ValueError:
+            raise TerminalJobError(SOURCE_CONNECTION_UNAVAILABLE) from None
+        with _transaction(context) as session:
+            service = SourceConnectionService(session, store=store)
+            try:
+                return service.lease(
+                    workspace_id=context.workspace_id,
+                    connection_id=connection_id,
+                    job_id=context.job_id,
+                    now=datetime.now(tz=UTC),
+                )
+            except SourceConnectionUnusableError as error:
+                # A connection an import names cannot simply disappear: the composite
+                # foreign key on `source_imports` refuses to let one be deleted while a
+                # row still references it, so the only refusals here are the coded ones.
+                raise TerminalJobError(error.code) from None
 
     def _mark_downloading(self, context: JobContext) -> SourceImport:
         """Reload the exact import and announce the start of this attempt."""
@@ -146,6 +196,7 @@ def _detached_source(source: SourceImport) -> SourceImport:
         normalized_source_url=source.normalized_source_url,
         source_video_id=source.source_video_id,
         authorization_attested_at=source.authorization_attested_at,
+        source_connection_id=source.source_connection_id,
         status=source.status,
         job_id=source.job_id,
         created_at=source.created_at,
@@ -216,6 +267,13 @@ def production_source_importer(settings: Settings) -> SourceImporter:
         preflight=HttpxSourcePreflight(resolver=_resolve),
         resolver=_resolve,
     )
+
+
+def _production_secret_store(settings: Settings) -> SecretStore:
+    """Build the store this deployment unwraps leased credentials with."""
+    if settings.secret_encryption_key is None:
+        raise ValueError("no secret encryption key is configured")
+    return local_secret_store(settings.secret_encryption_key.get_secret_value())
 
 
 source_import_stage_runner = SourceImportStageRunner(importer_factory=production_source_importer)

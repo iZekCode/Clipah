@@ -25,6 +25,7 @@ from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import renders as render_routes
+from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.api.routes import youtube_imports as youtube_import_routes
@@ -157,6 +158,7 @@ def create_app(
     app.include_router(candidate_routes.router)
     app.include_router(playback_routes.router)
     app.include_router(asset_routes.router)
+    app.include_router(source_connection_routes.router)
     app.include_router(dashboard_routes.router)
     app.include_router(edit_routes.router)
     app.include_router(render_routes.router)

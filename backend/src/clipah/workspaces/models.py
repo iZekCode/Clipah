@@ -46,6 +46,8 @@ class WorkspaceAction(StrEnum):
     REVIEW_DECIDE = "review:decide"
     PUBLISH = "publish"
     SOCIAL_CONNECTION_MANAGE = "social_connection:manage"
+    SOURCE_CONNECTION_READ = "source_connection:read"
+    SOURCE_CONNECTION_MANAGE = "source_connection:manage"
 
 
 @dataclass(frozen=True, slots=True)

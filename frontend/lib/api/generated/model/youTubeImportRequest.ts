@@ -4,11 +4,13 @@
  * Clipah API
  * OpenAPI spec version: 0.1.0
  */
+import type { YouTubeImportRequestSourceConnectionId } from './youTubeImportRequestSourceConnectionId';
 
 /**
- * The only caller-selected field of a public source-import intent.
+ * What a caller chooses about one source import, and nothing else.
  */
 export interface YouTubeImportRequest {
+  sourceConnectionId?: YouTubeImportRequestSourceConnectionId;
   /**
    * @minLength 1
    * @maxLength 2048

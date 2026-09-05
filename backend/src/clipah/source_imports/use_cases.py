@@ -44,6 +44,7 @@ def create_source_import(
     idempotency_key: str,
     source_import_id: UUID,
     now: datetime,
+    source_connection_id: UUID | None = None,
 ) -> SourceImportSnapshot:
     """Create one Job and SourceImport atomically, or replay their exact payload."""
     repository = SourceImportRepository(session)
@@ -60,6 +61,7 @@ def create_source_import(
             or existing.project_id != project_id
             or existing.normalized_source_url != source.canonical_url
             or existing.source_video_id != source.video_id
+            or existing.source_connection_id != source_connection_id
         ):
             raise SourceImportConflictError(idempotency_key)
         return _snapshot(existing, existing_job.status)
@@ -81,6 +83,7 @@ def create_source_import(
         source_video_id=source.video_id,
         status=SourceImportStatus.QUEUED,
         job_id=job.job_id,
+        source_connection_id=source_connection_id,
     )
     repository.add(source_import)
     return _snapshot(source_import, job.status)

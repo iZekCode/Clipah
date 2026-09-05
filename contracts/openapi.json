@@ -338,6 +338,21 @@
         "title": "Canvas",
         "type": "object"
       },
+      "CapabilitiesResponse": {
+        "additionalProperties": false,
+        "description": "The features this deployment has switched on, as the browser needs to know them.\n\nA capability is not an authority: it says the server would accept the request at all,\nand every route still proves membership, role, and freshness for itself.",
+        "properties": {
+          "authenticatedYoutubeImport": {
+            "title": "Authenticatedyoutubeimport",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "authenticatedYoutubeImport"
+        ],
+        "title": "CapabilitiesResponse",
+        "type": "object"
+      },
       "CaptionMode": {
         "description": "How caption words are drawn, if they are drawn at all.",
         "enum": [
@@ -818,7 +833,7 @@
       },
       "CurrentUserResponse": {
         "additionalProperties": false,
-        "description": "The signed-in User, and how recently they proved who they are.",
+        "description": "The signed-in User, how recently they proved who they are, and what is switched on.",
         "properties": {
           "avatarUrl": {
             "anyOf": [
@@ -830,6 +845,9 @@
               }
             ],
             "title": "Avatarurl"
+          },
+          "capabilities": {
+            "$ref": "#/components/schemas/CapabilitiesResponse"
           },
           "displayName": {
             "anyOf": [
@@ -867,7 +885,8 @@
           "displayName",
           "avatarUrl",
           "sessionId",
-          "recentAuthentication"
+          "recentAuthentication",
+          "capabilities"
         ],
         "title": "CurrentUserResponse",
         "type": "object"
@@ -2047,6 +2066,119 @@
         "title": "SaveRevisionRequest",
         "type": "object"
       },
+      "SourceConnectionRequest": {
+        "additionalProperties": false,
+        "description": "One cookie jar and the two confirmations it may only be stored with.",
+        "properties": {
+          "consentAcknowledged": {
+            "title": "Consentacknowledged",
+            "type": "boolean"
+          },
+          "cookiesBase64": {
+            "minLength": 1,
+            "title": "Cookiesbase64",
+            "type": "string"
+          },
+          "ownershipAttested": {
+            "title": "Ownershipattested",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "cookiesBase64",
+          "consentAcknowledged",
+          "ownershipAttested"
+        ],
+        "title": "SourceConnectionRequest",
+        "type": "object"
+      },
+      "SourceConnectionResponse": {
+        "additionalProperties": false,
+        "description": "One connection, described without describing the credential it holds.",
+        "properties": {
+          "authorizedByUserId": {
+            "format": "uuid",
+            "title": "Authorizedbyuserid",
+            "type": "string"
+          },
+          "consentedAt": {
+            "title": "Consentedat",
+            "type": "string"
+          },
+          "domainScope": {
+            "title": "Domainscope",
+            "type": "string"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "label": {
+            "title": "Label",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "revokedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revokedat"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "kind",
+          "status",
+          "label",
+          "domainScope",
+          "authorizedByUserId",
+          "consentedAt",
+          "expiresAt",
+          "revokedAt"
+        ],
+        "title": "SourceConnectionResponse",
+        "type": "object"
+      },
+      "SourceConnectionsResponse": {
+        "additionalProperties": false,
+        "description": "Every source connection one Workspace holds.",
+        "properties": {
+          "connections": {
+            "items": {
+              "$ref": "#/components/schemas/SourceConnectionResponse"
+            },
+            "title": "Connections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "connections"
+        ],
+        "title": "SourceConnectionsResponse",
+        "type": "object"
+      },
       "SourceKind": {
         "enum": [
           "upload",
@@ -2704,8 +2836,20 @@
       },
       "YouTubeImportRequest": {
         "additionalProperties": false,
-        "description": "The only caller-selected field of a public source-import intent.",
+        "description": "What a caller chooses about one source import, and nothing else.",
         "properties": {
+          "sourceConnectionId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sourceconnectionid"
+          },
           "url": {
             "maxLength": 2048,
             "minLength": 1,
@@ -4659,6 +4803,149 @@
         "summary": "Download",
         "tags": [
           "renders"
+        ]
+      }
+    },
+    "/api/v1/source-connections": {
+      "get": {
+        "description": "List the connections this Workspace has, or answer as though none could exist.",
+        "operationId": "index_api_v1_source_connections_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceConnectionsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index",
+        "tags": [
+          "source-connections"
+        ]
+      },
+      "post": {
+        "description": "Accept one cookie jar, keep only what YouTube authentication needs, and encrypt it.",
+        "operationId": "create_api_v1_source_connections_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SourceConnectionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SourceConnectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "source-connections"
+        ]
+      }
+    },
+    "/api/v1/source-connections/{connection_id}": {
+      "delete": {
+        "description": "Revoke one connection and destroy the credential it was holding.",
+        "operationId": "revoke_api_v1_source_connections__connection_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "connection_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Connection Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke",
+        "tags": [
+          "source-connections"
         ]
       }
     },

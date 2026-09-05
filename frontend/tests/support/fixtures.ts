@@ -16,6 +16,7 @@ export function currentUser(overrides: Partial<CurrentUserResponse> = {}): Curre
     avatarUrl: null,
     sessionId: '22222222-2222-4222-8222-222222222222',
     recentAuthentication: true,
+    capabilities: { authenticatedYoutubeImport: false },
     ...overrides,
   }
 }

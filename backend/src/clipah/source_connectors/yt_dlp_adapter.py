@@ -190,19 +190,25 @@ class YtDlpSourceImporter:
         workspace: Path,
         object_key: str,
         cancellation_check: Callable[[], None],
+        cookie_file: Path | None = None,
     ) -> StoredObject:
-        """Preflight, download, constrain, hash, and store one public source."""
+        """Preflight, download, constrain, hash, and store one source.
+
+        A cookie file is passed only when an authenticated connection was leased for this
+        import. It reaches the provider as one argument-array value and never as a shell
+        word or an environment variable, and its path never appears in a diagnostic.
+        """
         cancellation_check()
         redirects = self._preflight.redirect_chain(source)
         validate_redirect_chain(source, redirects, resolver=self._resolver)
         revalidate_youtube_url(source, resolver=self._resolver)
 
         cancellation_check()
-        metadata = self._metadata(source, workspace=workspace)
+        metadata = self._metadata(source, workspace=workspace, cookie_file=cookie_file)
         revalidate_youtube_url(source, resolver=self._resolver)
 
         cancellation_check()
-        downloaded = self._download(source, workspace=workspace)
+        downloaded = self._download(source, workspace=workspace, cookie_file=cookie_file)
         if downloaded.stat().st_size <= 0 or downloaded.stat().st_size > MAX_SOURCE_SIZE_BYTES:
             raise SourceUnsupportedError
 
@@ -220,7 +226,13 @@ class YtDlpSourceImporter:
             duration_ms=metadata.duration_seconds * 1000,
         )
 
-    def _metadata(self, source: NormalizedYouTubeUrl, *, workspace: Path) -> SourceMetadata:
+    def _metadata(
+        self,
+        source: NormalizedYouTubeUrl,
+        *,
+        workspace: Path,
+        cookie_file: Path | None = None,
+    ) -> SourceMetadata:
         """Run one download-free extraction and normalize its strict public-media subset."""
         result = self._run(
             (
@@ -230,6 +242,7 @@ class YtDlpSourceImporter:
                 "--skip-download",
                 "--dump-single-json",
                 "--no-warnings",
+                *_cookie_arguments(cookie_file),
                 source.canonical_url,
             ),
             workspace=workspace,
@@ -242,7 +255,13 @@ class YtDlpSourceImporter:
             raise SourceUnsupportedError
         return _normalize_metadata(payload, source=source)
 
-    def _download(self, source: NormalizedYouTubeUrl, *, workspace: Path) -> Path:
+    def _download(
+        self,
+        source: NormalizedYouTubeUrl,
+        *,
+        workspace: Path,
+        cookie_file: Path | None = None,
+    ) -> Path:
         """Download into one fixed template and accept only a direct regular child path."""
         output_template = workspace / "source.%(ext)s"
         result = self._run(
@@ -257,6 +276,7 @@ class YtDlpSourceImporter:
                 "after_move:filepath",
                 "--output",
                 str(output_template),
+                *_cookie_arguments(cookie_file),
                 source.canonical_url,
             ),
             workspace=workspace,
@@ -294,6 +314,17 @@ class YtDlpSourceImporter:
         if result.returncode != 0:
             raise _command_error(result.stderr)
         return result
+
+
+def _cookie_arguments(cookie_file: Path | None) -> tuple[str, ...]:
+    """Name the leased jar as one argument value, or say nothing about cookies at all.
+
+    `--cookies-from-browser` is never used: on a hosted worker the browser profile belongs
+    to the machine rather than to the member, so it would read somebody else's session.
+    """
+    if cookie_file is None:
+        return ()
+    return ("--cookies", str(cookie_file))
 
 
 class _HashingReader:

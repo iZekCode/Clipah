@@ -113,6 +113,26 @@ class AssetSourceType(StrEnum):
     GENERATED = "generated"
 
 
+class SourceConnectionProvider(StrEnum):
+    """The source a connection authenticates against."""
+
+    YOUTUBE = "youtube"
+
+
+class SourceConnectionKind(StrEnum):
+    """How a connection proves the member's own access to that source."""
+
+    COOKIE = "cookie"
+
+
+class SourceConnectionStatus(StrEnum):
+    """Whether a connection may still be leased for work."""
+
+    ACTIVE = "active"
+    REVOKED = "revoked"
+    EXPIRED = "expired"
+
+
 class SourceImportStatus(StrEnum):
     QUEUED = "queued"
     DOWNLOADING = "downloading"
@@ -520,6 +540,12 @@ class SourceImport(Base):
             name="fk_source_imports_workspace_id_job_id_jobs",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["workspace_id", "source_connection_id"],
+            ["source_connections.workspace_id", "source_connections.id"],
+            name="fk_source_imports_workspace_connection",
+            ondelete="RESTRICT",
+        ),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -533,12 +559,95 @@ class SourceImport(Base):
     normalized_source_url: Mapped[str] = mapped_column(Text, nullable=False)
     source_video_id: Mapped[str] = mapped_column(Text, nullable=False)
     authorization_attested_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    source_connection_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     status: Mapped[SourceImportStatus] = mapped_column(
         enum_type(SourceImportStatus, "source_import_status"),
         nullable=False,
         server_default=text("'queued'"),
     )
     job_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class SourceConnection(Base):
+    """One member's own credential for a source, described without describing the secret."""
+
+    __tablename__ = "source_connections"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_source_connections_workspace_id_id"),
+        CheckConstraint("expires_at > consented_at", name="connection_outlives_consent"),
+        Index("ix_source_connections_workspace_status", "workspace_id", "status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    provider: Mapped[SourceConnectionProvider] = mapped_column(
+        enum_type(SourceConnectionProvider, "source_connection_provider"), nullable=False
+    )
+    kind: Mapped[SourceConnectionKind] = mapped_column(
+        enum_type(SourceConnectionKind, "source_connection_kind"), nullable=False
+    )
+    status: Mapped[SourceConnectionStatus] = mapped_column(
+        enum_type(SourceConnectionStatus, "source_connection_status"),
+        nullable=False,
+        server_default=text("'active'"),
+    )
+    label: Mapped[str] = mapped_column(Text, nullable=False)
+    domain_scope: Mapped[str] = mapped_column(Text, nullable=False)
+    secret_reference: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    authorized_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    consented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class SourceConnectionSecret(Base):
+    """The encrypted credential itself, kept apart from everything that names it."""
+
+    __tablename__ = "source_connection_secrets"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_source_connection_secrets_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "connection_id"],
+            ["source_connections.workspace_id", "source_connections.id"],
+            name="fk_source_connection_secrets_workspace_connection",
+            ondelete="CASCADE",
+        ),
+        Index(
+            "ix_source_connection_secrets_workspace_connection",
+            "workspace_id",
+            "connection_id",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    connection_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    key_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    wrapped_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )

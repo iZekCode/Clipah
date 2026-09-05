@@ -60,6 +60,11 @@ def test_each_role_carries_every_authority_of_the_role_below_it(
         (Role.ADMIN, Action.OWNERSHIP_TRANSFER, False),
         (Role.OWNER, Action.WORKSPACE_DELETE, True),
         (Role.OWNER, Action.OWNERSHIP_TRANSFER, True),
+        (Role.EDITOR, Action.SOURCE_CONNECTION_MANAGE, False),
+        (Role.EDITOR, Action.SOURCE_CONNECTION_READ, False),
+        (Role.ADMIN, Action.SOURCE_CONNECTION_READ, True),
+        (Role.ADMIN, Action.SOURCE_CONNECTION_MANAGE, True),
+        (Role.OWNER, Action.SOURCE_CONNECTION_MANAGE, True),
     ],
 )
 def test_the_role_matrix_grants_exactly_the_documented_authorities(
@@ -96,6 +101,8 @@ def test_publishing_authority_follows_the_workspace_policy(
         (Action.OWNERSHIP_TRANSFER, True),
         (Action.MEMBER_MANAGE, True),
         (Action.SOCIAL_CONNECTION_MANAGE, True),
+        (Action.SOURCE_CONNECTION_MANAGE, True),
+        (Action.SOURCE_CONNECTION_READ, False),
         (Action.WORKSPACE_UPDATE, False),
         (Action.WORKSPACE_READ, False),
     ],

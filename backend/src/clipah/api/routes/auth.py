@@ -37,8 +37,20 @@ from clipah.models import User
 router = APIRouter(prefix="/api/v1", tags=["auth"])
 
 
+class CapabilitiesResponse(BaseModel):
+    """The features this deployment has switched on, as the browser needs to know them.
+
+    A capability is not an authority: it says the server would accept the request at all,
+    and every route still proves membership, role, and freshness for itself.
+    """
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    authenticated_youtube_import: bool = Field(alias="authenticatedYoutubeImport")
+
+
 class CurrentUserResponse(BaseModel):
-    """The signed-in User, and how recently they proved who they are."""
+    """The signed-in User, how recently they proved who they are, and what is switched on."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
@@ -48,6 +60,7 @@ class CurrentUserResponse(BaseModel):
     avatar_url: str | None = Field(alias="avatarUrl")
     session_id: UUID = Field(alias="sessionId")
     recent_authentication: bool = Field(alias="recentAuthentication")
+    capabilities: CapabilitiesResponse
 
 
 @router.get("/auth/google/start")
@@ -147,6 +160,12 @@ def read_current_user(
         sessionId=user.session.session_id,
         recentAuthentication=user.session.has_recent_authentication(
             policy=components.policy, now=components.now()
+        ),
+        capabilities=CapabilitiesResponse(
+            authenticatedYoutubeImport=(
+                settings_for(request).authenticated_source_import_enabled
+                and settings_for(request).secret_encryption_key is not None
+            )
         ),
     )
 

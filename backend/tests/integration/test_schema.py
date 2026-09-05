@@ -48,6 +48,8 @@ FOUNDATIONAL_TABLES = {
     "render_artifacts",
     "render_requests",
     "retention_tombstones",
+    "source_connection_secrets",
+    "source_connections",
     "source_imports",
     "transcripts",
     "users",
@@ -84,6 +86,10 @@ API_TABLE_PRIVILEGES = {
     "render_artifacts": {"SELECT"},
     # The API records what a render Job is for when it admits that Job, and never rewrites it.
     "render_requests": {"SELECT", "INSERT"},
+    # A member manages their own source connections, so the API reads and writes the
+    # record — and may write and destroy the credential without ever reading it back.
+    "source_connections": {"SELECT", "INSERT", "UPDATE", "DELETE"},
+    "source_connection_secrets": {"INSERT", "DELETE"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT"},
     "retention_tombstones": {"SELECT", "INSERT"},
@@ -108,12 +114,18 @@ WORKER_TABLE_PRIVILEGES = {
     "render_artifacts": {"SELECT", "INSERT"},
     # The worker only reads back the target the API wrote for the Job it was handed.
     "render_requests": {"SELECT"},
+    # A worker leases a credential to perform one import, and never alters either row.
+    "source_connections": {"SELECT"},
+    "source_connection_secrets": {"SELECT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT", "INSERT", "UPDATE"},
     "retention_tombstones": {"SELECT", "UPDATE"},
     "workspace_quota_reservations": {"SELECT", "INSERT"},
 }
 EXPECTED_ENUMS = {
+    "source_connection_provider": ("youtube",),
+    "source_connection_kind": ("cookie",),
+    "source_connection_status": ("active", "revoked", "expired"),
     "asset_kind": (
         "source",
         "proxy",

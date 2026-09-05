@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 26 is ready to commit. **Task 27 follows.**
+**Current position:** Task 27 is ready to commit. **Task 28 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -60,13 +60,13 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | --- | --- | --- |
 | 24 | Implement render-plan compilation and safe FFmpeg export | `[x]` (`191f4ea`) |
 | 25 | Add complete timeline, asset, sound, text, and scene editing | `[x]` (`131339f`) |
-| 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[~]` (ready to commit) |
+| 26 | Add styling, karaoke, keyframes, templates, motion, and smart crop | `[x]` (`ec5176e`) |
 
 ## Phase E — Source connections, B-roll, and differentiated workflows (Tasks 27-35)
 
 | # | Task | Status |
 | --- | --- | --- |
-| 27 | Add feature-flagged authenticated YouTube connections | `[ ]` |
+| 27 | Add feature-flagged authenticated YouTube connections | `[~]` (ready to commit) |
 | 28 | Model semantic beats and generate deterministic B-roll plans | `[ ]` |
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[ ]` |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[ ]` |
@@ -1290,6 +1290,111 @@ move from a linear one. No commit was created; the required owner commit message
 `feat: add advanced editor styling and smart crop`.
 
 
+### Task 27 — Feature-flagged authenticated YouTube connections
+
+This task hands Clipah a live credential for somebody's Google account, so almost all of
+it is about refusals, boundaries, and what happens when something goes wrong.
+
+**The feature does not exist until a deployment says it does.**
+`CLIPAH_AUTHENTICATED_SOURCE_IMPORT_ENABLED` is `false` by default and pinned `false` in
+the production profile. While it is off, every connection route answers exactly like a
+route that does not exist — a member cannot discover the feature by probing for it —
+`GET /api/v1/me` reports the capability as `false`, and the browser renders nothing at all.
+The capability also stays off where no key material is configured, because a deployment
+that cannot encrypt a jar must not invite anybody to upload one.
+
+**`source_connectors/cookies.py` parses, and never trusts.** An upload is size-checked at
+256 KiB before it is decoded, read as Netscape format with either line ending, and reduced
+to the documented minimum of YouTube authentication cookies on `.youtube.com` and
+`.google.com`. A browser export of somebody's whole browsing life becomes seven rows for
+one site. `#HttpOnly_` is read as the flag it is rather than as a comment; a zero expiry is
+a session cookie rather than an expired one; a repeated name keeps the last row; an expired
+extra is dropped while the jar survives; and a file this parser cannot understand — bad
+field count, a non-boolean flag, a non-numeric or negative expiry, a control character, an
+escape sequence, bytes that are not UTF-8 — is refused whole. No refusal, message, or
+exception carries a cookie value.
+
+**`source_connectors/secrets.py` is envelope encryption with the Workspace bound in.** Each
+jar is sealed under a fresh AES-GCM data key, and that key is wrapped by a key derived from
+the deployment's secret material through HKDF with a label naming this one use. The
+Workspace and Connection are authenticated data, so a row copied into another Workspace
+cannot be opened there — the decryption fails rather than returning something plausible. A
+`SecretLease` is a loan rather than a copy: it names the Job that took it, stops answering
+when its window closes or when it is discarded, overwrites its buffer on the way out, and
+never prints what it holds.
+
+**The credential is stored apart from everything that describes it.** Migration `0011`
+creates `source_connections` — the metadata a member sees — and `source_connection_secrets`,
+which holds the material. The API role has `INSERT`, `DELETE`, and column-level `SELECT` on
+the identifying columns only: an API process can store a credential and destroy it, and can
+never read one back. Only the worker may read it. Deleting by identity requires reading the
+identity, which is exactly why the SELECT grant is per column rather than per table, and
+the insert is written as a plain statement so no `RETURNING` clause asks for the material.
+`source_imports` gained the connection it was admitted with, so a retry can only ever reuse
+that one; the composite foreign key refuses to let a referenced connection be deleted, so
+an import can never be orphaned from its credential.
+
+**Consent is recorded rather than assumed.** A connection exists only when the member has
+confirmed both that they understand the risk and that the account is theirs, and the
+instant of that confirmation is stored. It expires with its own shortest-lived cookie or
+after seven days, whichever comes first, and reports itself expired the moment its window
+closes rather than waiting for a sweep. Revoking marks the connection **and deletes the
+secret row**: there is nothing left to lease, and a lease against a connection whose
+material is gone is refused as revoked rather than as missing.
+
+**`source_connectors/authenticated_youtube.py` gives the credential the shortest life it
+can have.** The jar is created inside the Job's own `0700` workspace with `0600`
+permissions from the moment it exists rather than narrowed afterwards, refuses to write
+over a file a previous attempt left behind, is passed to yt-dlp as one argument-array value
+— never a shell word or an environment variable — and is removed on success, on provider
+failure, and on a worker killed mid-import. The lease is discarded with it.
+`--cookies-from-browser` is not used and not offered: on a hosted worker that profile
+belongs to the machine rather than to the member. It is documented as a local, self-hosted
+command in `docs/security/youtube-import.md` and appears nowhere in the product.
+
+**A new authority was added.** `SOURCE_CONNECTION_MANAGE` sits with the other irreversible
+actions and demands a freshly authenticated Session; `SOURCE_CONNECTION_READ` does not,
+because listing connections carries no credential and forcing re-authentication to look at
+a list would teach members to re-authenticate for no reason. Both belong to admins and
+owners.
+
+**The browser side is mostly words.** `YouTubeConnectionDialog` renders nothing where the
+capability is off. Where it is on, it says what a cookie jar is, that Google may restrict
+or ban an account whose session is used by automated tools, that the connection is kept for
+at most seven days, that signing out ends it immediately, that it can be revoked here, and
+that only the member's own account may be connected. The Connect button stays disabled
+until both confirmations are given, the request carries the jar and those two booleans and
+nothing else, and a stored connection is shown by its label, scope, and expiry — never by
+its contents. The file is read with `FileReader` rather than `Blob.text()`, which this
+product's test environment does not implement and some browsers do not either.
+
+**The security suite is deliberately paranoid.** `tests/security/test_source_secret_redaction.py`
+puts one canary value through the whole feature and then hunts for it in every API
+response and header, every column of every table in the database, every log record written
+while the feature ran, and the text of every refusal it can raise. Four deliberate breaks
+were made and each failed the matching tests: ignoring the domain and name allowlist,
+skipping the consent check, leaving the jar on disk, and ignoring the feature flag. A fifth
+mutation — storing the jar unencrypted — failed the redaction suite, which is what that
+suite exists for.
+
+**Three deviations from the task's wording are recorded here.** The migration is `0011`
+rather than the `0002` the plan names, because `0002` was taken in Task 4 and revisions are
+sequential. The flag is the `CLIPAH_AUTHENTICATED_SOURCE_IMPORT_ENABLED` that Task 1
+already defined, rather than a second near-identical `AUTHENTICATED_YOUTUBE_IMPORT_ENABLED`.
+And the jar is uploaded as base64 in a JSON body rather than as a multipart file, because
+every other route on this API is JSON and multipart would have added a dependency for one
+endpoint; the size cap is enforced on the encoded field before anything is decoded.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1155 backend tests
+passed with eight environment-gated skips at 95% coverage; migration `0011` upgrade,
+downgrade, and upgrade again all ran, and the Alembic drift check passes. `pnpm lint`,
+`pnpm typecheck`, `pnpm test` (250 passed), and `pnpm build` all passed, and
+`scripts/check-contracts-clean.sh` exits zero after `contracts/openapi.json` was re-exported
+and the client regenerated. The environment-gated public import smoke test was not opted in,
+as in Task 10. No commit was created; the required owner commit message is
+`feat: add guarded youtube source connections`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1321,7 +1426,9 @@ oversight.
 | Wiring `scripts/check-contracts-clean.sh` into a CI workflow; the check exists and is negative-controlled, but no CI configuration exists yet | Task 47 |
 | Reconciling the bake-off fixture `contracts/fixtures/editor/parity-composition.json`, which is frame-based, with composition version 1, which is millisecond-based; the fixture drives the engine contract test rather than the product | Task 24, with the FFmpeg parity gate |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
-| Cookie-based authenticated YouTube import, including its consent and ownership-attestation UI; the public form deliberately offers no cookie control while the server capability and feature flag are off | Task 27 (`plan.md:1333-1360`) |
+| Enabling authenticated YouTube import in production. The feature is built and tested, and `docs/security/youtube-import.md` records four open items — legal approval, data retention, incident response, and whether production wraps data keys with a managed key — each of which blocks enablement | the repository owner |
+| A managed key-management store for wrapping data keys. `LocalSecretStore` wraps with key material this deployment holds; `CLIPAH_SECRET_MANAGER_KEY_NAME` is configured for but not yet implemented against | Task 36, which needs the same envelope for OAuth grants |
+| Sweeping expired source connections. A connection past its window is reported as expired and refuses every lease, but the row and its material are removed only when a member revokes it | Task 45, with retention |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
 | The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |

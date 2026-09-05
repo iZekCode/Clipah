@@ -5,13 +5,15 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { CurrentUserResponseAvatarUrl } from './currentUserResponseAvatarUrl';
+import type { CapabilitiesResponse } from './capabilitiesResponse';
 import type { CurrentUserResponseDisplayName } from './currentUserResponseDisplayName';
 
 /**
- * The signed-in User, and how recently they proved who they are.
+ * The signed-in User, how recently they proved who they are, and what is switched on.
  */
 export interface CurrentUserResponse {
   avatarUrl: CurrentUserResponseAvatarUrl;
+  capabilities: CapabilitiesResponse;
   displayName: CurrentUserResponseDisplayName;
   email: string;
   id: string;
