@@ -35,6 +35,11 @@ from sqlalchemy.dialects.postgresql import CITEXT, JSONB
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
+# The B-roll vocabulary is domain data with no persistence of its own, so the ORM borrows
+# it rather than restating it. The dependency runs this way round on purpose: schema knows
+# about meaning, and the planning modules stay free of SQLAlchemy.
+from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
+
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
     "uq": "uq_%(table_name)s_%(column_0_N_name)s",
@@ -839,6 +844,129 @@ class ClipCandidate(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class BrollPlanRequest(Base):
+    """What one admitted planning Job was created to cover, written where it can be read.
+
+    A Job carries identifiers and nothing else across the broker, so the clip and the
+    coverage a member asked for are recorded here by the API and read back by the worker.
+    """
+
+    __tablename__ = "broll_plan_requests"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_broll_plan_requests_workspace_id_id"),
+        UniqueConstraint("workspace_id", "job_id", name="uq_broll_plan_requests_workspace_job"),
+        ForeignKeyConstraint(
+            ["workspace_id", "candidate_id"],
+            ["clip_candidates.workspace_id", "clip_candidates.id"],
+            name="fk_broll_plan_requests_workspace_candidate_clip_candidates",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "job_id"],
+            ["jobs.workspace_id", "jobs.id"],
+            name="fk_broll_plan_requests_workspace_id_job_id_jobs",
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    candidate_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    job_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    coverage: Mapped[BrollCoverage] = mapped_column(
+        enum_type(BrollCoverage, "broll_coverage"), nullable=False
+    )
+    requested_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class BrollSuggestion(Base):
+    """One proposed visual placement, which changes no Edit until a member accepts it."""
+
+    __tablename__ = "broll_suggestions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_broll_suggestions_workspace_id_id"),
+        # One plan is identified by its candidate, planner version, and coverage; inside
+        # one plan a beat appears once. A replayed planning Job therefore converges on the
+        # rows it already wrote instead of proposing the same picture a second time.
+        UniqueConstraint(
+            "workspace_id",
+            "candidate_id",
+            "planner_version",
+            "coverage",
+            "beat_start_word_id",
+            name="uq_broll_suggestions_plan_beat",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id"],
+            ["projects.workspace_id", "projects.id"],
+            name="fk_broll_suggestions_workspace_id_project_id_projects",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "candidate_id"],
+            ["clip_candidates.workspace_id", "clip_candidates.id"],
+            name="fk_broll_suggestions_workspace_id_candidate_id_clip_candidates",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("start_ms >= 0 AND end_ms > start_ms", name="valid_shot_range"),
+        Index("ix_broll_suggestions_workspace_candidate", "workspace_id", "candidate_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    candidate_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    planner_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    coverage: Mapped[BrollCoverage] = mapped_column(
+        enum_type(BrollCoverage, "broll_coverage"), nullable=False
+    )
+    beat_start_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    beat_end_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    visual_intent: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    search_terms: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    exclusions: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    status: Mapped[BrollSuggestionStatus] = mapped_column(
+        enum_type(BrollSuggestionStatus, "broll_suggestion_status"),
+        nullable=False,
+        server_default=text("'proposed'"),
+    )
+    placement_reason: Mapped[str] = mapped_column(Text, nullable=False)
+    # Retrieval belongs to a later task: at planning time no source has been chosen and no
+    # asset exists, so both stay empty rather than being guessed at now.
+    source_type: Mapped[BrollSourceType | None] = mapped_column(
+        enum_type(BrollSourceType, "broll_source_type")
+    )
+    asset_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    edit_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    relevance_score: Mapped[float | None] = mapped_column(Numeric(6, 5))
+    provider_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
 class ClipEdit(Base):

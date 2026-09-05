@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Task 27 is ready to commit. **Task 28 follows.**
+**Current position:** Task 28 is ready to commit. **Task 29 follows.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -66,8 +66,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 27 | Add feature-flagged authenticated YouTube connections | `[~]` (ready to commit) |
-| 28 | Model semantic beats and generate deterministic B-roll plans | `[ ]` |
+| 27 | Add feature-flagged authenticated YouTube connections | `[x]` (`a5955aa`) |
+| 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (ready to commit) |
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[ ]` |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[ ]` |
 | 31 | Add quota-aware generated-media fallback | `[ ]` |
@@ -1395,6 +1395,95 @@ as in Task 10. No commit was created; the required owner commit message is
 `feat: add guarded youtube source connections`.
 
 
+### Task 28 — Semantic beats and deterministic B-roll plans
+
+The whole task is one boundary: a language model may say what a viewer should see and
+which words it belongs to, and nothing else. It never says *when*.
+
+**`broll/models.py` holds the vocabulary as data.** `VisualIntent` is frozen, forbids
+extra fields, and demands every field a retriever will later search or refuse on — subject,
+action, setting, mood, Indonesian *and* English search terms, portrait suitability,
+exclusions, factual-risk flags, and confidence. `VisualBeatProposal` is what a provider may
+state: two word IDs, a placement reason, an optional protection, and that intent. There is
+no millisecond field anywhere in either schema, so a model cannot supply a timestamp even
+by accident. Strictness is per-field rather than per-model: `portrait_suitable` and
+`confidence` are strict, so `"true"` is refused, while the list fields stay lax so provider
+JSON arrays become tuples instead of being rejected for their type.
+
+**`broll/planner.py` resolves every beat locally.** `validate_beat` reads the bounds from
+the transcript the Project actually holds and refuses unknown word IDs, reversed ranges, and
+beats outside the clip through the stable `BROLL_BEAT_UNKNOWN_WORD_ID`,
+`BROLL_BEAT_RANGE_REVERSED`, `BROLL_BEAT_OUTSIDE_CANDIDATE`, and
+`BROLL_BEAT_SCHEMA_INVALID` codes, none of which carry provider text. One refused beat costs
+a member no other beat: the planner reports its code and keeps the rest. The Groq adapter
+sends a strict JSON Schema in which every property is required and `additionalProperties` is
+false, pins temperature to zero with an explicit timeout, shows the model only the clip's own
+words, and asks it to translate search *intent* rather than transcript text so an Indonesian
+concept keeps its local meaning. Failures are classified by status alone onto
+`BROLL_PROVIDER_RATE_LIMITED`, `BROLL_PROVIDER_UNAVAILABLE`, `BROLL_PROVIDER_REJECTED`, and
+`BROLL_PROVIDER_INVALID`.
+
+**`broll/placement.py` owns every millisecond.** It drops protected beats, beats below the
+confidence floor, beats inside the opening hook guard, and a beat repeating a picture
+already offered; sizes each shot into the 2-5 second band; ends it at the next scene change
+rather than straddling one; keeps it inside the clip; and enforces the coverage floor —
+15 s for `minimal`, 8 s for `balanced`, 5 s for `dynamic`. It never fails: a clip that earns
+no shot produces none, because "this clip does not want B-roll" is an answer, not an error.
+Scene boundaries are derived from silence gaps and speaker changes.
+
+**Planning proposes and never edits.** `jobs/broll_plan_task.py` writes only `proposed`
+suggestions; it creates no asset, touches no composition, and moves no Project between
+states. A plan is identified by `(candidate_id, planner_version, coverage)` and a beat
+inside it by its start word, which the unique key enforces, so a redelivered Job converges
+on the rows already stored and the provider is paid once. A worker that loses the race to
+another writer adopts the winner's plan rather than reporting a failure; a conflict the
+plan's own key cannot explain is reported as `BROLL_PLAN_INTEGRITY`.
+
+**Six decisions are worth recording.**
+
+- **There is deliberately no offline fallback planner**, unlike highlights. Highlights fall
+  back because a Project without candidates is a Project without a product. B-roll is
+  optional, and telling a member their clip has no visual opportunities when in truth the
+  provider was unreachable is a worse answer than a retryable failure they can run again.
+- **Migration `0012`, not the `0003` the plan names**, because `0003` was taken in Task 5
+  and revisions are sequential — the same deviation Task 27 recorded.
+- **`broll_suggestions` carries `start_ms`, `end_ms`, `coverage`, and `planner_version`,
+  which the plan's Section 4 column list omits.** Placement owns the milliseconds, so
+  recomputing them when a member accepts a suggestion would let the stored plan and the
+  timeline drift apart; and without coverage and planner version the plan has no identity
+  to be idempotent on. This is the same kind of gap Task 14's migration `0008` closed for
+  candidate evidence.
+- **A second table, `broll_plan_requests`,** records which clip and coverage one admitted
+  Job was created for, because a Job carries only identifiers across the broker. This
+  mirrors `render_requests` from Task 24 exactly.
+- **`broll/use_cases.py` is one file beyond the plan's list**, because `AGENTS.md` requires
+  domain rules to live in a `use_cases.py` and HTTP concerns to stay in `api/routes/`.
+- **Three guards were deleted rather than tested**, because the schema already makes them
+  unreachable. The composite `(workspace_id, candidate_id)` and `(workspace_id,
+  transcript_id)` foreign keys mean a stored plan request always names a candidate of the
+  same Workspace, and that candidate always names a Transcript of the same Workspace, so
+  the request, its clip, and its words are now read in one join with exactly one way to
+  have no target. The route's quota and hourly-allowance handlers went the same way: the
+  plan's limit table names no B-roll planning budget, so neither refusal can arise.
+
+Least privilege follows the direction of the work: the worker plans, so it holds `INSERT`
+and no `UPDATE` or `DELETE` — a replay cannot rewrite a member's decision. The API reads and
+updates but never inserts, because it does not plan.
+
+Every rule was re-checked by breaking the implementation on purpose. Ignoring beat
+protections failed six tests; ignoring the coverage floor failed three; trusting the model's
+own bounds instead of the transcript failed one; and admitting a low-confidence beat failed
+one.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1260 backend tests
+passed with eight environment-gated skips at 95.40% coverage, with 100% line and branch
+coverage on every module this task added. Migration `0012` upgrade, downgrade, and upgrade
+again all ran, and the Alembic drift check passes. `pnpm lint`, `pnpm typecheck`, `pnpm test`
+(250 passed), and `pnpm build` all passed, and `scripts/check-contracts-clean.sh` exits zero
+after `contracts/openapi.json` was re-exported and the client regenerated. No commit was
+created; the required owner commit message is `feat: plan explainable broll suggestions`.
+
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -1402,6 +1491,11 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| Charging a metered Workspace budget for B-roll planning; a plan spends a concurrency slot and no quota, because the plan's limit table names no planning budget. This is the same gap the render deferral records | Tasks 44-46, with operational cost accounting |
+| Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
+| Retrieving media for a suggestion. Planning leaves `source_type`, `asset_id`, and `relevance_score` empty, because no source has been chosen at plan time | Task 29 |
+| Accepting, rejecting, replacing, and generating a suggestion, and the browser surface for all four. Task 28 owns the plan and list endpoints only | Tasks 30 and 31 |
+| Measuring a live planning provider. Every test uses the fake provider, so the recorded behaviour proves the pipeline rather than any model's judgement about what deserves a picture | the repository owner, with real Groq credentials |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Running the Playwright suite — `auth-projects`, `upload-analysis`, `clips-review`, and `editor-engine-parity` specs all exist and `pnpm test:e2e` runs them, but no run happened in the Task 18-21 sessions because a full stack and browser binaries were not available | the repository owner, before Task 22 |
 | Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |

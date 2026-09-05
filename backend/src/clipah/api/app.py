@@ -18,6 +18,7 @@ from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_
 from clipah.api.routes import analysis as analysis_routes
 from clipah.api.routes import assets as asset_routes
 from clipah.api.routes import auth as auth_routes
+from clipah.api.routes import broll as broll_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import edits as edit_routes
@@ -156,6 +157,7 @@ def create_app(
     app.include_router(youtube_import_routes.router)
     app.include_router(analysis_routes.router)
     app.include_router(candidate_routes.router)
+    app.include_router(broll_routes.router)
     app.include_router(playback_routes.router)
     app.include_router(asset_routes.router)
     app.include_router(source_connection_routes.router)

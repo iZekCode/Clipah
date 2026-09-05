@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     analysis_deduplication_excerpt_cosine: float = Field(default=0.90, ge=0, le=1)
     analysis_candidates_kept: int = Field(default=30, gt=0)
     analysis_candidates_exposed: int = Field(default=10, gt=0)
+    # Section 7 of the plan: shots run 2-5 seconds, the opening hook is never covered, and
+    # a beat the planner is unsure about earns no suggestion at all.
+    broll_min_shot_ms: int = Field(default=2_000, gt=0)
+    broll_max_shot_ms: int = Field(default=5_000, gt=0)
+    broll_hook_guard_ms: int = Field(default=3_000, ge=0)
+    broll_min_confidence: float = Field(default=0.5, ge=0, le=1)
     # The brand mark burned into every export, or nothing when a deployment burns none.
     render_watermark_text: str | None = Field(default=None, max_length=64)
 
@@ -212,6 +218,8 @@ class Settings(BaseSettings):
             raise ValueError("analysis candidate minimum cannot exceed its maximum")
         if self.analysis_candidates_exposed > self.analysis_candidates_kept:
             raise ValueError("exposed analysis candidates cannot exceed kept candidates")
+        if self.broll_min_shot_ms > self.broll_max_shot_ms:
+            raise ValueError("B-roll minimum shot cannot exceed its maximum")
 
     def _validate_production_requirements(self) -> None:
         runtime_setting_name, runtime_url = self._runtime_database_configuration()

@@ -125,6 +125,226 @@
         "title": "BrandKitReference",
         "type": "object"
       },
+      "BrollCoverage": {
+        "description": "How busy a member wants the finished cut to be.",
+        "enum": [
+          "minimal",
+          "balanced",
+          "dynamic"
+        ],
+        "title": "BrollCoverage",
+        "type": "string"
+      },
+      "BrollPlanBody": {
+        "additionalProperties": false,
+        "description": "The one choice a member makes when asking for B-roll: how busy the cut should be.",
+        "properties": {
+          "coverage": {
+            "$ref": "#/components/schemas/BrollCoverage",
+            "default": "balanced"
+          }
+        },
+        "title": "BrollPlanBody",
+        "type": "object"
+      },
+      "BrollPlanJobResponse": {
+        "additionalProperties": false,
+        "description": "The durable Job identity returned after planning admission.",
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "title": "Jobid",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          }
+        },
+        "required": [
+          "jobId",
+          "status"
+        ],
+        "title": "BrollPlanJobResponse",
+        "type": "object"
+      },
+      "BrollSourceType": {
+        "description": "Where the media behind an accepted suggestion came from.",
+        "enum": [
+          "user_asset",
+          "stock",
+          "generated"
+        ],
+        "title": "BrollSourceType",
+        "type": "string"
+      },
+      "BrollSuggestionListResponse": {
+        "additionalProperties": false,
+        "description": "One clip's proposals, in the order they occur inside the clip.",
+        "properties": {
+          "suggestions": {
+            "items": {
+              "$ref": "#/components/schemas/BrollSuggestionResponse"
+            },
+            "title": "Suggestions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "suggestions"
+        ],
+        "title": "BrollSuggestionListResponse",
+        "type": "object"
+      },
+      "BrollSuggestionResponse": {
+        "additionalProperties": false,
+        "description": "One strict allowlist of B-roll proposal evidence.",
+        "properties": {
+          "beatEndWordId": {
+            "title": "Beatendwordid",
+            "type": "string"
+          },
+          "beatStartWordId": {
+            "title": "Beatstartwordid",
+            "type": "string"
+          },
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "coverage": {
+            "$ref": "#/components/schemas/BrollCoverage"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "decidedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decidedat"
+          },
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "endMs": {
+            "title": "Endms",
+            "type": "integer"
+          },
+          "exclusions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Exclusions",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "placementReason": {
+            "title": "Placementreason",
+            "type": "string"
+          },
+          "plannerVersion": {
+            "title": "Plannerversion",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "relevanceScore": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Relevancescore"
+          },
+          "searchTerms": {
+            "$ref": "#/components/schemas/SearchTermsResponse"
+          },
+          "sourceType": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/BrollSourceType"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/BrollSuggestionStatus"
+          },
+          "visualIntent": {
+            "$ref": "#/components/schemas/VisualIntentResponse"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "candidateId",
+          "coverage",
+          "plannerVersion",
+          "beatStartWordId",
+          "beatEndWordId",
+          "startMs",
+          "endMs",
+          "durationMs",
+          "visualIntent",
+          "searchTerms",
+          "exclusions",
+          "status",
+          "placementReason",
+          "sourceType",
+          "relevanceScore",
+          "createdAt",
+          "decidedAt"
+        ],
+        "title": "BrollSuggestionResponse",
+        "type": "object"
+      },
+      "BrollSuggestionStatus": {
+        "description": "The lifecycle a suggestion moves through once a member starts deciding on it.",
+        "enum": [
+          "proposed",
+          "accepted",
+          "placed",
+          "replaced",
+          "removed",
+          "rejected",
+          "generation_requested",
+          "generating",
+          "failed"
+        ],
+        "title": "BrollSuggestionStatus",
+        "type": "string"
+      },
       "CandidatePageResponse": {
         "additionalProperties": false,
         "description": "One strict ranked candidate page and its opaque continuation cursor.",
@@ -2066,6 +2286,32 @@
         "title": "SaveRevisionRequest",
         "type": "object"
       },
+      "SearchTermsResponse": {
+        "additionalProperties": false,
+        "description": "The Indonesian and English intent terms a retriever will search on.",
+        "properties": {
+          "en": {
+            "items": {
+              "type": "string"
+            },
+            "title": "En",
+            "type": "array"
+          },
+          "id": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Id",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "en"
+        ],
+        "title": "SearchTermsResponse",
+        "type": "object"
+      },
       "SourceConnectionRequest": {
         "additionalProperties": false,
         "description": "One cookie jar and the two confirmations it may only be stored with.",
@@ -2687,6 +2933,54 @@
           "origin"
         ],
         "title": "VideoOverlay",
+        "type": "object"
+      },
+      "VisualIntentResponse": {
+        "additionalProperties": false,
+        "description": "What a reviewer is told about the picture one suggestion asks for.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "confidence": {
+            "title": "Confidence",
+            "type": "number"
+          },
+          "factualRiskFlags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Factualriskflags",
+            "type": "array"
+          },
+          "mood": {
+            "title": "Mood",
+            "type": "string"
+          },
+          "portraitSuitable": {
+            "title": "Portraitsuitable",
+            "type": "boolean"
+          },
+          "setting": {
+            "title": "Setting",
+            "type": "string"
+          },
+          "subject": {
+            "title": "Subject",
+            "type": "string"
+          }
+        },
+        "required": [
+          "subject",
+          "action",
+          "setting",
+          "mood",
+          "portraitSuitable",
+          "factualRiskFlags",
+          "confidence"
+        ],
+        "title": "VisualIntentResponse",
         "type": "object"
       },
       "WorkspaceCollectionResponse": {
@@ -4148,6 +4442,155 @@
         "summary": "Show",
         "tags": [
           "candidates"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/broll-plans": {
+      "post": {
+        "description": "Commit planning intent before a best-effort UUID-only dispatch.",
+        "operationId": "create_plan_api_v1_projects__project_id__candidates__candidate_id__broll_plans_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrollPlanBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrollPlanJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Plan",
+        "tags": [
+          "broll"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/broll-suggestions": {
+      "get": {
+        "description": "List one clip's proposals without admitting a foreign or hidden candidate.",
+        "operationId": "list_collection_api_v1_projects__project_id__candidates__candidate_id__broll_suggestions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrollSuggestionListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "broll"
         ]
       }
     },

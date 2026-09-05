@@ -36,6 +36,8 @@ FOUNDATIONAL_TABLES = {
     "audit_events",
     "auth_identities",
     "auth_sessions",
+    "broll_plan_requests",
+    "broll_suggestions",
     "clip_candidates",
     "clip_edit_revisions",
     "clip_edits",
@@ -81,6 +83,11 @@ API_TABLE_PRIVILEGES = {
     "job_events": {"SELECT", "INSERT"},
     "transcripts": {"SELECT"},
     "clip_candidates": {"SELECT"},
+    # Planning is worker work. The API reads suggestions and, once accepting them lands,
+    # records the member's decision on a row it never created.
+    # The API records what a planning Job is for when it admits that Job.
+    "broll_plan_requests": {"SELECT", "INSERT"},
+    "broll_suggestions": {"SELECT", "UPDATE"},
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},
     "clip_edit_revisions": {"SELECT", "INSERT"},
     "render_artifacts": {"SELECT"},
@@ -109,6 +116,10 @@ WORKER_TABLE_PRIVILEGES = {
     "job_events": {"SELECT", "INSERT"},
     "transcripts": {"SELECT", "INSERT"},
     "clip_candidates": {"SELECT", "INSERT"},
+    # A worker proposes suggestions and can never rewrite one a member has decided on.
+    # The worker only reads back the target the API wrote for the Job it was handed.
+    "broll_plan_requests": {"SELECT"},
+    "broll_suggestions": {"SELECT", "INSERT"},
     "clip_edits": {"SELECT"},
     "clip_edit_revisions": {"SELECT"},
     "render_artifacts": {"SELECT", "INSERT"},
@@ -123,6 +134,19 @@ WORKER_TABLE_PRIVILEGES = {
     "workspace_quota_reservations": {"SELECT", "INSERT"},
 }
 EXPECTED_ENUMS = {
+    "broll_coverage": ("minimal", "balanced", "dynamic"),
+    "broll_suggestion_status": (
+        "proposed",
+        "accepted",
+        "placed",
+        "replaced",
+        "removed",
+        "rejected",
+        "generation_requested",
+        "generating",
+        "failed",
+    ),
+    "broll_source_type": ("user_asset", "stock", "generated"),
     "source_connection_provider": ("youtube",),
     "source_connection_kind": ("cookie",),
     "source_connection_status": ("active", "revoked", "expired"),
