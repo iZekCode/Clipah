@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 from pydantic import ValidationError
@@ -525,6 +526,172 @@ def test_analysis_policy_settings_reject_contradictory_ranges(
     """Workers must never start with an impossible window, duration, or exposure policy."""
     with pytest.raises(ValidationError):
         Settings(environment=Environment.TEST, **overrides)  # type: ignore[arg-type]
+
+
+@pytest.mark.unit
+def test_generation_configuration_uses_approved_fail_closed_defaults() -> None:
+    """A new deployment must select approved fal models while leaving video and audio off."""
+    settings = Settings(environment=Environment.TEST)
+
+    assert settings.generated_image_provider == "fal"
+    assert settings.generated_video_provider == "fal"
+    assert settings.fal_image_model_alias == "image-default"
+    assert settings.fal_image_model_id == "fal-ai/nano-banana-2"
+    assert settings.fal_video_model_alias == "video-default"
+    assert settings.fal_video_model_id == "fal-ai/kling-video/v2.6/pro/text-to-video"
+    assert settings.generative_video_enabled is False
+    assert settings.generated_audio_enabled is False
+    assert settings.generation_poll_seconds >= 5
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "overrides",
+    (
+        {"generation_max_duration_ms": 0},
+        {"generation_max_output_bytes": 0},
+        {"generation_http_timeout_seconds": 0},
+        {"generation_poll_seconds": 4.99},
+        {"generation_poll_attempt_deadline_seconds": 0},
+        {"generation_adapter_retry_count": 0},
+        {"generation_circuit_failure_threshold": 0},
+        {"generation_circuit_cooldown_seconds": 0},
+        {"generation_estimate_token_ttl_seconds": 0},
+    ),
+)
+def test_generation_configuration_rejects_unsafe_numeric_bounds(
+    overrides: dict[str, int | float],
+) -> None:
+    """A zero, negative, or provider-hostile bound must prevent worker startup."""
+    with pytest.raises(ValidationError):
+        Settings(environment=Environment.TEST, **overrides)  # type: ignore[arg-type]
+
+
+@pytest.mark.unit
+def test_generation_duration_cannot_exceed_the_broll_shot_ceiling() -> None:
+    """A generated video must fit the placement whose visual intent authorized it."""
+    with pytest.raises(ValidationError):
+        Settings(
+            environment=Environment.TEST,
+            broll_max_shot_ms=5_000,
+            generation_max_duration_ms=5_001,
+        )
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "overrides",
+    (
+        {"fal_api_key": "secret", "fal_webhook_base_url": None},
+        {"fal_api_key": "secret", "fal_image_model_alias": ""},
+        {"fal_api_key": "secret", "fal_image_model_id": ""},
+        {"fal_api_key": "secret", "fal_video_model_alias": ""},
+        {"fal_api_key": "secret", "fal_video_model_id": ""},
+        {"runway_api_secret": "secret", "runway_video_model_alias": None},
+        {"runway_api_secret": "secret", "runway_video_model_id": None},
+        {"runway_video_model_alias": "runway-default", "runway_api_secret": None},
+        {"runway_video_model_id": "gen4_turbo", "runway_api_secret": None},
+    ),
+)
+def test_generation_configuration_rejects_partial_provider_pairs(
+    overrides: dict[str, str | None],
+) -> None:
+    """A half-configured provider must be unavailable at startup, not fail after admission."""
+    with pytest.raises(ValidationError):
+        Settings(environment=Environment.TEST, **overrides)  # type: ignore[arg-type]
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "webhook_base_url",
+    (
+        "http://api.clipah.test",
+        "https://api.clipah.test/path",
+        "https://api.clipah.test?secret=value",
+        "https://webhook-user:webhook-password@api.clipah.test",
+    ),
+)
+def test_fal_credentials_require_a_bare_https_webhook_origin(webhook_base_url: str) -> None:
+    """Webhook construction must not inherit an insecure scheme, path, query, or credential."""
+    with pytest.raises(ValidationError):
+        Settings(
+            environment=Environment.TEST,
+            fal_api_key="secret",
+            fal_webhook_base_url=webhook_base_url,
+        )
+
+
+@pytest.mark.unit
+def test_generation_validation_errors_hide_signed_webhook_input() -> None:
+    """A rejected signed webhook URL must not echo its secret token into logs or responses."""
+    secret_token = "q7X9"
+
+    with pytest.raises(ValidationError) as raised:
+        Settings(
+            environment=Environment.TEST,
+            fal_api_key="secret",
+            fal_webhook_base_url=f"https://api.clipah.test?token={secret_token}",
+        )
+
+    assert secret_token not in str(raised.value)
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("field", "value"),
+    (
+        ("fal_image_model_alias", "SoRa-still"),
+        ("fal_image_model_id", "openai/sora-image"),
+        ("fal_video_model_alias", "SORA"),
+        ("fal_video_model_id", "openai/Sora-2"),
+        ("runway_video_model_alias", "sora-compatible"),
+        ("runway_video_model_id", "vendor/SORA"),
+    ),
+)
+def test_generation_configuration_rejects_sora_in_aliases_and_provider_model_ids(
+    field: str,
+    value: str,
+) -> None:
+    """The retired Sora integration must not return through capitalization or indirection."""
+    values: dict[str, Any] = {field: value}
+    if field.startswith("runway_"):
+        values.update(
+            runway_api_secret="secret",
+            runway_video_model_alias="runway-default",
+            runway_video_model_id="gen4_turbo",
+        )
+        values[field] = value
+
+    with pytest.raises(ValidationError, match="Sora"):
+        Settings(environment=Environment.TEST, **values)
+
+
+@pytest.mark.unit
+def test_selecting_runway_for_video_requires_its_own_credentials() -> None:
+    """Naming a provider whose credentials are absent would fail only after admission."""
+    with pytest.raises(ValidationError):
+        Settings(environment=Environment.TEST, generated_video_provider="runway")
+
+
+@pytest.mark.unit
+def test_selecting_runway_for_video_is_valid_once_it_is_fully_configured() -> None:
+    """A complete Runway configuration is the one way its video provider becomes selectable."""
+    settings = Settings(
+        environment=Environment.TEST,
+        generated_video_provider="runway",
+        runway_api_secret="secret",
+        runway_video_model_alias="runway-default",
+        runway_video_model_id="gen4_turbo",
+    )
+
+    assert settings.generated_video_provider == "runway"
+
+
+@pytest.mark.unit
+def test_generated_audio_cannot_be_enabled() -> None:
+    """Generated B-roll must remain visually interchangeable and discard provider audio."""
+    with pytest.raises(ValidationError):
+        Settings(environment=Environment.TEST, generated_audio_enabled=True)
 
 
 def production_environment(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -6,7 +6,7 @@ from uuid import UUID
 
 import pytest
 
-from clipah.assets.keys import derived_asset_key, source_upload_key
+from clipah.assets.keys import derived_asset_key, generated_asset_key, source_upload_key
 from clipah.models import AssetKind
 
 
@@ -73,3 +73,36 @@ def test_derived_asset_key_rejects_untrusted_identifiers_and_non_ingest_kinds() 
         )
     with pytest.raises(ValueError):
         derived_asset_key(**identifiers, kind=AssetKind.RENDER)
+
+
+@pytest.mark.unit
+def test_generated_asset_key_separates_model_output_from_retrieved_footage() -> None:
+    """Retention and audit both need to find generated media without walking stock."""
+    key = generated_asset_key(
+        workspace_id=UUID("11111111-1111-1111-1111-111111111111"),
+        project_id=UUID("22222222-2222-2222-2222-222222222222"),
+        asset_id=UUID("44444444-4444-4444-4444-444444444444"),
+        kind=AssetKind.BROLL,
+    )
+
+    assert key == (
+        "workspaces/11111111-1111-1111-1111-111111111111/"
+        "projects/22222222-2222-2222-2222-222222222222/"
+        "generated/44444444-4444-4444-4444-444444444444/broll"
+    )
+
+
+@pytest.mark.unit
+def test_generated_asset_key_rejects_untrusted_identifiers_and_foreign_kinds() -> None:
+    """No caller may place arbitrary media, or a path fragment, inside the generated prefix."""
+    identifiers = {
+        "workspace_id": UUID("11111111-1111-1111-1111-111111111111"),
+        "project_id": UUID("22222222-2222-2222-2222-222222222222"),
+        "asset_id": UUID("44444444-4444-4444-4444-444444444444"),
+    }
+    with pytest.raises(TypeError):
+        generated_asset_key(  # type: ignore[arg-type]
+            **{**identifiers, "asset_id": "../escape"}, kind=AssetKind.BROLL
+        )
+    with pytest.raises(ValueError):
+        generated_asset_key(**identifiers, kind=AssetKind.SOURCE)

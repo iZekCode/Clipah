@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 from collections.abc import Awaitable, Callable, Iterable
 from dataclasses import dataclass
+from datetime import UTC, datetime
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -22,6 +23,7 @@ from clipah.api.routes import broll as broll_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import edits as edit_routes
+from clipah.api.routes import generation_webhooks as generation_webhook_routes
 from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
@@ -30,9 +32,11 @@ from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.api.routes import youtube_imports as youtube_import_routes
+from clipah.api.routes.generation_webhooks import FalWebhookVerifier, GenerationWebhookSink
 from clipah.assets.source_validation import validate_youtube_url
 from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
+from clipah.broll.generation_policy import GenerationProviders, configured_generation_providers
 from clipah.config import Settings
 from clipah.jobs.events import (
     JobEventNotifier,
@@ -73,6 +77,10 @@ def create_app(
     job_event_notifier: JobEventNotifier | None = None,
     job_dispatcher: JobDispatcher | None = None,
     source_url_validator: Callable[[str], object] | None = None,
+    generation_webhook_verifier: FalWebhookVerifier | None = None,
+    generation_webhook_sink: GenerationWebhookSink | None = None,
+    generation_webhook_clock: Callable[[], datetime] | None = None,
+    generation_providers: GenerationProviders | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -85,6 +93,12 @@ def create_app(
     app.state.job_event_notifier = job_event_notifier or _configured_job_event_notifier(settings)
     app.state.job_dispatcher = job_dispatcher or CeleryJobDispatcher()
     app.state.source_url_validator = source_url_validator or validate_youtube_url
+    app.state.generation_webhook_verifier = generation_webhook_verifier
+    app.state.generation_webhook_sink = generation_webhook_sink
+    app.state.generation_webhook_clock = generation_webhook_clock or _utc_now
+    app.state.generation_providers = generation_providers or configured_generation_providers(
+        settings
+    )
 
     @app.middleware("http")
     async def add_request_id(
@@ -164,6 +178,7 @@ def create_app(
     app.include_router(dashboard_routes.router)
     app.include_router(edit_routes.router)
     app.include_router(render_routes.router)
+    app.include_router(generation_webhook_routes.router)
     return app
 
 
@@ -210,3 +225,8 @@ async def _run_probe(probe: ReadinessProbe) -> None:
 def health_response() -> dict[str, str]:
     """Return the common versioned health resource representation."""
     return {"status": "ok", "version": VERSION}
+
+
+def _utc_now() -> datetime:
+    """Return an aware UTC instant for webhook replay validation."""
+    return datetime.now(tz=UTC)

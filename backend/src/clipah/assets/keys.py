@@ -53,3 +53,19 @@ def broll_asset_key(
     if kind not in {AssetKind.BROLL, AssetKind.BROLL_PROXY}:
         raise ValueError("unsupported B-roll asset kind")
     return f"workspaces/{workspace_id}/projects/{project_id}/broll/{asset_id}/{kind.value}"
+
+
+def generated_asset_key(
+    *, workspace_id: UUID, project_id: UUID, asset_id: UUID, kind: AssetKind
+) -> str:
+    """Return the deterministic private key one generated B-roll asset is stored under.
+
+    Generated media lives under its own prefix rather than beside retrieved footage,
+    because the two carry different obligations: stock is licensed from someone, and a
+    model's output has to be findable as a model's output for as long as it exists.
+    """
+    if not all(isinstance(value, UUID) for value in (workspace_id, project_id, asset_id)):
+        raise TypeError("storage identifiers must be UUID values")
+    if kind not in {AssetKind.BROLL, AssetKind.BROLL_PROXY}:
+        raise ValueError("unsupported generated asset kind")
+    return f"workspaces/{workspace_id}/projects/{project_id}/generated/{asset_id}/{kind.value}"

@@ -26,6 +26,7 @@ from clipah.auth.models import (
     UserDisabledError,
 )
 from clipah.auth.sessions import authenticate_session
+from clipah.broll.generation_policy import GenerationProviders
 from clipah.config import Settings
 from clipah.db import session_scope, set_actor_context, set_workspace_context
 from clipah.workspaces.authorization import (
@@ -156,6 +157,12 @@ def require_authenticated_user(request: Request, session: DatabaseSession) -> Cu
     set_actor_context(session, user_id=authenticated.user_id)
     _enforce_request_rate_limit(request, user_id=authenticated.user_id)
     return CurrentUser(user_id=authenticated.user_id, session=authenticated)
+
+
+def generation_providers_for(request: Request) -> GenerationProviders:
+    """Return the generative adapters this deployment's credentials actually support."""
+    providers: GenerationProviders = request.app.state.generation_providers
+    return providers
 
 
 def rate_limiter_for(request: Request) -> RateLimiter | None:

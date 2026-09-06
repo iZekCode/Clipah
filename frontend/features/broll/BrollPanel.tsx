@@ -7,6 +7,8 @@ import { ErrorNotice } from '@/components/error-notice'
 import type { BrollPlacement } from '@/features/editor/store'
 import type { ApiError } from '@/lib/api/client'
 import {
+  createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost,
+  createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost,
   createPlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPost,
   createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost,
   listCollectionApiV1ProjectsProjectIdCandidatesCandidateIdBrollSuggestionsGet,
@@ -16,11 +18,17 @@ import type {
   BrollCoverage,
   BrollSuggestionListResponse,
   BrollSuggestionResponse,
+  GenerationMediaKind,
+  GenerationOfferResponse,
   ProjectAssetsResponse,
 } from '@/lib/api/generated/model'
 
 import { BrollSuggestionCard } from './BrollSuggestionCard'
 import { CoverageControl } from './CoverageControl'
+import { GenerationConfirmDialog } from './GenerationConfirmDialog'
+
+/** The relevance at or above which a retrieved picture answers the beat well enough. */
+const SUFFICIENT_RELEVANCE = 0.5
 
 /** What a member decided about one suggestion, in the words the backend records. */
 export type BrollAction = 'accept' | 'replace' | 'remove' | 'reject'
@@ -59,6 +67,11 @@ export function BrollPanel({
   const [working, setWorking] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [failure, setFailure] = useState<ApiError | null>(null)
+  const [generating, setGenerating] = useState<string | null>(null)
+  const [offer, setOffer] = useState<GenerationOfferResponse | null>(null)
+  const [pricing, setPricing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [generationRefusal, setGenerationRefusal] = useState<string | null>(null)
 
   const suggestions = useQuery<BrollSuggestionListResponse, ApiError>({
     queryKey: ['/api/v1/broll-suggestions', workspaceId, projectId, candidateId],
@@ -121,6 +134,58 @@ export function BrollPanel({
     }
   }, [candidateId, coverage, projectId, suggestions, workspaceId])
 
+
+  /** Ask the server what one media kind would cost for one suggestion. */
+  const priceGeneration = useCallback(
+    async (suggestionId: string, mediaKind: GenerationMediaKind) => {
+      setGenerating(suggestionId)
+      setOffer(null)
+      setGenerationRefusal(null)
+      setPricing(true)
+      try {
+        const answer =
+          await createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost(
+            suggestionId,
+            { mediaKind },
+            { workspace_id: workspaceId },
+          )
+        setOffer(answer)
+      } catch (error) {
+        setGenerationRefusal(refusalCopy(error as ApiError))
+      } finally {
+        setPricing(false)
+      }
+    },
+    [workspaceId],
+  )
+
+  /** Spend the sealed confirmation a member just read, exactly once. */
+  const confirmGeneration = useCallback(async () => {
+    const token = offer?.confirmationToken
+    const kind = offer?.estimate?.mediaKind
+    if (generating === null || token === null || token === undefined || kind === undefined) {
+      return
+    }
+    setSubmitting(true)
+    setGenerationRefusal(null)
+    try {
+      await createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost(
+        generating,
+        { confirmationToken: token, videoConfirmed: kind === 'video' },
+        { workspace_id: workspaceId },
+        { headers: { 'Idempotency-Key': `generate:${generating}:${kind}` } },
+      )
+      setGenerating(null)
+      setOffer(null)
+      setRefusal('Generating a picture. This continues in the background; the clip is unchanged.')
+      await suggestions.refetch()
+    } catch (error) {
+      setGenerationRefusal(refusalCopy(error as ApiError))
+    } finally {
+      setSubmitting(false)
+    }
+  }, [generating, offer, suggestions, workspaceId])
+
   const found = suggestions.data?.suggestions ?? []
   const busy = working || deciding
   // Absence is the backend's one answer for a clip nobody has planned yet and for a clip
@@ -167,6 +232,27 @@ export function BrollPanel({
         </p>
       ) : null}
 
+      {generating === null ? null : (
+        <GenerationConfirmDialog
+          offer={offer}
+          loading={pricing}
+          submitting={submitting}
+          videoOffered={offer?.videoOffered === true}
+          failure={generationRefusal}
+          onConfirm={() => {
+            void confirmGeneration()
+          }}
+          onConsiderVideo={() => {
+            void priceGeneration(generating, 'video')
+          }}
+          onClose={() => {
+            setGenerating(null)
+            setOffer(null)
+            setGenerationRefusal(null)
+          }}
+        />
+      )}
+
       {found.map((suggestion) => (
         <BrollSuggestionCard
           key={suggestion.id}
@@ -174,6 +260,10 @@ export function BrollPanel({
           clipStartMs={clipStartMs}
           alternatives={assets.data?.assets ?? []}
           busy={busy}
+          generationOffered={generationOffered(suggestion)}
+          onGenerate={() => {
+            void priceGeneration(suggestion.id, 'image')
+          }}
           onAccept={() =>
             onDecide({ suggestion, action: 'accept', placement: placementOf(suggestion) })
           }
@@ -186,14 +276,46 @@ export function BrollPanel({
   )
 }
 
+/**
+ * Whether this proposal is one generation could still help with.
+ *
+ * The server decides this too, and refuses admission either way; the panel mirrors the
+ * same rule so a member is never offered a button whose only answer is a refusal.
+ */
+function generationOffered(suggestion: BrollSuggestionResponse): boolean {
+  if (suggestion.status !== 'proposed') {
+    return false
+  }
+  if (suggestion.assetId === null || suggestion.assetId === undefined) {
+    return true
+  }
+  return (suggestion.relevanceScore ?? 0) < SUFFICIENT_RELEVANCE
+}
+
+/** Say what a refusal means in words a member can act on, or keep the request ID. */
+function refusalCopy(error: ApiError): string {
+  if (error.code === 'QUOTA_EXCEEDED') {
+    return 'This Workspace has spent its monthly generated-media allowance. It resets next month.'
+  }
+  if (error.code === 'CONCURRENCY_LIMIT') {
+    return 'This Workspace is already running as many jobs as it can. Try again shortly.'
+  }
+  if (error.code === 'GENERATION_NOT_ELIGIBLE') {
+    return 'This suggestion can no longer be generated.'
+  }
+  if (error.code === 'GENERATION_CONFIRMATION_INVALID') {
+    return 'This estimate expired. Ask for a new one.'
+  }
+  return `Generation could not be started. Reference ${error.requestId}.`
+}
+
 /** Read one suggestion as the placement the planner chose for it. */
 function placementOf(suggestion: BrollSuggestionResponse): BrollPlacement {
   return {
     suggestionId: suggestion.id,
     assetId: suggestion.assetId ?? '',
-    // Only video is retrieved today; a still would carry an image content type, and the
-    // task that generates one owns telling the editor which it produced.
-    mediaKind: 'video',
+    // A generated still is placed as an image; everything retrieved so far is video.
+    mediaKind: suggestion.sourceType === 'generated' ? 'image' : 'video',
     startMs: suggestion.startMs,
     endMs: suggestion.endMs,
   }

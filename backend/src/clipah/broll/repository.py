@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
@@ -218,6 +219,59 @@ class BrollRepository:
             ),
             transcript,
         )
+
+    def lock_generation_target(
+        self, *, workspace_id: UUID, suggestion_id: UUID
+    ) -> BrollSuggestion | None:
+        """Lock one suggestion of an active, ready Project before pricing or admitting it.
+
+        The Project is joined rather than assumed because a suggestion of an archived or
+        unready Project is not reviewable, and a beat nobody may review is a beat nobody
+        may spend a generation budget on.
+        """
+        return self._session.scalar(
+            select(BrollSuggestion)
+            .join(
+                Project,
+                (Project.workspace_id == BrollSuggestion.workspace_id)
+                & (Project.id == BrollSuggestion.project_id),
+            )
+            .where(
+                BrollSuggestion.workspace_id == workspace_id,
+                BrollSuggestion.id == suggestion_id,
+                Project.status == ProjectStatus.READY,
+                Project.archived_at.is_(None),
+            )
+            .with_for_update(of=BrollSuggestion)
+        )
+
+    def record_generation_request(
+        self,
+        *,
+        suggestion: BrollSuggestion,
+        job_id: UUID,
+        media_kind: str,
+        requested_by_user_id: UUID,
+        estimate: Mapping[str, str | int | None],
+        model_alias: str,
+    ) -> None:
+        """Record what was admitted, and move the suggestion out of plain review.
+
+        Only sanitized values are written: the prompt, provider credentials, and any
+        provider payload stay outside Postgres, so a metadata read can never become a
+        way to recover what was sent to a model.
+        """
+        metadata = dict(suggestion.provider_metadata)
+        metadata["generation"] = {
+            "job_id": str(job_id),
+            "media_kind": media_kind,
+            "model_alias": model_alias,
+            "requested_by_user_id": str(requested_by_user_id),
+            "estimate": dict(estimate),
+        }
+        suggestion.provider_metadata = metadata
+        suggestion.status = BrollSuggestionStatus.GENERATION_REQUESTED
+        self._session.flush()
 
     def candidate_is_visible(
         self, *, workspace_id: UUID, project_id: UUID, candidate_id: UUID

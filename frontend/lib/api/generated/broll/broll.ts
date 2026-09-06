@@ -27,8 +27,13 @@ import type {
   BrollPlanBody,
   BrollPlanJobResponse,
   BrollSuggestionListResponse,
+  CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams,
+  CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams,
   CreatePlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPostParams,
   CreateRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPostParams,
+  GenerationBody,
+  GenerationEstimateBody,
+  GenerationOfferResponse,
   HTTPValidationError,
   ListCollectionApiV1ProjectsProjectIdCandidatesCandidateIdBrollSuggestionsGetParams
 } from '.././model';
@@ -41,6 +46,170 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
+ * Commit one generation and every budget it spends before dispatching the worker.
+ * @summary Create Generation
+ */
+export const getCreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostUrl = (suggestionId: string,
+    params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/broll-suggestions/${suggestionId}/generate?${stringifiedParams}` : `/api/v1/broll-suggestions/${suggestionId}/generate`
+}
+
+export const createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost = async (suggestionId: string,
+    generationBody: GenerationBody,
+    params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams, options?: RequestInit): Promise<BrollPlanJobResponse> => {
+  
+  return apiFetch<BrollPlanJobResponse>(getCreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostUrl(suggestionId,params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      generationBody,)
+  }
+);}
+
+
+
+
+export const getCreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>, TError,{suggestionId: string;data: GenerationBody;params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>, TError,{suggestionId: string;data: GenerationBody;params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams}, TContext> => {
+
+const mutationKey = ['createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>, {suggestionId: string;data: GenerationBody;params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams}> = (props) => {
+          const {suggestionId,data,params} = props ?? {};
+
+          return  createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost(suggestionId,data,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostMutationResult = NonNullable<Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>>
+    export type CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostMutationBody = GenerationBody
+    export type CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostMutationError = HTTPValidationError
+
+    /**
+ * @summary Create Generation
+ */
+export const useCreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>, TError,{suggestionId: string;data: GenerationBody;params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost>>,
+        TError,
+        {suggestionId: string;data: GenerationBody;params: CreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostParams},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateGenerationApiV1BrollSuggestionsSuggestionIdGeneratePostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Price one generation without reserving budget or starting billable work.
+ * @summary Create Generation Estimate
+ */
+export const getCreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostUrl = (suggestionId: string,
+    params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/broll-suggestions/${suggestionId}/generation-estimates?${stringifiedParams}` : `/api/v1/broll-suggestions/${suggestionId}/generation-estimates`
+}
+
+export const createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost = async (suggestionId: string,
+    generationEstimateBody: GenerationEstimateBody,
+    params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams, options?: RequestInit): Promise<GenerationOfferResponse> => {
+  
+  return apiFetch<GenerationOfferResponse>(getCreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostUrl(suggestionId,params),
+  {      
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      generationEstimateBody,)
+  }
+);}
+
+
+
+
+export const getCreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>, TError,{suggestionId: string;data: GenerationEstimateBody;params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>, TError,{suggestionId: string;data: GenerationEstimateBody;params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams}, TContext> => {
+
+const mutationKey = ['createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>, {suggestionId: string;data: GenerationEstimateBody;params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams}> = (props) => {
+          const {suggestionId,data,params} = props ?? {};
+
+          return  createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost(suggestionId,data,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostMutationResult = NonNullable<Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>>
+    export type CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostMutationBody = GenerationEstimateBody
+    export type CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Create Generation Estimate
+ */
+export const useCreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>, TError,{suggestionId: string;data: GenerationEstimateBody;params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost>>,
+        TError,
+        {suggestionId: string;data: GenerationEstimateBody;params: CreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostParams},
+        TContext
+      > => {
+
+      const mutationOptions = getCreateGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Commit planning intent before a best-effort UUID-only dispatch.
  * @summary Create Plan
  */

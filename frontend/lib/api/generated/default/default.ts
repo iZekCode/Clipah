@@ -5,16 +5,20 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
+  useMutation,
   useQuery
 } from '@tanstack/react-query';
 import type {
   DataTag,
   DefinedInitialDataOptions,
   DefinedUseQueryResult,
+  MutationFunction,
   QueryClient,
   QueryFunction,
   QueryKey,
   UndefinedInitialDataOptions,
+  UseMutationOptions,
+  UseMutationResult,
   UseQueryOptions,
   UseQueryResult
 } from '@tanstack/react-query';
@@ -32,6 +36,77 @@ type SecondParameter<T extends (...args: never) => unknown> = Parameters<T>[1];
 
 
 /**
+ * Verify the raw delivery once, await its injected sink, and acknowledge it.
+ * @summary Receive Fal Webhook
+ */
+export const getReceiveFalWebhookApiV1WebhooksGenerationFalPostUrl = () => {
+
+
+  
+
+  return `/api/v1/webhooks/generation/fal`
+}
+
+export const receiveFalWebhookApiV1WebhooksGenerationFalPost = async ( options?: RequestInit): Promise<void> => {
+  
+  return apiFetch<void>(getReceiveFalWebhookApiV1WebhooksGenerationFalPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getReceiveFalWebhookApiV1WebhooksGenerationFalPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>, TError,void, TContext> => {
+
+const mutationKey = ['receiveFalWebhookApiV1WebhooksGenerationFalPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>, void> = () => {
+          
+
+          return  receiveFalWebhookApiV1WebhooksGenerationFalPost(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveFalWebhookApiV1WebhooksGenerationFalPostMutationResult = NonNullable<Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>>
+    
+    export type ReceiveFalWebhookApiV1WebhooksGenerationFalPostMutationError = unknown
+
+    /**
+ * @summary Receive Fal Webhook
+ */
+export const useReceiveFalWebhookApiV1WebhooksGenerationFalPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiveFalWebhookApiV1WebhooksGenerationFalPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getReceiveFalWebhookApiV1WebhooksGenerationFalPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Confirm that the HTTP process can accept requests without external I/O.
  * @summary Live
  */

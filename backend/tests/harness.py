@@ -290,6 +290,7 @@ def build_app(
     rate_limiter: RateLimiter | None = None,
     job_dispatcher: JobDispatcher | None = None,
     source_url_validator: Any = None,
+    generation_providers: Any = None,
     **setting_overrides: object,
 ) -> tuple[FastAPI, RecordingFlow, Settings]:
     """Compose the application against a stubbed provider and a hand-wound clock."""
@@ -321,6 +322,7 @@ def build_app(
             rate_limiter=rate_limiter,
             job_dispatcher=job_dispatcher,
             source_url_validator=source_url_validator,
+            generation_providers=generation_providers,
         ),
         flow,
         settings,

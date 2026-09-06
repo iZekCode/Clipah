@@ -1553,6 +1553,192 @@
         "title": "FontFamily",
         "type": "string"
       },
+      "GenerationBody": {
+        "additionalProperties": false,
+        "description": "The sealed agreement, and the second consent a video additionally requires.",
+        "properties": {
+          "confirmationToken": {
+            "maxLength": 4096,
+            "minLength": 1,
+            "title": "Confirmationtoken",
+            "type": "string"
+          },
+          "videoConfirmed": {
+            "default": false,
+            "title": "Videoconfirmed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "confirmationToken"
+        ],
+        "title": "GenerationBody",
+        "type": "object"
+      },
+      "GenerationEstimateBody": {
+        "additionalProperties": false,
+        "description": "The one choice a member makes when asking for a price: a still or a clip.",
+        "properties": {
+          "mediaKind": {
+            "$ref": "#/components/schemas/GenerationMediaKind"
+          }
+        },
+        "required": [
+          "mediaKind"
+        ],
+        "title": "GenerationEstimateBody",
+        "type": "object"
+      },
+      "GenerationEstimateResponse": {
+        "additionalProperties": false,
+        "description": "The complete price of one server-derived request, in provider-neutral units.",
+        "properties": {
+          "costUsd": {
+            "title": "Costusd",
+            "type": "string"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "generatedSeconds": {
+            "title": "Generatedseconds",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "imageUnits": {
+            "title": "Imageunits",
+            "type": "string"
+          },
+          "latencyClass": {
+            "$ref": "#/components/schemas/GenerationLatencyClass"
+          },
+          "mediaKind": {
+            "$ref": "#/components/schemas/GenerationMediaKind"
+          },
+          "outputCount": {
+            "title": "Outputcount",
+            "type": "integer"
+          },
+          "providerCredits": {
+            "title": "Providercredits",
+            "type": "string"
+          },
+          "videoUnits": {
+            "title": "Videounits",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "mediaKind",
+          "outputCount",
+          "durationMs",
+          "width",
+          "height",
+          "latencyClass",
+          "imageUnits",
+          "videoUnits",
+          "generatedSeconds",
+          "providerCredits",
+          "costUsd"
+        ],
+        "title": "GenerationEstimateResponse",
+        "type": "object"
+      },
+      "GenerationLatencyClass": {
+        "description": "Provider-neutral bands suitable for estimates shown before confirmation.",
+        "enum": [
+          "standard",
+          "slow"
+        ],
+        "title": "GenerationLatencyClass",
+        "type": "string"
+      },
+      "GenerationMediaKind": {
+        "description": "Media shapes generated-media providers may return.",
+        "enum": [
+          "image",
+          "video"
+        ],
+        "title": "GenerationMediaKind",
+        "type": "string"
+      },
+      "GenerationOfferResponse": {
+        "additionalProperties": false,
+        "description": "Whether generation is offered for one suggestion, and at what agreed price.",
+        "properties": {
+          "available": {
+            "title": "Available",
+            "type": "boolean"
+          },
+          "confirmationToken": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confirmationtoken"
+          },
+          "estimate": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationEstimateResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/GenerationUnavailableReason"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "videoOffered": {
+            "default": false,
+            "title": "Videooffered",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "available"
+        ],
+        "title": "GenerationOfferResponse",
+        "type": "object"
+      },
+      "GenerationUnavailableReason": {
+        "description": "Why a suggestion cannot be sent to a generative provider right now.",
+        "enum": [
+          "not_reviewable",
+          "stock_sufficient",
+          "provider_unavailable",
+          "video_disabled"
+        ],
+        "title": "GenerationUnavailableReason",
+        "type": "string"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -3390,6 +3576,145 @@
         "summary": "Logout",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/broll-suggestions/{suggestion_id}/generate": {
+      "post": {
+        "description": "Commit one generation and every budget it spends before dispatching the worker.",
+        "operationId": "create_generation_api_v1_broll_suggestions__suggestion_id__generate_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrollPlanJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Generation",
+        "tags": [
+          "broll"
+        ]
+      }
+    },
+    "/api/v1/broll-suggestions/{suggestion_id}/generation-estimates": {
+      "post": {
+        "description": "Price one generation without reserving budget or starting billable work.",
+        "operationId": "create_generation_estimate_api_v1_broll_suggestions__suggestion_id__generation_estimates_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "suggestion_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Suggestion Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerationEstimateBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerationOfferResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Generation Estimate",
+        "tags": [
+          "broll"
         ]
       }
     },
@@ -5682,6 +6007,18 @@
         "tags": [
           "source-connections"
         ]
+      }
+    },
+    "/api/v1/webhooks/generation/fal": {
+      "post": {
+        "description": "Verify the raw delivery once, await its injected sink, and acknowledge it.",
+        "operationId": "receive_fal_webhook_api_v1_webhooks_generation_fal_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Receive Fal Webhook"
       }
     },
     "/api/v1/workspaces": {

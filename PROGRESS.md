@@ -3,7 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-30 have landed. **Task 31 follows.**
+**Current position:** Tasks 1-30 have landed. **Task 31 is complete and awaiting the owner's
+commit.** Task 32 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -70,7 +71,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (`dfa312e`) |
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (`e81140a`) |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (`42ca150`) |
-| 31 | Add quota-aware generated-media fallback | `[ ]` |
+| 31 | Add quota-aware generated-media fallback | `[x]` (uncommitted) |
 | 32 | Add context-safe clip variants and platform packaging | `[ ]` |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[ ]` |
 | 34 | Build the searchable creator content library | `[ ]` |
@@ -1669,6 +1670,77 @@ after `contracts/openapi.json` was re-exported and the client regenerated. No co
 created; the required owner commit message is `feat: add editable broll copilot`.
 
 
+### Task 31 — Quota-aware generated-media fallback
+
+Generated media is the answer to one narrow question: what does a member do with a beat
+stock could not illustrate? Everything here follows from keeping that question narrow. A
+suggestion with a good enough picture is never offered a generation, a still is always
+offered before a clip, and no Workspace is billed until a member has read a real price and
+agreed to it.
+
+**The browser names a media kind and nothing else.** The prompt, model, geometry, duration,
+and output count are all derived on the server from the suggestion's stored Visual Intent
+and this deployment's configuration. `POST /broll-suggestions/{id}/generation-estimates`
+prices that derived request, reserves nothing, and returns a confirmation sealed with the
+deployment secret and bound to the Workspace, the User, the suggestion, the complete
+request, and an expiry. `POST /broll-suggestions/{id}/generate` verifies that seal,
+re-derives the request, and refuses if the two disagree — so a client that edits a price,
+a size, or a model is refused rather than obeyed.
+
+**Two budgets are one decision.** A still reserves one generated image; a clip reserves one
+generated video *and* its seconds, in the same transaction as the Job. `admit_job` now
+accepts an explicit resource map rather than the one-resource default, and a refusal on
+either budget rolls back both and the Job with it. `QuotaLedger` gained
+`settle_if_reserved` and `release_if_reserved`, which lock the row and return an
+already-terminal one unchanged, so a redelivered completion cannot charge twice.
+
+**The provider request ID is the idempotency anchor.** The worker persists the opaque
+handle before its first poll, so a redelivered Job resumes the request it already started
+instead of buying a second one. A webhook is treated as a wakeup and never as authority:
+the stage acts on the provider's own answer. Polling is bounded by the configured attempt
+deadline and then raises a retryable timeout, so a slow generation frees the worker rather
+than holding it.
+
+**Nothing a provider says becomes evidence on its own.** Output URLs are ephemeral
+capabilities carried as `SecretStr`, downloaded immediately and never stored. Stills are
+decoded and verified with Pillow, accepted only as PNG, JPEG, or WebP, and bounded by pixel
+count and bytes. Video is probed, refused when longer than the request allowed, and
+normalized to a private proxy. The Asset and its provenance — provider, request ID,
+server-built prompt, model, version, seed, moderation result, usage snapshot, checksum —
+are written in one transaction before the suggestion points at anything.
+
+**Runway needed one thing the provider contract did not have.** Its task payload reports
+neither geometry nor billed credits, so a worker resuming in a later process had nothing to
+normalize the result with. `GenerationHandle` gained three optional geometry fields that
+the requesting adapter fills in; fal leaves them empty because it reports its own.
+
+**Sub-task 2 was reviewed before the rest was built, and it left one defect.** The webhook
+route emitted `GENERATION_WEBHOOK_INVALID`, a code absent from the public-message table, so
+the envelope silently answered with the generic `HTTP_ERROR` message. The code is now
+registered with its own message and a test asserts it.
+
+**One defect was found by the tests, in the worker.** `_store_output` minted an asset ID for
+the storage key and `_persist` minted a different one for the row, so every generated file
+would have been stored under a key naming an Asset that did not exist. The ID is now minted
+once and carried through.
+
+**Task 31 needed one migration, which the plan did not anticipate.** Retrieval never changed
+a suggestion's status, so the worker's column-level `UPDATE` grant on `broll_suggestions`
+deliberately excluded it. Generation must: `generating`, `failed`, and the return to
+`proposed` are facts only the worker can know. Migration `0014` widens that grant by exactly
+one column. `decided_at` stays outside it, so no Job can still record a member's decision.
+
+Verification: **1613 passed, 10 skipped, 94% coverage** on the backend; **297 passed** on the
+frontend, including 12 new generation tests; `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+and `scripts/check-contracts-clean.sh` all clean; `alembic downgrade 0013 && upgrade head`
+round-trips. The live-provider smoke test skips cleanly with no network call.
+
+Owner commit message:
+
+```text
+feat: add guarded generative broll fallback
+```
+
 ### Defect fixed during Task 30 — an open stream pinned a database connection
 
 Found by running the Playwright suite against a real stack for the first time. The
@@ -1811,7 +1883,7 @@ oversight.
 | Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket). `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
 | Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
-| Retrieving stock images, so a member can accept a still. The editor accepts one as an image overlay with pan and zoom, and the golden frame proves it renders; both adapters still query the video endpoints only | Task 31 |
+| Retrieving *stock* images, so a member can accept a still they did not pay a model for. Task 31 generates stills, and the editor places them as image overlays; both stock adapters still query the video endpoints only | Task 34, with the content library |
 | Offering genuinely new alternatives for a replacement. Replacement swaps to another asset the Project owns, because only the selected candidate is ever downloaded | whichever task can pay for a second search inside the providers' terms |
 | Measuring a live stock provider. Every test uses fixtures or fakes, so the recorded behaviour proves the adapters rather than either provider's catalogue; `tests/slow/test_stock_provider_smoke.py` is written and opt-in | the repository owner, with Pexels and Pixabay credentials |
 | A real vision model behind `FrameRelevanceProvider`. The port, the recording of model and version, and the fake are all in place; no provider is wired, so sampled-frame relevance is reported as unmeasured in production | whichever task adopts a vision provider |
@@ -1819,7 +1891,7 @@ oversight.
 | Charging the monthly stock-request budget per provider request. `BROLL_RETRIEVE` reserves the `stock_requests` quota once per Job through the existing admission path; metering each provider call separately needs the per-request accounting Task 44 introduces | Task 44 |
 | Charging a metered Workspace budget for B-roll planning; a plan spends a concurrency slot and no quota, because the plan's limit table names no planning budget. This is the same gap the render deferral records | Tasks 44-46, with operational cost accounting |
 | Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
-| Generating a suggestion when retrieval finds nothing, and the browser surface for it. Task 30 landed accepting, rejecting, replacing, and removing | Task 31 |
+| ~~Generating a suggestion when retrieval finds nothing, and the browser surface for it~~ — landed in Task 31 | done |
 | Measuring a live planning provider. Every test uses the fake provider, so the recorded behaviour proves the pipeline rather than any model's judgement about what deserves a picture | the repository owner, with real Groq credentials |
 | Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
 | Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |
@@ -1865,6 +1937,8 @@ oversight.
 | The evaluation audio corpus itself — Task 15 checks in sanitized synthetic transcripts, not the two hours of source audio the plan asks for before a provider is frozen, nor the five hours asked for before public launch; the manifests record the shortfall in their audio-coverage fields | the repository owner, before the provider decision in Task 16 and before public launch |
 | Measuring a live provider — the checked-in run uses the offline adapters, so the recorded scores prove the harness rather than any provider's quality | the repository owner, after supplying the real-audio corpus and explicit live credentials |
 | Running the whole pipeline against live providers — the belt exists and every stage is wired, but no run has used real AssemblyAI or Groq credentials | the repository owner, before trusting Phase B's exit gate |
+| Measuring a live generative provider. Every test uses the fake provider or a local transport, so the recorded behaviour proves the adapters rather than either provider's output; `tests/slow/test_generation_provider_smoke.py` is written and opt-in | the repository owner, with fal and Runway credentials |
+| Generating an alternative for a suggestion that already carries generated media. Task 31 offers generation for an empty or below-threshold beat only; regenerating a picture a member did not like needs a decision about what happens to the first one | whichever task adds regeneration |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

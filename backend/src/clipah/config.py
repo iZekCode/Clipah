@@ -37,6 +37,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        hide_input_in_errors=True,
     )
 
     environment: Environment = Environment.LOCAL
@@ -105,6 +106,27 @@ class Settings(BaseSettings):
     broll_repetition_penalty: float = Field(default=0.15, ge=0, le=1)
     pexels_api_key: SecretStr | None = None
     pixabay_api_key: SecretStr | None = None
+    generated_image_provider: Literal["fal"] = "fal"
+    generated_video_provider: Literal["fal", "runway"] = "fal"
+    fal_api_key: SecretStr | None = None
+    fal_webhook_base_url: str | None = None
+    fal_image_model_alias: str = "image-default"
+    fal_image_model_id: str = "fal-ai/nano-banana-2"
+    fal_video_model_alias: str = "video-default"
+    fal_video_model_id: str = "fal-ai/kling-video/v2.6/pro/text-to-video"
+    runway_api_secret: SecretStr | None = None
+    runway_video_model_alias: str | None = None
+    runway_video_model_id: str | None = None
+    generation_max_duration_ms: int = Field(default=5_000, gt=0)
+    generation_max_output_bytes: int = Field(default=100_000_000, gt=0)
+    generation_http_timeout_seconds: float = Field(default=30.0, gt=0, allow_inf_nan=False)
+    generation_poll_seconds: float = Field(default=5.0, ge=5, allow_inf_nan=False)
+    generation_poll_attempt_deadline_seconds: float = Field(default=60.0, gt=0, allow_inf_nan=False)
+    generation_adapter_retry_count: int = Field(default=3, gt=0)
+    generation_circuit_failure_threshold: int = Field(default=5, gt=0)
+    generation_circuit_cooldown_seconds: float = Field(default=60.0, gt=0, allow_inf_nan=False)
+    generation_estimate_token_ttl_seconds: int = Field(default=300, gt=0)
+    generated_audio_enabled: Literal[False] = False
     # The brand mark burned into every export, or nothing when a deployment burns none.
     render_watermark_text: str | None = Field(default=None, max_length=64)
 
@@ -210,6 +232,7 @@ class Settings(BaseSettings):
     def validate_profile(self) -> Self:
         """Fail closed for missing production dependencies and unsafe provider choices."""
         self._validate_analysis_policy()
+        self._validate_generation_policy()
         if self.environment is not Environment.PRODUCTION:
             return self
 
@@ -231,6 +254,54 @@ class Settings(BaseSettings):
             raise ValueError("exposed analysis candidates cannot exceed kept candidates")
         if self.broll_min_shot_ms > self.broll_max_shot_ms:
             raise ValueError("B-roll minimum shot cannot exceed its maximum")
+
+    def _validate_generation_policy(self) -> None:
+        """Reject unsafe limits, partial providers, and retired generated-media models."""
+        if self.generation_max_duration_ms > self.broll_max_shot_ms:
+            raise ValueError("generation duration cannot exceed the B-roll shot maximum")
+        if self.generation_poll_attempt_deadline_seconds < self.generation_poll_seconds:
+            raise ValueError("generation polling deadline cannot be shorter than its interval")
+
+        model_values = (
+            self.fal_image_model_alias,
+            self.fal_image_model_id,
+            self.fal_video_model_alias,
+            self.fal_video_model_id,
+            self.runway_video_model_alias,
+            self.runway_video_model_id,
+        )
+        if any(value is not None and "sora" in value.casefold() for value in model_values):
+            raise ValueError("Sora model aliases and provider model IDs are not permitted")
+
+        if not _is_blank(self.fal_api_key):
+            required_fal_values = (
+                self.fal_webhook_base_url,
+                self.fal_image_model_alias,
+                self.fal_image_model_id,
+                self.fal_video_model_alias,
+                self.fal_video_model_id,
+            )
+            if any(_is_blank(value) for value in required_fal_values):
+                raise ValueError("fal credentials require complete webhook and model configuration")
+            if not _is_https_origin(self.fal_webhook_base_url):
+                raise ValueError("CLIPAH_FAL_WEBHOOK_BASE_URL must be a bare HTTPS origin")
+        elif not _is_blank(self.fal_webhook_base_url):
+            raise ValueError("fal webhook configuration requires CLIPAH_FAL_API_KEY")
+
+        runway_values = (
+            self.runway_api_secret,
+            self.runway_video_model_alias,
+            self.runway_video_model_id,
+        )
+        if any(not _is_blank(value) for value in runway_values) and any(
+            _is_blank(value) for value in runway_values
+        ):
+            raise ValueError("Runway credentials require complete video model configuration")
+
+        if self.generated_video_provider == "runway" and any(
+            _is_blank(value) for value in runway_values
+        ):
+            raise ValueError("selecting Runway for video requires its complete configuration")
 
     def _validate_production_requirements(self) -> None:
         runtime_setting_name, runtime_url = self._runtime_database_configuration()
@@ -377,6 +448,8 @@ def _is_https_origin(value: str | None) -> bool:
     return (
         parts.scheme == "https"
         and bool(parts.netloc)
+        and parts.username is None
+        and parts.password is None
         and not parts.path
         and not parts.query
         and not parts.fragment

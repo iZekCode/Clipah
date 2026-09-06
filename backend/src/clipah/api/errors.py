@@ -58,6 +58,11 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "EDIT_REVISION_CONFLICT": "This clip changed since you opened it.",
         "COMPOSITION_INVALID": "This edit could not be saved as a valid composition.",
         "COMPOSITION_ASSET_FORBIDDEN": "This edit uses media that is not available here.",
+        "GENERATION_WEBHOOK_INVALID": "This delivery could not be verified.",
+        "GENERATION_CONFIRMATION_INVALID": "This estimate is no longer valid. Ask for a new one.",
+        "GENERATION_CONFIRMATION_REQUIRED": "Generating video needs a separate confirmation.",
+        "GENERATION_NOT_ELIGIBLE": "This suggestion cannot be generated right now.",
+        "GENERATION_REQUEST_REFUSED": "This suggestion cannot be sent to a generative model.",
     }
 )
 

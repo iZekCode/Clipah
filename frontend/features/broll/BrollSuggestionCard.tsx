@@ -7,6 +7,9 @@ import { ProvenancePopover } from './ProvenancePopover'
 /** The statuses in which a suggestion is currently drawn over the clip. */
 const ON_TIMELINE = new Set(['placed', 'replaced'])
 
+/** The statuses in which a model is already drawing something for this beat. */
+const WORKING_STATUSES = new Set(['generation_requested', 'generating'])
+
 /**
  * One proposal, with enough evidence beside it to disagree with the planner.
  *
@@ -19,19 +22,23 @@ export function BrollSuggestionCard({
   clipStartMs,
   alternatives,
   busy,
+  generationOffered,
   onAccept,
   onReject,
   onReplace,
   onRemove,
+  onGenerate,
 }: {
   suggestion: BrollSuggestionResponse
   clipStartMs: number
   alternatives: ProjectAssetResponse[]
   busy: boolean
+  generationOffered: boolean
   onAccept: () => void
   onReject: () => void
   onReplace: (assetId: string) => void
   onRemove: () => void
+  onGenerate: () => void
 }) {
   const intent = suggestion.visualIntent
   const placed = ON_TIMELINE.has(suggestion.status)
@@ -66,6 +73,10 @@ export function BrollSuggestionCard({
 
       {suggestion.provenance?.generated === true ? (
         <p className="w-fit rounded bg-muted px-2 py-0.5 font-medium">AI-generated</p>
+      ) : null}
+
+      {WORKING_STATUSES.has(suggestion.status) ? (
+        <p role="status">Generating a picture for this beat. This continues in the background.</p>
       ) : null}
 
       {hasMedia ? (
@@ -106,6 +117,16 @@ export function BrollSuggestionCard({
             </button>
           </>
         )}
+        {generationOffered ? (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={onGenerate}
+            className="rounded border px-2 py-1"
+          >
+            Generate still
+          </button>
+        ) : null}
         {placed && swappable.length > 0 ? (
           <label className="flex items-center gap-1">
             <span className="sr-only">Replace this picture</span>

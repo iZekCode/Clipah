@@ -184,6 +184,56 @@ class QuotaLedger:
         self._session.flush()
         return reservation
 
+    def settle_if_reserved(
+        self,
+        *,
+        workspace_id: UUID,
+        resource: QuotaResource,
+        reference_kind: str,
+        reference_id: UUID,
+        actual_units: Decimal,
+        now: datetime,
+    ) -> WorkspaceQuotaReservation | None:
+        """Settle one reservation exactly once, leaving a terminal row untouched.
+
+        A generation may complete, be redelivered, and complete again; a reservation the
+        first completion already settled must not be charged a second time, and one this
+        Workspace never held is not an error a worker can act on.
+        """
+        try:
+            reservation = self._load(workspace_id, resource, reference_kind, reference_id)
+        except QuotaReservationNotFoundError:
+            return None
+        if reservation.status is not QuotaReservationStatus.RESERVED:
+            return reservation
+        reservation.status = QuotaReservationStatus.SETTLED
+        reservation.actual_units = actual_units
+        reservation.settled_at = now
+        self._session.flush()
+        return reservation
+
+    def release_if_reserved(
+        self,
+        *,
+        workspace_id: UUID,
+        resource: QuotaResource,
+        reference_kind: str,
+        reference_id: UUID,
+        now: datetime,
+    ) -> WorkspaceQuotaReservation | None:
+        """Release one still-held reservation, preserving usage already settled."""
+        try:
+            reservation = self._load(workspace_id, resource, reference_kind, reference_id)
+        except QuotaReservationNotFoundError:
+            return None
+        if reservation.status is not QuotaReservationStatus.RESERVED:
+            return reservation
+        reservation.status = QuotaReservationStatus.RELEASED
+        reservation.actual_units = Decimal(0)
+        reservation.settled_at = now
+        self._session.flush()
+        return reservation
+
     def consumed(self, *, workspace_id: UUID, resource: QuotaResource, now: datetime) -> Decimal:
         """Report the budget this Workspace currently holds for the period containing ``now``."""
         return self._charged(workspace_id, resource, _period_start(now))
@@ -277,11 +327,14 @@ def admit_job(
     idempotency_key: str,
     now: datetime,
     estimated_units: Decimal = Decimal(1),
+    quota_units: Mapping[QuotaResource, Decimal] | None = None,
 ) -> Job:
     """Charge every limit this kind of work is subject to, then create the job row.
 
     All three checks share the caller's transaction, so a refusal at any point leaves
-    no admitted job and no held budget behind.
+    no admitted job and no held budget behind. A caller that spends more than one
+    metered resource — a generated video costs both a video and its seconds — names
+    every resource explicitly instead of relying on the one-resource default.
     """
     # The Redis allowance must run last so a database refusal cannot spend it. A
     # savepoint makes the inverse failure atomic too: callers may translate the
@@ -293,12 +346,13 @@ def admit_job(
             kind=kind,
             idempotency_key=idempotency_key,
         )
-        resource = QUOTA_FOR_JOB_KIND.get(kind)
-        if resource is not None:
-            QuotaLedger(session, limits=policy.quota_limits).reserve(
+        charges = _charges(kind, estimated_units=estimated_units, quota_units=quota_units)
+        ledger = QuotaLedger(session, limits=policy.quota_limits)
+        for resource, units in charges.items():
+            ledger.reserve(
                 workspace_id=workspace_id,
                 resource=resource,
-                units=estimated_units,
+                units=units,
                 reference_kind="job",
                 reference_id=job.id,
                 now=now,
@@ -306,6 +360,19 @@ def admit_job(
         if kind is JobKind.ANALYZE:
             _require_analysis_allowance(policy, user_id=user_id)
     return job
+
+
+def _charges(
+    kind: JobKind,
+    *,
+    estimated_units: Decimal,
+    quota_units: Mapping[QuotaResource, Decimal] | None,
+) -> Mapping[QuotaResource, Decimal]:
+    """Name every metered resource this admission must hold before the work exists."""
+    if quota_units is not None:
+        return quota_units
+    resource = QUOTA_FOR_JOB_KIND.get(kind)
+    return {} if resource is None else {resource: estimated_units}
 
 
 def _require_analysis_allowance(policy: AdmissionPolicy, *, user_id: UUID) -> None:

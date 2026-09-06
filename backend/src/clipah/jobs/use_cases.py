@@ -11,6 +11,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from clipah.broll.models import BrollSuggestionStatus
 from clipah.jobs.admission import AdmissionPolicy, QuotaLedger, admit_job
 from clipah.jobs.models import (
     EVENT_FOR_STATUS,
@@ -22,7 +23,15 @@ from clipah.jobs.models import (
     assert_transition,
 )
 from clipah.jobs.repository import JobRepository, snapshot_of
-from clipah.models import Job, JobKind, JobStatus, Project, ProjectStatus, QuotaResource
+from clipah.models import (
+    BrollSuggestion,
+    Job,
+    JobKind,
+    JobStatus,
+    Project,
+    ProjectStatus,
+    QuotaResource,
+)
 from clipah.workspaces.models import WorkspaceAccess
 
 SUCCESS_PROGRESS = 1.0
@@ -38,6 +47,7 @@ def create_job(
     idempotency_key: str,
     now: datetime,
     estimated_units: Decimal = Decimal(1),
+    quota_units: Mapping[QuotaResource, Decimal] | None = None,
 ) -> JobSnapshot:
     """Admit one unit of paid work, record it durably, and announce that it exists."""
     repository = JobRepository(session)
@@ -57,6 +67,7 @@ def create_job(
         idempotency_key=idempotency_key,
         now=now,
         estimated_units=estimated_units,
+        quota_units=quota_units,
     )
     repository.append_event(job, event_type=JobEventType.CREATED)
     return snapshot_of(job)
@@ -210,6 +221,9 @@ def _reconcile_analysis_terminal(
     session: Session, *, job: Job, target: JobStatus, now: datetime
 ) -> None:
     """Settle successful analysis quota or release it after failure and cancellation."""
+    if job.kind is JobKind.BROLL_GENERATE:
+        _reconcile_generation_terminal(session, job=job, target=target, now=now)
+        return
     if job.kind is not JobKind.ANALYZE:
         return
     ledger = QuotaLedger(session, limits={})
@@ -240,6 +254,44 @@ def _reconcile_analysis_terminal(
     )
     if project is not None:
         project.status = ProjectStatus.FAILED
+
+
+def _reconcile_generation_terminal(
+    session: Session, *, job: Job, target: JobStatus, now: datetime
+) -> None:
+    """Release unspent generation budget and let a member see a refused suggestion.
+
+    Usage the worker already settled is left exactly as it is: a provider that billed for
+    a failed generation was still paid, and pretending otherwise would understate what
+    this Workspace actually spent.
+    """
+    if target not in {JobStatus.FAILED, JobStatus.CANCELED}:
+        return
+    ledger = QuotaLedger(session, limits={})
+    for resource in (
+        QuotaResource.GENERATED_IMAGES,
+        QuotaResource.GENERATED_VIDEOS,
+        QuotaResource.GENERATED_SECONDS,
+    ):
+        ledger.release_if_reserved(
+            workspace_id=job.workspace_id,
+            resource=resource,
+            reference_kind="job",
+            reference_id=job.id,
+            now=now,
+        )
+    for suggestion in session.scalars(
+        select(BrollSuggestion).where(
+            BrollSuggestion.workspace_id == job.workspace_id,
+            BrollSuggestion.project_id == job.project_id,
+            BrollSuggestion.status.in_(
+                (BrollSuggestionStatus.GENERATION_REQUESTED, BrollSuggestionStatus.GENERATING)
+            ),
+        )
+    ).all():
+        stored = suggestion.provider_metadata.get("generation")
+        if isinstance(stored, dict) and stored.get("job_id") == str(job.id):
+            suggestion.status = BrollSuggestionStatus.FAILED
 
 
 def _record(repository: JobRepository, job: Job, event_type: JobEventType) -> JobSnapshot:

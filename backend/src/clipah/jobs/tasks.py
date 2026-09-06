@@ -228,6 +228,7 @@ def _now() -> datetime:
 
 
 from clipah.jobs.analyze_task import analyze_stage_runner  # noqa: E402
+from clipah.jobs.broll_generate_task import broll_generate_stage_runner  # noqa: E402
 from clipah.jobs.broll_plan_task import broll_plan_stage_runner  # noqa: E402
 from clipah.jobs.broll_retrieve_task import broll_retrieve_stage_runner  # noqa: E402
 from clipah.jobs.ingest_task import (  # noqa: E402
@@ -244,6 +245,7 @@ _STAGE_RUNNERS.setdefault(JobKind.TRANSCRIBE, transcribe_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.ANALYZE, analyze_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.BROLL_PLAN, broll_plan_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.BROLL_RETRIEVE, broll_retrieve_stage_runner)
+_STAGE_RUNNERS.setdefault(JobKind.BROLL_GENERATE, broll_generate_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.RENDER, render_stage_runner)
 
 

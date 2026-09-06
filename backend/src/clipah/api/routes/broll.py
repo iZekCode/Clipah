@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from contextlib import suppress
 from datetime import datetime
+from decimal import Decimal
 from math import ceil
 from typing import Annotated
 from uuid import UUID
@@ -15,18 +16,31 @@ from clipah.api.dependencies import (
     CurrentWorkspace,
     DatabaseSession,
     auth_components_for,
+    generation_providers_for,
     rate_limiter_for,
     require_csrf,
     require_workspace,
     settings_for,
 )
 from clipah.api.errors import ApiError
+from clipah.broll.generation import (
+    GenerationConfirmationInvalidError,
+    GenerationEstimate,
+    GenerationLatencyClass,
+    GenerationMediaKind,
+    GenerationProviderTerminalError,
+)
+from clipah.broll.generation_policy import GenerationUnavailableReason
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
 from clipah.broll.repository import BrollRepository, ProvenanceSummary, SuggestionSummary
 from clipah.broll.use_cases import (
     BrollPlanConflictError,
     BrollTargetNotFoundError,
+    GenerationNotEligibleError,
+    GenerationVideoConfirmationRequiredError,
+    estimate_generation,
     list_suggestions,
+    start_broll_generation,
     start_broll_plan,
     start_broll_retrieval,
 )
@@ -243,6 +257,177 @@ def create_retrieval(
                 kind=JobKind.BROLL_RETRIEVE,
             )
     return BrollPlanJobResponse(jobId=snapshot.job_id, status=snapshot.status)
+
+
+class GenerationEstimateBody(BaseModel):
+    """The one choice a member makes when asking for a price: a still or a clip."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    media_kind: GenerationMediaKind = Field(alias="mediaKind")
+
+
+class GenerationBody(BaseModel):
+    """The sealed agreement, and the second consent a video additionally requires."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    confirmation_token: str = Field(alias="confirmationToken", min_length=1, max_length=4096)
+    video_confirmed: bool = Field(alias="videoConfirmed", default=False)
+
+
+class GenerationEstimateResponse(BaseModel):
+    """The complete price of one server-derived request, in provider-neutral units."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    media_kind: GenerationMediaKind = Field(alias="mediaKind")
+    output_count: int = Field(alias="outputCount")
+    duration_ms: int | None = Field(alias="durationMs")
+    width: int
+    height: int
+    latency_class: GenerationLatencyClass = Field(alias="latencyClass")
+    image_units: Decimal = Field(alias="imageUnits")
+    video_units: Decimal = Field(alias="videoUnits")
+    generated_seconds: Decimal = Field(alias="generatedSeconds")
+    provider_credits: Decimal = Field(alias="providerCredits")
+    cost_usd: Decimal = Field(alias="costUsd")
+
+    @field_serializer(
+        "image_units", "video_units", "generated_seconds", "provider_credits", "cost_usd"
+    )
+    def serialize_decimal(self, value: Decimal) -> str:
+        """Report money and quota units exactly, never as a binary float."""
+        return format(value.normalize(), "f")
+
+
+class GenerationOfferResponse(BaseModel):
+    """Whether generation is offered for one suggestion, and at what agreed price."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    available: bool
+    reason: GenerationUnavailableReason | None = None
+    video_offered: bool = Field(alias="videoOffered", default=False)
+    estimate: GenerationEstimateResponse | None = None
+    confirmation_token: str | None = Field(alias="confirmationToken", default=None)
+
+
+@router.post(
+    "/broll-suggestions/{suggestion_id}/generation-estimates",
+    response_model=GenerationOfferResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def create_generation_estimate(
+    request: Request,
+    suggestion_id: UUID,
+    body: GenerationEstimateBody,
+    session: DatabaseSession,
+    workspace: WritableWorkspace,
+) -> GenerationOfferResponse:
+    """Price one generation without reserving budget or starting billable work."""
+    try:
+        offer = estimate_generation(
+            session,
+            access=workspace.access,
+            settings=settings_for(request),
+            providers=generation_providers_for(request),
+            suggestion_id=suggestion_id,
+            media_kind=body.media_kind,
+            now=auth_components_for(request).now(),
+        )
+    except BrollTargetNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except GenerationProviderTerminalError as error:
+        raise ApiError(status_code=422, code="GENERATION_REQUEST_REFUSED") from error
+
+    session.rollback()
+    return GenerationOfferResponse(
+        available=offer.eligibility.available,
+        reason=offer.eligibility.reason,
+        videoOffered=offer.video_offered,
+        estimate=_estimate_body(offer.estimate),
+        confirmationToken=offer.confirmation_token,
+    )
+
+
+@router.post(
+    "/broll-suggestions/{suggestion_id}/generate",
+    status_code=202,
+    response_model=BrollPlanJobResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def create_generation(
+    request: Request,
+    suggestion_id: UUID,
+    body: GenerationBody,
+    session: DatabaseSession,
+    workspace: WritableWorkspace,
+    idempotency_key: IdempotencyHeader,
+) -> BrollPlanJobResponse:
+    """Commit one generation and every budget it spends before dispatching the worker."""
+    dispatcher: JobDispatcher = request.app.state.job_dispatcher
+    try:
+        snapshot = start_broll_generation(
+            session,
+            policy=admission_policy(settings_for(request), rate_limiter_for(request)),
+            access=workspace.access,
+            settings=settings_for(request),
+            providers=generation_providers_for(request),
+            suggestion_id=suggestion_id,
+            confirmation_token=body.confirmation_token,
+            video_confirmed=body.video_confirmed,
+            idempotency_key=idempotency_key,
+            now=auth_components_for(request).now(),
+        )
+    except BrollTargetNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except BrollPlanConflictError as error:
+        raise ApiError(status_code=409, code="CONFLICT") from error
+    except GenerationVideoConfirmationRequiredError as error:
+        raise ApiError(status_code=400, code="GENERATION_CONFIRMATION_REQUIRED") from error
+    except GenerationConfirmationInvalidError as error:
+        raise ApiError(status_code=400, code="GENERATION_CONFIRMATION_INVALID") from error
+    except GenerationNotEligibleError as error:
+        raise ApiError(status_code=409, code="GENERATION_NOT_ELIGIBLE") from error
+    except QuotaExceededError as error:
+        raise ApiError(
+            status_code=429,
+            code="QUOTA_EXCEEDED",
+            retry_after_seconds=max(ceil(error.retry_after.total_seconds()), 1),
+        ) from error
+    except ConcurrencyLimitError as error:
+        raise ApiError(status_code=429, code="CONCURRENCY_LIMIT") from error
+
+    session.commit()
+    if snapshot.status is JobStatus.QUEUED:
+        with suppress(Exception):
+            dispatcher.dispatch(
+                job_id=snapshot.job_id,
+                workspace_id=workspace.access.workspace_id,
+                user_id=workspace.access.user_id,
+                kind=JobKind.BROLL_GENERATE,
+            )
+    return BrollPlanJobResponse(jobId=snapshot.job_id, status=snapshot.status)
+
+
+def _estimate_body(estimate: GenerationEstimate | None) -> GenerationEstimateResponse | None:
+    """Render one agreed price, or report that there is nothing to agree to."""
+    if estimate is None:
+        return None
+    return GenerationEstimateResponse(
+        mediaKind=estimate.media_kind,
+        outputCount=estimate.output_count,
+        durationMs=estimate.duration_ms,
+        width=estimate.width,
+        height=estimate.height,
+        latencyClass=estimate.latency_class,
+        imageUnits=estimate.image_units,
+        videoUnits=estimate.video_units,
+        generatedSeconds=estimate.generated_seconds,
+        providerCredits=estimate.provider_credits,
+        costUsd=estimate.cost_usd,
+    )
 
 
 @router.get(

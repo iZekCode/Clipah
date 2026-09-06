@@ -1925,7 +1925,12 @@ def test_initial_migration_can_upgrade_downgrade_and_upgrade_again(engine: Engin
 def test_the_worker_may_attach_a_broll_asset_but_never_decide_for_a_member(
     engine: Engine,
 ) -> None:
-    """Retrieval fills in which picture was chosen; only a member changes its status."""
+    """A Job fills in which picture was chosen and how generating it went, never a decision.
+
+    Generation added `status` to this grant, because `generating` and `failed` are facts
+    only the worker can know. `decided_at` stays outside it, so no Job can ever record
+    that a member accepted or rejected a suggestion.
+    """
     with engine.connect() as connection:
         granted = {
             row.column_name
@@ -1938,4 +1943,5 @@ def test_the_worker_may_attach_a_broll_asset_but_never_decide_for_a_member(
             )
         }
 
-    assert granted == {"source_type", "asset_id", "relevance_score", "provider_metadata"}
+    assert granted == {"source_type", "asset_id", "relevance_score", "provider_metadata", "status"}
+    assert "decided_at" not in granted
