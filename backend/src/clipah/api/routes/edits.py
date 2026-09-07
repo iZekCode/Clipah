@@ -106,6 +106,7 @@ class RevisionResponse(BaseModel):
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
+    id: UUID
     revision: int
     composition_hash: str = Field(alias="compositionHash")
     created_by: UUID = Field(alias="createdBy")
@@ -380,6 +381,7 @@ def _selected_look(
 def _revision_body(revision: RevisionSummary) -> RevisionResponse:
     """Render one history entry without repeating the composition behind it."""
     return RevisionResponse(
+        id=revision.revision_id,
         revision=revision.revision,
         compositionHash=revision.composition_hash.hex(),
         createdBy=revision.created_by_user_id,

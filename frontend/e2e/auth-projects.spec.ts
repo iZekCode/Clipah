@@ -143,7 +143,44 @@ test("another Workspace's Project URL answers like a Project that never existed"
   await expect(alert).not.toContainText(/permission|member|workspace/i)
 })
 
-// Removing a member needs a membership endpoint the backend does not have yet; only
-// `GET /workspaces/{workspaceId}/members` exists. Task 35 builds membership management,
-// and this scenario belongs with it.
-test.fixme('an owner removes a member and that member loses the Workspace', async () => {})
+test('an owner removes a member and that member loses the Workspace', async ({ browser }) => {
+  const owner = await seedMember({
+    email: uniqueEmail('removing-owner'),
+    displayName: 'Removing Owner',
+    workspaceName: 'Removal Team',
+    teamWorkspace: true,
+  })
+  const member = await seedMember({
+    email: uniqueEmail('removed-member'),
+    displayName: 'Removed Member',
+    workspaceName: 'Removed Personal',
+  })
+  const ownerContext = await browser.newContext({ baseURL: SITE })
+  const memberContext = await browser.newContext({ baseURL: SITE })
+  await signIn(ownerContext, owner, SITE)
+  await signIn(memberContext, member, SITE)
+  const invitation = await ownerContext.request.post(
+    `/api/v1/workspaces/${owner.workspaceId}/invites`,
+    {
+      headers: { 'X-CSRF-Token': owner.csrfToken, Origin: SITE },
+      data: { email: member.userId + '@delivery.test', role: 'viewer' },
+    },
+  )
+  expect(invitation.status()).toBe(201)
+  const token = (await invitation.json()).token as string
+  const accepted = await memberContext.request.post(`/api/v1/workspace-invites/${token}/accept`, {
+    headers: { 'X-CSRF-Token': member.csrfToken, Origin: SITE },
+  })
+  expect(accepted.status()).toBe(200)
+
+  const removed = await ownerContext.request.delete(
+    `/api/v1/workspaces/${owner.workspaceId}/members/${member.userId}`,
+    { headers: { 'X-CSRF-Token': owner.csrfToken, Origin: SITE } },
+  )
+  expect(removed.status()).toBe(204)
+  const refused = await memberContext.request.get(`/api/v1/workspaces/${owner.workspaceId}`)
+  expect(refused.status()).toBe(404)
+  expect((await refused.json()).error.code).toBe('NOT_FOUND')
+  await ownerContext.close()
+  await memberContext.close()
+})

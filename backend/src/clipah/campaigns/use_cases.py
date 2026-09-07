@@ -20,6 +20,7 @@ from clipah.campaigns.generator import ClipSummary, generate_campaign_outputs
 from clipah.campaigns.models import CampaignLanguage
 from clipah.campaigns.repository import CampaignOutputSummary, CampaignRepository
 from clipah.editor.models import CompositionValidationError, parse_composition
+from clipah.editor.reviews import has_current_approval
 from clipah.search.indexer import index_project
 from clipah.variants.models import Platform
 from clipah.workspaces.models import WorkspaceAccess
@@ -27,6 +28,10 @@ from clipah.workspaces.models import WorkspaceAccess
 
 class CampaignTargetNotFoundError(Exception):
     """The Edit or the Revision is not visible inside this Workspace."""
+
+
+class CampaignApprovalRequiredError(Exception):
+    """The exact Revision selected for packaging lacks a current approval."""
 
 
 def generate_outputs(
@@ -37,6 +42,7 @@ def generate_outputs(
     revision: int,
     platforms: Sequence[Platform],
     languages: Sequence[CampaignLanguage],
+    require_approval: bool = False,
 ) -> tuple[CampaignOutputSummary, ...]:
     """Derive one piece of copy per destination and language from one exact Revision."""
     repository = CampaignRepository(session)
@@ -45,6 +51,13 @@ def generate_outputs(
     )
     if target is None:
         raise CampaignTargetNotFoundError(f"{edit_id} r{revision}")
+    if require_approval and not has_current_approval(
+        session,
+        workspace_id=access.workspace_id,
+        edit_id=edit_id,
+        revision_id=target.revision_id,
+    ):
+        raise CampaignApprovalRequiredError(str(target.revision_id))
 
     clip = _with_brand_constraints(
         session, access=access, target_clip=target.clip, composition=target.composition

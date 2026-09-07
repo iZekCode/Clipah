@@ -89,6 +89,31 @@ class WorkspaceRole(StrEnum):
     VIEWER = "viewer"
 
 
+class WorkspaceMembershipEventKind(StrEnum):
+    """The closed audit vocabulary for Workspace collaboration changes."""
+
+    INVITE_CREATED = "invite_created"
+    INVITE_REVOKED = "invite_revoked"
+    INVITE_ACCEPTED = "invite_accepted"
+    ROLE_CHANGED = "role_changed"
+    MEMBER_REMOVED = "member_removed"
+    OWNERSHIP_TRANSFERRED = "ownership_transferred"
+
+
+class ReviewAnchorKind(StrEnum):
+    """The two stable locations one review comment may identify."""
+
+    TIMESTAMP = "timestamp"
+    ITEM = "item"
+
+
+class EditReviewDecisionKind(StrEnum):
+    """The decisions a reviewer may record against one immutable Revision."""
+
+    REQUEST_CHANGES = "request_changes"
+    APPROVE = "approve"
+
+
 class ProjectStatus(StrEnum):
     CREATED = "created"
     UPLOADING = "uploading"
@@ -394,6 +419,56 @@ class WorkspaceInvite(Base):
     )
     accepted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class WorkspaceMembershipEvent(Base):
+    """Append-only evidence of one membership or invitation change."""
+
+    __tablename__ = "workspace_membership_events"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "id", name="uq_workspace_membership_events_workspace_id_id"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "member_user_id"],
+            ["workspace_memberships.workspace_id", "workspace_memberships.user_id"],
+            name="fk_membership_events_workspace_member",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "invite_id"],
+            ["workspace_invites.workspace_id", "workspace_invites.id"],
+            name="fk_membership_events_workspace_invite",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "member_user_id IS NOT NULL OR invite_id IS NOT NULL", name="has_event_subject"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    member_user_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    invite_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    kind: Mapped[WorkspaceMembershipEventKind] = mapped_column(
+        enum_type(WorkspaceMembershipEventKind, "workspace_membership_event_kind"),
+        nullable=False,
+    )
+    old_role: Mapped[WorkspaceRole | None] = mapped_column(
+        enum_type(WorkspaceRole, "workspace_role")
+    )
+    new_role: Mapped[WorkspaceRole | None] = mapped_column(
+        enum_type(WorkspaceRole, "workspace_role")
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class Project(Base):
@@ -1245,6 +1320,140 @@ class ClipEditRevision(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class EditReviewComment(Base):
+    """One immutable plain-text observation anchored to an exact Edit Revision."""
+
+    __tablename__ = "edit_review_comments"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_edit_review_comments_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_id"],
+            ["clip_edits.workspace_id", "clip_edits.id"],
+            name="fk_edit_review_comments_workspace_edit_clip_edits",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_edit_review_comments_workspace_revision_clip_edit_revisions",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("char_length(text) BETWEEN 1 AND 4000", name="bounded_text"),
+        CheckConstraint(
+            "(anchor_kind = 'timestamp' AND anchor_ms IS NOT NULL AND anchor_ms >= 0 "
+            "AND item_id IS NULL) OR "
+            "(anchor_kind = 'item' AND item_id IS NOT NULL AND char_length(item_id) <= 128 "
+            "AND anchor_ms IS NULL)",
+            name="valid_anchor",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    clip_edit_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    clip_edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(Text, nullable=False)
+    anchor_kind: Mapped[ReviewAnchorKind] = mapped_column(
+        enum_type(ReviewAnchorKind, "review_anchor_kind"), nullable=False
+    )
+    anchor_ms: Mapped[int | None] = mapped_column(Integer)
+    item_id: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EditReviewCommentResolution(Base):
+    """One append-only resolution or reopening of a review comment."""
+
+    __tablename__ = "edit_review_comment_resolutions"
+    __table_args__ = (
+        UniqueConstraint(
+            "workspace_id", "id", name="uq_edit_review_comment_resolutions_workspace_id_id"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "comment_id"],
+            ["edit_review_comments.workspace_id", "edit_review_comments.id"],
+            name="fk_review_resolutions_workspace_comment",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "comment_id",
+            "sequence",
+            name="uq_review_resolutions_workspace_comment_sequence",
+        ),
+        CheckConstraint("sequence > 0", name="positive_sequence"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    comment_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    resolved: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class EditReviewDecision(Base):
+    """One immutable approval or request for changes against one Revision."""
+
+    __tablename__ = "edit_review_decisions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_edit_review_decisions_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_id"],
+            ["clip_edits.workspace_id", "clip_edits.id"],
+            name="fk_edit_review_decisions_workspace_edit_clip_edits",
+            ondelete="RESTRICT",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "clip_edit_id",
+            "sequence",
+            name="uq_edit_review_decisions_workspace_edit_sequence",
+        ),
+        CheckConstraint("sequence > 0", name="positive_sequence"),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_edit_review_decisions_workspace_revision_clip_edit_revisions",
+            ondelete="RESTRICT",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    clip_edit_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    clip_edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    sequence: Mapped[int] = mapped_column(Integer, nullable=False)
+    decision: Mapped[EditReviewDecisionKind] = mapped_column(
+        enum_type(EditReviewDecisionKind, "edit_review_decision_kind"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
 class RenderArtifact(Base):

@@ -141,6 +141,35 @@ def test_generating_copy_publishes_nothing_and_starts_no_job(
 
 
 @pytest.mark.integration
+def test_collaboration_requires_approval_of_the_exact_revision(
+    engine: Engine, clean_database: None
+) -> None:
+    """Enabled collaboration must not package bytes nobody approved."""
+    del clean_database
+    fixture = _signed_in_with_edit(engine, setting_overrides={"collaboration_enabled": True})
+
+    refused = _generate(fixture, platforms=["tiktok"], languages=["id"])
+
+    assert_error(refused, status_code=409, code="REVIEW_APPROVAL_REQUIRED")
+    with Session(engine) as session:
+        assert session.scalars(select(CampaignOutput)).all() == []
+
+    revision_id = fixture.browser.get(
+        f"/api/v1/edits/{fixture.edit_id}/revisions?workspace_id={fixture.workspace_id}"
+    ).json()["revisions"][0]["id"]
+    approved = fixture.browser.request(
+        "POST",
+        f"/api/v1/edits/{fixture.edit_id}/reviews?workspace_id={fixture.workspace_id}",
+        json={"revisionId": revision_id, "decision": "approve"},
+    )
+    assert approved.status_code == 201
+
+    generated = _generate(fixture, platforms=["tiktok"], languages=["id"])
+
+    assert generated.status_code == 201
+
+
+@pytest.mark.integration
 def test_copy_is_listed_for_the_revision_it_was_derived_from(
     engine: Engine, clean_database: None
 ) -> None:
@@ -325,10 +354,15 @@ def _declare_brand_kit(fixture: _Fixture, *, forbidden: str) -> int:
     return revision
 
 
-def _signed_in_with_edit(engine: Engine, **candidate_overrides: Any) -> _Fixture:
+def _signed_in_with_edit(
+    engine: Engine,
+    *,
+    setting_overrides: dict[str, object] | None = None,
+    **candidate_overrides: Any,
+) -> _Fixture:
     """Sign one member in and open the Edit their copy will be derived from."""
     clock = Clock(NOW)
-    app, flow, _ = build_app(clock, StubGoogleProvider(clock))
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), **(setting_overrides or {}))
     browser = Browser(app)
     sign_in(browser, flow)
     workspace_id = UUID(browser.get("/api/v1/workspaces").json()["workspaces"][0]["id"])

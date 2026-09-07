@@ -12,5 +12,6 @@ export interface RevisionResponse {
   compositionHash: string;
   createdAt: string;
   createdBy: string;
+  id: string;
   revision: number;
 }

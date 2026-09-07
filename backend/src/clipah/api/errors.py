@@ -56,6 +56,8 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "SOURCE_TLS_FAILED": "The video source could not be verified securely.",
         "SOURCE_UNAVAILABLE": "The video source is temporarily unavailable.",
         "EDIT_REVISION_CONFLICT": "This clip changed since you opened it.",
+        "REVIEW_INVALID": "This review could not be attached to that revision.",
+        "REVIEW_APPROVAL_REQUIRED": "Approve the current revision before continuing.",
         "COMPOSITION_INVALID": "This edit could not be saved as a valid composition.",
         "COMPOSITION_ASSET_FORBIDDEN": "This edit uses media that is not available here.",
         "GENERATION_WEBHOOK_INVALID": "This delivery could not be verified.",

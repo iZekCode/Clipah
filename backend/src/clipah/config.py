@@ -145,6 +145,7 @@ class Settings(BaseSettings):
     secret_encryption_enabled: bool = False
 
     authenticated_source_import_enabled: bool = False
+    collaboration_enabled: bool = False
     generative_video_enabled: bool = False
     social_publishing_enabled: bool = False
 

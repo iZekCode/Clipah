@@ -25,6 +25,7 @@ from clipah.api.routes import campaigns as campaign_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import claim_evidence as claim_evidence_routes
 from clipah.api.routes import dashboard as dashboard_routes
+from clipah.api.routes import edit_reviews as edit_review_routes
 from clipah.api.routes import edits as edit_routes
 from clipah.api.routes import generation_webhooks as generation_webhook_routes
 from clipah.api.routes import jobs as job_routes
@@ -36,6 +37,7 @@ from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import templates as template_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import variants as variant_routes
+from clipah.api.routes import workspace_memberships as workspace_membership_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.api.routes import youtube_imports as youtube_import_routes
 from clipah.api.routes.generation_webhooks import FalWebhookVerifier, GenerationWebhookSink
@@ -174,6 +176,7 @@ def create_app(
 
     app.include_router(auth_routes.router)
     app.include_router(workspace_routes.router)
+    app.include_router(workspace_membership_routes.router)
     app.include_router(project_routes.router)
     app.include_router(upload_routes.router)
     app.include_router(job_routes.router)
@@ -186,6 +189,7 @@ def create_app(
     app.include_router(source_connection_routes.router)
     app.include_router(dashboard_routes.router)
     app.include_router(edit_routes.router)
+    app.include_router(edit_review_routes.router)
     app.include_router(render_routes.router)
     app.include_router(generation_webhook_routes.router)
     app.include_router(variant_routes.router)

@@ -1,6 +1,118 @@
 {
   "components": {
     "schemas": {
+      "AccessibilityResponse": {
+        "additionalProperties": false,
+        "description": "Accessibility advice calculated for one exact immutable Revision.",
+        "properties": {
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/AccessibilityWarningResponse"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "revisionId",
+          "warnings"
+        ],
+        "title": "AccessibilityResponse",
+        "type": "object"
+      },
+      "AccessibilitySeverity": {
+        "description": "The stable urgency levels shown by the editor quality panel.",
+        "enum": [
+          "warning",
+          "info"
+        ],
+        "title": "AccessibilitySeverity",
+        "type": "string"
+      },
+      "AccessibilityWarningResponse": {
+        "additionalProperties": false,
+        "description": "One stable and actionable composition-quality warning.",
+        "properties": {
+          "action": {
+            "title": "Action",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "endMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endms"
+          },
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "measured": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Measured"
+          },
+          "severity": {
+            "$ref": "#/components/schemas/AccessibilitySeverity"
+          },
+          "startMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startms"
+          },
+          "threshold": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Threshold"
+          }
+        },
+        "required": [
+          "code",
+          "severity",
+          "action"
+        ],
+        "title": "AccessibilityWarningResponse",
+        "type": "object"
+      },
       "AnalysisJobResponse": {
         "additionalProperties": false,
         "description": "The durable Job identity returned after analysis admission.",
@@ -1174,10 +1286,15 @@
           "authenticatedYoutubeImport": {
             "title": "Authenticatedyoutubeimport",
             "type": "boolean"
+          },
+          "collaboration": {
+            "title": "Collaboration",
+            "type": "boolean"
           }
         },
         "required": [
-          "authenticatedYoutubeImport"
+          "authenticatedYoutubeImport",
+          "collaboration"
         ],
         "title": "CapabilitiesResponse",
         "type": "object"
@@ -1788,6 +1905,21 @@
           "createdAt"
         ],
         "title": "ClipVariantResponse",
+        "type": "object"
+      },
+      "CommentResolutionRequest": {
+        "additionalProperties": false,
+        "description": "The next derived resolution state for one immutable comment.",
+        "properties": {
+          "resolved": {
+            "title": "Resolved",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "resolved"
+        ],
+        "title": "CommentResolutionRequest",
         "type": "object"
       },
       "CompleteUploadRequest": {
@@ -2467,6 +2599,15 @@
         "title": "EditResponse",
         "type": "object"
       },
+      "EditReviewDecisionKind": {
+        "description": "The decisions a reviewer may record against one immutable Revision.",
+        "enum": [
+          "request_changes",
+          "approve"
+        ],
+        "title": "EditReviewDecisionKind",
+        "type": "string"
+      },
       "EditSelectionRequest": {
         "additionalProperties": false,
         "description": "The look and the brand a member chose when they opened this clip.",
@@ -2797,6 +2938,63 @@
         "title": "ImageOverlay",
         "type": "object"
       },
+      "InviteCreateRequest": {
+        "additionalProperties": false,
+        "description": "The delivery address and authority an owner or admin selected.",
+        "properties": {
+          "email": {
+            "maxLength": 320,
+            "minLength": 3,
+            "pattern": "^[^@\\s]+@[^@\\s]+$",
+            "title": "Email",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        },
+        "required": [
+          "email",
+          "role"
+        ],
+        "title": "InviteCreateRequest",
+        "type": "object"
+      },
+      "InviteResponse": {
+        "additionalProperties": false,
+        "description": "One invitation including the bearer token disclosed only on creation.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          },
+          "token": {
+            "title": "Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "token",
+          "expiresAt"
+        ],
+        "title": "InviteResponse",
+        "type": "object"
+      },
       "JobKind": {
         "enum": [
           "source_import",
@@ -2939,6 +3137,20 @@
         "title": "MemberResponse",
         "type": "object"
       },
+      "MemberRoleRequest": {
+        "additionalProperties": false,
+        "description": "The explicit non-owner role selected for an active member.",
+        "properties": {
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        },
+        "required": [
+          "role"
+        ],
+        "title": "MemberRoleRequest",
+        "type": "object"
+      },
       "MotionPreset": {
         "description": "The named animations an item or overlay may be given.",
         "enum": [
@@ -3003,6 +3215,70 @@
         ],
         "title": "OriginType",
         "type": "string"
+      },
+      "OwnershipTransferRequest": {
+        "additionalProperties": false,
+        "description": "The active member who will become the Workspace owner.",
+        "properties": {
+          "userId": {
+            "format": "uuid",
+            "title": "Userid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "userId"
+        ],
+        "title": "OwnershipTransferRequest",
+        "type": "object"
+      },
+      "PendingInviteCollectionResponse": {
+        "additionalProperties": false,
+        "description": "Every invitation that remains available for acceptance.",
+        "properties": {
+          "invites": {
+            "items": {
+              "$ref": "#/components/schemas/PendingInviteResponse"
+            },
+            "title": "Invites",
+            "type": "array"
+          }
+        },
+        "required": [
+          "invites"
+        ],
+        "title": "PendingInviteCollectionResponse",
+        "type": "object"
+      },
+      "PendingInviteResponse": {
+        "additionalProperties": false,
+        "description": "Invitation delivery metadata with no reusable bearer credential.",
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "role": {
+            "$ref": "#/components/schemas/WorkspaceRole"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "role",
+          "expiresAt"
+        ],
+        "title": "PendingInviteResponse",
+        "type": "object"
       },
       "Placement": {
         "description": "Where an overlay sits inside the canvas.",
@@ -3574,6 +3850,277 @@
         "title": "RenderResponse",
         "type": "object"
       },
+      "ReviewAnchorKind": {
+        "description": "The two stable locations one review comment may identify.",
+        "enum": [
+          "timestamp",
+          "item"
+        ],
+        "title": "ReviewAnchorKind",
+        "type": "string"
+      },
+      "ReviewAnchorRequest": {
+        "additionalProperties": false,
+        "description": "One timestamp or item anchor supplied with a comment.",
+        "properties": {
+          "itemId": {
+            "anyOf": [
+              {
+                "maxLength": 128,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReviewAnchorKind"
+          },
+          "timestampMs": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestampms"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ReviewAnchorRequest",
+        "type": "object"
+      },
+      "ReviewAnchorResponse": {
+        "additionalProperties": false,
+        "description": "The stable location one comment identifies.",
+        "properties": {
+          "itemId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Itemid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/ReviewAnchorKind"
+          },
+          "timestampMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timestampms"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "ReviewAnchorResponse",
+        "type": "object"
+      },
+      "ReviewCommentRequest": {
+        "additionalProperties": false,
+        "description": "One plain-text comment against an exact immutable Revision.",
+        "properties": {
+          "anchor": {
+            "$ref": "#/components/schemas/ReviewAnchorRequest"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          },
+          "text": {
+            "maxLength": 4000,
+            "minLength": 1,
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revisionId",
+          "text",
+          "anchor"
+        ],
+        "title": "ReviewCommentRequest",
+        "type": "object"
+      },
+      "ReviewCommentResponse": {
+        "additionalProperties": false,
+        "description": "One review comment with its derived resolution state.",
+        "properties": {
+          "actorDisplayName": {
+            "title": "Actordisplayname",
+            "type": "string"
+          },
+          "actorUserId": {
+            "format": "uuid",
+            "title": "Actoruserid",
+            "type": "string"
+          },
+          "anchor": {
+            "$ref": "#/components/schemas/ReviewAnchorResponse"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "resolved": {
+            "title": "Resolved",
+            "type": "boolean"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "revision",
+          "actorUserId",
+          "actorDisplayName",
+          "text",
+          "anchor",
+          "resolved",
+          "createdAt"
+        ],
+        "title": "ReviewCommentResponse",
+        "type": "object"
+      },
+      "ReviewDecisionRequest": {
+        "additionalProperties": false,
+        "description": "One approval or request for changes against exact bytes.",
+        "properties": {
+          "decision": {
+            "$ref": "#/components/schemas/EditReviewDecisionKind"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "revisionId",
+          "decision"
+        ],
+        "title": "ReviewDecisionRequest",
+        "type": "object"
+      },
+      "ReviewDecisionResponse": {
+        "additionalProperties": false,
+        "description": "One historical decision and whether it still targets current bytes.",
+        "properties": {
+          "actorDisplayName": {
+            "title": "Actordisplayname",
+            "type": "string"
+          },
+          "actorUserId": {
+            "format": "uuid",
+            "title": "Actoruserid",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "current": {
+            "title": "Current",
+            "type": "boolean"
+          },
+          "decision": {
+            "$ref": "#/components/schemas/EditReviewDecisionKind"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "revisionId",
+          "revision",
+          "actorUserId",
+          "actorDisplayName",
+          "decision",
+          "current",
+          "createdAt"
+        ],
+        "title": "ReviewDecisionResponse",
+        "type": "object"
+      },
+      "ReviewSummaryResponse": {
+        "additionalProperties": false,
+        "description": "The current review state and immutable history for one Edit.",
+        "properties": {
+          "approved": {
+            "title": "Approved",
+            "type": "boolean"
+          },
+          "comments": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewCommentResponse"
+            },
+            "title": "Comments",
+            "type": "array"
+          },
+          "decisions": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewDecisionResponse"
+            },
+            "title": "Decisions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "approved",
+          "comments",
+          "decisions"
+        ],
+        "title": "ReviewSummaryResponse",
+        "type": "object"
+      },
       "RevisionHistoryResponse": {
         "additionalProperties": false,
         "description": "One Edit's Revisions, newest first.",
@@ -3609,12 +4156,18 @@
             "title": "Createdby",
             "type": "string"
           },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
           "revision": {
             "title": "Revision",
             "type": "integer"
           }
         },
         "required": [
+          "id",
           "revision",
           "compositionHash",
           "createdBy",
@@ -5700,6 +6253,70 @@
         ]
       }
     },
+    "/api/v1/edit-review-comments/{comment_id}/resolution": {
+      "post": {
+        "description": "Append one resolution or reopening event for a review comment.",
+        "operationId": "update_comment_resolution_api_v1_edit_review_comments__comment_id__resolution_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comment_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Comment Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentResolutionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCommentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Comment Resolution",
+        "tags": [
+          "edit-reviews"
+        ]
+      }
+    },
     "/api/v1/edits/{edit_id}": {
       "get": {
         "description": "Read one Edit, hiding another Workspace's Edit behind the same absence.",
@@ -5813,6 +6430,86 @@
         "summary": "Save",
         "tags": [
           "edits"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/accessibility": {
+      "get": {
+        "description": "Measure one immutable Revision without changing its composition.",
+        "operationId": "show_accessibility_quality_api_v1_edits__edit_id__accessibility_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Revision Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "platform",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Platform"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Platform"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccessibilityResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Accessibility Quality",
+        "tags": [
+          "edit-reviews"
         ]
       }
     },
@@ -6079,6 +6776,186 @@
         "summary": "Create",
         "tags": [
           "renders"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/review-comments": {
+      "post": {
+        "description": "Append one comment to an immutable Revision.",
+        "operationId": "create_review_comment_api_v1_edits__edit_id__review_comments_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewCommentRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewCommentResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Review Comment",
+        "tags": [
+          "edit-reviews"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/reviews": {
+      "get": {
+        "description": "Read the current answer and immutable review history.",
+        "operationId": "show_edit_review_api_v1_edits__edit_id__reviews_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewSummaryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Edit Review",
+        "tags": [
+          "edit-reviews"
+        ]
+      },
+      "post": {
+        "description": "Append one approval or request for changes.",
+        "operationId": "create_review_decision_api_v1_edits__edit_id__reviews_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReviewDecisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReviewDecisionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Review Decision",
+        "tags": [
+          "edit-reviews"
         ]
       }
     },
@@ -8922,6 +9799,49 @@
         "summary": "Receive Fal Webhook"
       }
     },
+    "/api/v1/workspace-invites/{token}/accept": {
+      "post": {
+        "description": "Accept one invitation as the independently authenticated current User.",
+        "operationId": "accept_workspace_invite_api_v1_workspace_invites__token__accept_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "required": true,
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Accept Workspace Invite",
+        "tags": [
+          "workspace-memberships"
+        ]
+      }
+    },
     "/api/v1/workspaces": {
       "get": {
         "description": "List every Workspace the caller may enter.",
@@ -9080,6 +10000,149 @@
         ]
       }
     },
+    "/api/v1/workspaces/{workspace_id}/invites": {
+      "get": {
+        "description": "List active invitation metadata without disclosing bearer tokens.",
+        "operationId": "list_workspace_invites_api_v1_workspaces__workspace_id__invites_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingInviteCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Workspace Invites",
+        "tags": [
+          "workspace-memberships"
+        ]
+      },
+      "post": {
+        "description": "Create one role-bound team Workspace invitation.",
+        "operationId": "create_workspace_invite_api_v1_workspaces__workspace_id__invites_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InviteCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InviteResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Workspace Invite",
+        "tags": [
+          "workspace-memberships"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/invites/{invite_id}": {
+      "delete": {
+        "description": "Revoke one invitation before it is accepted.",
+        "operationId": "revoke_workspace_invite_api_v1_workspaces__workspace_id__invites__invite_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "invite_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Invite Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Revoke Workspace Invite",
+        "tags": [
+          "workspace-memberships"
+        ]
+      }
+    },
     "/api/v1/workspaces/{workspace_id}/members": {
       "get": {
         "description": "List the people who can currently act inside this Workspace.",
@@ -9121,6 +10184,169 @@
         "summary": "Members",
         "tags": [
           "workspaces"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/members/{member_user_id}": {
+      "delete": {
+        "description": "Remove one member and make every existing Session lose tenant access.",
+        "operationId": "remove_workspace_member_api_v1_workspaces__workspace_id__members__member_user_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Member User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Remove Workspace Member",
+        "tags": [
+          "workspace-memberships"
+        ]
+      },
+      "patch": {
+        "description": "Assign one explicit non-owner role to an active member.",
+        "operationId": "update_workspace_member_api_v1_workspaces__workspace_id__members__member_user_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "member_user_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Member User Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MemberRoleRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Workspace Member",
+        "tags": [
+          "workspace-memberships"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/ownership-transfers": {
+      "post": {
+        "description": "Transfer team Workspace ownership to one active member atomically.",
+        "operationId": "transfer_workspace_ownership_api_v1_workspaces__workspace_id__ownership_transfers_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnershipTransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MemberCollectionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transfer Workspace Ownership",
+        "tags": [
+          "workspace-memberships"
         ]
       }
     },

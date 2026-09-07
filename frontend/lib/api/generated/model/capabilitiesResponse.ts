@@ -13,4 +13,5 @@ and every route still proves membership, role, and freshness for itself.
  */
 export interface CapabilitiesResponse {
   authenticatedYoutubeImport: boolean;
+  collaboration: boolean;
 }

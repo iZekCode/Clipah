@@ -48,6 +48,9 @@ FOUNDATIONAL_TABLES = {
     "clip_candidates",
     "clip_edit_revisions",
     "clip_edits",
+    "edit_review_comment_resolutions",
+    "edit_review_comments",
+    "edit_review_decisions",
     "clip_variants",
     "idempotency_keys",
     "job_events",
@@ -65,6 +68,7 @@ FOUNDATIONAL_TABLES = {
     "transcripts",
     "users",
     "workspace_invites",
+    "workspace_membership_events",
     "workspace_memberships",
     "workspace_quota_reservations",
     "workspaces",
@@ -84,6 +88,7 @@ API_TABLE_PRIVILEGES = {
     "workspace_memberships": {"SELECT", "INSERT", "UPDATE"},
     "idempotency_keys": {"SELECT", "INSERT"},
     "workspace_invites": {"SELECT", "INSERT", "UPDATE"},
+    "workspace_membership_events": {"SELECT", "INSERT"},
     "projects": {"SELECT", "INSERT", "UPDATE"},
     "assets": {"SELECT", "INSERT", "UPDATE"},
     "jobs": {"SELECT", "INSERT", "UPDATE"},
@@ -107,6 +112,9 @@ API_TABLE_PRIVILEGES = {
     "claim_evidence": {"SELECT", "INSERT", "UPDATE"},
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},
     "clip_edit_revisions": {"SELECT", "INSERT"},
+    "edit_review_comments": {"SELECT", "INSERT"},
+    "edit_review_comment_resolutions": {"SELECT", "INSERT"},
+    "edit_review_decisions": {"SELECT", "INSERT"},
     # A member renames a Brand Kit or a template and archives it; the published version
     # behind it never changes, and neither does copy derived from a Revision.
     "brand_kits": {"SELECT", "INSERT", "UPDATE"},
@@ -133,6 +141,7 @@ WORKER_TABLE_PRIVILEGES = {
     "users": {"SELECT"},
     "workspaces": {"SELECT"},
     "workspace_memberships": {"SELECT"},
+    "workspace_membership_events": {"SELECT"},
     "projects": {"SELECT", "UPDATE"},
     "assets": {"SELECT", "INSERT", "UPDATE"},
     # A worker creates exactly one kind of row here: the stage that follows the one it
@@ -150,6 +159,9 @@ WORKER_TABLE_PRIVILEGES = {
     "broll_suggestions": {"SELECT", "INSERT"},
     "clip_edits": {"SELECT"},
     "clip_edit_revisions": {"SELECT"},
+    "edit_review_comments": {"SELECT"},
+    "edit_review_comment_resolutions": {"SELECT"},
+    "edit_review_decisions": {"SELECT"},
     # The render worker judges an export by the same Brand Kit version the editor showed,
     # so it reads that version and nothing else about a brand.
     "brand_kits": {"SELECT"},
@@ -169,6 +181,16 @@ WORKER_TABLE_PRIVILEGES = {
     "search_documents": {"SELECT", "INSERT", "UPDATE", "DELETE"},
 }
 EXPECTED_ENUMS = {
+    "edit_review_decision_kind": ("request_changes", "approve"),
+    "review_anchor_kind": ("timestamp", "item"),
+    "workspace_membership_event_kind": (
+        "invite_created",
+        "invite_revoked",
+        "invite_accepted",
+        "role_changed",
+        "member_removed",
+        "ownership_transferred",
+    ),
     "broll_coverage": ("minimal", "balanced", "dynamic"),
     "broll_suggestion_status": (
         "proposed",

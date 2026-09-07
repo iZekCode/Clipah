@@ -47,6 +47,7 @@ class CapabilitiesResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     authenticated_youtube_import: bool = Field(alias="authenticatedYoutubeImport")
+    collaboration: bool
 
 
 class CurrentUserResponse(BaseModel):
@@ -162,10 +163,11 @@ def read_current_user(
             policy=components.policy, now=components.now()
         ),
         capabilities=CapabilitiesResponse(
+            collaboration=settings_for(request).collaboration_enabled,
             authenticatedYoutubeImport=(
                 settings_for(request).authenticated_source_import_enabled
                 and settings_for(request).secret_encryption_key is not None
-            )
+            ),
         ),
     )
 

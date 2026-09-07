@@ -90,6 +90,7 @@ class DecidableSuggestion:
 class RevisionSummary:
     """One entry of an Edit's history, without repeating its whole composition."""
 
+    revision_id: UUID
     revision: int
     composition_hash: bytes
     created_by_user_id: UUID
@@ -404,6 +405,7 @@ class EditRepository:
         )
         return tuple(
             RevisionSummary(
+                revision_id=row.id,
                 revision=row.revision,
                 composition_hash=row.composition_hash,
                 created_by_user_id=row.created_by_user_id,

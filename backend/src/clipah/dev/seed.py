@@ -34,8 +34,9 @@ from clipah.models import (
     ProjectStatus,
     SourceKind,
     Transcript,
+    WorkspaceKind,
 )
-from clipah.workspaces.use_cases import workspace_slug
+from clipah.workspaces.use_cases import create_workspace, workspace_slug
 
 CSRF_TOKEN_BYTES = 32
 SOURCE_DURATION_MS = 120_000
@@ -83,6 +84,7 @@ def seed_browser_session(
     display_name: str,
     workspace_name: str,
     now: datetime,
+    team_workspace: bool = False,
 ) -> SeededBrowserSession:
     """Create one User with their personal Workspace and a Session for that User."""
     if settings.environment is Environment.PRODUCTION:
@@ -95,6 +97,15 @@ def seed_browser_session(
         workspace_name=workspace_name,
         workspace_slug=f"{workspace_slug(workspace_name)}-{uuid4().hex[:8]}",
     )
+    workspace_id = provisioned.workspace.id
+    if team_workspace:
+        workspace_id = create_workspace(
+            session,
+            owner_user_id=provisioned.user.id,
+            name=workspace_name,
+            kind=WorkspaceKind.TEAM,
+            now=now,
+        ).workspace_id
     set_actor_context(session, user_id=provisioned.user.id)
     issued = issue_session(
         session,
@@ -105,7 +116,7 @@ def seed_browser_session(
     )
     return SeededBrowserSession(
         user_id=provisioned.user.id,
-        workspace_id=provisioned.workspace.id,
+        workspace_id=workspace_id,
         session_cookie_name=settings.session_cookie_name,
         session_token=issued.token,
         csrf_cookie_name=settings.csrf_cookie_name,
@@ -301,6 +312,11 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
         default=None,
         help="also stage an analysed Project under this name, with one reviewable clip",
     )
+    parser.add_argument(
+        "--team-workspace",
+        action="store_true",
+        help="return a team Workspace owned by the seeded User",
+    )
     arguments = parser.parse_args(argv)
 
     settings = settings or Settings()
@@ -313,6 +329,7 @@ def main(argv: list[str] | None = None, *, settings: Settings | None = None) -> 
             display_name=arguments.display_name,
             workspace_name=arguments.workspace_name,
             now=now,
+            team_workspace=arguments.team_workspace,
         )
     body = _as_json(seeded)
     if arguments.with_clip is not None:

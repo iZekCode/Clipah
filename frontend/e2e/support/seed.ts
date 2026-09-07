@@ -41,7 +41,9 @@ export async function seedMember(options: {
   email: string
   displayName: string
   workspaceName: string
+  teamWorkspace?: boolean
 }): Promise<SeededMember> {
+  const teamArgs = options.teamWorkspace ? ['--team-workspace'] : []
   const { stdout } = await run(
     'uv',
     [
@@ -55,6 +57,7 @@ export async function seedMember(options: {
       options.displayName,
       '--workspace-name',
       options.workspaceName,
+      ...teamArgs,
     ],
     { cwd: BACKEND_ROOT },
   )
@@ -73,7 +76,9 @@ export async function seedMemberWithClip(options: {
   displayName: string
   workspaceName: string
   projectName: string
+  teamWorkspace?: boolean
 }): Promise<SeededMemberWithClip> {
+  const teamArgs = options.teamWorkspace ? ['--team-workspace'] : []
   const { stdout } = await run(
     'uv',
     [
@@ -89,6 +94,7 @@ export async function seedMemberWithClip(options: {
       options.workspaceName,
       '--with-clip',
       options.projectName,
+      ...teamArgs,
     ],
     { cwd: BACKEND_ROOT },
   )

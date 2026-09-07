@@ -6,17 +6,27 @@ import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'r
 import { BrollPanel, type DecisionRequest } from '@/features/broll/BrollPanel'
 import { ErrorNotice } from '@/components/error-notice'
 import { RequireSession } from '@/features/auth/require-session'
+import { useSession } from '@/features/auth/session'
+import { ReviewPanel } from '@/features/reviews/ReviewPanel'
 import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
+import { showAccessibilityQualityApiV1EditsEditIdAccessibilityGet } from '@/lib/api/generated/edit-reviews/edit-reviews'
 import {
   decideApiV1EditsEditIdBrollDecisionsPost,
+  historyApiV1EditsEditIdRevisionsGet,
   saveApiV1EditsEditIdPut,
   showApiV1EditsEditIdGet,
 } from '@/lib/api/generated/edits/edits'
 import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
-import type { EditResponse, ProxyPlaybackResponse } from '@/lib/api/generated/model'
+import type {
+  AccessibilityResponse,
+  EditResponse,
+  ProxyPlaybackResponse,
+  RevisionHistoryResponse,
+} from '@/lib/api/generated/model'
 
 import { AssetsPanel } from './AssetsPanel'
+import { AccessibilityPanel } from './AccessibilityPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
 import { KaraokePanel } from './KaraokePanel'
@@ -64,6 +74,7 @@ export function EditorScreen({ editId, engine }: { editId: string; engine?: Prev
  */
 function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine }) {
   const { active } = useWorkspaceScope()
+  const session = useSession()
   const [status, setStatus] = useState<SaveStatus>('saved')
   const [conflict, setConflict] = useState<{ revision: number | null } | null>(null)
   const [zoom, setZoom] = useState<number>(ZOOM_LEVELS[2])
@@ -75,6 +86,17 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
     retry: false,
   })
   const projectId = loaded.data?.projectId ?? null
+  const history = useQuery<RevisionHistoryResponse, ApiError>({
+    queryKey: ['/api/v1/edit-revisions', active.id, editId],
+    queryFn: ({ signal }) =>
+      historyApiV1EditsEditIdRevisionsGet(editId, { workspace_id: active.id }, { signal }),
+    retry: false,
+    enabled: loaded.data !== undefined,
+  })
+  const { refetch: refetchHistory } = history
+  const refreshHistory = useCallback(() => {
+    void refetchHistory()
+  }, [refetchHistory])
   const proxy = useQuery<ProxyPlaybackResponse, ApiError>({
     queryKey: ['/api/v1/projects/proxy', active.id, projectId],
     enabled: projectId !== null,
@@ -89,16 +111,16 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
 
   if (loaded.isPending) {
     return (
-      <p role="status" className="p-6 text-sm text-muted-foreground">
-        Opening this clip…
-      </p>
+      <main className="p-6">
+        <p role="status" className="text-sm text-muted-foreground">Opening this clip…</p>
+      </main>
     )
   }
   if (loaded.isError) {
     return (
-      <div className="p-6">
+      <main className="p-6">
         <ErrorNotice error={loaded.error} />
-      </div>
+      </main>
     )
   }
 
@@ -106,7 +128,10 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
     <LoadedEditor
       key={loaded.data.id}
       edit={loaded.data}
+      revisionId={history.data?.revisions[0]?.id ?? null}
       workspaceId={active.id}
+      canReview={active.role !== 'viewer'}
+      collaborationEnabled={session.data?.capabilities.collaboration === true}
       proxy={proxy.data ?? null}
       proxyError={proxy.isError ? proxy.error : null}
       engine={engine}
@@ -120,15 +145,20 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
       onPlaying={setPlaying}
       onReload={async () => {
         const refreshed = await loaded.refetch()
+        await history.refetch()
         return refreshed.data ?? null
       }}
+      onRevisionSaved={refreshHistory}
     />
   )
 }
 
 function LoadedEditor({
   edit,
+  revisionId,
   workspaceId,
+  canReview,
+  collaborationEnabled,
   proxy,
   proxyError,
   engine,
@@ -141,9 +171,13 @@ function LoadedEditor({
   playing,
   onPlaying,
   onReload,
+  onRevisionSaved,
 }: {
   edit: EditResponse
+  revisionId: string | null
   workspaceId: string
+  canReview: boolean
+  collaborationEnabled: boolean
   proxy: ProxyPlaybackResponse | null
   proxyError: ApiError | null
   engine?: PreviewEngine
@@ -156,6 +190,7 @@ function LoadedEditor({
   playing: boolean
   onPlaying: (playing: boolean) => void
   onReload: () => Promise<EditResponse | null>
+  onRevisionSaved: () => void
 }) {
   const [state, dispatch] = useReducer(editorReducer, edit.composition, initialEditorState)
   const [snapping, setSnapping] = useState(true)
@@ -179,12 +214,13 @@ function LoadedEditor({
         onStatus,
         onSaved: (result) => {
           dispatch({ type: 'markSaved', composition: result.composition })
+          onRevisionSaved()
         },
         onConflict: (revision) => {
           onConflict({ revision })
         },
       }),
-    [edit.id, edit.currentRevision, workspaceId, onStatus, onConflict],
+    [edit.id, edit.currentRevision, workspaceId, onStatus, onConflict, onRevisionSaved],
   )
 
   useEffect(() => () => autosave.dispose(), [autosave])
@@ -244,6 +280,7 @@ function LoadedEditor({
         )
         autosave.accept(saved.currentRevision)
         dispatch({ type: 'markSaved', composition: saved.composition })
+        onRevisionSaved()
       } catch (error) {
         const refused = error as ApiError
         if (refused.code === 'EDIT_REVISION_CONFLICT') {
@@ -255,7 +292,7 @@ function LoadedEditor({
         setDeciding(false)
       }
     },
-    [autosave, edit.id, onConflict, state, workspaceId],
+    [autosave, edit.id, onConflict, onRevisionSaved, state, workspaceId],
   )
 
   const selected = useMemo(
@@ -479,6 +516,20 @@ function LoadedEditor({
             onRedo={() => dispatch({ type: 'redo' })}
             onSave={save}
           />
+          {revisionId === null ? null : (
+            <RevisionQualityPanels
+              editId={edit.id}
+              revisionId={revisionId}
+              workspaceId={workspaceId}
+              canReview={canReview}
+              collaborationEnabled={collaborationEnabled}
+              playheadMs={state.playheadMs}
+              onSelect={(itemId, timeMs) => {
+                if (timeMs !== null) dispatch({ type: 'seek', ms: timeMs })
+                if (itemId !== null) dispatch({ type: 'select', itemId })
+              }}
+            />
+          )}
           <BrollPanel
             projectId={edit.projectId}
             candidateId={edit.candidateId}
@@ -582,6 +633,58 @@ function LoadedEditor({
         </div>
       </div>
     </main>
+  )
+}
+
+/** Immutable review and quality reads kept separate from draft composition state. */
+function RevisionQualityPanels({
+  editId,
+  revisionId,
+  workspaceId,
+  canReview,
+  collaborationEnabled,
+  playheadMs,
+  onSelect,
+}: {
+  editId: string
+  revisionId: string
+  workspaceId: string
+  canReview: boolean
+  collaborationEnabled: boolean
+  playheadMs: number
+  onSelect: (itemId: string | null, timeMs: number | null) => void
+}) {
+  const quality = useQuery<AccessibilityResponse, ApiError>({
+    queryKey: ['/api/v1/edit-accessibility', workspaceId, editId, revisionId],
+    queryFn: ({ signal }) =>
+      showAccessibilityQualityApiV1EditsEditIdAccessibilityGet(
+        editId,
+        { workspace_id: workspaceId, revision_id: revisionId },
+        { signal },
+      ),
+    retry: false,
+  })
+
+  return (
+    <>
+      {quality.isPending ? <p role="status">Checking accessibility…</p> : null}
+      {quality.isError ? <ErrorNotice error={quality.error} /> : null}
+      {quality.data === undefined ? null : (
+        <AccessibilityPanel
+          warnings={quality.data.warnings}
+          onSelect={({ itemId, timeMs }) => onSelect(itemId, timeMs)}
+        />
+      )}
+      {collaborationEnabled ? (
+        <ReviewPanel
+          editId={editId}
+          revisionId={revisionId}
+          workspaceId={workspaceId}
+          canReview={canReview}
+          playheadMs={playheadMs}
+        />
+      ) : null}
+    </>
   )
 }
 

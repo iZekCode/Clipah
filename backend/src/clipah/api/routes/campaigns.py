@@ -11,7 +11,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 
 from clipah.api.dependencies import (
@@ -19,11 +19,13 @@ from clipah.api.dependencies import (
     DatabaseSession,
     require_csrf,
     require_workspace,
+    settings_for,
 )
 from clipah.api.errors import ApiError
 from clipah.campaigns.models import CampaignLanguage
 from clipah.campaigns.repository import CampaignOutputSummary
 from clipah.campaigns.use_cases import (
+    CampaignApprovalRequiredError,
     CampaignTargetNotFoundError,
     generate_outputs,
     list_outputs,
@@ -122,6 +124,7 @@ class CampaignOutputListResponse(BaseModel):
     dependencies=[Depends(require_csrf)],
 )
 def create(
+    request: Request,
     edit_id: UUID,
     body: CampaignRequestBody,
     session: DatabaseSession,
@@ -136,9 +139,12 @@ def create(
             revision=body.revision,
             platforms=body.platforms,
             languages=body.languages,
+            require_approval=settings_for(request).collaboration_enabled,
         )
     except CampaignTargetNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except CampaignApprovalRequiredError as error:
+        raise ApiError(status_code=409, code="REVIEW_APPROVAL_REQUIRED") from error
     session.commit()
     return _list_body(outputs)
 

@@ -704,11 +704,11 @@ def _set_role(engine: Engine, browser: Browser, fixture: EditFixture, role: Work
         )
 
 
-def _reviewed_project(engine: Engine) -> Stage:
+def _reviewed_project(engine: Engine, **setting_overrides: object) -> Stage:
     """Sign in and stage a ready Project whose analysis produced reviewable candidates."""
     clock = Clock(NOW)
     provider = StubGoogleProvider(clock)
-    app, flow, _ = build_app(clock, provider)
+    app, flow, _ = build_app(clock, provider, **setting_overrides)
     browser = Browser(app)
     sign_in(browser, flow)
     workspace_id = UUID(browser.get("/api/v1/workspaces").json()["workspaces"][0]["id"])

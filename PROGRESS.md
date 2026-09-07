@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-33 have landed. **Task 34 is complete and awaiting the owner's
-commit.** Task 35 follows.
+**Current position:** Tasks 1-34 have landed. **Task 35 is complete and awaiting the owner's
+commit.** Task 36 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -74,8 +74,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 31 | Add quota-aware generated-media fallback | `[x]` (`5ec9273`) |
 | 32 | Add context-safe clip variants and platform packaging | `[x]` (`5ec9273`) |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[x]` (`80cf2f6`) |
-| 34 | Build the searchable creator content library | `[x]` (uncommitted) |
-| 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[ ]` |
+| 34 | Build the searchable creator content library | `[x]` (`2b4a49b`) |
+| 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[x]` (uncommitted) |
 
 ## Phase F — Workspace social publishing (Tasks 36-43)
 
@@ -2039,6 +2039,48 @@ here: it needs Postgres, the backend, the frontend, and browser binaries running
 No commit was created; the required owner commit message is `feat: add searchable creator
 library`.
 
+### Task 35 — Workspace collaboration, project review, and accessibility quality gates
+
+Migration `0018` adds expiring, hashed Workspace invitations and append-only membership
+events, review comments, comment resolutions, and review decisions. Composite tenant foreign
+keys, row-level security, and least-privilege grants keep every record inside its Workspace.
+The collaboration feature flag remains disabled by default. When enabled, owners and admins
+can invite explicit roles, revoke pending invitations, change roles, and remove members;
+last-owner protection and explicit ownership transfer prevent an ownerless team. Invite
+acceptance binds the bearer token to the independently authenticated User and consumes it once.
+
+Every comment and decision names one immutable Edit Revision. Comments support timestamp and
+composition-item anchors, resolution and reopening append evidence rather than rewriting the
+comment, and a later Revision makes an earlier approval stale. The editor shows plain-text
+comments and the current approval state, while reviewers can comment, request changes, approve,
+resolve, and reopen with native keyboard controls. Campaign generation now requires approval of
+the exact current Revision when collaboration is enabled and keeps the prior behavior when the
+flag is disabled.
+
+The accessibility analyzer is pure and deterministic. It reports caption reading speed above
+20 characters per second, durations below one second, overlaps, more than two lines, WCAG 2.2
+contrast thresholds, declared platform safe-zone placement, platform-control collision, and an
+explicit geometry-unavailable notice where composition version 1 has no caption rectangle to
+measure. Warnings remain advice: they identify the affected item/time and never alter content.
+The editor panel can focus the affected timeline item, uses live regions and labelled controls,
+and its representative component state passes `vitest-axe`; the browser workflow is also run
+with reduced motion.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1919 backend tests passed
+with thirteen environment-gated skips at 94.28% coverage. Migration `0018` downgraded to `0017`
+and upgraded back to head, and generated-contract plus whitespace checks passed. `pnpm lint`,
+`pnpm typecheck`, `pnpm test` (351 passed), and `pnpm build` passed. The Task 35 review workflow
+passed in Chromium and WebKit, including authenticated invite acceptance, an immutable-revision
+comment, approval, stale approval after a new Revision, keyboard request-changes, reduced motion,
+and the accessibility panel. The existing member-removal browser scenario also passed in
+Chromium and proves immediate access loss.
+
+Pending Publication cancellation/re-evaluation is deliberately deferred: no Publication table
+or state machine exists before Task 37. Task 35 records every membership mutation and exposes
+the authorizer needed for that future re-evaluation; Tasks 37 and 42 must apply it when pending
+Publications become durable. No commit was created; the required owner commit message is
+`feat: add accessible review workflows`.
+
 
 ## Browser suite: first run, and what it found
 
@@ -2132,7 +2174,7 @@ oversight.
 | Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
 | ~~Generating a suggestion when retrieval finds nothing, and the browser surface for it~~ — landed in Task 31 | done |
 | Measuring a live planning provider. Every test uses the fake provider, so the recorded behaviour proves the pipeline rather than any model's judgement about what deserves a picture | the repository owner, with real Groq credentials |
-| Workspace invites, role mutation, member removal, ownership transfer | Task 35 (`plan.md:1588-1595`) |
+| ~~Workspace invites, role mutation, member removal, ownership transfer~~ | done in Task 35 |
 | Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |
 | A brand-mark policy: the watermark is compiled from one deployment-wide `CLIPAH_RENDER_WATERMARK_TEXT` setting, because composition version 1 carries no watermark field and Brand Kits do not exist yet | Task 33, with brand kits |
 | Rendering burned-in captions and drawn text through real FFmpeg; the local build has no libass or libfreetype, so those filters were exercised by the compiler's tests rather than by an encode | the repository owner, inside the pinned image |
@@ -2159,7 +2201,7 @@ oversight.
 | Sweeping expired source connections. A connection past its window is reported as expired and refuses every lease, but the row and its material are removed only when a member revokes it | Task 45, with retention |
 | A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
-| The Playwright member-removal scenario, marked `test.fixme` — only `GET /workspaces/{workspaceId}/members` exists, so there is no removal to drive | Task 35 (`plan.md:1588-1595`) |
+| ~~The Playwright member-removal scenario~~ | done in Task 35 |
 | Accepting a B-roll suggestion in a browser, marked `test.fixme`. The seed stages the pipeline's output up to the clip; staging a licensed picture would mean inventing provenance, which Task 29 exists to refuse | the repository owner, with real Groq and stock credentials |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
@@ -2179,7 +2221,8 @@ oversight.
 | Measuring a live generative provider. Every test uses the fake provider or a local transport, so the recorded behaviour proves the adapters rather than either provider's output; `tests/slow/test_generation_provider_smoke.py` is written and opt-in | the repository owner, with fal and Runway credentials |
 | Generating an alternative for a suggestion that already carries generated media. Task 31 offers generation for an empty or below-threshold beat only; regenerating a picture a member did not like needs a decision about what happens to the first one | whichever task adds regeneration |
 | A language-model adapter for campaign copy. Version 1 derives copy deterministically and records that in every output's model metadata; no checkbox in Task 33 asks for a provider, and the port to add one is the `model_metadata` field itself | whichever task decides copy quality needs one |
-| Gating campaign generation on a recorded review approval. Task 33 binds copy to one exact immutable Revision the caller names, which is the strongest form of "approved" the schema can express before `edit_reviews` lands | Task 35 |
+| ~~Gating campaign generation on a recorded review approval~~ | done in Task 35 |
+| Cancelling or re-evaluating unauthorized pending Publications after a membership mutation; no Publication table or state machine exists yet | Tasks 37 and 42, using Task 35 membership audit events and `WorkspaceAuthorizer` |
 | Indexing Assets themselves. Nothing about a stored file is text a person searches for, and no checkbox in Task 34 asks for it; the assets screen searches the transcripts a file might illustrate instead | whichever task gives an Asset searchable text of its own |
 | Reindexing after a render lands. Export state is recomputed whenever a Project is reindexed, but a finished render does not trigger one, so a clip's `exported` state can lag until the next reindex of its Project | Task 44, with the observability pass over worker completions |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
