@@ -33,6 +33,7 @@ from clipah.projects.use_cases import (
     restore_project,
     soft_delete_project,
 )
+from clipah.search.indexer import index_project
 from clipah.workspaces.models import WorkspaceAction
 
 router = APIRouter(prefix="/api/v1", tags=["projects"])
@@ -119,6 +120,7 @@ def create(
         raise ApiError(status_code=422, code="VALIDATION_ERROR") from error
     except ProjectConflictError as error:
         raise ApiError(status_code=409, code="CONFLICT") from error
+    _reindex(session, workspace, summary.project_id)
     return _project_body(summary)
 
 
@@ -170,15 +172,15 @@ def rename(
 ) -> ProjectResponse:
     """Rename a visible Project when the member may write this Workspace."""
     try:
-        return _project_body(
-            rename_project(
-                ProjectRepository(session),
-                access=workspace.access,
-                project_id=project_id,
-                name=payload.name,
-                now=auth_components_for(request).now(),
-            )
+        renamed = rename_project(
+            ProjectRepository(session),
+            access=workspace.access,
+            project_id=project_id,
+            name=payload.name,
+            now=auth_components_for(request).now(),
         )
+        _reindex(session, workspace, project_id)
+        return _project_body(renamed)
     except ProjectNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
     except ProjectValidationError as error:
@@ -199,6 +201,7 @@ def delete(
         )
     except ProjectNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
+    _reindex(session, workspace, project_id)
     return Response(status_code=204)
 
 
@@ -212,18 +215,28 @@ def restore(
 ) -> ProjectResponse:
     """Restore a recently soft-deleted Project for an authorized Workspace member."""
     try:
-        return _project_body(
-            restore_project(
-                ProjectRepository(session),
-                access=workspace.access,
-                project_id=project_id,
-                now=auth_components_for(request).now(),
-            )
+        restored = restore_project(
+            ProjectRepository(session),
+            access=workspace.access,
+            project_id=project_id,
+            now=auth_components_for(request).now(),
         )
+        _reindex(session, workspace, project_id)
+        return _project_body(restored)
     except ProjectNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
     except ProjectConflictError as error:
         raise ApiError(status_code=409, code="CONFLICT") from error
+
+
+def _reindex(session: DatabaseSession, workspace: CurrentWorkspace, project_id: UUID) -> None:
+    """Keep the searchable library equal to what this request just made true.
+
+    Search is derived, so it is maintained where the truth changes rather than on a
+    schedule: a member who renames a Project finds it under its new name immediately, and
+    one they delete stops being findable in the same request.
+    """
+    index_project(session, workspace_id=workspace.access.workspace_id, project_id=project_id)
 
 
 def _project_body(project: ProjectSummary) -> ProjectResponse:

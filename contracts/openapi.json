@@ -2499,6 +2499,15 @@
         "title": "EditSelectionRequest",
         "type": "object"
       },
+      "ExportState": {
+        "description": "Whether the work a document describes has left Clipah as a rendered file.",
+        "enum": [
+          "not_exported",
+          "exported"
+        ],
+        "title": "ExportState",
+        "type": "string"
+      },
       "FontFamily": {
         "description": "The fonts Clipah ships to both the browser preview and the render worker.",
         "enum": [
@@ -3634,6 +3643,202 @@
           "composition"
         ],
         "title": "SaveRevisionRequest",
+        "type": "object"
+      },
+      "SearchEntityType": {
+        "description": "What kind of work one search result points at.",
+        "enum": [
+          "project",
+          "transcript",
+          "clip",
+          "campaign_output"
+        ],
+        "title": "SearchEntityType",
+        "type": "string"
+      },
+      "SearchFragmentResponse": {
+        "additionalProperties": false,
+        "description": "One run of result text, and whether it is the run that matched.\n\nThe server marks a match; it never formats one. Provider and speaker text reaches the\nbrowser as text, and the client decides what a highlight looks like.",
+        "properties": {
+          "highlighted": {
+            "title": "Highlighted",
+            "type": "boolean"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "highlighted"
+        ],
+        "title": "SearchFragmentResponse",
+        "type": "object"
+      },
+      "SearchLanguage": {
+        "description": "The language a document's text is treated as when it is stemmed.\n\nOnly the two languages this product transcribes and writes copy in get their own\nstemmer. Everything else is indexed by its literal tokens rather than guessed at.",
+        "enum": [
+          "id",
+          "en",
+          "other"
+        ],
+        "title": "SearchLanguage",
+        "type": "string"
+      },
+      "SearchPageResponse": {
+        "additionalProperties": false,
+        "description": "One ranked page of library results and its opaque continuation cursor.",
+        "properties": {
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          },
+          "results": {
+            "items": {
+              "$ref": "#/components/schemas/SearchResultResponse"
+            },
+            "title": "Results",
+            "type": "array"
+          }
+        },
+        "required": [
+          "results",
+          "nextCursor"
+        ],
+        "title": "SearchPageResponse",
+        "type": "object"
+      },
+      "SearchResultResponse": {
+        "additionalProperties": false,
+        "description": "One strict allowlist of the evidence a search result is allowed to carry.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "deepLink": {
+            "title": "Deeplink",
+            "type": "string"
+          },
+          "endMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Endms"
+          },
+          "entityId": {
+            "format": "uuid",
+            "title": "Entityid",
+            "type": "string"
+          },
+          "exportState": {
+            "$ref": "#/components/schemas/ExportState"
+          },
+          "fragments": {
+            "items": {
+              "$ref": "#/components/schemas/SearchFragmentResponse"
+            },
+            "title": "Fragments",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "$ref": "#/components/schemas/SearchLanguage"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "speaker": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Speaker"
+          },
+          "startMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Startms"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "topics": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Topics",
+            "type": "array"
+          },
+          "type": {
+            "$ref": "#/components/schemas/SearchEntityType"
+          }
+        },
+        "required": [
+          "id",
+          "type",
+          "entityId",
+          "projectId",
+          "projectName",
+          "title",
+          "fragments",
+          "speaker",
+          "topics",
+          "tags",
+          "language",
+          "startMs",
+          "endMs",
+          "exportState",
+          "deepLink",
+          "createdAt",
+          "score"
+        ],
+        "title": "SearchResultResponse",
         "type": "object"
       },
       "SearchTermsResponse": {
@@ -8012,6 +8217,223 @@
         "summary": "Download",
         "tags": [
           "renders"
+        ]
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "description": "Search everything one Workspace has made, in the order it answers the question.",
+        "operationId": "search_api_v1_search_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "required": true,
+            "schema": {
+              "maxLength": 200,
+              "minLength": 1,
+              "title": "Q",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "type",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "items": {
+                    "$ref": "#/components/schemas/SearchEntityType"
+                  },
+                  "type": "array"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Type"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "speaker",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Speaker"
+            }
+          },
+          {
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Topic"
+            }
+          },
+          {
+            "in": "query",
+            "name": "language",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/SearchLanguage"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Language"
+            }
+          },
+          {
+            "in": "query",
+            "name": "exportState",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExportState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Exportstate"
+            }
+          },
+          {
+            "in": "query",
+            "name": "createdAfter",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Createdafter"
+            }
+          },
+          {
+            "in": "query",
+            "name": "createdBefore",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Createdbefore"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 50,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Search",
+        "tags": [
+          "search"
         ]
       }
     },

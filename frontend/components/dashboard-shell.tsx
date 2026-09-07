@@ -13,6 +13,7 @@ export interface ShellUser {
 const NAVIGATION = [
   { href: '/dashboard', label: 'Overview' },
   { href: '/dashboard/projects', label: 'Projects' },
+  { href: '/dashboard/search', label: 'Search' },
   { href: '/dashboard/clips', label: 'Clips' },
   { href: '/dashboard/assets', label: 'Assets' },
   { href: '/dashboard/templates', label: 'Templates' },

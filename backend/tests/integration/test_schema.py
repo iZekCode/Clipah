@@ -58,6 +58,7 @@ FOUNDATIONAL_TABLES = {
     "render_artifacts",
     "render_requests",
     "retention_tombstones",
+    "search_documents",
     "source_connection_secrets",
     "source_connections",
     "source_imports",
@@ -124,6 +125,9 @@ API_TABLE_PRIVILEGES = {
     "provider_usage": {"SELECT"},
     "retention_tombstones": {"SELECT", "INSERT"},
     "workspace_quota_reservations": {"SELECT", "INSERT"},
+    # The searchable library is derived from every other row here and holds no authority
+    # of its own, so both runtime roles may rewrite and drop what they can rebuild.
+    "search_documents": {"SELECT", "INSERT", "UPDATE", "DELETE"},
 }
 WORKER_TABLE_PRIVILEGES = {
     "users": {"SELECT"},
@@ -160,6 +164,9 @@ WORKER_TABLE_PRIVILEGES = {
     "provider_usage": {"SELECT", "INSERT", "UPDATE"},
     "retention_tombstones": {"SELECT", "UPDATE"},
     "workspace_quota_reservations": {"SELECT", "INSERT"},
+    # Reindexing a Project after an analysis reads the copy that Project already carries.
+    "campaign_outputs": {"SELECT"},
+    "search_documents": {"SELECT", "INSERT", "UPDATE", "DELETE"},
 }
 EXPECTED_ENUMS = {
     "broll_coverage": ("minimal", "balanced", "dynamic"),
@@ -177,6 +184,9 @@ EXPECTED_ENUMS = {
     "broll_source_type": ("user_asset", "stock", "generated"),
     "brand_template_kind": ("clip_look",),
     "campaign_language": ("id", "en"),
+    "search_entity_type": ("project", "transcript", "clip", "campaign_output"),
+    "search_export_state": ("not_exported", "exported"),
+    "search_language": ("id", "en", "other"),
     "clip_variant_hook_strategy": ("cold_open", "question_first", "statement_first"),
     "clip_variant_platform": ("tiktok", "instagram_reels", "youtube_shorts"),
     "claim_verification_status": ("unverified", "supported", "disputed", "retracted"),

@@ -31,7 +31,7 @@ from sqlalchemy import (
 from sqlalchemy import (
     Enum as SAEnum,
 )
-from sqlalchemy.dialects.postgresql import CITEXT, JSONB
+from sqlalchemy.dialects.postgresql import CITEXT, JSONB, TSVECTOR
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -41,6 +41,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from clipah.brands.models import TemplateKind
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
 from clipah.campaigns.models import CampaignLanguage
+from clipah.search.models import ExportState, SearchEntityType, SearchLanguage
 from clipah.variants.models import HookStrategy, Platform
 
 NAMING_CONVENTION = {
@@ -1713,6 +1714,85 @@ class CampaignOutput(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class SearchDocument(Base):
+    """One derived, searchable record of a single piece of a Workspace's work.
+
+    This is the only tenant table that holds no authority: every column is recomputed
+    from a Project, a Transcript, a Clip Candidate, or a Campaign Output. It is a cache
+    with a schema, and it may be dropped and rebuilt without losing anything.
+    """
+
+    __tablename__ = "search_documents"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_search_documents_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "entity_type",
+            "entity_id",
+            "segment_ordinal",
+            name="uq_search_documents_workspace_entity_segment",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id"],
+            ["projects.workspace_id", "projects.id"],
+            name="fk_search_documents_workspace_id_project_id_projects",
+            ondelete="CASCADE",
+        ),
+        CheckConstraint("segment_ordinal >= 0", name="nonnegative_segment_ordinal"),
+        CheckConstraint(
+            "(start_ms IS NULL AND end_ms IS NULL) OR (start_ms >= 0 AND end_ms > start_ms)",
+            name="valid_document_time_range",
+        ),
+        Index("ix_search_documents_workspace_project", "workspace_id", "project_id"),
+        Index(
+            "ix_search_documents_workspace_type_created",
+            "workspace_id",
+            "entity_type",
+            "source_created_at",
+        ),
+        Index("ix_search_documents_vector", "search_vector", postgresql_using="gin"),
+        Index(
+            "ix_search_documents_title_trgm",
+            "title_normalized",
+            postgresql_using="gin",
+            postgresql_ops={"title_normalized": "gin_trgm_ops"},
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True)
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    entity_type: Mapped[SearchEntityType] = mapped_column(
+        enum_type(SearchEntityType, "search_entity_type"), nullable=False
+    )
+    entity_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    anchor_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    segment_ordinal: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    title_normalized: Mapped[str] = mapped_column(Text, nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    speaker: Mapped[str | None] = mapped_column(Text)
+    topics: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    tags: Mapped[list[str]] = mapped_column(
+        ARRAY(Text), nullable=False, server_default=text("'{}'")
+    )
+    language: Mapped[SearchLanguage] = mapped_column(
+        enum_type(SearchLanguage, "search_language"), nullable=False
+    )
+    start_ms: Mapped[int | None] = mapped_column(Integer)
+    end_ms: Mapped[int | None] = mapped_column(Integer)
+    export_state: Mapped[ExportState] = mapped_column(
+        enum_type(ExportState, "search_export_state"), nullable=False
+    )
+    source_created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    indexed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    search_vector: Mapped[str] = mapped_column(TSVECTOR, nullable=False)
 
 
 # Explicit tenant-leading indexes for the tables whose primary/unique keys do not

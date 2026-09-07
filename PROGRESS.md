@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-30 have landed. **Tasks 31, 32, and 33 are complete and awaiting
-the owner's commit.** Task 34 follows.
+**Current position:** Tasks 1-33 have landed. **Task 34 is complete and awaiting the owner's
+commit.** Task 35 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -71,10 +71,10 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 28 | Model semantic beats and generate deterministic B-roll plans | `[x]` (`dfa312e`) |
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (`e81140a`) |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (`42ca150`) |
-| 31 | Add quota-aware generated-media fallback | `[x]` (uncommitted) |
-| 32 | Add context-safe clip variants and platform packaging | `[x]` (uncommitted) |
-| 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[x]` (uncommitted) |
-| 34 | Build the searchable creator content library | `[ ]` |
+| 31 | Add quota-aware generated-media fallback | `[x]` (`5ec9273`) |
+| 32 | Add context-safe clip variants and platform packaging | `[x]` (`5ec9273`) |
+| 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[x]` (`80cf2f6`) |
+| 34 | Build the searchable creator content library | `[x]` (uncommitted) |
 | 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[ ]` |
 
 ## Phase F — Workspace social publishing (Tasks 36-43)
@@ -1964,6 +1964,82 @@ written but not run here: it needs Postgres, the backend, the frontend, and brow
 binaries running together. No commit was created; the required owner commit message is
 `feat: add brand and campaign workflows`.
 
+### Task 34 — The searchable creator content library
+
+`search_documents` is the first table in this schema that holds no authority. Every row is
+derived from a Project, a Transcript, an exposed Clip Candidate, or a Campaign Output, and
+`clipah/search/indexer.py` can recompute all of them at any moment. That is why it is also
+the one tenant table both runtime roles may delete from: losing it costs a rebuild and
+nothing else. A document's identifier is a UUID version 5 of what it describes, so two
+rebuilds write the same rows rather than a churn of new ones, and `index_project` makes the
+stored set *equal* to what the durable rows say — writing what changed and deleting what
+lost its source.
+
+Text is indexed twice under one vector. The stemmed half uses the document's own language,
+which is what makes "daftar" find "pendaftaran"; the unstemmed `simple` half beside it is
+what lets a word typed in the other language still find the document, and what gives a
+language this product does not stem an honest literal index. Weights are the document's
+name first, its labels next, its text last. `title_normalized` carries the accent- and
+punctuation-free form the trigram index is built over, so "cafe kopi" finds `Café Kopi`
+and "aktivsi" finds `Aktivasi Pengguna`.
+
+A search asks two questions rather than one predicate with an `OR` in it. The word branch
+is answered by the GIN text index; the resemblance branch is answered by the trigram index
+through the `<%` operator, and it excludes any document the words already found, so each
+document reaches the page from exactly one branch carrying exactly one score. Each branch
+carries the cursor and the page bound itself, so the union merges two short lists. Only the
+documents that actually reached the page have a highlighted fragment extracted for them.
+
+Three measurements shaped that design, and all three were made against the hundred-thousand
+document corpus rather than guessed at. Writing the trigram threshold as a function call
+instead of the `<%` operator hid the index and scanned the table. Joining `projects` inside
+a ranking branch made the planner walk the tenant index instead of the text index — the join
+is redundant there anyway, because archiving a Project deletes its documents in the same
+request, and the join still happens when the page is read. And `ts_rank_cd` cost nine times
+`ts_rank` while saying almost nothing the weights had not already said, because every
+document here is one short segment, one clip, or one name. p95 fell from 1.80 s to 0.28 s.
+
+Nothing leaves the API as markup. `ts_headline` marks a match with two control characters
+the indexer strips from every document it writes, and the API splits the result into
+`{text, highlighted}` fragments — so a hook containing an `img` tag arrives as that text and
+the client decides what a highlight looks like. A result carries its Project, speaker,
+timecode, topics, export state, and a deep link, and never a storage key, a provider name,
+or a raw payload.
+
+The index is maintained where the truth changes rather than on a schedule: creating,
+renaming, soft-deleting, and restoring a Project reindex it in the same request; the
+analysis worker reindexes when candidates become durable; and campaign copy is indexed
+inside the use case that derives it. `python -m clipah.search.indexer --workspace <id>
+--actor <member>` rebuilds one Workspace, and it proves the actor's Membership before it
+declares a tenant context, because row-level security needs an actor and a maintenance task
+inventing one would be the hole the tenancy rules exist to close.
+
+`LibrarySearch` asks the backend nothing until a member has typed something worth asking,
+and offers filters for Project, content type, speaker or guest, topic, language, export
+state, and a date window. It is mounted whole at `/dashboard/search`, scoped to clips on the
+clips page, and scoped to transcripts on the assets page. A transcript result opens its
+Project at its own timecode: `ProjectDetail` signs a fresh five-minute proxy capability when
+`?t=` is present, and asks for none when it is not.
+
+Two deliberate judgements are worth recording. A quoted phrase withdraws the resemblance
+branch rather than merely outranking it — trigram similarity ignores word order, so it would
+have answered `"pricing experiment"` with the same words in the wrong order. And assets
+themselves are not indexed: nothing about a stored file is text a person searches for, so
+the assets page searches the transcripts a file might illustrate instead. That is recorded
+as a deferral rather than hidden behind a screen that looks like it searches assets.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1887 backend tests
+passed with thirteen environment-gated skips at 94.54% coverage; migration `0017`
+downgrade/upgrade and the Alembic drift check passed. `pnpm lint`, `pnpm typecheck`,
+`pnpm test` (344 passed), and `pnpm build` all passed. The opt-in load test
+(`CLIPAH_SEARCH_LOAD_TEST=1 uv run pytest tests/slow/test_content_search_load.py`) built the
+hundred-thousand document corpus and measured p95 0.28 s and median 0.19 s against a 0.5 s
+budget. The Playwright suite in `frontend/e2e/content-search.spec.ts` was written but not run
+here: it needs Postgres, the backend, the frontend, and browser binaries running together.
+No commit was created; the required owner commit message is `feat: add searchable creator
+library`.
+
+
 ## Browser suite: first run, and what it found
 
 `pnpm test:e2e` had never been run since the specs were written in Task 18. Running it
@@ -2046,11 +2122,11 @@ oversight.
 | Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket). `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
 | Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
-| Retrieving *stock* images, so a member can accept a still they did not pay a model for. Task 31 generates stills, and the editor places them as image overlays; both stock adapters still query the video endpoints only | Task 34, with the content library |
+| Retrieving *stock* images, so a member can accept a still they did not pay a model for. Task 31 generates stills, and the editor places them as image overlays; both stock adapters still query the video endpoints only | whichever task revisits stock retrieval — Task 34 built the content library and no checkbox in it touches the stock adapters |
 | Offering genuinely new alternatives for a replacement. Replacement swaps to another asset the Project owns, because only the selected candidate is ever downloaded | whichever task can pay for a second search inside the providers' terms |
 | Measuring a live stock provider. Every test uses fixtures or fakes, so the recorded behaviour proves the adapters rather than either provider's catalogue; `tests/slow/test_stock_provider_smoke.py` is written and opt-in | the repository owner, with Pexels and Pixabay credentials |
 | A real vision model behind `FrameRelevanceProvider`. The port, the recording of model and version, and the fake are all in place; no provider is wired, so sampled-frame relevance is reported as unmeasured in production | whichever task adopts a vision provider |
-| Richer user-asset search. A Workspace's own footage is matched on the query its provenance recorded, which covers reuse; genuinely user-uploaded B-roll carries no description to match on yet | Task 34, with the searchable content library |
+| Richer user-asset search. A Workspace's own footage is matched on the query its provenance recorded, which covers reuse; genuinely user-uploaded B-roll carries no description to match on yet | whichever task gives an uploaded Asset a description — Task 34 indexes Projects, transcripts, clips, and campaign copy, none of which describes raw footage |
 | Charging the monthly stock-request budget per provider request. `BROLL_RETRIEVE` reserves the `stock_requests` quota once per Job through the existing admission path; metering each provider call separately needs the per-request accounting Task 44 introduces | Task 44 |
 | Charging a metered Workspace budget for B-roll planning; a plan spends a concurrency slot and no quota, because the plan's limit table names no planning budget. This is the same gap the render deferral records | Tasks 44-46, with operational cost accounting |
 | Visual scene detection. `scene_boundaries` derives cuts from silence gaps and speaker changes, which is what a transcript can actually evidence; shot-change detection on the proxy would give placement real cuts to respect | whichever task adds shot detection to the pinned image |
@@ -2104,6 +2180,8 @@ oversight.
 | Generating an alternative for a suggestion that already carries generated media. Task 31 offers generation for an empty or below-threshold beat only; regenerating a picture a member did not like needs a decision about what happens to the first one | whichever task adds regeneration |
 | A language-model adapter for campaign copy. Version 1 derives copy deterministically and records that in every output's model metadata; no checkbox in Task 33 asks for a provider, and the port to add one is the `model_metadata` field itself | whichever task decides copy quality needs one |
 | Gating campaign generation on a recorded review approval. Task 33 binds copy to one exact immutable Revision the caller names, which is the strongest form of "approved" the schema can express before `edit_reviews` lands | Task 35 |
+| Indexing Assets themselves. Nothing about a stored file is text a person searches for, and no checkbox in Task 34 asks for it; the assets screen searches the transcripts a file might illustrate instead | whichever task gives an Asset searchable text of its own |
+| Reindexing after a render lands. Export state is recomputed whenever a Project is reindexed, but a finished render does not trigger one, so a clip's `exported` state can lag until the next reindex of its Project | Task 44, with the observability pass over worker completions |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

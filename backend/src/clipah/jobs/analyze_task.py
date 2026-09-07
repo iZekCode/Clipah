@@ -34,6 +34,7 @@ from clipah.highlights.rerank import RankedCandidate, RankingPolicy
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import update_job_progress
 from clipah.models import ClipCandidate, Project, ProjectStatus, ProviderUsage, Transcript
+from clipah.search.indexer import index_project
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
 ANALYZE_STAGE = "analyze"
@@ -162,6 +163,7 @@ class AnalyzeStageRunner:
                 raise AnalysisIntegrityError("analysis Project disappeared")
             if project.status is ProjectStatus.ANALYZING:
                 project.status = ProjectStatus.READY
+            index_project(session, workspace_id=context.workspace_id, project_id=context.project_id)
             return True
 
     def _report_window_failure(self, context: JobContext, *, index: int, code: str) -> None:
@@ -211,6 +213,9 @@ class AnalyzeStageRunner:
                 raise AnalysisIntegrityError("analysis Project is not running")
             project.status = ProjectStatus.READY
             session.flush()
+            # The moments this Job just found are the whole point of the library, so the
+            # index catches up inside the transaction that made them durable.
+            index_project(session, workspace_id=context.workspace_id, project_id=context.project_id)
 
 
 def _candidate_row(

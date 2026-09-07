@@ -20,6 +20,7 @@ from clipah.campaigns.generator import ClipSummary, generate_campaign_outputs
 from clipah.campaigns.models import CampaignLanguage
 from clipah.campaigns.repository import CampaignOutputSummary, CampaignRepository
 from clipah.editor.models import CompositionValidationError, parse_composition
+from clipah.search.indexer import index_project
 from clipah.variants.models import Platform
 from clipah.workspaces.models import WorkspaceAccess
 
@@ -59,6 +60,8 @@ def generate_outputs(
         drafts=drafts,
         created_by_user_id=access.user_id,
     )
+    # Copy a member can read but cannot find again is copy they will write twice.
+    index_project(session, workspace_id=access.workspace_id, project_id=target.project_id)
     return tuple(
         output
         for output in repository.outputs_for_edit(
