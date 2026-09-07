@@ -63,6 +63,8 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "GENERATION_CONFIRMATION_REQUIRED": "Generating video needs a separate confirmation.",
         "GENERATION_NOT_ELIGIBLE": "This suggestion cannot be generated right now.",
         "GENERATION_REQUEST_REFUSED": "This suggestion cannot be sent to a generative model.",
+        "VARIANT_REQUEST_INVALID": "That combination of lengths and platforms is not supported.",
+        "EVIDENCE_INVALID": "That source could not be accepted. Check the link and the text.",
     }
 )
 

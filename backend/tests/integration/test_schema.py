@@ -39,9 +39,11 @@ FOUNDATIONAL_TABLES = {
     "auth_sessions",
     "broll_plan_requests",
     "broll_suggestions",
+    "claim_evidence",
     "clip_candidates",
     "clip_edit_revisions",
     "clip_edits",
+    "clip_variants",
     "idempotency_keys",
     "job_events",
     "jobs",
@@ -91,6 +93,12 @@ API_TABLE_PRIVILEGES = {
     # The API records what a planning Job is for when it admits that Job.
     "broll_plan_requests": {"SELECT", "INSERT"},
     "broll_suggestions": {"SELECT", "UPDATE"},
+    # A Variant is written once by the request that generated it and never rewritten: the
+    # stored row is the boundary a member was actually shown.
+    "clip_variants": {"SELECT", "INSERT"},
+    # Evidence is a person's own record, and the API is the only path by which a
+    # verification status ever changes.
+    "claim_evidence": {"SELECT", "INSERT", "UPDATE"},
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},
     "clip_edit_revisions": {"SELECT", "INSERT"},
     "render_artifacts": {"SELECT"},
@@ -151,6 +159,9 @@ EXPECTED_ENUMS = {
         "failed",
     ),
     "broll_source_type": ("user_asset", "stock", "generated"),
+    "clip_variant_hook_strategy": ("cold_open", "question_first", "statement_first"),
+    "clip_variant_platform": ("tiktok", "instagram_reels", "youtube_shorts"),
+    "claim_verification_status": ("unverified", "supported", "disputed", "retracted"),
     "source_connection_provider": ("youtube",),
     "source_connection_kind": ("cookie",),
     "source_connection_status": ("active", "revoked", "expired"),

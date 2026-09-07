@@ -21,6 +21,7 @@ from clipah.api.routes import assets as asset_routes
 from clipah.api.routes import auth as auth_routes
 from clipah.api.routes import broll as broll_routes
 from clipah.api.routes import candidates as candidate_routes
+from clipah.api.routes import claim_evidence as claim_evidence_routes
 from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import edits as edit_routes
 from clipah.api.routes import generation_webhooks as generation_webhook_routes
@@ -30,6 +31,7 @@ from clipah.api.routes import projects as project_routes
 from clipah.api.routes import renders as render_routes
 from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import uploads as upload_routes
+from clipah.api.routes import variants as variant_routes
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.api.routes import youtube_imports as youtube_import_routes
 from clipah.api.routes.generation_webhooks import FalWebhookVerifier, GenerationWebhookSink
@@ -44,6 +46,7 @@ from clipah.jobs.events import (
     RedisJobEventNotifier,
 )
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
+from clipah.variants.assessor import ContextSafetyAssessor, configured_context_assessor
 
 VERSION = "0.1.0"
 READINESS_TIMEOUT_SECONDS = 2.0
@@ -81,6 +84,7 @@ def create_app(
     generation_webhook_sink: GenerationWebhookSink | None = None,
     generation_webhook_clock: Callable[[], datetime] | None = None,
     generation_providers: GenerationProviders | None = None,
+    context_assessor: ContextSafetyAssessor | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -99,6 +103,7 @@ def create_app(
     app.state.generation_providers = generation_providers or configured_generation_providers(
         settings
     )
+    app.state.context_assessor = context_assessor or configured_context_assessor(settings)
 
     @app.middleware("http")
     async def add_request_id(
@@ -179,6 +184,8 @@ def create_app(
     app.include_router(edit_routes.router)
     app.include_router(render_routes.router)
     app.include_router(generation_webhook_routes.router)
+    app.include_router(variant_routes.router)
+    app.include_router(claim_evidence_routes.router)
     return app
 
 

@@ -904,6 +904,165 @@
         "title": "CitationOverlay",
         "type": "object"
       },
+      "ClaimEvidenceBody": {
+        "additionalProperties": false,
+        "description": "One citation, exactly as a member wrote it.",
+        "properties": {
+          "claimText": {
+            "maxLength": 1000,
+            "minLength": 1,
+            "title": "Claimtext",
+            "type": "string"
+          },
+          "endWordId": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Endwordid",
+            "type": "string"
+          },
+          "publisher": {
+            "maxLength": 200,
+            "minLength": 1,
+            "title": "Publisher",
+            "type": "string"
+          },
+          "retrievedAt": {
+            "format": "date-time",
+            "title": "Retrievedat",
+            "type": "string"
+          },
+          "sourceTitle": {
+            "maxLength": 300,
+            "minLength": 1,
+            "title": "Sourcetitle",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "maxLength": 2048,
+            "minLength": 1,
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "startWordId": {
+            "maxLength": 32,
+            "minLength": 1,
+            "title": "Startwordid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "startWordId",
+          "endWordId",
+          "claimText",
+          "sourceUrl",
+          "sourceTitle",
+          "publisher",
+          "retrievedAt"
+        ],
+        "title": "ClaimEvidenceBody",
+        "type": "object"
+      },
+      "ClaimEvidenceListResponse": {
+        "additionalProperties": false,
+        "description": "Every citation attached to one candidate.",
+        "properties": {
+          "evidence": {
+            "items": {
+              "$ref": "#/components/schemas/ClaimEvidenceResponse"
+            },
+            "title": "Evidence",
+            "type": "array"
+          }
+        },
+        "required": [
+          "evidence"
+        ],
+        "title": "ClaimEvidenceListResponse",
+        "type": "object"
+      },
+      "ClaimEvidenceResponse": {
+        "additionalProperties": false,
+        "description": "One citation, as a reviewer is allowed to read it.",
+        "properties": {
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "claimText": {
+            "title": "Claimtext",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdByUserId": {
+            "format": "uuid",
+            "title": "Createdbyuserid",
+            "type": "string"
+          },
+          "endWordId": {
+            "title": "Endwordid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "publisher": {
+            "title": "Publisher",
+            "type": "string"
+          },
+          "retrievedAt": {
+            "title": "Retrievedat",
+            "type": "string"
+          },
+          "sourceTitle": {
+            "title": "Sourcetitle",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          },
+          "startWordId": {
+            "title": "Startwordid",
+            "type": "string"
+          },
+          "verificationStatus": {
+            "$ref": "#/components/schemas/ClaimVerificationStatus"
+          }
+        },
+        "required": [
+          "id",
+          "candidateId",
+          "startWordId",
+          "endWordId",
+          "claimText",
+          "sourceUrl",
+          "sourceTitle",
+          "publisher",
+          "retrievedAt",
+          "verificationStatus",
+          "createdByUserId",
+          "createdAt"
+        ],
+        "title": "ClaimEvidenceResponse",
+        "type": "object"
+      },
+      "ClaimVerificationStatus": {
+        "description": "What a User has said about the evidence behind one claim.\n\nClipah never sets anything but the default. A status beyond `unverified` is always a\nperson's assertion, recorded with the person who made it.",
+        "enum": [
+          "unverified",
+          "supported",
+          "disputed",
+          "retracted"
+        ],
+        "title": "ClaimVerificationStatus",
+        "type": "string"
+      },
       "ClipCategory": {
         "description": "The review filters version one of the product supports.",
         "enum": [
@@ -918,6 +1077,127 @@
         ],
         "title": "ClipCategory",
         "type": "string"
+      },
+      "ClipVariantListResponse": {
+        "additionalProperties": false,
+        "description": "One candidate's variants, ordered so two readings can be compared.",
+        "properties": {
+          "supportedDurationsMs": {
+            "default": [
+              20000,
+              30000,
+              45000,
+              60000,
+              90000
+            ],
+            "items": {
+              "type": "integer"
+            },
+            "title": "Supporteddurationsms",
+            "type": "array"
+          },
+          "variants": {
+            "items": {
+              "$ref": "#/components/schemas/ClipVariantResponse"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "variants"
+        ],
+        "title": "ClipVariantListResponse",
+        "type": "object"
+      },
+      "ClipVariantResponse": {
+        "additionalProperties": false,
+        "description": "One proposed alternative cut, with the evidence a member decides on.",
+        "properties": {
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "endMs": {
+            "title": "Endms",
+            "type": "integer"
+          },
+          "endWordId": {
+            "title": "Endwordid",
+            "type": "string"
+          },
+          "hookStrategy": {
+            "title": "Hookstrategy",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "packaging": {
+            "$ref": "#/components/schemas/PlatformPackagingResponse"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "rationale": {
+            "title": "Rationale",
+            "type": "string"
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          },
+          "startWordId": {
+            "title": "Startwordid",
+            "type": "string"
+          },
+          "targetDurationMs": {
+            "title": "Targetdurationms",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/ContextWarningResponse"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "candidateId",
+          "hookStrategy",
+          "platform",
+          "targetDurationMs",
+          "startWordId",
+          "endWordId",
+          "startMs",
+          "endMs",
+          "durationMs",
+          "title",
+          "rationale",
+          "warnings",
+          "packaging",
+          "createdAt"
+        ],
+        "title": "ClipVariantResponse",
+        "type": "object"
       },
       "CompleteUploadRequest": {
         "additionalProperties": false,
@@ -1073,6 +1353,56 @@
           "bookmarks"
         ],
         "title": "CompositionV1",
+        "type": "object"
+      },
+      "ContextWarningResponse": {
+        "additionalProperties": false,
+        "description": "One evidenced observation about a boundary, as a reviewer reads it.",
+        "properties": {
+          "evidenceWordIds": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Evidencewordids",
+            "type": "array"
+          },
+          "severity": {
+            "title": "Severity",
+            "type": "string"
+          },
+          "suggestedEndWordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestedendwordid"
+          },
+          "suggestedStartWordId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggestedstartwordid"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "severity",
+          "evidenceWordIds"
+        ],
+        "title": "ContextWarningResponse",
         "type": "object"
       },
       "CreateUploadRequest": {
@@ -2045,6 +2375,66 @@
         ],
         "title": "Placement",
         "type": "string"
+      },
+      "Platform": {
+        "description": "The short-form destinations Clipah packages for, without publishing to any of them.",
+        "enum": [
+          "tiktok",
+          "instagram_reels",
+          "youtube_shorts"
+        ],
+        "title": "Platform",
+        "type": "string"
+      },
+      "PlatformPackagingResponse": {
+        "additionalProperties": false,
+        "description": "What one destination asks of a clip, before anyone tries to publish it.",
+        "properties": {
+          "aspectRatio": {
+            "title": "Aspectratio",
+            "type": "string"
+          },
+          "captionStyle": {
+            "title": "Captionstyle",
+            "type": "string"
+          },
+          "exportPreset": {
+            "title": "Exportpreset",
+            "type": "string"
+          },
+          "maxTitleCharacters": {
+            "title": "Maxtitlecharacters",
+            "type": "integer"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "safeAreaBottomPercent": {
+            "title": "Safeareabottompercent",
+            "type": "number"
+          },
+          "safeAreaHorizontalPercent": {
+            "title": "Safeareahorizontalpercent",
+            "type": "number"
+          },
+          "safeAreaTopPercent": {
+            "title": "Safeareatoppercent",
+            "type": "number"
+          }
+        },
+        "required": [
+          "platform",
+          "aspectRatio",
+          "safeAreaTopPercent",
+          "safeAreaBottomPercent",
+          "safeAreaHorizontalPercent",
+          "maxTitleCharacters",
+          "captionStyle",
+          "exportPreset"
+        ],
+        "title": "PlatformPackagingResponse",
+        "type": "object"
       },
       "ProjectAssetResponse": {
         "additionalProperties": false,
@@ -3170,6 +3560,50 @@
         "title": "ValidationError",
         "type": "object"
       },
+      "VariantRequestBody": {
+        "additionalProperties": false,
+        "description": "The two choices a member makes: how long, and for where.",
+        "properties": {
+          "durationsMs": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 5,
+            "minItems": 1,
+            "title": "Durationsms",
+            "type": "array"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Platforms",
+            "type": "array"
+          }
+        },
+        "required": [
+          "platforms",
+          "durationsMs"
+        ],
+        "title": "VariantRequestBody",
+        "type": "object"
+      },
+      "VerificationBody": {
+        "additionalProperties": false,
+        "description": "The one field only a User may change.",
+        "properties": {
+          "verificationStatus": {
+            "$ref": "#/components/schemas/ClaimVerificationStatus"
+          }
+        },
+        "required": [
+          "verificationStatus"
+        ],
+        "title": "VerificationBody",
+        "type": "object"
+      },
       "VideoOverlay": {
         "additionalProperties": false,
         "description": "A B-roll or supporting video placed over the main timeline.",
@@ -3715,6 +4149,70 @@
         "summary": "Create Generation Estimate",
         "tags": [
           "broll"
+        ]
+      }
+    },
+    "/api/v1/claim-evidence/{evidence_id}": {
+      "patch": {
+        "description": "Record that a User decided what this evidence establishes.",
+        "operationId": "update_verification_api_v1_claim_evidence__evidence_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "evidence_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Evidence Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerificationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimEvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update Verification",
+        "tags": [
+          "claim-evidence"
         ]
       }
     },
@@ -5211,6 +5709,142 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/claim-evidence": {
+      "get": {
+        "description": "List every citation attached to one candidate.",
+        "operationId": "list_collection_api_v1_projects__project_id__candidates__candidate_id__claim_evidence_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimEvidenceListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "claim-evidence"
+        ]
+      },
+      "post": {
+        "description": "Record where a member says one claim came from, bound to exact words.",
+        "operationId": "create_evidence_api_v1_projects__project_id__candidates__candidate_id__claim_evidence_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ClaimEvidenceBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClaimEvidenceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Evidence",
+        "tags": [
+          "claim-evidence"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/candidates/{candidate_id}/edits": {
       "post": {
         "description": "Open the one Edit belonging to a reviewed candidate, or reach the existing one.",
@@ -5272,6 +5906,142 @@
         "summary": "Create",
         "tags": [
           "edits"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/candidates/{candidate_id}/variants": {
+      "get": {
+        "description": "List the variants already offered for one candidate.",
+        "operationId": "list_collection_api_v1_projects__project_id__candidates__candidate_id__variants_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipVariantListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "variants"
+        ]
+      },
+      "post": {
+        "description": "Offer every honest cut of one candidate at the requested lengths and platforms.",
+        "operationId": "create_variants_api_v1_projects__project_id__candidates__candidate_id__variants_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VariantRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipVariantListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create Variants",
+        "tags": [
+          "variants"
         ]
       }
     },

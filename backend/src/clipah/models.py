@@ -39,6 +39,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # it rather than restating it. The dependency runs this way round on purpose: schema knows
 # about meaning, and the planning modules stay free of SQLAlchemy.
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
+from clipah.variants.models import HookStrategy, Platform
 
 NAMING_CONVENTION = {
     "ix": "ix_%(table_name)s_%(column_0_N_name)s",
@@ -173,6 +174,19 @@ class JobKind(StrEnum):
     SOCIAL_PUBLISH = "social_publish"
     SOCIAL_RECONCILE = "social_reconcile"
     CLEANUP = "cleanup"
+
+
+class ClaimVerificationStatus(StrEnum):
+    """What a User has said about the evidence behind one claim.
+
+    Clipah never sets anything but the default. A status beyond `unverified` is always a
+    person's assertion, recorded with the person who made it.
+    """
+
+    UNVERIFIED = "unverified"
+    SUPPORTED = "supported"
+    DISPUTED = "disputed"
+    RETRACTED = "retracted"
 
 
 class QuotaResource(StrEnum):
@@ -1029,6 +1043,134 @@ class BrollSuggestion(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     decided_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class ClipVariant(Base):
+    """One proposed alternative cut of a Clip Candidate, packaged for one destination.
+
+    A Variant changes no Edit. It records a boundary the context rules found honest, the
+    strategy that chose its opening, the target it was asked for, and the packaging one
+    platform requires — so a member can compare readings of the same moment without any
+    of them duplicating the source, the transcript, or a single asset.
+    """
+
+    __tablename__ = "clip_variants"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_clip_variants_workspace_id_id"),
+        # One candidate yields at most one Variant per strategy, target, and destination.
+        # A repeated request therefore converges on the rows it already wrote.
+        UniqueConstraint(
+            "workspace_id",
+            "candidate_id",
+            "hook_strategy",
+            "target_duration_ms",
+            "platform",
+            name="uq_clip_variants_candidate_strategy_target_platform",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id"],
+            ["projects.workspace_id", "projects.id"],
+            name="fk_clip_variants_workspace_id_project_id_projects",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "candidate_id"],
+            ["clip_candidates.workspace_id", "clip_candidates.id"],
+            name="fk_clip_variants_workspace_id_candidate_id_clip_candidates",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("start_ms >= 0 AND end_ms > start_ms", name="valid_variant_range"),
+        CheckConstraint("target_duration_ms > 0", name="positive_variant_target"),
+        Index("ix_clip_variants_workspace_candidate", "workspace_id", "candidate_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    candidate_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    hook_strategy: Mapped[HookStrategy] = mapped_column(
+        enum_type(HookStrategy, "clip_variant_hook_strategy"), nullable=False
+    )
+    platform: Mapped[Platform] = mapped_column(
+        enum_type(Platform, "clip_variant_platform"), nullable=False
+    )
+    target_duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    start_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    end_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    start_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    end_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    rationale: Mapped[str] = mapped_column(Text, nullable=False)
+    # The warnings this boundary carried when it was offered, and the packaging its
+    # destination asked for. Both are evidence a member decided on, so both are kept.
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    packaging: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class ClaimEvidence(Base):
+    """What a User said about the source behind a claim, never what Clipah verified.
+
+    Version 1 records evidence and shows it beside the claim as a reviewable citation
+    suggestion. Nothing Clipah does sets `verification_status`: only a User may say a
+    claim is verified, and the actor who said so is kept beside the assertion.
+    """
+
+    __tablename__ = "claim_evidence"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_claim_evidence_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id"],
+            ["projects.workspace_id", "projects.id"],
+            name="fk_claim_evidence_workspace_id_project_id_projects",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "candidate_id"],
+            ["clip_candidates.workspace_id", "clip_candidates.id"],
+            name="fk_claim_evidence_workspace_id_candidate_id_clip_candidates",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_claim_evidence_workspace_candidate", "workspace_id", "candidate_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    candidate_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    start_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    end_word_id: Mapped[str] = mapped_column(String(32), nullable=False)
+    claim_text: Mapped[str] = mapped_column(Text, nullable=False)
+    source_url: Mapped[str] = mapped_column(Text, nullable=False)
+    source_title: Mapped[str] = mapped_column(Text, nullable=False)
+    publisher: Mapped[str] = mapped_column(Text, nullable=False)
+    retrieved_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    verification_status: Mapped[ClaimVerificationStatus] = mapped_column(
+        enum_type(ClaimVerificationStatus, "claim_verification_status"),
+        nullable=False,
+        server_default=text("'unverified'"),
+    )
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
 
 
 class ClipEdit(Base):

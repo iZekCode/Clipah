@@ -29,6 +29,7 @@ from clipah.auth.sessions import authenticate_session
 from clipah.broll.generation_policy import GenerationProviders
 from clipah.config import Settings
 from clipah.db import session_scope, set_actor_context, set_workspace_context
+from clipah.variants.assessor import ContextSafetyAssessor
 from clipah.workspaces.authorization import (
     DatabaseWorkspaceAuthorizer,
     requires_recent_authentication,
@@ -163,6 +164,12 @@ def generation_providers_for(request: Request) -> GenerationProviders:
     """Return the generative adapters this deployment's credentials actually support."""
     providers: GenerationProviders = request.app.state.generation_providers
     return providers
+
+
+def context_assessor_for(request: Request) -> ContextSafetyAssessor | None:
+    """Return the configured context-safety assessor, or nothing when none is configured."""
+    assessor: ContextSafetyAssessor | None = request.app.state.context_assessor
+    return assessor
 
 
 def rate_limiter_for(request: Request) -> RateLimiter | None:

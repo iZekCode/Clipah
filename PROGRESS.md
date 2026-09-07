@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-30 have landed. **Task 31 is complete and awaiting the owner's
-commit.** Task 32 follows.
+**Current position:** Tasks 1-30 have landed. **Tasks 31 and 32 are complete and awaiting the
+owner's commit.** Task 33 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -72,7 +72,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 29 | Retrieve, license, and rerank user-owned and stock B-roll | `[x]` (`e81140a`) |
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (`42ca150`) |
 | 31 | Add quota-aware generated-media fallback | `[x]` (uncommitted) |
-| 32 | Add context-safe clip variants and platform packaging | `[ ]` |
+| 32 | Add context-safe clip variants and platform packaging | `[x]` (uncommitted) |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[ ]` |
 | 34 | Build the searchable creator content library | `[ ]` |
 | 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[ ]` |
@@ -1739,6 +1739,80 @@ Owner commit message:
 
 ```text
 feat: add guarded generative broll fallback
+```
+
+### Task 32 — Context-safe clip variants and platform packaging
+
+A ranked candidate is a proposal about where a moment starts and ends. Task 32 asks two
+further questions about that proposal — is this cut honest, and how does it read at
+twenty, thirty, forty-five, sixty, or ninety seconds — and lets a member record what a
+claim in the clip rests on.
+
+**Context safety runs two engines and trusts neither alone.** Deterministic rules read the
+transcript and establish what rules can: a span ending inside a question, a payoff severed
+mid-sentence, a negation stranded outside the cut, a reported claim whose attribution was
+dropped, an opening pronoun with no antecedent, a caveat left behind, an enumeration shown
+as if it were whole. A Groq assessment proposes what rules cannot see, under a closed
+schema, and **every proposal is discarded unless it resolves** — a warning naming an
+unknown word, a range outside the span, a type outside the closed set, or an impossible
+suggested boundary does not reach a member's screen. A deployment with no credential keeps
+the deterministic floor, exactly as B-roll falls back to a Workspace's own footage.
+
+All eight warning types are labeled in Indonesian, English, and code-switched speech,
+because a rule that only works in English would have passed a third of the fixtures.
+
+**A Variant is refused rather than approximated.** Cuts are made only on sentence
+boundaries the transcript already contains. A target that cannot be hit inside tolerance
+without severing a thought yields nothing at all, which is the truthful answer to "show me
+this at twenty seconds". A request for 25 seconds is refused rather than rounded to 30:
+silently serving a different length tells a member something untrue about their own clip.
+At most three hook strategies are offered, each a deterministic opening policy rather than
+model output.
+
+**Platform packaging is a table, not an integration.** TikTok, Reels, and Shorts each
+contribute an aspect ratio, safe-zone insets, title guidance, a caption style, and the
+export preset the render compiler already understands. Nothing authenticates or uploads;
+Tasks 36-43 own publishing.
+
+**Claim Evidence records what a member said, never what Clipah checked.** A URL is
+validated syntactically and never resolved — a citation is displayed, not fetched, and
+resolving it would turn opening a review page into an outbound request to a member-supplied
+host. HTTPS only, no embedded credentials, no private or loopback address. Markup is
+refused rather than sanitized, because a member who typed a tag meant something by it. A
+word range outside the candidate is refused. `verification_status` defaults to
+`unverified` and only a User ever changes it, with the actor kept beside the assertion.
+
+**Variants are generated synchronously, and that is a decision rather than an oversight.**
+One candidate is one bounded provider call over an already-small window, and a member is
+choosing between readings interactively; a queue round trip would buy nothing. The
+consequence is stated rather than hidden: the request spends the existing write rate limit
+and no metered quota, because the plan's limit table names no variant budget.
+
+**Three deviations from the plan's sketch, all deliberate.** The migration is `0015`, not
+the `0005` the plan names — that numbering predates ten landed migrations. `workspace_id`
+and composite foreign keys were added to both tables, because `AGENTS.md` requires them on
+every tenant-scoped row. And the sketch's `kind` column is absent: hook strategy, target
+duration, and platform are each their own column, so a fourth discriminator could only ever
+disagree with them.
+
+**The evaluation extension lives beside the highlight harness rather than inside it.**
+Warning recall and precision and variant boundary validity are scored over labeled
+boundaries in `variants/evaluation.py`; the highlight fixtures carry no per-warning labels,
+and adding some would either invent labels nobody wrote or make every checked-in highlight
+run unreadable. Semantic preservation and user acceptance are reported as **unmeasured**:
+both need human review and the real-audio corpus this repository still lacks, and a number
+invented for either would misrepresent what was measured.
+
+Verification: **1715 passed, 12 skipped, 94% coverage** on the backend; **311 passed** on
+the frontend, including 14 new review tests; `pnpm lint`, `pnpm typecheck`, `pnpm build`,
+and `scripts/check-contracts-clean.sh` all clean; `alembic downgrade 0014 && upgrade head`
+round-trips. The Playwright spec `e2e/clip-variants.spec.ts` is written but was not run:
+the browser suite still needs the served API and provisioned object store recorded below.
+
+Owner commit message:
+
+```text
+feat: add context-safe clip variants
 ```
 
 ### Defect fixed during Task 30 — an open stream pinned a database connection

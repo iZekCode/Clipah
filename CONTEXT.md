@@ -46,6 +46,18 @@ _Avoid_: Autosave, file version
 An immutable media file produced from one Edit Revision and one render preset.
 _Avoid_: Edit, source asset
 
+**Clip Variant**:
+A proposed alternative boundary for one Clip Candidate, expressed in authoritative word IDs and packaged for one platform. It changes no Edit until a member creates one from it.
+_Avoid_: Cut, version, render preset
+
+**Context Warning**:
+A typed, evidenced observation that a proposed boundary may misrepresent the speaker, carrying a severity and a suggested safe boundary.
+_Avoid_: Error, lint, moderation flag
+
+**Claim Evidence**:
+A User's record of where a claim in a clip came from — a normalized HTTPS source, a title, a publisher, and a retrieval date — bound to an exact word range. Clipah never asserts that it makes the claim true.
+_Avoid_: Fact check, verification, citation proof
+
 **B-roll Suggestion**:
 A provenance-aware proposed visual placement that has no effect on an Edit until an authorized User accepts it.
 _Avoid_: Automatic edit, generated clip
