@@ -315,6 +315,77 @@ def test_a_render_job_with_no_recorded_target_fails_terminally(engine: Engine) -
 
 
 @pytest.mark.integration
+def test_an_export_that_breaks_its_declared_brand_kit_fails_terminally(engine: Engine) -> None:
+    """The editor showed a member these rules, so the exporter holds the clip to them."""
+    stage = _staged(engine)
+    _declare_brand_kit(stage, allowed_background="#123456")
+    job_id = UUID(_request(stage, RenderPreset.PORTRAIT).json()["jobId"])
+    _start(stage, job_id)
+
+    with pytest.raises(Exception) as raised:
+        _fake_runner(stage)(_context(stage, job_id))
+
+    assert "RENDER_BRAND_VIOLATION" in str(raised.value)
+
+
+@pytest.mark.integration
+def test_an_export_that_honours_its_declared_brand_kit_still_renders(engine: Engine) -> None:
+    """A gate that refused a compliant clip would stop every branded export this makes."""
+    stage = _staged(engine)
+    _declare_brand_kit(stage, allowed_background="#000000")
+    job_id = UUID(_request(stage, RenderPreset.PORTRAIT).json()["jobId"])
+    _start(stage, job_id)
+
+    _fake_runner(stage)(_context(stage, job_id))
+
+    with _api_session(stage) as session:
+        assert session.scalars(select(RenderArtifact)).all()
+
+
+def _declare_brand_kit(stage: Stage, *, allowed_background: str) -> UUID:
+    """Publish one Brand Kit and save a Revision that declares it was judged by it."""
+    brand_kit_id = uuid4()
+    definition = {
+        "logoAssetId": None,
+        "fonts": [{"family": "Montserrat", "assetId": None}],
+        "colors": [
+            {"name": "Allowed", "hex": allowed_background},
+            {"name": "Paper", "hex": "#FFFFFF"},
+            {"name": "Highlight", "hex": "#FFD166"},
+        ],
+        "captionRules": {
+            "minFontSize": 12,
+            "maxFontSize": 200,
+            "allowedAlignments": ["left", "center", "right"],
+            "reservedPlacements": [],
+        },
+        "visualExclusions": [],
+        "claimRules": {"requiredAttribution": None, "forbiddenClaimPhrases": []},
+    }
+    created = stage.browser.request(
+        "POST",
+        f"/api/v1/brand-kits?workspace_id={stage.workspace_id}",
+        json={"name": "Kanal", "definition": definition},
+    )
+    assert created.status_code == 201
+    brand_kit_id = UUID(created.json()["id"])
+
+    edit = stage.browser.get(f"/api/v1/edits/{stage.edit_id}?workspace_id={stage.workspace_id}")
+    composition = edit.json()["composition"]
+    composition["brandKit"] = {"id": str(brand_kit_id), "version": 1, "logoAssetId": None}
+    saved = stage.browser.request(
+        "PUT",
+        f"/api/v1/edits/{stage.edit_id}?workspace_id={stage.workspace_id}",
+        json={
+            "expectedRevision": edit.json()["currentRevision"],
+            "composition": composition,
+        },
+    )
+    assert saved.status_code == 200
+    return brand_kit_id
+
+
+@pytest.mark.integration
 @pytest.mark.parametrize(
     ("failure", "expected"),
     [

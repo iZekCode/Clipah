@@ -23,9 +23,15 @@ from clipah.assets.ffmpeg import MEDIA_PROCESS_TIMEOUT, FFmpegRunner, MediaProce
 from clipah.assets.ingest import SIGNED_DOWNLOAD_TTL, HttpxSourceDownloader, SourceDownloader
 from clipah.assets.keys import render_artifact_key
 from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError, S3ObjectStore
+from clipah.brands.models import BrandKitDefinition
 from clipah.config import Settings
 from clipah.db import RuntimeRole, session_scope
-from clipah.editor.models import CompositionValidationError, collect_asset_ids, parse_composition
+from clipah.editor.models import (
+    CompositionV1,
+    CompositionValidationError,
+    collect_asset_ids,
+    parse_composition,
+)
 from clipah.jobs.models import (
     JobCancelledError,
     JobContext,
@@ -34,7 +40,7 @@ from clipah.jobs.models import (
 )
 from clipah.jobs.use_cases import update_job_progress
 from clipah.jobs.workspace import job_workspace
-from clipah.models import Asset, RenderArtifact
+from clipah.models import Asset, AssetProvenance, BrandKitVersion, RenderArtifact
 from clipah.renders.compiler import compile_render_plan, input_path
 from clipah.renders.ffmpeg_renderer import FFmpegRenderer, RenderExecutionError
 from clipah.renders.models import (
@@ -147,6 +153,8 @@ class RenderStageRunner:
                     Asset.id.in_(wanted),
                 )
             ).all()
+            described = _asset_descriptions(session, context.workspace_id, wanted)
+            brand = _declared_brand_kit(session, context.workspace_id, composition)
             table = {
                 row.id: (
                     RenderAsset(
@@ -156,6 +164,7 @@ class RenderStageRunner:
                         duration_ms=row.duration_ms,
                         width=row.width,
                         height=row.height,
+                        description=described.get(row.id, ""),
                     ),
                     row.storage_key,
                     row.size_bytes,
@@ -185,6 +194,7 @@ class RenderStageRunner:
             preset=target.preset,
             workspace=workspace,
             watermark=_watermark(context.settings),
+            brand=brand,
         )
 
     def _store_output(
@@ -257,6 +267,50 @@ class RenderStageRunner:
                 progress=ratio,
                 now=datetime.now(tz=UTC),
             )
+
+
+def _asset_descriptions(
+    session: Session, workspace_id: UUID, asset_ids: frozenset[UUID]
+) -> dict[UUID, str]:
+    """Report what retrieval or generation recorded each placed asset as showing.
+
+    The compiler cannot watch a stock clip, so the search that found it and the prompt
+    that produced it are the only evidence a brand's visual exclusion can be judged on.
+    """
+    rows = session.execute(
+        select(AssetProvenance.asset_id, AssetProvenance.query, AssetProvenance.prompt).where(
+            AssetProvenance.workspace_id == workspace_id,
+            AssetProvenance.asset_id.in_(asset_ids),
+        )
+    ).all()
+    return {
+        asset_id: " ".join(part for part in (query, prompt) if part)
+        for asset_id, query, prompt in rows
+    }
+
+
+def _declared_brand_kit(
+    session: Session, workspace_id: UUID, composition: CompositionV1
+) -> BrandKitDefinition | None:
+    """Read back exactly the Brand Kit version this composition says it was judged by.
+
+    A composition that names a version nobody published cannot be exported honestly: the
+    rules a member was shown are unavailable, so the Job fails rather than exporting a
+    clip against no rules at all.
+    """
+    reference = composition.brand_kit
+    if reference is None:
+        return None
+    stored = session.scalar(
+        select(BrandKitVersion.definition).where(
+            BrandKitVersion.workspace_id == workspace_id,
+            BrandKitVersion.brand_kit_id == reference.id,
+            BrandKitVersion.version == reference.version,
+        )
+    )
+    if stored is None:
+        raise TerminalJobError(RENDER_INTEGRITY)
+    return BrandKitDefinition.model_validate(stored)
 
 
 def _watermark(settings: Settings) -> Watermark | None:

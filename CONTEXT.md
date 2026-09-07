@@ -88,6 +88,14 @@ _Avoid_: Batch publication, render job
 A user convenience grouping of independent Publications created from one confirmation action.
 _Avoid_: Atomic multi-platform publish
 
+**Brand Kit**:
+A Workspace's published, versioned constraints on how its clips may look and what they may assert: colours, type, caption safe zones, visual exclusions, required attribution, and forbidden claims. A composition records the exact version it was judged against.
+_Avoid_: Theme, style guide, preset
+
+**Template**:
+A Workspace-owned, versioned look — caption treatment and drawn-text type — applied to a composition by value, so a Revision renders identically after the template changes.
+_Avoid_: Preset, theme, layout
+
 **Campaign Output**:
 Generated supporting copy or creative guidance associated with an approved Edit Revision; it is not a social publication.
 _Avoid_: Publication, social post

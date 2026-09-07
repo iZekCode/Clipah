@@ -25,6 +25,7 @@ import type {
 
 import type {
   BrollDecisionRequest,
+  CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody,
   CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams,
   DecideApiV1EditsEditIdBrollDecisionsPostParams,
   EditResponse,
@@ -462,14 +463,16 @@ export const getCreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostUrl = 
 
 export const createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost = async (projectId: string,
     candidateId: string,
+    createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody,
     params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams, options?: RequestInit): Promise<EditResponse> => {
   
   return apiFetch<EditResponse>(getCreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostUrl(projectId,candidateId,params),
   {      
     ...options,
-    method: 'POST'
-    
-    
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(
+      createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody,)
   }
 );}
 
@@ -477,8 +480,8 @@ export const createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost = async 
 
 
 export const getCreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostMutationOptions = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;data: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;data: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext> => {
 
 const mutationKey = ['createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -490,10 +493,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, {projectId: string;candidateId: string;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}> = (props) => {
-          const {projectId,candidateId,params} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, {projectId: string;candidateId: string;data: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}> = (props) => {
+          const {projectId,candidateId,data,params} = props ?? {};
 
-          return  createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost(projectId,candidateId,params,requestOptions)
+          return  createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost(projectId,candidateId,data,params,requestOptions)
         }
 
         
@@ -502,18 +505,18 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostMutationResult = NonNullable<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>>
-    
+    export type CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostMutationBody = CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody
     export type CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostMutationError = HTTPValidationError
 
     /**
  * @summary Create
  */
 export const useCreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost = <TError = HTTPValidationError,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>, TError,{projectId: string;candidateId: string;data: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost>>,
         TError,
-        {projectId: string;candidateId: string;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams},
+        {projectId: string;candidateId: string;data: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody;params: CreateApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams},
         TContext
       > => {
 

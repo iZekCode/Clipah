@@ -19,6 +19,7 @@ from itertools import pairwise
 from pathlib import Path
 from uuid import UUID
 
+from clipah.brands.models import BrandKitDefinition, evaluate_brand_constraints
 from clipah.editor.models import (
     BlendMode,
     CaptionMode,
@@ -38,6 +39,7 @@ from clipah.editor.models import (
 from clipah.editor.models import CitationOverlay as CitationOverlayModel
 from clipah.renders.models import (
     ASSET_MISSING,
+    BRAND_VIOLATION,
     FEATURE_UNSUPPORTED,
     PRESET_CANVAS,
     RENDER_AUDIO_SAMPLE_RATE,
@@ -89,9 +91,46 @@ def compile_render_plan(
     preset: RenderPreset,
     workspace: Path,
     watermark: Watermark | None = None,
+    brand: BrandKitDefinition | None = None,
 ) -> RenderPlan:
-    """Turn one composition into the exact plan that renders it at one preset."""
+    """Turn one composition into the exact plan that renders it at one preset.
+
+    ``brand`` is the exact Brand Kit version this composition declares it was built
+    against, read back by the caller. The editor showed a member those rules, so the
+    exporter holds the composition to the same ones: an export that quietly dropped a
+    required attribution or burned in an unpublished colour would be a file nobody knew
+    had stopped matching the brand.
+    """
+    _reject_a_brand_this_export_would_break(composition, assets, brand)
     return _Compiler(composition, assets, preset, workspace, watermark).compile()
+
+
+def _reject_a_brand_this_export_would_break(
+    composition: CompositionV1,
+    assets: Mapping[UUID, RenderAsset],
+    brand: BrandKitDefinition | None,
+) -> None:
+    """Refuse an export that contradicts the Brand Kit version it names.
+
+    Nothing is corrected on the way past: the refusal names every rule that was broken so
+    a member can fix the clip they approved rather than discovering a changed one later.
+    """
+    if brand is None:
+        return
+    violations = evaluate_brand_constraints(
+        composition,
+        definition=brand,
+        asset_descriptions={
+            asset_id: asset.description for asset_id, asset in assets.items() if asset.description
+        },
+    )
+    if not violations:
+        return
+    detail = "; ".join(
+        f"{violation.code.value}:{violation.element_id or 'composition'}"
+        for violation in violations
+    )
+    raise RenderCompilationError(BRAND_VIOLATION, detail)
 
 
 class _Compiler:

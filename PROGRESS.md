@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-30 have landed. **Tasks 31 and 32 are complete and awaiting the
-owner's commit.** Task 33 follows.
+**Current position:** Tasks 1-30 have landed. **Tasks 31, 32, and 33 are complete and awaiting
+the owner's commit.** Task 34 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -73,7 +73,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 30 | Integrate editable B-roll suggestions into the clip editor | `[x]` (`42ca150`) |
 | 31 | Add quota-aware generated-media fallback | `[x]` (uncommitted) |
 | 32 | Add context-safe clip variants and platform packaging | `[x]` (uncommitted) |
-| 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[ ]` |
+| 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[x]` (uncommitted) |
 | 34 | Build the searchable creator content library | `[ ]` |
 | 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[ ]` |
 
@@ -1875,6 +1875,95 @@ The other routes that require the header — analysis, renders, B-roll, and YouT
 imports — were checked. Every caller that exists sends one; nothing in the browser calls
 the render route yet.
 
+### Task 33 — Brand kits, reusable templates, and moment-to-campaign outputs
+
+A Brand Kit is a promise a Workspace makes about how its clips look and what they may
+assert. Task 33 makes that promise data, publishes it at a version, holds every clip to
+the version it names, and derives supporting copy from one approved cut without inventing
+anything or translating anybody.
+
+**Constraints are data, evaluated in both places a clip is judged.** `brands/models.py`
+publishes the vocabulary — colours, fonts, a caption size band, allowed alignments, areas
+kept clear of type, visual exclusions, required attribution, and forbidden claims — and one
+pure function evaluates a composition against it. The editor calls it on every read and
+save and reports the violations in `brandViolations`; the render compiler calls the same
+function and refuses an export that breaks the kit the composition declares, with the
+stable code `RENDER_BRAND_VIOLATION`. Nothing is ever corrected on the member's way past:
+a silently fixed clip is an export that no longer matches the preview somebody approved,
+and a test proves the composition it judged comes back byte-identical.
+
+Two evaluation decisions are worth recording. **Forbidden claims are exact phrases, not
+patterns** — a Workspace-authored regular expression evaluated on every save would be a
+denial-of-service surface, and a phrase is what a legal review actually produces. And a
+**visual exclusion is judged against media descriptions and drawn text, never against the
+caption layer**: the captions are the speaker's own words, and a brand exclusion is not a
+licence to rewrite what somebody said. The render worker supplies those descriptions from
+`asset_provenance` — the search that found a clip and the prompt that produced it are the
+only evidence anybody has about what a stock clip shows.
+
+**A version is published, never rewritten.** Migration `0016` splits a Brand Kit and a
+template each into an identity row and an append-only version row, exactly as `clip_edits`
+and `clip_edit_revisions` already are. `plan.md` gives `templates` one mutable `version`
+column; that shape cannot satisfy the task's own requirement that a saved composition keep
+resolving the version it was built against, so the file is shaped for the requirement and
+says so in its docstring. Renaming a kit publishes nothing, because a name is not a rule.
+Deleting archives: a kit or a look that clips already carry keeps every published version,
+and an archived template still resolves for the compositions that name it while no longer
+being offered for new ones. The API holds `UPDATE` on the identity rows only, so an
+append-only history is a grant rather than a convention.
+
+**Applying a look is by value, and the reference is provenance.** Opening an Edit with a
+selected template writes its type into the composition and records `(id, version)`;
+opening one with a selected Brand Kit records the kit version the clip is answerable to and
+restyles nothing, because a kit says what a look may be rather than what it is. A selection
+applies only to an Edit the call actually creates — reaching an Edit somebody already
+opened must not restyle their work. Editing the kit afterwards leaves that Revision alone,
+and a test proves it.
+
+**Campaign copy is derived, never invented.** `campaigns/generator.py` writes a title, post
+copy, a call to action, hashtags, and a thumbnail brief from the clip's own transcript
+excerpt and the analysis that chose the moment. The only Clipah-authored words are the
+localized scaffolding in `campaigns/localization.py`, which is what makes "nothing was
+invented" a property a test can check word by word rather than a promise somebody made.
+**A quote is never translated**: English copy about an Indonesian clip still quotes the
+speaker in Indonesian, because a translated quote is no longer evidence of what was said.
+Indonesian and English each publish their own labels, calls to action, thumbnail direction,
+and caveats. Copy is derived from one exact immutable Revision the caller names — never
+from "whatever is current" — and a repeated request converges on the copy a member already
+read. The clip's declared Brand Kit version supplies the forbidden phrases and the visual
+exclusions, so a claim the brand may not make is flagged beside the copy and the exclusions
+reach the thumbnail brief. Nothing here publishes: the panel offers a link to the Task 43
+composer with the Revision preselected, and a test asserts every request the panel makes is
+a read.
+
+**Version 1 uses no language model, and says so.** Every output carries model metadata
+recording the deterministic generator and its version, so a member can tell at a glance how
+much to trust the copy. A provider adapter would sit behind the same field; no checkbox in
+this task asks for one, and inventing an LLM dependency here would have been scope nobody
+asked for.
+
+The frontend adds `/dashboard/brand-kits` and `/dashboard/templates` — publish, edit into a
+new version, archive, and read archived history — plus the clip-detail campaign panel, and
+a look-and-brand selection on the control that opens an Edit, so the versioning the backend
+enforces is reachable from the product. Every brand name, look name, and piece of copy is
+rendered as React children. Colours are checked against `#RRGGBB` in the browser before a
+round trip, and a test proves the invalid one never reaches the backend.
+
+Two supporting changes were needed. `RenderAsset` gained a `description`, because the
+compiler cannot watch a clip and had no way to judge an exclusion. And `CONTEXT.md` gained
+**Brand Kit** and **Template** entries, since both are now first-class nouns the code,
+tests, and commit messages use.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1830 backend tests
+passed with twelve environment-gated skips at 94.37% coverage; migration `0016`
+downgrade/upgrade passed. `pnpm lint`, `pnpm typecheck`, `pnpm test` (329 passed), and
+`pnpm build` all passed. Three tests were re-checked by breaking the implementation on
+purpose — the render gate, the untranslated quote, and the required-attribution rule — and
+each failed as it should. The Playwright suite in `frontend/e2e/brand-campaign.spec.ts` was
+written but not run here: it needs Postgres, the backend, the frontend, and browser
+binaries running together. No commit was created; the required owner commit message is
+`feat: add brand and campaign workflows`.
+
 ## Browser suite: first run, and what it found
 
 `pnpm test:e2e` had never been run since the specs were written in Task 18. Running it
@@ -2013,6 +2102,8 @@ oversight.
 | Running the whole pipeline against live providers — the belt exists and every stage is wired, but no run has used real AssemblyAI or Groq credentials | the repository owner, before trusting Phase B's exit gate |
 | Measuring a live generative provider. Every test uses the fake provider or a local transport, so the recorded behaviour proves the adapters rather than either provider's output; `tests/slow/test_generation_provider_smoke.py` is written and opt-in | the repository owner, with fal and Runway credentials |
 | Generating an alternative for a suggestion that already carries generated media. Task 31 offers generation for an empty or below-threshold beat only; regenerating a picture a member did not like needs a decision about what happens to the first one | whichever task adds regeneration |
+| A language-model adapter for campaign copy. Version 1 derives copy deterministically and records that in every output's model metadata; no checkbox in Task 33 asks for a provider, and the port to add one is the `model_metadata` field itself | whichever task decides copy quality needs one |
+| Gating campaign generation on a recorded review approval. Task 33 binds copy to one exact immutable Revision the caller names, which is the strongest form of "approved" the schema can express before `edit_reviews` lands | Task 35 |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |
 
 ## Task 5 decisions and review notes

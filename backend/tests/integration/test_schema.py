@@ -37,8 +37,13 @@ FOUNDATIONAL_TABLES = {
     "audit_events",
     "auth_identities",
     "auth_sessions",
+    "brand_kit_versions",
+    "brand_kits",
+    "brand_template_versions",
+    "brand_templates",
     "broll_plan_requests",
     "broll_suggestions",
+    "campaign_outputs",
     "claim_evidence",
     "clip_candidates",
     "clip_edit_revisions",
@@ -101,6 +106,13 @@ API_TABLE_PRIVILEGES = {
     "claim_evidence": {"SELECT", "INSERT", "UPDATE"},
     "clip_edits": {"SELECT", "INSERT", "UPDATE"},
     "clip_edit_revisions": {"SELECT", "INSERT"},
+    # A member renames a Brand Kit or a template and archives it; the published version
+    # behind it never changes, and neither does copy derived from a Revision.
+    "brand_kits": {"SELECT", "INSERT", "UPDATE"},
+    "brand_templates": {"SELECT", "INSERT", "UPDATE"},
+    "brand_kit_versions": {"SELECT", "INSERT"},
+    "brand_template_versions": {"SELECT", "INSERT"},
+    "campaign_outputs": {"SELECT", "INSERT"},
     "render_artifacts": {"SELECT"},
     # The API records what a render Job is for when it admits that Job, and never rewrites it.
     "render_requests": {"SELECT", "INSERT"},
@@ -134,6 +146,10 @@ WORKER_TABLE_PRIVILEGES = {
     "broll_suggestions": {"SELECT", "INSERT"},
     "clip_edits": {"SELECT"},
     "clip_edit_revisions": {"SELECT"},
+    # The render worker judges an export by the same Brand Kit version the editor showed,
+    # so it reads that version and nothing else about a brand.
+    "brand_kits": {"SELECT"},
+    "brand_kit_versions": {"SELECT"},
     "render_artifacts": {"SELECT", "INSERT"},
     # The worker only reads back the target the API wrote for the Job it was handed.
     "render_requests": {"SELECT"},
@@ -159,6 +175,8 @@ EXPECTED_ENUMS = {
         "failed",
     ),
     "broll_source_type": ("user_asset", "stock", "generated"),
+    "brand_template_kind": ("clip_look",),
+    "campaign_language": ("id", "en"),
     "clip_variant_hook_strategy": ("cold_open", "question_first", "statement_first"),
     "clip_variant_platform": ("tiktok", "instagram_reels", "youtube_shorts"),
     "claim_verification_status": ("unverified", "supported", "disputed", "retracted"),

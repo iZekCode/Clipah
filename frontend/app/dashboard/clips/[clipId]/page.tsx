@@ -6,9 +6,16 @@ export default async function ClipPage({
   searchParams,
 }: {
   params: Promise<{ clipId: string }>
-  searchParams: Promise<{ projectId?: string }>
+  searchParams: Promise<{ projectId?: string; editId?: string; revision?: string }>
 }) {
   const { clipId } = await params
-  const { projectId } = await searchParams
-  return <ClipDetail candidateId={clipId} projectId={projectId ?? null} />
+  const { projectId, editId, revision } = await searchParams
+  return (
+    <ClipDetail
+      candidateId={clipId}
+      projectId={projectId ?? null}
+      editId={editId ?? null}
+      revision={revision === undefined ? null : Number(revision)}
+    />
+  )
 }

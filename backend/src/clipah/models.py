@@ -38,7 +38,9 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 # The B-roll vocabulary is domain data with no persistence of its own, so the ORM borrows
 # it rather than restating it. The dependency runs this way round on purpose: schema knows
 # about meaning, and the planning modules stay free of SQLAlchemy.
+from clipah.brands.models import TemplateKind
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
+from clipah.campaigns.models import CampaignLanguage
 from clipah.variants.models import HookStrategy, Platform
 
 NAMING_CONVENTION = {
@@ -1485,6 +1487,232 @@ class WorkspaceQuotaReservation(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     settled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BrandKit(Base):
+    """What one Workspace's brand promises, as an identity its versions hang from.
+
+    The row a member renames and archives is deliberately not the row that holds the
+    rules. A Revision records the exact Brand Kit version it was judged against, so a kit
+    edited next month must not silently re-judge a clip approved under this month's rules.
+    """
+
+    __tablename__ = "brand_kits"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_brand_kits_workspace_id_id"),
+        CheckConstraint("current_version > 0", name="positive_brand_kit_version"),
+        Index("ix_brand_kits_workspace", "workspace_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    # Archived rather than deleted: a Revision that names one of this kit's versions has
+    # to keep resolving after somebody stops using the kit.
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BrandKitVersion(Base):
+    """One immutable published version of a Brand Kit's constraints."""
+
+    __tablename__ = "brand_kit_versions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_brand_kit_versions_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "brand_kit_id",
+            "version",
+            name="uq_brand_kit_versions_workspace_kit_version",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "brand_kit_id"],
+            ["brand_kits.workspace_id", "brand_kits.id"],
+            name="fk_brand_kit_versions_workspace_id_brand_kit_id_brand_kits",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("version > 0", name="positive_brand_kit_version_number"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    brand_kit_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class BrandTemplate(Base):
+    """One reusable look a Workspace owns, as an identity its versions hang from."""
+
+    __tablename__ = "brand_templates"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_brand_templates_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "brand_kit_id"],
+            ["brand_kits.workspace_id", "brand_kits.id"],
+            name="fk_brand_templates_workspace_id_brand_kit_id_brand_kits",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("current_version > 0", name="positive_template_version"),
+        Index("ix_brand_templates_workspace", "workspace_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    brand_kit_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    name: Mapped[str] = mapped_column(Text, nullable=False)
+    kind: Mapped[TemplateKind] = mapped_column(
+        enum_type(TemplateKind, "brand_template_kind"), nullable=False
+    )
+    current_version: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("1"))
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    archived_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class BrandTemplateVersion(Base):
+    """One immutable published version of a Workspace-owned look."""
+
+    __tablename__ = "brand_template_versions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_brand_template_versions_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "template_id",
+            "version",
+            name="uq_brand_template_versions_workspace_template_version",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "template_id"],
+            ["brand_templates.workspace_id", "brand_templates.id"],
+            name="fk_brand_template_versions_workspace_id_template_id_templates",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("version > 0", name="positive_template_version_number"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    template_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    version: Mapped[int] = mapped_column(Integer, nullable=False)
+    definition: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class CampaignOutput(Base):
+    """Supporting copy derived from one immutable Edit Revision, for one destination.
+
+    A Campaign Output is not a Publication and never becomes one on its own: it is copy a
+    member reads, edits elsewhere, and decides about. It is bound to the Revision it was
+    derived from, so copy can never outlive the cut it describes.
+    """
+
+    __tablename__ = "campaign_outputs"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_campaign_outputs_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "clip_edit_revision_id",
+            "platform",
+            "language",
+            name="uq_campaign_outputs_revision_platform_language",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "project_id"],
+            ["projects.workspace_id", "projects.id"],
+            name="fk_campaign_outputs_workspace_id_project_id_projects",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "clip_edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_campaign_outputs_workspace_id_revision_id_revisions",
+            ondelete="RESTRICT",
+        ),
+        Index("ix_campaign_outputs_workspace_revision", "workspace_id", "clip_edit_revision_id"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    project_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    clip_edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    platform: Mapped[Platform] = mapped_column(
+        enum_type(Platform, "clip_variant_platform"), nullable=False
+    )
+    language: Mapped[CampaignLanguage] = mapped_column(
+        enum_type(CampaignLanguage, "campaign_language"), nullable=False
+    )
+    title: Mapped[str] = mapped_column(Text, nullable=False)
+    post_copy: Mapped[str] = mapped_column(Text, nullable=False)
+    cta: Mapped[str] = mapped_column(Text, nullable=False)
+    hashtags: Mapped[list[str]] = mapped_column(JSONB, nullable=False)
+    thumbnail_brief: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    # The caveats this clip carried when the copy was derived. Copy and caveat are read
+    # together or the caveat may as well not exist.
+    warnings: Mapped[list[dict[str, Any]]] = mapped_column(JSONB, nullable=False)
+    model_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 # Explicit tenant-leading indexes for the tables whose primary/unique keys do not

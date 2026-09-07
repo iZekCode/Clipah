@@ -42,6 +42,7 @@ RENDER_DURATION_TOLERANCE_MS = 250
 ASSET_MISSING = "RENDER_ASSET_MISSING"
 FEATURE_UNSUPPORTED = "RENDER_FEATURE_UNSUPPORTED"
 TEMPLATE_UNKNOWN = "RENDER_TEMPLATE_UNKNOWN"
+BRAND_VIOLATION = "RENDER_BRAND_VIOLATION"
 DURATION_MISMATCH = "RENDER_DURATION_MISMATCH"
 RENDER_FAILED = "RENDER_FAILED"
 
@@ -66,6 +67,9 @@ class RenderAsset:
     duration_ms: int | None
     width: int | None
     height: int | None
+    # What retrieval or generation recorded this media as showing. The compiler cannot
+    # watch a clip, so this is the only evidence it has when a brand excludes a subject.
+    description: str = ""
 
     @property
     def is_image(self) -> bool:

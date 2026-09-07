@@ -1,14 +1,21 @@
 'use client'
 
-import { useMutation } from '@tanstack/react-query'
+import { useMutation, useQuery } from '@tanstack/react-query'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
+import { listCollectionApiV1BrandKitsGet } from '@/lib/api/generated/brand-kits/brand-kits'
 import { createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost } from '@/lib/api/generated/edits/edits'
-import type { CandidateResponse, EditResponse } from '@/lib/api/generated/model'
+import type {
+  BrandKitListResponse,
+  CandidateResponse,
+  EditResponse,
+  TemplateListResponse,
+} from '@/lib/api/generated/model'
+import { listCollectionApiV1TemplatesGet } from '@/lib/api/generated/templates/templates'
 
 import { ClipPreview } from './ClipPreview'
 
@@ -45,6 +52,8 @@ const SCORE_DIMENSIONS = [
  */
 export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
   const [previewing, setPreviewing] = useState(false)
+  const [templateId, setTemplateId] = useState('')
+  const [brandKitId, setBrandKitId] = useState('')
   const { active } = useWorkspaceScope()
   const router = useRouter()
 
@@ -55,6 +64,12 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
       createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPost(
         candidate.projectId,
         candidate.id,
+        // The look and the brand are chosen once, here, and the Revision records the exact
+        // versions it was built from. Choosing neither is the ordinary case.
+        {
+          templateId: templateId === '' ? null : templateId,
+          brandKitId: brandKitId === '' ? null : brandKitId,
+        },
         { workspace_id: active.id },
       ),
     onSuccess: (created) => {
@@ -133,6 +148,16 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
       )}
 
       <div className="flex flex-wrap items-center gap-2">
+        <LookSelection
+          workspaceId={active.id}
+          templateId={templateId}
+          brandKitId={brandKitId}
+          onTemplate={setTemplateId}
+          onBrandKit={setBrandKitId}
+        />
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
           aria-expanded={previewing}
@@ -159,6 +184,85 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
         />
       ) : null}
     </li>
+  )
+}
+
+/**
+ * The look and the brand this clip will be opened with.
+ *
+ * Both lists are read best-effort: a Workspace that has published neither, or a read that
+ * fails, must not stop somebody opening their own clip. Choosing nothing is the ordinary
+ * case, and it is what the control starts on.
+ */
+function LookSelection({
+  workspaceId,
+  templateId,
+  brandKitId,
+  onTemplate,
+  onBrandKit,
+}: {
+  workspaceId: string
+  templateId: string
+  brandKitId: string
+  onTemplate: (value: string) => void
+  onBrandKit: (value: string) => void
+}) {
+  const templates = useQuery<TemplateListResponse, ApiError>({
+    queryKey: ['/api/v1/templates', workspaceId],
+    queryFn: ({ signal }) =>
+      listCollectionApiV1TemplatesGet({ workspace_id: workspaceId }, { signal }),
+    retry: false,
+  })
+  const kits = useQuery<BrandKitListResponse, ApiError>({
+    queryKey: ['/api/v1/brand-kits', workspaceId],
+    queryFn: ({ signal }) =>
+      listCollectionApiV1BrandKitsGet({ workspace_id: workspaceId }, { signal }),
+    retry: false,
+  })
+
+  const looks = templates.data?.templates ?? []
+  const brands = kits.data?.brandKits ?? []
+  if (looks.length === 0 && brands.length === 0) {
+    return null
+  }
+
+  return (
+    <>
+      {looks.length === 0 ? null : (
+        <label className="flex items-center gap-1 text-xs">
+          <span className="text-muted-foreground">Look</span>
+          <select
+            className="rounded-md border px-2 py-1"
+            value={templateId}
+            onChange={(event) => onTemplate(event.target.value)}
+          >
+            <option value="">None</option>
+            {looks.map((look) => (
+              <option key={look.id} value={look.id}>
+                {look.name} (v{look.version})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+      {brands.length === 0 ? null : (
+        <label className="flex items-center gap-1 text-xs">
+          <span className="text-muted-foreground">Brand</span>
+          <select
+            className="rounded-md border px-2 py-1"
+            value={brandKitId}
+            onChange={(event) => onBrandKit(event.target.value)}
+          >
+            <option value="">None</option>
+            {brands.map((kit) => (
+              <option key={kit.id} value={kit.id}>
+                {kit.name} (v{kit.version})
+              </option>
+            ))}
+          </select>
+        </label>
+      )}
+    </>
   )
 }
 

@@ -8,11 +8,17 @@ browser, because two members editing one clip is the ordinary case, not the rare
 from __future__ import annotations
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Any
 from uuid import UUID
 
+from clipah.brands.models import (
+    WorkspaceTemplateDefinition,
+    apply_brand_kit,
+    apply_workspace_template,
+)
 from clipah.broll.models import BrollSuggestionStatus
 from clipah.editor.models import (
     SCHEMA_VERSION,
@@ -55,6 +61,24 @@ DEFAULT_CANVAS = Canvas(width=1080, height=1920, background="#000000")
 MAIN_VIDEO_TRACK_ID = "main-video"
 FIRST_SCENE_ITEM_ID = "scene-1"
 MAX_REVISION_HISTORY = 100
+
+
+@dataclass(frozen=True, slots=True)
+class TemplateSelection:
+    """One published look a member chose, resolved by the caller before it is applied."""
+
+    template_id: UUID
+    version: int
+    definition: WorkspaceTemplateDefinition
+
+
+@dataclass(frozen=True, slots=True)
+class BrandKitSelection:
+    """One published Brand Kit version a member chose to be judged against."""
+
+    brand_kit_id: UUID
+    version: int
+    logo_asset_id: UUID | None
 
 
 class EditNotFoundError(Exception):
@@ -117,11 +141,15 @@ def create_edit_from_candidate(
     project_id: UUID,
     candidate_id: UUID,
     now: datetime,
+    template: TemplateSelection | None = None,
+    brand_kit: BrandKitSelection | None = None,
 ) -> tuple[EditDetail, bool]:
     """Open the one Edit belonging to a reviewed candidate, or reach the existing one.
 
     The second return value says whether this call created the Edit, so the HTTP layer
-    can answer a repeated click as a replay rather than as a second creation.
+    can answer a repeated click as a replay rather than as a second creation. A look and
+    a Brand Kit are applied only to an Edit this call creates: reaching an Edit somebody
+    already opened must not restyle the work they have done in it.
     """
     repository.lock_candidate(workspace_id=access.workspace_id, candidate_id=candidate_id)
     existing = repository.edit_for_candidate(
@@ -135,6 +163,20 @@ def create_edit_from_candidate(
     if seed is None:
         raise CandidateNotEditableError(str(candidate_id))
     composition = initial_composition(seed)
+    if template is not None:
+        composition = apply_workspace_template(
+            composition,
+            template_id=template.template_id,
+            version=template.version,
+            definition=template.definition,
+        )
+    if brand_kit is not None:
+        composition = apply_brand_kit(
+            composition,
+            brand_kit_id=brand_kit.brand_kit_id,
+            version=brand_kit.version,
+            logo_asset_id=brand_kit.logo_asset_id,
+        )
     edit_id = repository.create(
         workspace_id=access.workspace_id,
         candidate_id=candidate_id,

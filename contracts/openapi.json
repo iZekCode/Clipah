@@ -90,6 +90,156 @@
         "title": "Bookmark",
         "type": "object"
       },
+      "BrandColor": {
+        "additionalProperties": false,
+        "description": "One colour the brand publishes, and the name its members call it by.",
+        "properties": {
+          "hex": {
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "title": "Hex",
+            "type": "string"
+          },
+          "name": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "hex"
+        ],
+        "title": "BrandColor",
+        "type": "object"
+      },
+      "BrandFont": {
+        "additionalProperties": false,
+        "description": "One face the brand draws type in, and the licensed file behind it, if any.\n\n``asset_id`` names an uploaded font file the Workspace owns. It is deliberately not\nresolved here: this module has no standing to decide whether a Workspace may use an\nasset, so it reports the identifier and leaves the authorization to its caller.",
+        "properties": {
+          "assetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetid"
+          },
+          "family": {
+            "$ref": "#/components/schemas/FontFamily"
+          }
+        },
+        "required": [
+          "family",
+          "assetId"
+        ],
+        "title": "BrandFont",
+        "type": "object"
+      },
+      "BrandKitCreateRequest": {
+        "additionalProperties": false,
+        "description": "Accept one strictly shaped Brand Kit publication.",
+        "properties": {
+          "definition": {
+            "additionalProperties": true,
+            "title": "Definition",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "definition"
+        ],
+        "title": "BrandKitCreateRequest",
+        "type": "object"
+      },
+      "BrandKitDefinition": {
+        "additionalProperties": false,
+        "description": "One immutable version of everything a Brand Kit constrains.",
+        "properties": {
+          "captionRules": {
+            "$ref": "#/components/schemas/CaptionRules"
+          },
+          "claimRules": {
+            "$ref": "#/components/schemas/ClaimRules"
+          },
+          "colors": {
+            "items": {
+              "$ref": "#/components/schemas/BrandColor"
+            },
+            "minItems": 1,
+            "title": "Colors",
+            "type": "array"
+          },
+          "fonts": {
+            "items": {
+              "$ref": "#/components/schemas/BrandFont"
+            },
+            "minItems": 1,
+            "title": "Fonts",
+            "type": "array"
+          },
+          "logoAssetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Logoassetid"
+          },
+          "visualExclusions": {
+            "items": {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Visualexclusions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "logoAssetId",
+          "fonts",
+          "colors",
+          "captionRules",
+          "visualExclusions",
+          "claimRules"
+        ],
+        "title": "BrandKitDefinition",
+        "type": "object"
+      },
+      "BrandKitListResponse": {
+        "additionalProperties": false,
+        "description": "Every Brand Kit this Workspace offers, newest first.",
+        "properties": {
+          "brandKits": {
+            "items": {
+              "$ref": "#/components/schemas/BrandKitResponse"
+            },
+            "title": "Brandkits",
+            "type": "array"
+          }
+        },
+        "required": [
+          "brandKits"
+        ],
+        "title": "BrandKitListResponse",
+        "type": "object"
+      },
       "BrandKitReference": {
         "additionalProperties": false,
         "description": "The exact Brand Kit version this composition was built against.",
@@ -123,6 +273,167 @@
           "logoAssetId"
         ],
         "title": "BrandKitReference",
+        "type": "object"
+      },
+      "BrandKitResponse": {
+        "additionalProperties": false,
+        "description": "One Brand Kit at its newest published version.",
+        "properties": {
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/BrandKitDefinition"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "version",
+          "definition",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "title": "BrandKitResponse",
+        "type": "object"
+      },
+      "BrandKitUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Accept a rename, a new version of the rules, or both.",
+        "properties": {
+          "definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "BrandKitUpdateRequest",
+        "type": "object"
+      },
+      "BrandKitVersionResponse": {
+        "additionalProperties": false,
+        "description": "One published version, exactly as it was published.",
+        "properties": {
+          "brandKitId": {
+            "format": "uuid",
+            "title": "Brandkitid",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/BrandKitDefinition"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "brandKitId",
+          "version",
+          "definition",
+          "createdAt"
+        ],
+        "title": "BrandKitVersionResponse",
+        "type": "object"
+      },
+      "BrandViolationResponse": {
+        "additionalProperties": false,
+        "description": "One rule this clip breaks, named where a member can act on it.",
+        "properties": {
+          "code": {
+            "title": "Code",
+            "type": "string"
+          },
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "elementId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Elementid"
+          }
+        },
+        "required": [
+          "code",
+          "elementId",
+          "detail"
+        ],
+        "title": "BrandViolationResponse",
         "type": "object"
       },
       "BrollCoverage": {
@@ -438,6 +749,211 @@
         "title": "BrollSuggestionStatus",
         "type": "string"
       },
+      "CampaignLanguage": {
+        "description": "The languages Clipah writes supporting copy in.\n\nIndonesian first, because that is who this product is for. The values are the ISO 639-1\ncodes the transcript already records, so a Transcript's language selects copy without a\ntranslation table in between.",
+        "enum": [
+          "id",
+          "en"
+        ],
+        "title": "CampaignLanguage",
+        "type": "string"
+      },
+      "CampaignModelMetadataResponse": {
+        "additionalProperties": false,
+        "description": "What produced this copy, so a member can tell how much to trust it.",
+        "properties": {
+          "deterministic": {
+            "title": "Deterministic",
+            "type": "boolean"
+          },
+          "generator": {
+            "title": "Generator",
+            "type": "string"
+          },
+          "model": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model"
+          },
+          "provider": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Provider"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "generator",
+          "version",
+          "deterministic"
+        ],
+        "title": "CampaignModelMetadataResponse",
+        "type": "object"
+      },
+      "CampaignOutputListResponse": {
+        "additionalProperties": false,
+        "description": "The copy derived from one Edit, ordered so two readings can be compared.",
+        "properties": {
+          "campaignOutputs": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignOutputResponse"
+            },
+            "title": "Campaignoutputs",
+            "type": "array"
+          }
+        },
+        "required": [
+          "campaignOutputs"
+        ],
+        "title": "CampaignOutputListResponse",
+        "type": "object"
+      },
+      "CampaignOutputResponse": {
+        "additionalProperties": false,
+        "description": "One complete piece of supporting copy, for one destination in one language.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "cta": {
+            "title": "Cta",
+            "type": "string"
+          },
+          "hashtags": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Hashtags",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "modelMetadata": {
+            "$ref": "#/components/schemas/CampaignModelMetadataResponse"
+          },
+          "platform": {
+            "title": "Platform",
+            "type": "string"
+          },
+          "postCopy": {
+            "title": "Postcopy",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "thumbnailBrief": {
+            "$ref": "#/components/schemas/ThumbnailBriefResponse"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "warnings": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignWarningResponse"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "platform",
+          "language",
+          "title",
+          "postCopy",
+          "cta",
+          "hashtags",
+          "thumbnailBrief",
+          "warnings",
+          "modelMetadata",
+          "createdAt"
+        ],
+        "title": "CampaignOutputResponse",
+        "type": "object"
+      },
+      "CampaignRequestBody": {
+        "additionalProperties": false,
+        "description": "The three choices a member makes: which cut, for where, and in what language.",
+        "properties": {
+          "languages": {
+            "items": {
+              "$ref": "#/components/schemas/CampaignLanguage"
+            },
+            "maxItems": 2,
+            "minItems": 1,
+            "title": "Languages",
+            "type": "array"
+          },
+          "platforms": {
+            "items": {
+              "$ref": "#/components/schemas/Platform"
+            },
+            "maxItems": 3,
+            "minItems": 1,
+            "title": "Platforms",
+            "type": "array"
+          },
+          "revision": {
+            "minimum": 1.0,
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "revision",
+          "platforms",
+          "languages"
+        ],
+        "title": "CampaignRequestBody",
+        "type": "object"
+      },
+      "CampaignWarningResponse": {
+        "additionalProperties": false,
+        "description": "One caveat a member reads beside the copy, never instead of it.",
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "type": {
+            "title": "Type",
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "detail"
+        ],
+        "title": "CampaignWarningResponse",
+        "type": "object"
+      },
       "CandidatePageResponse": {
         "additionalProperties": false,
         "description": "One strict ranked candidate page and its opaque continuation cursor.",
@@ -675,6 +1191,47 @@
         ],
         "title": "CaptionMode",
         "type": "string"
+      },
+      "CaptionRules": {
+        "additionalProperties": false,
+        "description": "The band drawn type has to stay inside, and the areas it must stay out of.\n\n``reserved_placements`` is the safe zone expressed the way a composition expresses\nposition: a brand that keeps the lower third clear does so because a platform's own\ninterface covers it, and a caption nobody can read is a caption that was not written.",
+        "properties": {
+          "allowedAlignments": {
+            "items": {
+              "$ref": "#/components/schemas/TextAlign"
+            },
+            "minItems": 1,
+            "title": "Allowedalignments",
+            "type": "array"
+          },
+          "maxFontSize": {
+            "maximum": 200.0,
+            "minimum": 12.0,
+            "title": "Maxfontsize",
+            "type": "integer"
+          },
+          "minFontSize": {
+            "maximum": 200.0,
+            "minimum": 12.0,
+            "title": "Minfontsize",
+            "type": "integer"
+          },
+          "reservedPlacements": {
+            "items": {
+              "$ref": "#/components/schemas/Placement"
+            },
+            "title": "Reservedplacements",
+            "type": "array"
+          }
+        },
+        "required": [
+          "minFontSize",
+          "maxFontSize",
+          "allowedAlignments",
+          "reservedPlacements"
+        ],
+        "title": "CaptionRules",
+        "type": "object"
       },
       "CaptionStyle": {
         "additionalProperties": false,
@@ -1050,6 +1607,40 @@
           "createdAt"
         ],
         "title": "ClaimEvidenceResponse",
+        "type": "object"
+      },
+      "ClaimRules": {
+        "additionalProperties": false,
+        "description": "What this brand always says, and what it may never say.\n\nForbidden claims are exact phrases rather than patterns. A Workspace-authored regular\nexpression would be a denial-of-service surface evaluated on every save, and a phrase\nis what a legal review actually produces.",
+        "properties": {
+          "forbiddenClaimPhrases": {
+            "items": {
+              "maxLength": 200,
+              "minLength": 1,
+              "type": "string"
+            },
+            "title": "Forbiddenclaimphrases",
+            "type": "array"
+          },
+          "requiredAttribution": {
+            "anyOf": [
+              {
+                "maxLength": 200,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Requiredattribution"
+          }
+        },
+        "required": [
+          "requiredAttribution",
+          "forbiddenClaimPhrases"
+        ],
+        "title": "ClaimRules",
         "type": "object"
       },
       "ClaimVerificationStatus": {
@@ -1820,6 +2411,13 @@
         "additionalProperties": false,
         "description": "One Edit and the composition its current Revision holds.",
         "properties": {
+          "brandViolations": {
+            "items": {
+              "$ref": "#/components/schemas/BrandViolationResponse"
+            },
+            "title": "Brandviolations",
+            "type": "array"
+          },
           "candidateId": {
             "format": "uuid",
             "title": "Candidateid",
@@ -1862,10 +2460,43 @@
           "currentRevision",
           "composition",
           "compositionHash",
+          "brandViolations",
           "createdAt",
           "updatedAt"
         ],
         "title": "EditResponse",
+        "type": "object"
+      },
+      "EditSelectionRequest": {
+        "additionalProperties": false,
+        "description": "The look and the brand a member chose when they opened this clip.",
+        "properties": {
+          "brandKitId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brandkitid"
+          },
+          "templateId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Templateid"
+          }
+        },
+        "title": "EditSelectionRequest",
         "type": "object"
       },
       "FontFamily": {
@@ -3177,6 +3808,67 @@
         "title": "SourceRange",
         "type": "object"
       },
+      "TemplateCreateRequest": {
+        "additionalProperties": false,
+        "description": "Accept one strictly shaped template publication.",
+        "properties": {
+          "brandKitId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brandkitid"
+          },
+          "definition": {
+            "additionalProperties": true,
+            "title": "Definition",
+            "type": "object"
+          },
+          "name": {
+            "maxLength": 120,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "definition"
+        ],
+        "title": "TemplateCreateRequest",
+        "type": "object"
+      },
+      "TemplateKind": {
+        "description": "The kinds of reusable look a Workspace may publish.\n\nVersion 1 publishes one kind. The vocabulary is closed rather than free text so a\nlater kind arrives as a value the API already refuses today, rather than as a column\nnobody validates.",
+        "enum": [
+          "clip_look"
+        ],
+        "title": "TemplateKind",
+        "type": "string"
+      },
+      "TemplateListResponse": {
+        "additionalProperties": false,
+        "description": "Every look this Workspace offers, newest first.",
+        "properties": {
+          "templates": {
+            "items": {
+              "$ref": "#/components/schemas/TemplateResponse"
+            },
+            "title": "Templates",
+            "type": "array"
+          }
+        },
+        "required": [
+          "templates"
+        ],
+        "title": "TemplateListResponse",
+        "type": "object"
+      },
       "TemplateReference": {
         "additionalProperties": false,
         "description": "The exact template version this composition was built against.",
@@ -3197,6 +3889,165 @@
           "version"
         ],
         "title": "TemplateReference",
+        "type": "object"
+      },
+      "TemplateResponse": {
+        "additionalProperties": false,
+        "description": "One Workspace-owned look at its newest published version.",
+        "properties": {
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Archivedat"
+          },
+          "brandKitId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brandkitid"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/WorkspaceTemplateDefinition"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updatedat"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "brandKitId",
+          "name",
+          "kind",
+          "version",
+          "definition",
+          "createdAt",
+          "updatedAt",
+          "archivedAt"
+        ],
+        "title": "TemplateResponse",
+        "type": "object"
+      },
+      "TemplateUpdateRequest": {
+        "additionalProperties": false,
+        "description": "Accept a rename, a re-pointing at a Brand Kit, a new version, or any of them.",
+        "properties": {
+          "brandKitId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Brandkitid"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Definition"
+          },
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          }
+        },
+        "title": "TemplateUpdateRequest",
+        "type": "object"
+      },
+      "TemplateVersionResponse": {
+        "additionalProperties": false,
+        "description": "One published look version, exactly as it was published.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/WorkspaceTemplateDefinition"
+          },
+          "templateId": {
+            "format": "uuid",
+            "title": "Templateid",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "templateId",
+          "version",
+          "definition",
+          "createdAt"
+        ],
+        "title": "TemplateVersionResponse",
         "type": "object"
       },
       "TextAlign": {
@@ -3359,6 +4210,34 @@
           "backgroundColor"
         ],
         "title": "TextStyle",
+        "type": "object"
+      },
+      "ThumbnailBriefResponse": {
+        "additionalProperties": false,
+        "description": "What a thumbnail has to carry, as the person making it reads it.",
+        "properties": {
+          "avoid": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Avoid",
+            "type": "array"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "visualDirection": {
+            "title": "Visualdirection",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text",
+          "visualDirection",
+          "avoid"
+        ],
+        "title": "ThumbnailBriefResponse",
         "type": "object"
       },
       "Track": {
@@ -3860,6 +4739,32 @@
         "title": "WorkspaceStatus",
         "type": "string"
       },
+      "WorkspaceTemplateDefinition": {
+        "additionalProperties": false,
+        "description": "One immutable version of a Workspace-owned look.",
+        "properties": {
+          "captionMode": {
+            "$ref": "#/components/schemas/CaptionMode"
+          },
+          "captionStyle": {
+            "$ref": "#/components/schemas/CaptionStyle"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TemplateKind"
+          },
+          "textStyle": {
+            "$ref": "#/components/schemas/TextStyle"
+          }
+        },
+        "required": [
+          "kind",
+          "captionMode",
+          "captionStyle",
+          "textStyle"
+        ],
+        "title": "WorkspaceTemplateDefinition",
+        "type": "object"
+      },
       "WorkspaceUpdateRequest": {
         "additionalProperties": false,
         "description": "The Workspace settings an owner or admin may change.",
@@ -4010,6 +4915,336 @@
         "summary": "Logout",
         "tags": [
           "auth"
+        ]
+      }
+    },
+    "/api/v1/brand-kits": {
+      "get": {
+        "description": "List the kits this Workspace still uses, or every kit it has published.",
+        "operationId": "list_collection_api_v1_brand_kits_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKitListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "brand-kits"
+        ]
+      },
+      "post": {
+        "description": "Publish one Brand Kit and the first version of its rules.",
+        "operationId": "create_api_v1_brand_kits_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandKitCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "brand-kits"
+        ]
+      }
+    },
+    "/api/v1/brand-kits/{brand_kit_id}": {
+      "delete": {
+        "description": "Stop offering one kit without destroying the versions clips were judged against.",
+        "operationId": "archive_api_v1_brand_kits__brand_kit_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_kit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Brand Kit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive",
+        "tags": [
+          "brand-kits"
+        ]
+      },
+      "get": {
+        "description": "Read one Brand Kit at its newest published version.",
+        "operationId": "read_api_v1_brand_kits__brand_kit_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_kit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Brand Kit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read",
+        "tags": [
+          "brand-kits"
+        ]
+      },
+      "patch": {
+        "description": "Rename one kit, publish its next version of rules, or both.",
+        "operationId": "update_api_v1_brand_kits__brand_kit_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_kit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Brand Kit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BrandKitUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKitResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update",
+        "tags": [
+          "brand-kits"
+        ]
+      }
+    },
+    "/api/v1/brand-kits/{brand_kit_id}/versions/{version}": {
+      "get": {
+        "description": "Read exactly the rules one composition declares it was judged against.",
+        "operationId": "read_version_api_v1_brand_kits__brand_kit_id__versions__version__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "brand_kit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Brand Kit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BrandKitVersionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Version",
+        "tags": [
+          "brand-kits"
         ]
       }
     },
@@ -4437,6 +5672,133 @@
         "summary": "Decide",
         "tags": [
           "edits"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/campaign-outputs": {
+      "get": {
+        "description": "List the copy already derived from this Edit's Revisions.",
+        "operationId": "list_collection_api_v1_edits__edit_id__campaign_outputs_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "revision",
+            "required": false,
+            "schema": {
+              "default": 1,
+              "minimum": 1,
+              "title": "Revision",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOutputListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "campaigns"
+        ]
+      },
+      "post": {
+        "description": "Derive supporting copy from one exact immutable Revision of this Edit.",
+        "operationId": "create_api_v1_edits__edit_id__campaign_outputs_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CampaignRequestBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CampaignOutputListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "campaigns"
         ]
       }
     },
@@ -5881,6 +7243,23 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/EditSelectionRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ],
+                "title": "Selection"
+              }
+            }
+          }
+        },
         "responses": {
           "200": {
             "content": {
@@ -6776,6 +8155,336 @@
         "summary": "Revoke",
         "tags": [
           "source-connections"
+        ]
+      }
+    },
+    "/api/v1/templates": {
+      "get": {
+        "description": "List the looks this Workspace still offers, or every look it has published.",
+        "operationId": "list_collection_api_v1_templates_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "include_archived",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Include Archived",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateListResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Collection",
+        "tags": [
+          "templates"
+        ]
+      },
+      "post": {
+        "description": "Publish one Workspace-owned look at version 1.",
+        "operationId": "create_api_v1_templates_post",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateCreateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{template_id}": {
+      "delete": {
+        "description": "Stop offering one look without breaking the compositions that already use it.",
+        "operationId": "archive_api_v1_templates__template_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Archive",
+        "tags": [
+          "templates"
+        ]
+      },
+      "get": {
+        "description": "Read one look at its newest published version.",
+        "operationId": "read_api_v1_templates__template_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read",
+        "tags": [
+          "templates"
+        ]
+      },
+      "patch": {
+        "description": "Publish the next version of one look, rename it, or re-point it at a Brand Kit.",
+        "operationId": "update_api_v1_templates__template_id__patch",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TemplateUpdateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Update",
+        "tags": [
+          "templates"
+        ]
+      }
+    },
+    "/api/v1/templates/{template_id}/versions/{version}": {
+      "get": {
+        "description": "Read exactly the look one composition declares it was built from.",
+        "operationId": "read_version_api_v1_templates__template_id__versions__version__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "template_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Template Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "version",
+            "required": true,
+            "schema": {
+              "title": "Version",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TemplateVersionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Read Version",
+        "tags": [
+          "templates"
         ]
       }
     },

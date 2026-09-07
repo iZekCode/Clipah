@@ -4,6 +4,8 @@ import { BrollProvenanceList } from '@/features/broll/BrollProvenanceList'
 import { RequireSession } from '@/features/auth/require-session'
 import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
+import { CampaignPanel } from '@/features/campaigns/CampaignPanel'
+
 import { EvidencePanel } from './EvidencePanel'
 import { VariantLab } from './VariantLab'
 
@@ -18,9 +20,13 @@ import { VariantLab } from './VariantLab'
 export function ClipDetail({
   candidateId,
   projectId,
+  editId = null,
+  revision = null,
 }: {
   candidateId: string
   projectId: string | null
+  editId?: string | null
+  revision?: number | null
 }) {
   return (
     <RequireSession>
@@ -33,7 +39,12 @@ export function ClipDetail({
               its sources.
             </p>
           ) : (
-            <ClipReview projectId={projectId} candidateId={candidateId} />
+            <ClipReview
+              projectId={projectId}
+              candidateId={candidateId}
+              editId={editId}
+              revision={revision}
+            />
           )}
         </section>
       </WorkspaceProvider>
@@ -42,7 +53,17 @@ export function ClipDetail({
 }
 
 /** The three review surfaces, each scoped to the Workspace the member is acting in. */
-function ClipReview({ projectId, candidateId }: { projectId: string; candidateId: string }) {
+function ClipReview({
+  projectId,
+  candidateId,
+  editId,
+  revision,
+}: {
+  projectId: string
+  candidateId: string
+  editId: string | null
+  revision: number | null
+}) {
   const { active } = useWorkspaceScope()
   const workspaceId = active.id
   return (
@@ -62,6 +83,14 @@ function ClipReview({ projectId, candidateId }: { projectId: string; candidateId
         candidateId={candidateId}
         workspaceId={workspaceId}
       />
+      {editId === null || revision === null ? (
+        <p className="text-sm text-muted-foreground">
+          Campaign copy is written from one approved cut. Open this clip in the editor, save
+          the cut you want, and come back from there to write copy for it.
+        </p>
+      ) : (
+        <CampaignPanel editId={editId} revision={revision} />
+      )}
     </div>
   )
 }

@@ -397,6 +397,191 @@ def test_revision_history_is_append_only_at_the_database_boundary(engine: Engine
     assert created["currentRevision"] == 1
 
 
+@pytest.mark.integration
+def test_opening_an_edit_with_a_template_applies_its_look_and_records_its_version(
+    engine: Engine,
+) -> None:
+    """A member picks a look once; the Revision then carries it without a second lookup."""
+    stage = _reviewed_project(engine)
+    template_id = _publish_template(stage)
+
+    created = _create_edit(stage.browser, stage.fixture, template_id=template_id)
+
+    assert created.status_code == 201
+    composition = created.json()["composition"]
+    assert composition["template"] == {"id": template_id, "version": 1}
+    assert composition["captions"]["style"]["fontFamily"] == "Anton"
+    assert composition["captions"]["mode"] == "karaoke"
+
+
+@pytest.mark.integration
+def test_opening_an_edit_with_a_brand_kit_records_the_exact_version_it_was_judged_by(
+    engine: Engine,
+) -> None:
+    """A kit edited next month may not re-judge a Revision approved under this one."""
+    stage = _reviewed_project(engine)
+    brand_kit_id = _publish_brand_kit(stage)
+
+    created = _create_edit(stage.browser, stage.fixture, brand_kit_id=brand_kit_id)
+    _edit_brand_kit(stage, brand_kit_id)
+    reread = stage.browser.get(_path(f"/edits/{created.json()['id']}", stage.fixture))
+
+    assert created.json()["composition"]["brandKit"] == {
+        "id": brand_kit_id,
+        "version": 1,
+        "logoAssetId": None,
+    }
+    assert reread.json()["composition"]["brandKit"]["version"] == 1
+
+
+@pytest.mark.integration
+def test_a_clip_that_honours_its_brand_reports_no_violation(engine: Engine) -> None:
+    """A member who complies is told so rather than left guessing."""
+    stage = _reviewed_project(engine)
+    brand_kit_id = _publish_brand_kit(stage)
+
+    created = _create_edit(stage.browser, stage.fixture, brand_kit_id=brand_kit_id)
+
+    assert created.json()["brandViolations"] == []
+
+
+@pytest.mark.integration
+def test_a_clip_that_breaks_its_brand_is_saved_and_the_breach_is_named(engine: Engine) -> None:
+    """Nothing is corrected on a member's behalf; they are told what to fix instead."""
+    stage = _reviewed_project(engine)
+    brand_kit_id = _publish_brand_kit(stage)
+    created = _create_edit(stage.browser, stage.fixture, brand_kit_id=brand_kit_id)
+    edit_id = created.json()["id"]
+    composition = copy.deepcopy(created.json()["composition"])
+    composition["captions"]["style"]["color"] = "#FF00FF"
+
+    saved = _save(
+        stage.browser,
+        stage.fixture,
+        edit_id,
+        expected_revision=created.json()["currentRevision"],
+        composition=composition,
+    )
+
+    assert saved.status_code == 200
+    assert saved.json()["composition"]["captions"]["style"]["color"] == "#FF00FF"
+    violations = saved.json()["brandViolations"]
+    assert [violation["code"] for violation in violations] == ["color_not_in_kit"]
+    assert violations[0]["elementId"] == "captions"
+
+
+@pytest.mark.integration
+def test_an_archived_template_may_not_be_applied_to_a_new_edit(engine: Engine) -> None:
+    """Archiving is a decision to stop offering a look, not a slower way of offering it."""
+    stage = _reviewed_project(engine)
+    template_id = _publish_template(stage)
+    archived = stage.browser.request("DELETE", _path(f"/templates/{template_id}", stage.fixture))
+    assert archived.status_code == 204
+
+    created = _create_edit(stage.browser, stage.fixture, template_id=template_id)
+
+    assert_error(created, status_code=409, code="TEMPLATE_ARCHIVED")
+
+
+@pytest.mark.integration
+def test_a_look_or_a_kit_from_another_workspace_is_simply_absent(engine: Engine) -> None:
+    """A guessed identifier must be indistinguishable from one that does not exist."""
+    stage = _reviewed_project(engine)
+
+    assert _create_edit(stage.browser, stage.fixture, template_id=str(uuid4())).status_code == 404
+    assert _create_edit(stage.browser, stage.fixture, brand_kit_id=str(uuid4())).status_code == 404
+
+
+def _publish_template(stage: Stage) -> str:
+    """Publish one Workspace-owned look whose type nothing else in this suite uses."""
+    created = stage.browser.request(
+        "POST",
+        _path("/templates", stage.fixture),
+        json={
+            "name": "Sorotan",
+            "brandKitId": None,
+            "definition": {
+                "kind": "clip_look",
+                "captionMode": "karaoke",
+                "captionStyle": {
+                    "fontFamily": "Anton",
+                    "fontSize": 64,
+                    "color": "#FFFFFF",
+                    "highlightColor": "#FFD166",
+                    "align": "center",
+                    "weight": 900,
+                    "italic": False,
+                    "decoration": "none",
+                    "letterSpacing": 1.0,
+                    "lineHeight": 1.2,
+                    "backgroundEnabled": False,
+                    "backgroundColor": "#000000",
+                },
+                "textStyle": {
+                    "fontFamily": "Anton",
+                    "fontSize": 52,
+                    "color": "#FFFFFF",
+                    "align": "center",
+                    "weight": 900,
+                    "italic": False,
+                    "decoration": "none",
+                    "letterSpacing": 0.0,
+                    "lineHeight": 1.2,
+                    "backgroundEnabled": False,
+                    "backgroundColor": "#000000",
+                },
+            },
+        },
+    )
+    assert created.status_code == 201
+    return str(created.json()["id"])
+
+
+def _brand_definition(**overrides: Any) -> dict[str, Any]:
+    """One Brand Kit the first composition of a reviewed candidate already complies with."""
+    definition: dict[str, Any] = {
+        "logoAssetId": None,
+        "fonts": [{"family": "Montserrat", "assetId": None}],
+        "colors": [
+            {"name": "Paper", "hex": "#FFFFFF"},
+            {"name": "Ink", "hex": "#000000"},
+            {"name": "Highlight", "hex": "#FFD166"},
+        ],
+        "captionRules": {
+            "minFontSize": 12,
+            "maxFontSize": 200,
+            "allowedAlignments": ["left", "center", "right"],
+            "reservedPlacements": [],
+        },
+        "visualExclusions": [],
+        "claimRules": {"requiredAttribution": None, "forbiddenClaimPhrases": []},
+    }
+    definition.update(overrides)
+    return definition
+
+
+def _publish_brand_kit(stage: Stage) -> str:
+    """Publish one Brand Kit inside the member's own Workspace."""
+    created = stage.browser.request(
+        "POST",
+        _path("/brand-kits", stage.fixture),
+        json={"name": "Kanal Utama", "definition": _brand_definition()},
+    )
+    assert created.status_code == 201
+    return str(created.json()["id"])
+
+
+def _edit_brand_kit(stage: Stage, brand_kit_id: str) -> None:
+    """Publish a second version of one kit, which no saved Revision may adopt."""
+    updated = stage.browser.request(
+        "PATCH",
+        _path(f"/brand-kits/{brand_kit_id}", stage.fixture),
+        json={"definition": _brand_definition(visualExclusions=["alcohol"])},
+    )
+    assert updated.status_code == 200
+    assert updated.json()["version"] == 2
+
+
 @pytest.mark.unit
 def test_edit_openapi_declares_strict_request_and_response_schemas() -> None:
     """Generated clients need concrete Edit shapes rather than arbitrary dictionaries."""
@@ -423,15 +608,24 @@ def _path(suffix: str, fixture: EditFixture) -> str:
     return f"/api/v1{suffix}{separator}workspace_id={fixture.workspace_id}"
 
 
-def _create_edit(browser: Browser, fixture: EditFixture) -> Response:
+def _create_edit(
+    browser: Browser,
+    fixture: EditFixture,
+    *,
+    template_id: str | None = None,
+    brand_kit_id: str | None = None,
+) -> Response:
     """Create, or reach, the one Edit belonging to the reviewed candidate."""
+    selection: dict[str, Any] | None = None
+    if template_id is not None or brand_kit_id is not None:
+        selection = {"templateId": template_id, "brandKitId": brand_kit_id}
     return browser.request(
         "POST",
         _path(
             f"/projects/{fixture.project_id}/candidates/{fixture.candidate_id}/edits",
             fixture,
         ),
-        json=None,
+        json=selection,
     )
 
 

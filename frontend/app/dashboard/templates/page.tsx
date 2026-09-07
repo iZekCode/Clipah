@@ -1,9 +1,16 @@
-/** Templates: reusable caption, layout, and motion templates */
+'use client'
+
+import { RequireSession } from '@/features/auth/require-session'
+import { TemplateLibrary } from '@/features/templates/TemplateLibrary'
+import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
+
+/** Templates: the reusable looks a Workspace applies to its clips. */
 export default function TemplatesPage() {
   return (
-    <section className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
-      <p className="text-sm text-muted-foreground">Caption, layout, and motion templates you can reuse across Projects appear here.</p>
-    </section>
+    <RequireSession>
+      <WorkspaceProvider>
+        <TemplateLibrary />
+      </WorkspaceProvider>
+    </RequireSession>
   )
 }

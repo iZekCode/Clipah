@@ -4,12 +4,14 @@
  * Clipah API
  * OpenAPI spec version: 0.1.0
  */
+import type { BrandViolationResponse } from './brandViolationResponse';
 import type { CompositionV1 } from './compositionV1';
 
 /**
  * One Edit and the composition its current Revision holds.
  */
 export interface EditResponse {
+  brandViolations: BrandViolationResponse[];
   candidateId: string;
   composition: CompositionV1;
   compositionHash: string;

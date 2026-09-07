@@ -159,6 +159,7 @@ export function edit(overrides: Partial<EditResponse> = {}): EditResponse {
     currentRevision: 1,
     composition: composition(),
     compositionHash: 'a'.repeat(64),
+    brandViolations: [],
     createdAt: '2026-02-01T00:00:00+00:00',
     updatedAt: '2026-02-01T00:00:00+00:00',
     ...overrides,
