@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-34 have landed. **Task 35 is complete and awaiting the owner's
-commit.** Task 36 follows.
+**Current position:** Tasks 1-35 have landed. **Task 36 is complete and awaiting the owner's
+commit.** Task 37 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -75,13 +75,13 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 32 | Add context-safe clip variants and platform packaging | `[x]` (`5ec9273`) |
 | 33 | Add brand kits, reusable templates, and moment-to-campaign outputs | `[x]` (`80cf2f6`) |
 | 34 | Build the searchable creator content library | `[x]` (`2b4a49b`) |
-| 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[x]` (uncommitted) |
+| 35 | Add Workspace collaboration, project review, and accessibility quality gates | `[x]` (`3c9867c`) |
 
 ## Phase F — Workspace social publishing (Tasks 36-43)
 
 | # | Task | Status |
 | --- | --- | --- |
-| 36 | Implement Social Account connections and encrypted OAuth Grants | `[ ]` |
+| 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (uncommitted) |
 | 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[ ]` |
 | 38 | Build immutable provider renditions and publication preflight | `[ ]` |
 | 39 | Implement the official YouTube Shorts publishing adapter | `[ ]` |
@@ -2081,6 +2081,35 @@ the authorizer needed for that future re-evaluation; Tasks 37 and 42 must apply 
 Publications become durable. No commit was created; the required owner commit message is
 `feat: add accessible review workflows`.
 
+### Task 36 — Social Account connections and encrypted OAuth Grants
+
+Migration `0019` adds Workspace-isolated, replay-safe OAuth ceremonies, redacted Social Account
+metadata, and separately stored encrypted OAuth Grants for YouTube, Instagram, and TikTok. Each
+provider uses an exact callback URI, PKCE S256, 256-bit state, and its minimum initial scopes.
+Callbacks are consumed once even when consent is incomplete or the secret backend is unavailable;
+duplicate explicit connections converge on one account and rotate its grant.
+
+OAuth material is envelope-encrypted with per-grant data keys and authenticated Workspace,
+account, provider, grant, and token-version context. The local backend has explicit key references,
+current/historical key versions for rotation, sanitized fail-closed errors, and one-use bounded
+plaintext leases. Refreshes lock the grant and use SQLAlchemy's optimistic `token_version` guard;
+provider rejection cryptographically erases the grant and persists `reconnect_required` without
+retaining provider diagnostics. Login Identity, yt-dlp Source Connection, and all three publishing
+credential families remain independent even when their external identifiers or display metadata
+match.
+
+Owners and admins with recent authentication may connect, refresh, and disconnect; reads require
+a live Workspace membership. Every mutation uses the existing CSRF and request-ID boundaries.
+Disconnect marks the account unavailable first, calls the narrow future-Publication coordinator,
+attempts provider revocation, erases local material on either provider success or failure, preserves
+an audit tombstone, and is idempotent. Task 37 supplies the durable Publication implementation
+behind that coordinator; production provider HTTP/publishing adapters remain owned by Tasks 39-41.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 1962 backend tests passed with
+thirteen environment-gated skips at 94.22% coverage. Migration `0019` downgraded to `0018`, upgraded
+back to head, and the Alembic drift check passed. No commit was created; the required owner commit
+message is `feat: add secure social account connections`.
+
 
 ## Browser suite: first run, and what it found
 
@@ -2197,7 +2226,7 @@ oversight.
 | Reconciling the bake-off fixture `contracts/fixtures/editor/parity-composition.json`, which is frame-based, with composition version 1, which is millisecond-based; the fixture drives the engine contract test rather than the product | Task 24, with the FFmpeg parity gate |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Enabling authenticated YouTube import in production. The feature is built and tested, and `docs/security/youtube-import.md` records four open items — legal approval, data retention, incident response, and whether production wraps data keys with a managed key — each of which blocks enablement | the repository owner |
-| A managed key-management store for wrapping data keys. `LocalSecretStore` wraps with key material this deployment holds; `CLIPAH_SECRET_MANAGER_KEY_NAME` is configured for but not yet implemented against | Task 36, which needs the same envelope for OAuth grants |
+| A managed key-management service client for wrapping data keys. Task 36 adds a social-specific envelope port, key references/versions, historical-key rotation, and fail-closed behavior; local deployments still derive wrapping keys from configured deployment material | Task 46, with production infrastructure wiring |
 | Sweeping expired source connections. A connection past its window is reported as expired and refuses every lease, but the row and its material are removed only when a member revokes it | Task 45, with retention |
 | A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
@@ -2212,7 +2241,7 @@ oversight.
 | Remaining metered job-creation routes that map `QuotaExceededError` onto the HTTP envelope; Task 10 now maps source-import concurrency admission | Tasks 11-16 |
 | Real stage runners for remaining `JobKind` values; Task 10 now registers `SOURCE_IMPORT`, while unsupported remaining kinds fail with `JOB_KIND_UNSUPPORTED` | Tasks 11-16 and later pipeline tasks |
 | A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
-| Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Task 36 |
+| Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Tasks 42 and 44, when real provider dispatch and operational limits exist |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
 | Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
 | The evaluation audio corpus itself — Task 15 checks in sanitized synthetic transcripts, not the two hours of source audio the plan asks for before a provider is frozen, nor the five hours asked for before public launch; the manifests record the shortfall in their audio-coverage fields | the repository owner, before the provider decision in Task 16 and before public launch |

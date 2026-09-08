@@ -71,6 +71,9 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "BRAND_ASSET_FORBIDDEN": "This brand uses media that is not available here.",
         "BRAND_KIT_ARCHIVED": "This brand kit has been archived.",
         "TEMPLATE_ARCHIVED": "This template has been archived.",
+        "SOCIAL_OAUTH_INVALID": "This social authorization could not be completed.",
+        "SOCIAL_SCOPE_MISSING": "The required provider permissions were not granted.",
+        "SOCIAL_ACCOUNT_RECONNECT_REQUIRED": "Reconnect this social account to continue.",
     }
 )
 

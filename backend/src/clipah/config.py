@@ -152,6 +152,7 @@ class Settings(BaseSettings):
     youtube_publishing_enabled: bool = False
     youtube_oauth_client_id: str | None = None
     youtube_oauth_client_secret: SecretStr | None = None
+    youtube_oauth_redirect_uri: str | None = None
     youtube_api_key: SecretStr | None = None
     youtube_api_version: str = "v3"
     youtube_audit_approved: bool = False
@@ -159,12 +160,14 @@ class Settings(BaseSettings):
     instagram_publishing_enabled: bool = False
     instagram_oauth_client_id: str | None = None
     instagram_oauth_client_secret: SecretStr | None = None
+    instagram_oauth_redirect_uri: str | None = None
     instagram_api_version: str = "v22.0"
     instagram_audit_approved: bool = False
 
     tiktok_publishing_enabled: bool = False
     tiktok_client_key: str | None = None
     tiktok_client_secret: SecretStr | None = None
+    tiktok_oauth_redirect_uri: str | None = None
     tiktok_api_version: str = "v2"
     tiktok_audit_approved: bool = False
 
@@ -193,6 +196,11 @@ class Settings(BaseSettings):
     def oidc_state_cookie_name(self) -> str:
         """Name the short-lived cookie that carries one pending login ceremony."""
         return self._companion_cookie_name("clipah_oidc")
+
+    @property
+    def social_oauth_cookie_name(self) -> str:
+        """Name the isolated cookie that carries one pending Social Account ceremony."""
+        return self._companion_cookie_name("clipah_social_oauth")
 
     def _companion_cookie_name(self, stem: str) -> str:
         """Give companion cookies the host-locking prefix the Session cookie uses."""
@@ -404,32 +412,58 @@ class Settings(BaseSettings):
         providers = (
             (
                 "YouTube",
+                "youtube",
                 self.youtube_publishing_enabled,
                 (
                     self.youtube_oauth_client_id,
                     self.youtube_oauth_client_secret,
+                    self.youtube_oauth_redirect_uri,
                     self.youtube_api_key,
                 ),
+                self.youtube_oauth_redirect_uri,
                 self.youtube_audit_approved,
             ),
             (
                 "Instagram",
+                "instagram",
                 self.instagram_publishing_enabled,
-                (self.instagram_oauth_client_id, self.instagram_oauth_client_secret),
+                (
+                    self.instagram_oauth_client_id,
+                    self.instagram_oauth_client_secret,
+                    self.instagram_oauth_redirect_uri,
+                ),
+                self.instagram_oauth_redirect_uri,
                 self.instagram_audit_approved,
             ),
             (
                 "TikTok",
+                "tiktok",
                 self.tiktok_publishing_enabled,
-                (self.tiktok_client_key, self.tiktok_client_secret),
+                (
+                    self.tiktok_client_key,
+                    self.tiktok_client_secret,
+                    self.tiktok_oauth_redirect_uri,
+                ),
+                self.tiktok_oauth_redirect_uri,
                 self.tiktok_audit_approved,
             ),
         )
-        for provider, enabled, credentials, audit_approved in providers:
+        for (
+            provider,
+            provider_slug,
+            enabled,
+            credentials,
+            redirect_uri,
+            audit_approved,
+        ) in providers:
             if not enabled:
                 continue
+            if not self.social_publishing_enabled:
+                raise ValueError(f"{provider} publishing requires CLIPAH_SOCIAL_PUBLISHING_ENABLED")
             if any(_is_blank(credential) for credential in credentials):
                 raise ValueError(f"{provider} publishing requires its OAuth/API credentials")
+            if not _is_exact_social_redirect(redirect_uri, provider=provider_slug):
+                raise ValueError(f"{provider} OAuth redirect URI is not an exact HTTPS callback")
             if not audit_approved:
                 raise ValueError(f"{provider} publishing requires audit approval")
 
@@ -452,6 +486,22 @@ def _is_https_origin(value: str | None) -> bool:
         and parts.username is None
         and parts.password is None
         and not parts.path
+        and not parts.query
+        and not parts.fragment
+    )
+
+
+def _is_exact_social_redirect(value: str | None, *, provider: str) -> bool:
+    """Accept one HTTPS URI whose only path is the named social callback."""
+    if value is None:
+        return False
+    parts = urlsplit(value)
+    return (
+        parts.scheme == "https"
+        and bool(parts.netloc)
+        and parts.username is None
+        and parts.password is None
+        and parts.path == f"/api/v1/social-oauth/{provider}/callback"
         and not parts.query
         and not parts.fragment
     )

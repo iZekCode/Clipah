@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Awaitable, Callable, Iterable
+from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -33,6 +33,7 @@ from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import renders as render_routes
 from clipah.api.routes import search as search_routes
+from clipah.api.routes import social_accounts as social_account_routes
 from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import templates as template_routes
 from clipah.api.routes import uploads as upload_routes
@@ -50,6 +51,16 @@ from clipah.jobs.events import (
     JobEventNotifier,
     PollingJobEventNotifier,
     RedisJobEventNotifier,
+)
+from clipah.social_accounts.models import SocialProvider
+from clipah.social_accounts.oauth import SocialOAuthProvider
+from clipah.social_accounts.secrets import (
+    SocialSecretStore,
+    local_social_secret_store,
+)
+from clipah.social_accounts.use_cases import (
+    EmptyFuturePublicationCoordinator,
+    FuturePublicationCoordinator,
 )
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
 from clipah.variants.assessor import ContextSafetyAssessor, configured_context_assessor
@@ -91,6 +102,9 @@ def create_app(
     generation_webhook_clock: Callable[[], datetime] | None = None,
     generation_providers: GenerationProviders | None = None,
     context_assessor: ContextSafetyAssessor | None = None,
+    social_providers: Mapping[SocialProvider, SocialOAuthProvider] | None = None,
+    social_secret_store: SocialSecretStore | None = None,
+    future_publications: FuturePublicationCoordinator | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
     probes = readiness_probes or ReadinessProbes()
@@ -110,6 +124,9 @@ def create_app(
         settings
     )
     app.state.context_assessor = context_assessor or configured_context_assessor(settings)
+    app.state.social_providers = dict(social_providers or {})
+    app.state.social_secret_store = social_secret_store or _configured_social_secret_store(settings)
+    app.state.future_publications = future_publications or EmptyFuturePublicationCoordinator()
 
     @app.middleware("http")
     async def add_request_id(
@@ -187,6 +204,7 @@ def create_app(
     app.include_router(playback_routes.router)
     app.include_router(asset_routes.router)
     app.include_router(source_connection_routes.router)
+    app.include_router(social_account_routes.router)
     app.include_router(dashboard_routes.router)
     app.include_router(edit_routes.router)
     app.include_router(edit_review_routes.router)
@@ -234,6 +252,13 @@ def _configured_rate_limiter(settings: Settings, app: FastAPI) -> RateLimiter | 
         return None
     components: AuthComponents = app.state.auth_components
     return RedisRateLimiter(Redis.from_url(settings.redis_url), now=components.now)
+
+
+def _configured_social_secret_store(settings: Settings) -> SocialSecretStore | None:
+    """Build local envelope encryption only when this process has wrapping material."""
+    if settings.secret_encryption_key is None:
+        return None
+    return local_social_secret_store(settings.secret_encryption_key.get_secret_value())
 
 
 async def _run_probe(probe: ReadinessProbe) -> None:

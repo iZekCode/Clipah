@@ -376,6 +376,126 @@ def test_enabled_social_provider_rejects_blank_secrets(
 
 
 @pytest.mark.unit
+@pytest.mark.parametrize(
+    ("provider_environment", "redirect_setting", "redirect_uri"),
+    [
+        (
+            {
+                "CLIPAH_YOUTUBE_PUBLISHING_ENABLED": "true",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_ID": "youtube-client-id",
+                "CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET": "youtube-client-secret",
+                "CLIPAH_YOUTUBE_API_KEY": "youtube-api-key",
+                "CLIPAH_YOUTUBE_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/youtube/callback",
+        ),
+        (
+            {
+                "CLIPAH_INSTAGRAM_PUBLISHING_ENABLED": "true",
+                "CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID": "instagram-client-id",
+                "CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET": "instagram-client-secret",
+                "CLIPAH_INSTAGRAM_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_INSTAGRAM_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/instagram/callback",
+        ),
+        (
+            {
+                "CLIPAH_TIKTOK_PUBLISHING_ENABLED": "true",
+                "CLIPAH_TIKTOK_CLIENT_KEY": "tiktok-client-key",
+                "CLIPAH_TIKTOK_CLIENT_SECRET": "tiktok-client-secret",
+                "CLIPAH_TIKTOK_AUDIT_APPROVED": "true",
+            },
+            "CLIPAH_TIKTOK_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/tiktok/callback",
+        ),
+    ],
+)
+def test_an_enabled_social_provider_requires_its_exact_callback_registration(
+    monkeypatch: pytest.MonkeyPatch,
+    provider_environment: dict[str, str],
+    redirect_setting: str,
+    redirect_uri: str,
+) -> None:
+    """An authorization code may return only to the provider callback configured for it."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_SOCIAL_PUBLISHING_ENABLED", "true")
+    for name, value in provider_environment.items():
+        monkeypatch.setenv(name, value)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+    monkeypatch.setenv(redirect_setting, redirect_uri)
+
+    assert Settings().social_publishing_enabled is True
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("redirect_setting", "redirect_uri"),
+    [
+        (
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "http://api.clipah.test/api/v1/social-oauth/youtube/callback",
+        ),
+        (
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "https://user@api.clipah.test/api/v1/social-oauth/youtube/callback",
+        ),
+        (
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/instagram/callback",
+        ),
+        (
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/youtube/callback?next=/",
+        ),
+        (
+            "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+            "https://api.clipah.test/api/v1/social-oauth/youtube/callback#code",
+        ),
+    ],
+)
+def test_social_oauth_redirects_reject_unsafe_or_inexact_callbacks(
+    monkeypatch: pytest.MonkeyPatch,
+    redirect_setting: str,
+    redirect_uri: str,
+) -> None:
+    """Open, ambiguous, or plaintext callbacks can misdeliver an authorization code."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_SOCIAL_PUBLISHING_ENABLED", "true")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_PUBLISHING_ENABLED", "true")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_OAUTH_CLIENT_ID", "youtube-client-id")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET", "youtube-client-secret")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_API_KEY", "youtube-api-key")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_AUDIT_APPROVED", "true")
+    monkeypatch.setenv(redirect_setting, redirect_uri)
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
+def test_google_login_credentials_do_not_enable_youtube_publishing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Login and destination authorization are separate credential families."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_SOCIAL_PUBLISHING_ENABLED", "true")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_PUBLISHING_ENABLED", "true")
+    monkeypatch.setenv("CLIPAH_YOUTUBE_AUDIT_APPROVED", "true")
+    monkeypatch.setenv(
+        "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI",
+        "https://api.clipah.test/api/v1/social-oauth/youtube/callback",
+    )
+
+    with pytest.raises(ValidationError):
+        Settings()
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize("blank_value", ["", " \t "])
 def test_production_rejects_blank_secret_manager_when_encryption_key_is_missing(
     monkeypatch: pytest.MonkeyPatch,

@@ -8,7 +8,7 @@ real client would use.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import AbstractContextManager, contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -29,6 +29,10 @@ from clipah.auth.limits import RateLimiter
 from clipah.auth.models import AuthorizationRedirect
 from clipah.config import Settings
 from clipah.db import session_scope
+from clipah.social_accounts.models import SocialProvider
+from clipah.social_accounts.oauth import SocialOAuthProvider
+from clipah.social_accounts.secrets import SocialSecretStore
+from clipah.social_accounts.use_cases import FuturePublicationCoordinator
 from clipah.source_imports.dispatch import JobDispatcher
 from support import runtime_settings
 
@@ -291,6 +295,9 @@ def build_app(
     job_dispatcher: JobDispatcher | None = None,
     source_url_validator: Any = None,
     generation_providers: Any = None,
+    social_providers: Mapping[SocialProvider, SocialOAuthProvider] | None = None,
+    social_secret_store: SocialSecretStore | None = None,
+    future_publications: FuturePublicationCoordinator | None = None,
     **setting_overrides: object,
 ) -> tuple[FastAPI, RecordingFlow, Settings]:
     """Compose the application against a stubbed provider and a hand-wound clock."""
@@ -323,6 +330,9 @@ def build_app(
             job_dispatcher=job_dispatcher,
             source_url_validator=source_url_validator,
             generation_providers=generation_providers,
+            social_providers=social_providers,
+            social_secret_store=social_secret_store,
+            future_publications=future_publications,
         ),
         flow,
         settings,

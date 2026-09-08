@@ -42,6 +42,7 @@ from clipah.brands.models import TemplateKind
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
 from clipah.campaigns.models import CampaignLanguage
 from clipah.search.models import ExportState, SearchEntityType, SearchLanguage
+from clipah.social_accounts.models import SocialConnectionStatus, SocialProvider
 from clipah.variants.models import HookStrategy, Platform
 
 NAMING_CONVENTION = {
@@ -753,6 +754,154 @@ class SourceConnectionSecret(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
+
+
+class SocialOAuthCeremony(Base):
+    """Hashed, single-use replay evidence for one Social Account callback."""
+
+    __tablename__ = "social_oauth_ceremonies"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_social_oauth_ceremonies_workspace_id_id"),
+        UniqueConstraint("state_hash", name="uq_social_oauth_ceremonies_state_hash"),
+        CheckConstraint("octet_length(state_hash) = 32", name="state_hash_is_sha256"),
+        CheckConstraint("expires_at > created_at", name="expiry_after_creation"),
+        CheckConstraint(
+            "consumed_at IS NULL OR consumed_at >= created_at", name="consumption_after_creation"
+        ),
+        Index("ix_social_oauth_ceremonies_workspace_expiry", "workspace_id", "expires_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    actor_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    provider: Mapped[SocialProvider] = mapped_column(
+        enum_type(SocialProvider, "social_provider"), nullable=False
+    )
+    state_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    redirect_uri: Mapped[str] = mapped_column(Text, nullable=False)
+    requested_scopes: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    consumed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class SocialAccount(Base):
+    """Workspace destination metadata stored separately from its OAuth Grant."""
+
+    __tablename__ = "social_accounts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_social_accounts_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "provider",
+            "external_account_id",
+            name="uq_social_accounts_workspace_provider_external",
+        ),
+        CheckConstraint(
+            "char_length(external_account_id) BETWEEN 1 AND 512",
+            name="bounded_external_account_id",
+        ),
+        CheckConstraint("char_length(display_name) BETWEEN 1 AND 256", name="bounded_display_name"),
+        CheckConstraint(
+            "(connection_status = 'revoked' AND revoked_at IS NOT NULL) OR "
+            "(connection_status <> 'revoked' AND revoked_at IS NULL)",
+            name="revocation_matches_status",
+        ),
+        Index("ix_social_accounts_workspace_status", "workspace_id", "connection_status"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("workspaces.id", ondelete="RESTRICT"), nullable=False
+    )
+    provider: Mapped[SocialProvider] = mapped_column(
+        enum_type(SocialProvider, "social_provider"), nullable=False
+    )
+    external_account_id: Mapped[str] = mapped_column(Text, nullable=False)
+    display_name: Mapped[str] = mapped_column(Text, nullable=False)
+    avatar_url: Mapped[str | None] = mapped_column(Text)
+    account_type: Mapped[str | None] = mapped_column(String(64))
+    login_family: Mapped[str] = mapped_column(String(64), nullable=False)
+    api_version: Mapped[str] = mapped_column(String(32), nullable=False)
+    connection_status: Mapped[SocialConnectionStatus] = mapped_column(
+        enum_type(SocialConnectionStatus, "social_connection_status"), nullable=False
+    )
+    capability_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    authorized_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    last_validated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class OAuthGrant(Base):
+    """Encrypted least-privilege provider credential for one Social Account."""
+
+    __tablename__ = "oauth_grants"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_oauth_grants_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "social_account_id",
+            name="uq_oauth_grants_workspace_social_account",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "social_account_id"],
+            ["social_accounts.workspace_id", "social_accounts.id"],
+            name="fk_oauth_grants_workspace_social_account",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("key_version > 0", name="positive_key_version"),
+        CheckConstraint("token_version > 0", name="positive_token_version"),
+        CheckConstraint(
+            "(revoked_at IS NULL AND octet_length(nonce) = 12 "
+            "AND octet_length(wrapped_key) > 12 AND octet_length(ciphertext) > 0) OR "
+            "(revoked_at IS NOT NULL AND octet_length(wrapped_key) = 0 "
+            "AND octet_length(nonce) = 0 AND octet_length(ciphertext) = 0)",
+            name="encrypted_material_matches_revocation",
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    social_account_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    key_reference: Mapped[str] = mapped_column(Text, nullable=False)
+    key_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    wrapped_key: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    nonce: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    ciphertext: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    granted_scopes: Mapped[list[str]] = mapped_column(ARRAY(Text), nullable=False)
+    access_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    refresh_token_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    token_version: Mapped[int] = mapped_column(Integer, nullable=False)
+    last_refreshed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    reconnect_reason: Mapped[str | None] = mapped_column(String(128))
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    __mapper_args__ = {  # noqa: RUF012 - SQLAlchemy consumes this declarative class mapping.
+        "version_id_col": token_version,
+        "version_id_generator": False,
+    }
 
 
 class MultipartUpload(Base):
