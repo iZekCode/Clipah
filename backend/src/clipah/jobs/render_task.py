@@ -237,6 +237,7 @@ class RenderStageRunner:
                             job_id=context.job_id,
                             preset=target.preset.value,
                             composition_hash=target.composition_hash,
+                            sha256=output.sha256,
                             storage_key=key,
                             size_bytes=output.size_bytes,
                             duration_ms=output.duration_ms,

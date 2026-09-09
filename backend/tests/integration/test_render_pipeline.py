@@ -287,14 +287,16 @@ def test_the_render_stage_stores_one_artifact_and_a_redelivery_stores_no_second_
                 RenderArtifact.preset,
                 RenderArtifact.size_bytes,
                 RenderArtifact.storage_key,
+                RenderArtifact.sha256,
             )
         ).all()
     assert len(artifacts) == 1
-    composition_hash, preset, size_bytes, storage_key = artifacts[0]
+    composition_hash, preset, size_bytes, storage_key, artifact_sha256 = artifacts[0]
     assert bytes(composition_hash) == stage.composition_hash
     assert preset == RenderPreset.PORTRAIT.value
     assert size_bytes > 0
     assert storage_key in stage.store.objects
+    assert bytes(artifact_sha256) == stage.store.objects[storage_key].sha256
 
 
 @pytest.mark.integration

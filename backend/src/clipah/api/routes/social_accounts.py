@@ -23,6 +23,7 @@ from clipah.api.dependencies import (
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import request_id_for
 from clipah.config import Settings
+from clipah.publishing.use_cases import PublicationFutureWorkCoordinator
 from clipah.social_accounts.models import PublishingCapabilities, SocialProvider
 from clipah.social_accounts.oauth import (
     ProviderPolicy,
@@ -304,7 +305,9 @@ def _service(request: Request, session: DatabaseSession) -> SocialAccountService
     store: SocialSecretStore | None = request.app.state.social_secret_store
     if store is None:
         raise ApiError(status_code=503, code="SERVICE_UNAVAILABLE")
-    publications: FuturePublicationCoordinator = request.app.state.future_publications
+    publications: FuturePublicationCoordinator = (
+        request.app.state.future_publications or PublicationFutureWorkCoordinator(session)
+    )
     return SocialAccountService(
         session,
         providers=request.app.state.social_providers,

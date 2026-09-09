@@ -102,6 +102,7 @@ def test_publishing_authority_follows_the_workspace_policy(
         (Action.MEMBER_MANAGE, True),
         (Action.SOCIAL_CONNECTION_MANAGE, True),
         (Action.SOURCE_CONNECTION_MANAGE, True),
+        (Action.PUBLISH, True),
         (Action.SOURCE_CONNECTION_READ, False),
         (Action.WORKSPACE_UPDATE, False),
         (Action.WORKSPACE_READ, False),

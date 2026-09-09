@@ -41,6 +41,7 @@ from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 from clipah.brands.models import TemplateKind
 from clipah.broll.models import BrollCoverage, BrollSourceType, BrollSuggestionStatus
 from clipah.campaigns.models import CampaignLanguage
+from clipah.publishing.models import PublicationStatus
 from clipah.search.models import ExportState, SearchEntityType, SearchLanguage
 from clipah.social_accounts.models import SocialConnectionStatus, SocialProvider
 from clipah.variants.models import HookStrategy, Platform
@@ -904,6 +905,274 @@ class OAuthGrant(Base):
     }
 
 
+class PublicationBatch(Base):
+    """One user confirmation grouping whose destination outcomes stay independent."""
+
+    __tablename__ = "publication_batches"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_publication_batches_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id", "idempotency_key", name="uq_publication_batches_workspace_key"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_publication_batches_workspace_revision",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "render_artifact_id"],
+            ["render_artifacts.workspace_id", "render_artifacts.id"],
+            name="fk_publication_batches_workspace_artifact",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint(
+            "octet_length(request_fingerprint) = 32", name="request_fingerprint_sha256"
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    render_artifact_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    created_by_user_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    request_fingerprint: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class Publication(Base):
+    """One independently retryable intent to send an approved artifact to one destination."""
+
+    __tablename__ = "publications"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_publications_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "social_account_id",
+            "idempotency_key",
+            name="uq_publications_workspace_account_key",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "batch_id"],
+            ["publication_batches.workspace_id", "publication_batches.id"],
+            name="fk_publications_workspace_batch",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "social_account_id"],
+            ["social_accounts.workspace_id", "social_accounts.id"],
+            name="fk_publications_workspace_account",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "edit_revision_id"],
+            ["clip_edit_revisions.workspace_id", "clip_edit_revisions.id"],
+            name="fk_publications_workspace_revision",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "render_artifact_id"],
+            ["render_artifacts.workspace_id", "render_artifacts.id"],
+            name="fk_publications_workspace_artifact",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("octet_length(artifact_sha256) = 32", name="artifact_sha256"),
+        CheckConstraint("attempt_count >= 0", name="nonnegative_attempt_count"),
+        CheckConstraint("char_length(display_timezone) BETWEEN 1 AND 255", name="timezone_bounded"),
+        Index("ix_publications_workspace_due", "workspace_id", "status", "scheduled_for"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    batch_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    social_account_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    render_artifact_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    artifact_sha256: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    approved_by_user_id: Mapped[UUID | None] = mapped_column(
+        PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
+    )
+    metadata_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    provider_options: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    consent_snapshot: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    capability_version: Mapped[str | None] = mapped_column(String(128))
+    provider_policy_version: Mapped[str | None] = mapped_column(String(128))
+    scheduled_for: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    display_timezone: Mapped[str] = mapped_column(String(255), nullable=False)
+    status: Mapped[PublicationStatus] = mapped_column(
+        enum_type(PublicationStatus, "publication_status"), nullable=False
+    )
+    idempotency_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_operation_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    provider_publication_id: Mapped[str | None] = mapped_column(String(512))
+    provider_permalink: Mapped[str | None] = mapped_column(Text)
+    checkpoint_metadata: Mapped[dict[str, Any] | None] = mapped_column(JSONB)
+    encrypted_checkpoint_reference: Mapped[str | None] = mapped_column(Text)
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    next_attempt_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    normalized_error_code: Mapped[str | None] = mapped_column(String(128))
+    sanitized_error_message: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    approved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    dispatched_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    transferred_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    processing_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    failed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    cancelled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class PublicationAttempt(Base):
+    """Append-only secret-free evidence for one provider-operation stage."""
+
+    __tablename__ = "publication_attempts"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_publication_attempts_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "publication_id",
+            "attempt",
+            "stage",
+            name="uq_publication_attempts_workspace_publication_attempt_stage",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "publication_id"],
+            ["publications.workspace_id", "publications.id"],
+            name="fk_publication_attempts_workspace_publication",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("attempt > 0", name="positive_attempt"),
+        CheckConstraint("byte_checkpoint IS NULL OR byte_checkpoint >= 0", name="byte_checkpoint"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    publication_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    attempt: Mapped[int] = mapped_column(Integer, nullable=False)
+    stage: Mapped[str] = mapped_column(String(64), nullable=False)
+    provider_request_id: Mapped[str | None] = mapped_column(String(512))
+    byte_checkpoint: Mapped[int | None] = mapped_column(BigInteger)
+    request_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    response_metadata: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    error_code: Mapped[str | None] = mapped_column(String(128))
+    error_message: Mapped[str | None] = mapped_column(Text)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ProviderEvent(Base):
+    """Append-only deduplicated webhook or poll evidence for reconciliation."""
+
+    __tablename__ = "provider_events"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_provider_events_workspace_id_id"),
+        ForeignKeyConstraint(
+            ["workspace_id", "social_account_id"],
+            ["social_accounts.workspace_id", "social_accounts.id"],
+            name="fk_provider_events_workspace_account",
+            ondelete="RESTRICT",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "publication_id"],
+            ["publications.workspace_id", "publications.id"],
+            name="fk_provider_events_workspace_publication",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("octet_length(payload_hash) = 32", name="payload_hash_sha256"),
+        Index(
+            "uq_provider_events_workspace_account_provider_id",
+            "workspace_id",
+            "social_account_id",
+            "provider_event_id",
+            unique=True,
+            postgresql_where=text("provider_event_id IS NOT NULL"),
+        ),
+        Index(
+            "uq_provider_events_workspace_account_hash_type",
+            "workspace_id",
+            "social_account_id",
+            "payload_hash",
+            "event_type",
+            unique=True,
+            postgresql_where=text("provider_event_id IS NULL"),
+        ),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    social_account_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    publication_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
+    provider_event_id: Mapped[str | None] = mapped_column(String(512))
+    payload_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    event_type: Mapped[str] = mapped_column(String(128), nullable=False)
+    signature_valid: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    normalized_status: Mapped[str | None] = mapped_column(String(128))
+    received_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    encrypted_raw_payload_reference: Mapped[str | None] = mapped_column(Text)
+
+
+class PublicationOutbox(Base):
+    """Durable dispatch intent committed atomically with a Publication transition."""
+
+    __tablename__ = "publication_outbox"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_publication_outbox_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id", "operation_key", name="uq_publication_outbox_workspace_operation"
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "publication_id"],
+            ["publications.workspace_id", "publications.id"],
+            name="fk_publication_outbox_workspace_publication",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("attempt_count >= 0", name="nonnegative_attempt_count"),
+        Index("ix_publication_outbox_workspace_pending", "workspace_id", "delivered_at"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    publication_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    topic: Mapped[str] = mapped_column(String(128), nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    operation_key: Mapped[str] = mapped_column(String(255), nullable=False)
+    available_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    delivered_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    attempt_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class MultipartUpload(Base):
     __tablename__ = "multipart_uploads"
     __table_args__ = (
@@ -1629,6 +1898,7 @@ class RenderArtifact(Base):
         ),
         CheckConstraint("size_bytes >= 0", name="nonnegative_size"),
         CheckConstraint("duration_ms > 0", name="positive_duration"),
+        CheckConstraint("sha256 IS NULL OR octet_length(sha256) = 32", name="sha256_is_sha256"),
     )
 
     id: Mapped[UUID] = mapped_column(
@@ -1642,6 +1912,7 @@ class RenderArtifact(Base):
     job_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     preset: Mapped[str] = mapped_column(String(64), nullable=False)
     composition_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    sha256: Mapped[bytes | None] = mapped_column(LargeBinary)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)

@@ -31,6 +31,7 @@ from clipah.api.routes import generation_webhooks as generation_webhook_routes
 from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
+from clipah.api.routes import publications as publication_routes
 from clipah.api.routes import renders as render_routes
 from clipah.api.routes import search as search_routes
 from clipah.api.routes import social_accounts as social_account_routes
@@ -58,10 +59,7 @@ from clipah.social_accounts.secrets import (
     SocialSecretStore,
     local_social_secret_store,
 )
-from clipah.social_accounts.use_cases import (
-    EmptyFuturePublicationCoordinator,
-    FuturePublicationCoordinator,
-)
+from clipah.social_accounts.use_cases import FuturePublicationCoordinator
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
 from clipah.variants.assessor import ContextSafetyAssessor, configured_context_assessor
 
@@ -126,7 +124,7 @@ def create_app(
     app.state.context_assessor = context_assessor or configured_context_assessor(settings)
     app.state.social_providers = dict(social_providers or {})
     app.state.social_secret_store = social_secret_store or _configured_social_secret_store(settings)
-    app.state.future_publications = future_publications or EmptyFuturePublicationCoordinator()
+    app.state.future_publications = future_publications
 
     @app.middleware("http")
     async def add_request_id(
@@ -202,6 +200,7 @@ def create_app(
     app.include_router(candidate_routes.router)
     app.include_router(broll_routes.router)
     app.include_router(playback_routes.router)
+    app.include_router(publication_routes.router)
     app.include_router(asset_routes.router)
     app.include_router(source_connection_routes.router)
     app.include_router(social_account_routes.router)

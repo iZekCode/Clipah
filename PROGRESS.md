@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-35 have landed. **Task 36 is complete and awaiting the owner's
-commit.** Task 37 follows.
+**Current position:** Tasks 1-36 have landed. **Task 37 is complete and awaiting the owner's
+commit.** Task 38 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -81,8 +81,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (uncommitted) |
-| 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[ ]` |
+| 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (`548cb5d`) |
+| 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (uncommitted) |
 | 38 | Build immutable provider renditions and publication preflight | `[ ]` |
 | 39 | Implement the official YouTube Shorts publishing adapter | `[ ]` |
 | 40 | Implement the official Instagram Reels publishing adapter | `[ ]` |
@@ -2107,8 +2107,38 @@ behind that coordinator; production provider HTTP/publishing adapters remain own
 
 Final verification: Ruff check, Ruff format check, strict mypy, and 1962 backend tests passed with
 thirteen environment-gated skips at 94.22% coverage. Migration `0019` downgraded to `0018`, upgraded
-back to head, and the Alembic drift check passed. No commit was created; the required owner commit
-message is `feat: add secure social account connections`.
+back to head, and the Alembic drift check passed. Landed as `548cb5d` with
+`feat: add secure social account connections`.
+
+### Task 37 — Durable Publication orchestration
+
+Migration `0020` adds immutable Publication Batches, one independently recoverable Publication per
+Social Account, append-only Publication Attempts and Provider Events, and a transactional outbox.
+Every table has composite Workspace foreign keys, forced RLS, and an exact API/worker privilege
+split. Render Artifacts now persist the SHA-256 of the actual stored master so confirmation can
+freeze the file bytes rather than only the editable composition hash.
+
+The closed provider-neutral state machine covers approval, scheduling, preflight, transfer,
+processing, retry, reconnect, truthful cancellation, and terminal outcomes. Prepare requests bind
+their idempotency key to a canonical payload fingerprint; confirmation rechecks the latest review
+decision and freezes the Edit Revision, master checksum, metadata, destination, consent, approving
+actor, IANA display timezone and UTC instant, capability version, and provider policy version.
+Retries retain stable provider operation keys and refuse ambiguous creates until reconciliation;
+provider events deduplicate by authoritative event ID or stable payload hash.
+
+The scheduler claims bounded due pages with `FOR UPDATE SKIP LOCKED` and commits each transition
+with its outbox intent. A real two-scheduler integration race proves one claim. Dispatch reloads
+scalar IDs and rechecks live publish authority, Social Account availability, and capability
+version immediately before future provider I/O. Authority loss cancels untouched work, capability
+drift returns it to approval, and disconnect now invokes the real coordinator to cancel or pause
+only that account's unpublished work. The API exposes the explicit prepare, preflight, confirm,
+batch/read/list, retry, and cancel ceremonies behind Workspace authorization, recent authentication,
+CSRF, strict request shapes, sanitized errors, and tenant-safe absence.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 2114 backend tests passed with
+thirteen environment-gated skips at 93.78% coverage. Migration `0020` downgraded to `0019`, upgraded
+back to head, and the Alembic drift and whitespace checks passed. No commit was created; the
+required owner commit message is `feat: add durable publication orchestration`.
 
 
 ## Browser suite: first run, and what it found
@@ -2240,7 +2270,7 @@ oversight.
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
 | Remaining metered job-creation routes that map `QuotaExceededError` onto the HTTP envelope; Task 10 now maps source-import concurrency admission | Tasks 11-16 |
 | Real stage runners for remaining `JobKind` values; Task 10 now registers `SOURCE_IMPORT`, while unsupported remaining kinds fail with `JOB_KIND_UNSUPPORTED` | Tasks 11-16 and later pipeline tasks |
-| A foreign key for the quota reservation's `reference_kind`/`reference_id` — `publications` does not exist yet | Task 37 |
+| Database enforcement for the quota ledger's polymorphic `reference_kind`/`reference_id`. Task 37 proved a Publication-only constraint breaks the existing reserve-before-resource contract, so any enforcement needs a ledger-wide reference redesign | Task 44 |
 | Per-Social-Account provider publish limits, currently exercised through generic `social_account:<uuid>` limiter subjects | Tasks 42 and 44, when real provider dispatch and operational limits exist |
 | Settling generated video seconds and image counts against real provider usage | Tasks 30-32 |
 | Estimating and settling the real provider cost of an analysis; `provider_usage` currently records units without a price | Tasks 16 and 30-32 |
@@ -2251,7 +2281,7 @@ oversight.
 | Generating an alternative for a suggestion that already carries generated media. Task 31 offers generation for an empty or below-threshold beat only; regenerating a picture a member did not like needs a decision about what happens to the first one | whichever task adds regeneration |
 | A language-model adapter for campaign copy. Version 1 derives copy deterministically and records that in every output's model metadata; no checkbox in Task 33 asks for a provider, and the port to add one is the `model_metadata` field itself | whichever task decides copy quality needs one |
 | ~~Gating campaign generation on a recorded review approval~~ | done in Task 35 |
-| Cancelling or re-evaluating unauthorized pending Publications after a membership mutation; no Publication table or state machine exists yet | Tasks 37 and 42, using Task 35 membership audit events and `WorkspaceAuthorizer` |
+| ~~Re-evaluating publish authority immediately before dispatch~~ — landed in Task 37. Proactively sweeping pending Publications on every membership mutation remains deferred | Task 42, using Task 35 membership audit events |
 | Indexing Assets themselves. Nothing about a stored file is text a person searches for, and no checkbox in Task 34 asks for it; the assets screen searches the transcripts a file might illustrate instead | whichever task gives an Asset searchable text of its own |
 | Reindexing after a render lands. Export state is recomputed whenever a Project is reindexed, but a finished render does not trigger one, so a clip's `exported` state can lag until the next reindex of its Project | Task 44, with the observability pass over worker completions |
 | Everything RLS cannot express — RLS checks the declared tenant, never membership; the application proves membership before declaring it | permanent property, see `AGENTS.md` |

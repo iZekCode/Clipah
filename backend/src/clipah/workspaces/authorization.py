@@ -62,6 +62,7 @@ RECENT_AUTHENTICATION_ACTIONS = frozenset(
         Action.MEMBER_MANAGE,
         Action.SOCIAL_CONNECTION_MANAGE,
         Action.SOURCE_CONNECTION_MANAGE,
+        Action.PUBLISH,
     }
 )
 
