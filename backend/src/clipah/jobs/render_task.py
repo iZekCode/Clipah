@@ -238,6 +238,9 @@ class RenderStageRunner:
                             preset=target.preset.value,
                             composition_hash=target.composition_hash,
                             sha256=output.sha256,
+                            watermark_text=(
+                                mark.text if (mark := _watermark(context.settings)) else None
+                            ),
                             storage_key=key,
                             size_bytes=output.size_bytes,
                             duration_ms=output.duration_ms,

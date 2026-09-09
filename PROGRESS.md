@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-36 have landed. **Task 37 is complete and awaiting the owner's
-commit.** Task 38 follows.
+**Current position:** Tasks 1-37 have landed. **Task 38 is complete and awaiting the owner's
+commit.** Task 39 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -82,8 +82,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | # | Task | Status |
 | --- | --- | --- |
 | 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (`548cb5d`) |
-| 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (uncommitted) |
-| 38 | Build immutable provider renditions and publication preflight | `[ ]` |
+| 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (`6c55780`) |
+| 38 | Build immutable provider renditions and publication preflight | `[x]` (uncommitted) |
 | 39 | Implement the official YouTube Shorts publishing adapter | `[ ]` |
 | 40 | Implement the official Instagram Reels publishing adapter | `[ ]` |
 | 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[ ]` |
@@ -2139,6 +2139,38 @@ Final verification: Ruff check, Ruff format check, strict mypy, and 2114 backend
 thirteen environment-gated skips at 93.78% coverage. Migration `0020` downgraded to `0019`, upgraded
 back to head, and the Alembic drift and whitespace checks passed. No commit was created; the
 required owner commit message is `feat: add durable publication orchestration`.
+
+### Task 38 — Immutable provider renditions and Publication preflight
+
+Migration `0021` adds append-only, Workspace-isolated Social Renditions keyed by the frozen
+master checksum, provider, and checked-in profile version. Publications may bind one exact
+rendition and can never replace it after binding. Rendition rows retain source/output checksums,
+safe FFmpeg arguments and config version, validation evidence, and Render Artifact retention
+linkage while the public result deliberately omits private object keys. Both runtime roles have
+only `SELECT` and `INSERT`; forced RLS and database triggers enforce tenant isolation and
+immutability independently of application code.
+
+Checked-in YouTube, Instagram, and TikTok profiles drive deterministic validation for file size,
+duration, container, video/audio codecs, required audio, 9:16 dimensions and aspect ratio, frame
+rate, captions, thumbnails, disclosures, overlay safe zones, metadata limits, and promotional
+watermarks. TikTok watermark failures return non-destructive remediation and never rewrite the
+approved master. Draft preflight records the exact profile and capability versions before consent;
+confirmation refuses stale or failed evidence, and dispatch repeats validation against frozen bytes
+and choices. Capability, profile, approval, or checksum drift returns untouched work to approval
+with a stable diff instead of silently changing provider choices.
+
+Compatible masters are reused byte-for-byte. Otherwise a cancellable shell-free FFmpeg boundary
+downloads only the immutable Render Artifact, verifies its checksum, creates the fixed provider
+shape, measures and validates the actual output, verifies the uploaded object, and records the
+winner. Retries converge on the existing checksum without re-reading mutable Edit state. Tests
+cover cache reuse, checksum failures, cancellation before side effects, RLS/privilege boundaries,
+append-only persistence, exact Publication binding, and a real checked-in landscape fixture
+transcoded to measured 1080x1920 H.264/AAC MP4 at 30 fps.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 2155 backend tests passed with
+thirteen environment-gated skips at 93.69% coverage. Migration `0021` downgraded to `0020`, upgraded
+back to head, and the Alembic drift check passed. No commit was created; the required owner commit
+message is `feat: add social publication renditions`.
 
 
 ## Browser suite: first run, and what it found

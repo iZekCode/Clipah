@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import json
 from concurrent.futures import ThreadPoolExecutor
+from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 from threading import Barrier
 from typing import Any
@@ -25,10 +27,15 @@ from clipah.models import (
 )
 from clipah.publishing.models import PublicationDestinationDraft, PublicationStatus
 from clipah.publishing.outbox import PublicationOutboxService
+from clipah.publishing.profiles import profile_for
 from clipah.publishing.repository import PublicationRepository
 from clipah.publishing.scheduler import PublicationScheduler
 from clipah.publishing.state_machine import PublicationCancellationRejectedError
-from clipah.publishing.tasks import revalidate_publication_dispatch
+from clipah.publishing.tasks import (
+    PublicationDispatchInvalidError,
+    bind_publication_rendition,
+    revalidate_publication_dispatch,
+)
 from clipah.publishing.use_cases import (
     PublicationFutureWorkCoordinator,
     PublicationIdempotencyConflictError,
@@ -40,6 +47,7 @@ from clipah.publishing.use_cases import (
     prepare_publication_draft,
     retry_publication,
 )
+from clipah.social_accounts.models import SocialProvider
 from clipah.workspaces.models import WorkspaceAccess
 from harness import Browser, Clock, StubGoogleProvider, build_app, sign_in
 from support import provision_identity
@@ -55,6 +63,8 @@ def _seed_publication(
     suffix: str,
     user_id: UUID | None = None,
     workspace_id: UUID | None = None,
+    watermark_text: str | None = None,
+    render_duration_ms: int = 1_000,
 ) -> dict[str, Any]:
     """Create the smallest real graph ending in one draft Publication."""
     if user_id is None or workspace_id is None:
@@ -162,12 +172,18 @@ def _seed_publication(
                 """
                 INSERT INTO render_artifacts
                     (id, workspace_id, clip_edit_revision_id, preset, composition_hash, sha256,
-                     storage_key, size_bytes, duration_ms)
+                     watermark_text, storage_key, size_bytes, duration_ms)
                 VALUES (:render, :workspace, :revision, '1080x1920', :digest, :digest,
-                        'render.mp4', 100, 1000)
+                        :watermark_text, 'render.mp4', 100, :render_duration_ms)
                 """
             ),
-            {**ids, "workspace": workspace_id, "digest": digest},
+            {
+                **ids,
+                "workspace": workspace_id,
+                "digest": digest,
+                "watermark_text": watermark_text,
+                "render_duration_ms": render_duration_ms,
+            },
         )
         connection.execute(
             text(
@@ -446,6 +462,14 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
         assert publication.approved_by_user_id == seed["user"]
         assert publication.capability_version == "cap-v1"
         assert publication.provider_policy_version == "youtube:v3"
+        assert publication.checkpoint_metadata is not None
+        assert publication.checkpoint_metadata["preflight"] == {
+            "passed": True,
+            "profileVersion": "2026-09-09",
+            "provider": "youtube",
+            "violations": [],
+        }
+        assert publication.checkpoint_metadata["preflightCapabilityVersion"] == "cap-v1"
         assert publication.display_timezone == "Asia/Jakarta"
         assert publication.scheduled_for == scheduled_local.astimezone(UTC)
         assert publication.status is PublicationStatus.SCHEDULED
@@ -455,6 +479,60 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
             text("UPDATE publications SET metadata_snapshot = '{}' WHERE id = :id"),
             {"id": publication_id},
         )
+
+
+def test_tiktok_preflight_records_promotional_watermark_remediation_and_blocks_confirmation(
+    engine: Engine, clean_database: None
+) -> None:
+    """TikTok-bound media must be re-rendered cleanly rather than altered automatically."""
+    seed = _seed_publication(engine, suffix="tiktok-watermark", watermark_text="Clipah")
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                "UPDATE social_accounts SET provider = 'tiktok', api_version = 'v2' WHERE id = :id"
+            ),
+            {"id": seed["account"]},
+        )
+    destination = PublicationDestinationDraft(
+        social_account_id=seed["account"],
+        metadata={"title": "Creator post"},
+        provider_options={},
+        consent={"confirmed": True},
+        scheduled_for=None,
+        display_timezone="UTC",
+    )
+    with Session(engine) as session, session.begin():
+        draft = prepare_publication_draft(
+            session,
+            access=_access(seed),
+            edit_id=seed["edit"],
+            revision=1,
+            render_artifact_id=seed["render"],
+            destinations=(destination,),
+            idempotency_key="tiktok-watermark",
+            now=NOW,
+        )
+        preflight_publication_draft(session, access=_access(seed), batch_id=draft.batch_id, now=NOW)
+        publication_id = draft.publications[0].publication_id
+        publication = session.get(Publication, publication_id)
+        assert publication is not None
+        assert publication.checkpoint_metadata is not None
+        violations = publication.checkpoint_metadata["preflight"]["violations"]
+        assert violations == [
+            {
+                "code": "promotional_watermark",
+                "field": "watermarks",
+                "message": "Promotional branding is not permitted for this destination.",
+                "remediation": "Render a clean master without promotional branding.",
+            }
+        ]
+        with pytest.raises(PublicationInvalidError, match="preflight"):
+            confirm_publication_draft(
+                session,
+                access=_access(seed),
+                batch_id=draft.batch_id,
+                now=NOW,
+            )
 
 
 def test_confirmation_rejects_an_approval_withdrawn_after_prepare(
@@ -632,7 +710,7 @@ def test_confirmation_enqueues_only_immediate_destination_without_touching_sibli
     engine: Engine, clean_database: None
 ) -> None:
     """One scheduled destination must not block or duplicate an immediate sibling."""
-    seed = _seed_publication(engine, suffix="independent-destinations")
+    seed = _seed_publication(engine, suffix="independent-destinations", render_duration_ms=3_000)
     second_account_id = uuid4()
     with engine.begin() as connection:
         connection.execute(
@@ -1001,6 +1079,185 @@ def test_dispatch_revalidation_returns_capability_drift_to_approval(
         )
 
     assert result.status is PublicationStatus.AWAITING_APPROVAL
+    with Session(engine) as session:
+        publication = session.get(Publication, seed["publication"])
+        assert publication is not None
+        assert publication.checkpoint_metadata == {
+            "preflightDiff": [
+                {
+                    "field": "capabilityVersion",
+                    "approved": "cap-v1",
+                    "current": "cap-v2",
+                }
+            ]
+        }
+
+
+def test_dispatch_revalidation_returns_a_withdrawn_review_to_approval(
+    engine: Engine, clean_database: None
+) -> None:
+    """Provider I/O must stop when the exact Edit Revision is no longer approved."""
+    seed = _seed_publication(engine, suffix="dispatch-review")
+    _set_publication_state(engine, seed, status=PublicationStatus.PREFLIGHTING)
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                INSERT INTO edit_review_decisions
+                    (id, workspace_id, clip_edit_id, clip_edit_revision_id, actor_user_id,
+                     sequence, decision, created_at)
+                VALUES (:id, :workspace, :edit, :revision, :user, 2, 'request_changes', :now)
+                """
+            ),
+            {
+                "id": uuid4(),
+                "workspace": seed["workspace"],
+                "edit": seed["edit"],
+                "revision": seed["revision"],
+                "user": seed["user"],
+                "now": NOW + timedelta(seconds=1),
+            },
+        )
+
+    with Session(engine) as session, session.begin():
+        result = revalidate_publication_dispatch(
+            session,
+            workspace_id=seed["workspace"],
+            publication_id=seed["publication"],
+            now=NOW + timedelta(seconds=2),
+        )
+
+    assert result.status is PublicationStatus.AWAITING_APPROVAL
+    with Session(engine) as session:
+        publication = session.get(Publication, seed["publication"])
+        assert publication is not None
+        assert publication.checkpoint_metadata == {
+            "preflightDiff": [
+                {
+                    "field": "editRevisionApproval",
+                    "approved": True,
+                    "current": False,
+                }
+            ]
+        }
+
+
+def test_dispatch_revalidation_returns_profile_drift_to_approval_with_a_clear_diff(
+    engine: Engine, clean_database: None, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Deploying a new checked-in profile must never silently alter approved behavior."""
+    seed = _seed_publication(engine, suffix="dispatch-profile")
+    destination = PublicationDestinationDraft(
+        social_account_id=seed["account"],
+        metadata={"title": "Frozen profile"},
+        provider_options={"privacy": "private"},
+        consent={"confirmed": True},
+        scheduled_for=None,
+        display_timezone="UTC",
+    )
+    with Session(engine) as session, session.begin():
+        draft = prepare_publication_draft(
+            session,
+            access=_access(seed),
+            edit_id=seed["edit"],
+            revision=1,
+            render_artifact_id=seed["render"],
+            destinations=(destination,),
+            idempotency_key="dispatch-profile",
+            now=NOW,
+        )
+        preflight_publication_draft(session, access=_access(seed), batch_id=draft.batch_id, now=NOW)
+        confirmed = confirm_publication_draft(
+            session, access=_access(seed), batch_id=draft.batch_id, now=NOW
+        )
+        publication_id = confirmed.publications[0].publication_id
+
+    changed = replace(profile_for(SocialProvider.YOUTUBE), version="2026-10-01")
+    monkeypatch.setattr("clipah.publishing.tasks.profile_for", lambda _provider: changed)
+    with Session(engine) as session, session.begin():
+        result = revalidate_publication_dispatch(
+            session,
+            workspace_id=seed["workspace"],
+            publication_id=publication_id,
+            now=NOW,
+        )
+
+    assert result.status is PublicationStatus.AWAITING_APPROVAL
+    with Session(engine) as session:
+        publication = session.get(Publication, publication_id)
+        assert publication is not None
+        assert publication.checkpoint_metadata is not None
+        assert publication.checkpoint_metadata["preflightDiff"] == [
+            {
+                "field": "profileVersion",
+                "approved": "2026-09-09",
+                "current": "2026-10-01",
+            }
+        ]
+
+
+def test_dispatch_binds_one_exact_rendition_and_refuses_replacement(
+    engine: Engine, clean_database: None
+) -> None:
+    """Retries must keep using the rendition bytes selected before provider I/O."""
+    seed = _seed_publication(engine, suffix="dispatch-rendition")
+    _set_publication_state(engine, seed, status=PublicationStatus.PREFLIGHTING)
+    rendition_ids = (uuid4(), uuid4())
+    with engine.begin() as connection:
+        for rendition_id, digest, profile_version in zip(
+            rendition_ids,
+            (bytes.fromhex("31" * 32), bytes.fromhex("32" * 32)),
+            ("2026-09-09", "replacement-attempt"),
+            strict=True,
+        ):
+            connection.execute(
+                text(
+                    """
+                    INSERT INTO social_renditions
+                        (id, workspace_id, render_artifact_id, source_sha256, provider,
+                         profile_version, output_sha256, storage_key, size_bytes, duration_ms,
+                         provenance, validation_report, reused_master, created_at)
+                        VALUES (:id, :workspace, :render, :source_sha256,
+                            'youtube', :profile_version, :output_sha256,
+                            :storage_key, 90, 1000, '{}',
+                            CAST(:validation_report AS jsonb), false, :now)
+                    """
+                ),
+                {
+                    "id": rendition_id,
+                    "workspace": seed["workspace"],
+                    "render": seed["render"],
+                    "source_sha256": seed["digest"],
+                    "output_sha256": digest,
+                    "profile_version": profile_version,
+                    "storage_key": f"renditions/{rendition_id}.mp4",
+                    "validation_report": json.dumps({"passed": True}),
+                    "now": NOW,
+                },
+            )
+
+    with Session(engine) as session, session.begin():
+        bind_publication_rendition(
+            session,
+            workspace_id=seed["workspace"],
+            publication_id=seed["publication"],
+            rendition_id=rendition_ids[0],
+        )
+        publication = session.get(Publication, seed["publication"])
+        assert publication is not None
+        assert publication.social_rendition_id == rendition_ids[0]
+
+    with (
+        Session(engine) as session,
+        session.begin(),
+        pytest.raises(PublicationDispatchInvalidError),
+    ):
+        bind_publication_rendition(
+            session,
+            workspace_id=seed["workspace"],
+            publication_id=seed["publication"],
+            rendition_id=rendition_ids[1],
+        )
 
 
 def test_publication_api_prepares_preflights_confirms_and_reads_independent_work(

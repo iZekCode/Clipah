@@ -27,6 +27,12 @@ from clipah.publishing.models import (
     PublicationSummary,
 )
 from clipah.publishing.outbox import PublicationOutboxService
+from clipah.publishing.preflight import (
+    preflight,
+    publication_evidence_from_snapshots,
+    render_artifact_media,
+)
+from clipah.publishing.profiles import profile_for
 from clipah.publishing.state_machine import may_cancel, transition
 from clipah.social_accounts.models import SocialConnectionStatus
 from clipah.workspaces.models import WorkspaceAccess
@@ -219,6 +225,47 @@ def preflight_publication_draft(
         session, workspace_id=access.workspace_id, batch_id=batch_id
     )
     for publication in publications:
+        account = session.scalar(
+            select(SocialAccount).where(
+                SocialAccount.workspace_id == access.workspace_id,
+                SocialAccount.id == publication.social_account_id,
+                SocialAccount.connection_status == SocialConnectionStatus.ACTIVE,
+            )
+        )
+        artifact = session.scalar(
+            select(RenderArtifact).where(
+                RenderArtifact.workspace_id == access.workspace_id,
+                RenderArtifact.id == publication.render_artifact_id,
+            )
+        )
+        if account is None or artifact is None or artifact.sha256 is None:
+            raise PublicationNotFoundError("Publication preflight input is unavailable")
+        capability_version = account.capability_snapshot.get("version")
+        if not isinstance(capability_version, str) or not capability_version:
+            raise PublicationInvalidError("Social Account has no capability version")
+        profile = profile_for(account.provider)
+        report = preflight(
+            profile=profile,
+            media=render_artifact_media(
+                preset=artifact.preset,
+                size_bytes=artifact.size_bytes,
+                duration_ms=artifact.duration_ms,
+            ),
+            evidence=publication_evidence_from_snapshots(
+                metadata=publication.metadata_snapshot,
+                provider_options=publication.provider_options,
+                consent=publication.consent_snapshot,
+                watermark_text=artifact.watermark_text,
+            ),
+        )
+        checkpoint = dict(publication.checkpoint_metadata or {})
+        checkpoint.update(
+            {
+                "preflight": report.as_dict(),
+                "preflightCapabilityVersion": capability_version,
+            }
+        )
+        publication.checkpoint_metadata = checkpoint
         if publication.status is PublicationStatus.DRAFT:
             publication.status = transition(
                 current=publication.status, target=PublicationStatus.AWAITING_APPROVAL
@@ -261,6 +308,16 @@ def confirm_publication_draft(
         capability_version = account.capability_snapshot.get("version")
         if not isinstance(capability_version, str) or not capability_version:
             raise PublicationInvalidError("Social Account has no capability version")
+        checkpoint = publication.checkpoint_metadata or {}
+        preflight_report = checkpoint.get("preflight")
+        profile = profile_for(account.provider)
+        if (
+            not isinstance(preflight_report, dict)
+            or preflight_report.get("passed") is not True
+            or preflight_report.get("profileVersion") != profile.version
+            or checkpoint.get("preflightCapabilityVersion") != capability_version
+        ):
+            raise PublicationInvalidError("Publication must pass current preflight")
         publication.approved_by_user_id = access.user_id
         publication.approved_at = now
         publication.capability_version = capability_version

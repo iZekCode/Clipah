@@ -68,6 +68,7 @@ FOUNDATIONAL_TABLES = {
     "render_requests",
     "retention_tombstones",
     "search_documents",
+    "social_renditions",
     "source_connection_secrets",
     "source_connections",
     "source_imports",
@@ -145,6 +146,8 @@ API_TABLE_PRIVILEGES = {
     "publication_attempts": {"SELECT", "INSERT"},
     "provider_events": {"SELECT", "INSERT"},
     "publication_outbox": {"SELECT", "INSERT"},
+    # Provider-ready bytes and their validation evidence are immutable after insertion.
+    "social_renditions": {"SELECT", "INSERT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT"},
     "retention_tombstones": {"SELECT", "INSERT"},
@@ -195,6 +198,8 @@ WORKER_TABLE_PRIVILEGES = {
     "publication_attempts": {"SELECT", "INSERT"},
     "provider_events": {"SELECT", "INSERT"},
     "publication_outbox": {"SELECT", "INSERT", "UPDATE"},
+    # A worker may create or reuse a rendition but may never rewrite its evidence.
+    "social_renditions": {"SELECT", "INSERT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT", "INSERT", "UPDATE"},
     "retention_tombstones": {"SELECT", "UPDATE"},

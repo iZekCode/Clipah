@@ -948,6 +948,54 @@ class PublicationBatch(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class SocialRendition(Base):
+    """Immutable provider-ready bytes derived from one frozen Render Artifact."""
+
+    __tablename__ = "social_renditions"
+    __table_args__ = (
+        UniqueConstraint("workspace_id", "id", name="uq_social_renditions_workspace_id_id"),
+        UniqueConstraint(
+            "workspace_id",
+            "source_sha256",
+            "provider",
+            "profile_version",
+            name="uq_social_renditions_workspace_source_provider_profile",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "render_artifact_id"],
+            ["render_artifacts.workspace_id", "render_artifacts.id"],
+            name="fk_social_renditions_workspace_render_artifact",
+            ondelete="RESTRICT",
+        ),
+        CheckConstraint("octet_length(source_sha256) = 32", name="source_sha256"),
+        CheckConstraint("octet_length(output_sha256) = 32", name="output_sha256"),
+        CheckConstraint("size_bytes >= 0", name="nonnegative_size"),
+        CheckConstraint("duration_ms > 0", name="positive_duration"),
+    )
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        primary_key=True,
+        default=uuid4,
+        server_default=text("gen_random_uuid()"),
+    )
+    workspace_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    render_artifact_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    source_sha256: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    provider: Mapped[SocialProvider] = mapped_column(
+        enum_type(SocialProvider, "social_provider"), nullable=False
+    )
+    profile_version: Mapped[str] = mapped_column(String(128), nullable=False)
+    output_sha256: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
+    storage_key: Mapped[str] = mapped_column(Text, nullable=False)
+    size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
+    provenance: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    validation_report: Mapped[dict[str, Any]] = mapped_column(JSONB, nullable=False)
+    reused_master: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
 class Publication(Base):
     """One independently retryable intent to send an approved artifact to one destination."""
 
@@ -984,6 +1032,12 @@ class Publication(Base):
             name="fk_publications_workspace_artifact",
             ondelete="RESTRICT",
         ),
+        ForeignKeyConstraint(
+            ["workspace_id", "social_rendition_id"],
+            ["social_renditions.workspace_id", "social_renditions.id"],
+            name="fk_publications_workspace_social_rendition",
+            ondelete="RESTRICT",
+        ),
         CheckConstraint("octet_length(artifact_sha256) = 32", name="artifact_sha256"),
         CheckConstraint("attempt_count >= 0", name="nonnegative_attempt_count"),
         CheckConstraint("char_length(display_timezone) BETWEEN 1 AND 255", name="timezone_bounded"),
@@ -1001,6 +1055,7 @@ class Publication(Base):
     social_account_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     edit_revision_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
     render_artifact_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    social_rendition_id: Mapped[UUID | None] = mapped_column(PGUUID(as_uuid=True))
     artifact_sha256: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     approved_by_user_id: Mapped[UUID | None] = mapped_column(
         PGUUID(as_uuid=True), ForeignKey("users.id", ondelete="RESTRICT")
@@ -1913,6 +1968,7 @@ class RenderArtifact(Base):
     preset: Mapped[str] = mapped_column(String(64), nullable=False)
     composition_hash: Mapped[bytes] = mapped_column(LargeBinary, nullable=False)
     sha256: Mapped[bytes | None] = mapped_column(LargeBinary)
+    watermark_text: Mapped[str | None] = mapped_column(Text)
     storage_key: Mapped[str] = mapped_column(Text, nullable=False)
     size_bytes: Mapped[int] = mapped_column(BigInteger, nullable=False)
     duration_ms: Mapped[int] = mapped_column(Integer, nullable=False)
