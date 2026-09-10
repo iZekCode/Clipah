@@ -313,8 +313,23 @@ def _summary(publication: Publication) -> PublicationSummary:
     """Detach the safe dispatch result from its locked ORM row."""
     return PublicationSummary(
         publication_id=publication.id,
+        batch_id=publication.batch_id,
         social_account_id=publication.social_account_id,
         status=publication.status,
         scheduled_for=publication.scheduled_for,
         display_timezone=publication.display_timezone,
+        provider_publication_id=publication.provider_publication_id,
+        provider_permalink=publication.provider_permalink,
+        normalized_error_code=publication.normalized_error_code,
+        sanitized_error_message=publication.sanitized_error_message,
+        attempt_count=publication.attempt_count,
+        next_attempt_at=publication.next_attempt_at,
+        created_at=publication.created_at,
+        approved_at=publication.approved_at,
+        dispatched_at=publication.dispatched_at,
+        transferred_at=publication.transferred_at,
+        processing_at=publication.processing_at,
+        published_at=publication.published_at,
+        failed_at=publication.failed_at,
+        cancelled_at=publication.cancelled_at,
     )

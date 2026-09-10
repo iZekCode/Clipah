@@ -14,4 +14,11 @@ and every route still proves membership, role, and freshness for itself.
 export interface CapabilitiesResponse {
   authenticatedYoutubeImport: boolean;
   collaboration: boolean;
+  instagramPublishing: boolean;
+  multiDestinationScheduling: boolean;
+  socialPublishing: boolean;
+  tiktokDirectPost: boolean;
+  tiktokPublishing: boolean;
+  youtubePublicPrivacy: boolean;
+  youtubePublishing: boolean;
 }

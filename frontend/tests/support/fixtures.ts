@@ -1,9 +1,12 @@
 import type {
   CandidateResponse,
+  CapabilitiesResponse,
   CompositionV1,
   EditResponse,
   CurrentUserResponse,
   ProjectResponse,
+  PublicationResponse,
+  SocialAccountResponse,
   WorkspaceResponse,
 } from '@/lib/api/generated/model'
 
@@ -16,7 +19,79 @@ export function currentUser(overrides: Partial<CurrentUserResponse> = {}): Curre
     avatarUrl: null,
     sessionId: '22222222-2222-4222-8222-222222222222',
     recentAuthentication: true,
-    capabilities: { authenticatedYoutubeImport: false, collaboration: false },
+    capabilities: capabilities(),
+    ...overrides,
+  }
+}
+
+/** Every rollout gate closed, which is what an unconfigured deployment reports. */
+export function capabilities(
+  overrides: Partial<CapabilitiesResponse> = {},
+): CapabilitiesResponse {
+  return {
+    authenticatedYoutubeImport: false,
+    collaboration: false,
+    socialPublishing: false,
+    youtubePublishing: false,
+    youtubePublicPrivacy: false,
+    instagramPublishing: false,
+    tiktokPublishing: false,
+    tiktokDirectPost: false,
+    multiDestinationScheduling: false,
+    ...overrides,
+  }
+}
+
+/** One connected Social Account, as the Workspace connections endpoint returns it. */
+export function socialAccount(
+  overrides: Partial<SocialAccountResponse> = {},
+): SocialAccountResponse {
+  return {
+    id: '88888888-8888-4888-8888-888888888881',
+    provider: 'youtube',
+    externalAccountId: 'channel-1',
+    displayName: 'Rin on YouTube',
+    avatarUrl: null,
+    accountType: null,
+    loginFamily: 'google',
+    apiVersion: 'v3',
+    connectionStatus: 'active',
+    grantedScopes: ['https://www.googleapis.com/auth/youtube.upload'],
+    capabilityVersion: '2026-09-01',
+    authorizedByUserId: currentUser().id,
+    accessTokenExpiresAt: '2026-09-10T12:00:00+00:00',
+    refreshTokenExpiresAt: null,
+    lastValidatedAt: '2026-09-10T05:00:00+00:00',
+    createdAt: '2026-09-01T00:00:00+00:00',
+    revokedAt: null,
+    ...overrides,
+  }
+}
+
+/** One destination lifecycle projection, as the publications endpoints return it. */
+export function publication(overrides: Partial<PublicationResponse> = {}): PublicationResponse {
+  return {
+    id: '99999999-9999-4999-8999-999999999991',
+    batchId: '99999999-9999-4999-8999-999999999990',
+    socialAccountId: socialAccount().id,
+    status: 'scheduled',
+    scheduledFor: '2026-09-12T02:00:00+00:00',
+    displayTimezone: 'Asia/Jakarta',
+    providerPublicationId: null,
+    providerPermalink: null,
+    normalizedErrorCode: null,
+    sanitizedErrorMessage: null,
+    attemptCount: 0,
+    nextAttemptAt: null,
+    createdAt: '2026-09-10T05:00:00+00:00',
+    approvedAt: '2026-09-10T05:00:00+00:00',
+    dispatchedAt: null,
+    transferredAt: null,
+    processingAt: null,
+    publishedAt: null,
+    failedAt: null,
+    cancelledAt: null,
+    preflightDiff: [],
     ...overrides,
   }
 }

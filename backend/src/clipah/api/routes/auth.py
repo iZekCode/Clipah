@@ -48,6 +48,13 @@ class CapabilitiesResponse(BaseModel):
 
     authenticated_youtube_import: bool = Field(alias="authenticatedYoutubeImport")
     collaboration: bool
+    social_publishing: bool = Field(alias="socialPublishing")
+    youtube_publishing: bool = Field(alias="youtubePublishing")
+    youtube_public_privacy: bool = Field(alias="youtubePublicPrivacy")
+    instagram_publishing: bool = Field(alias="instagramPublishing")
+    tiktok_publishing: bool = Field(alias="tiktokPublishing")
+    tiktok_direct_post: bool = Field(alias="tiktokDirectPost")
+    multi_destination_scheduling: bool = Field(alias="multiDestinationScheduling")
 
 
 class CurrentUserResponse(BaseModel):
@@ -162,13 +169,30 @@ def read_current_user(
         recentAuthentication=user.session.has_recent_authentication(
             policy=components.policy, now=components.now()
         ),
-        capabilities=CapabilitiesResponse(
-            collaboration=settings_for(request).collaboration_enabled,
-            authenticatedYoutubeImport=(
-                settings_for(request).authenticated_source_import_enabled
-                and settings_for(request).secret_encryption_key is not None
-            ),
+        capabilities=_capabilities(settings_for(request)),
+    )
+
+
+def _capabilities(settings: Settings) -> CapabilitiesResponse:
+    """Report only gates this deployment has actually opened, each one on its own."""
+    social = settings.social_publishing_enabled
+    return CapabilitiesResponse(
+        collaboration=settings.collaboration_enabled,
+        authenticatedYoutubeImport=(
+            settings.authenticated_source_import_enabled
+            and settings.secret_encryption_key is not None
         ),
+        socialPublishing=social,
+        youtubePublishing=social and settings.youtube_publishing_enabled,
+        youtubePublicPrivacy=(
+            social and settings.youtube_publishing_enabled and settings.youtube_audit_approved
+        ),
+        instagramPublishing=social and settings.instagram_publishing_enabled,
+        tiktokPublishing=social and settings.tiktok_publishing_enabled,
+        tiktokDirectPost=(
+            social and settings.tiktok_publishing_enabled and settings.tiktok_audit_approved
+        ),
+        multiDestinationScheduling=social and settings.multi_destination_scheduling_enabled,
     )
 
 

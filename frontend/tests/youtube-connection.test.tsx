@@ -16,7 +16,7 @@ import { YouTubeConnectionDialog } from '@/features/uploads/YouTubeConnectionDia
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi, type StubbedApi } from './support/api'
-import { currentUser, workspace } from './support/fixtures'
+import { capabilities, currentUser, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
 const WORKSPACES = 'GET /api/v1/workspaces'
@@ -59,7 +59,7 @@ function stub(
     [ME]: {
       body: {
         ...currentUser(),
-        capabilities: { authenticatedYoutubeImport: enabled },
+        capabilities: capabilities({ authenticatedYoutubeImport: enabled }),
       },
     },
     [WORKSPACES]: { body: { workspaces: [workspace()] } },

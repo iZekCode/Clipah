@@ -77,20 +77,57 @@ class PreparePublicationBody(BaseModel):
     destinations: tuple[PublicationDestinationBody, ...] = Field(min_length=1, max_length=20)
 
 
+class PreflightDifferenceResponse(BaseModel):
+    """One approved value a member has to look at again before publishing."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    field: str
+    approved: str | None
+    current: str | None
+
+
 class PublicationResponse(BaseModel):
     """One safe destination lifecycle projection."""
 
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     id: UUID
+    batch_id: UUID = Field(alias="batchId")
     social_account_id: UUID = Field(alias="socialAccountId")
     status: str
     scheduled_for: datetime | None = Field(alias="scheduledFor")
     display_timezone: str = Field(alias="displayTimezone")
+    provider_publication_id: str | None = Field(alias="providerPublicationId")
+    provider_permalink: str | None = Field(alias="providerPermalink")
+    normalized_error_code: str | None = Field(alias="normalizedErrorCode")
+    sanitized_error_message: str | None = Field(alias="sanitizedErrorMessage")
+    attempt_count: int = Field(alias="attemptCount")
+    next_attempt_at: datetime | None = Field(alias="nextAttemptAt")
+    created_at: datetime | None = Field(alias="createdAt")
+    approved_at: datetime | None = Field(alias="approvedAt")
+    dispatched_at: datetime | None = Field(alias="dispatchedAt")
+    transferred_at: datetime | None = Field(alias="transferredAt")
+    processing_at: datetime | None = Field(alias="processingAt")
+    published_at: datetime | None = Field(alias="publishedAt")
+    failed_at: datetime | None = Field(alias="failedAt")
+    cancelled_at: datetime | None = Field(alias="cancelledAt")
+    preflight_diff: list[PreflightDifferenceResponse] = Field(alias="preflightDiff")
 
-    @field_serializer("scheduled_for")
-    def serialize_schedule(self, value: datetime | None) -> str | None:
-        """Keep scheduled instants explicit and offset-aware."""
+    @field_serializer(
+        "scheduled_for",
+        "next_attempt_at",
+        "created_at",
+        "approved_at",
+        "dispatched_at",
+        "transferred_at",
+        "processing_at",
+        "published_at",
+        "failed_at",
+        "cancelled_at",
+    )
+    def serialize_timestamp(self, value: datetime | None) -> str | None:
+        """Keep every lifecycle instant explicit and offset-aware."""
         return None if value is None else value.isoformat()
 
 
@@ -342,10 +379,31 @@ def _publication_response(summary: PublicationSummary) -> PublicationResponse:
     """Map one safe domain projection to stable camel-case JSON."""
     return PublicationResponse(
         id=summary.publication_id,
+        batchId=summary.batch_id,
         socialAccountId=summary.social_account_id,
         status=summary.status.value,
         scheduledFor=summary.scheduled_for,
         displayTimezone=summary.display_timezone,
+        providerPublicationId=summary.provider_publication_id,
+        providerPermalink=summary.provider_permalink,
+        normalizedErrorCode=summary.normalized_error_code,
+        sanitizedErrorMessage=summary.sanitized_error_message,
+        attemptCount=summary.attempt_count,
+        nextAttemptAt=summary.next_attempt_at,
+        createdAt=summary.created_at,
+        approvedAt=summary.approved_at,
+        dispatchedAt=summary.dispatched_at,
+        transferredAt=summary.transferred_at,
+        processingAt=summary.processing_at,
+        publishedAt=summary.published_at,
+        failedAt=summary.failed_at,
+        cancelledAt=summary.cancelled_at,
+        preflightDiff=[
+            PreflightDifferenceResponse(
+                field=item.field, approved=item.approved, current=item.current
+            )
+            for item in summary.preflight_diff
+        ],
     )
 
 

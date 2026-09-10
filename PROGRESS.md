@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-41 have landed. **Task 42 is complete and awaiting the owner's
-commit.** Task 43 follows.
+**Current position:** Tasks 1-42 have landed. **Task 43 is complete and awaiting the owner's
+commit.** Task 44 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -87,8 +87,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (`76d4c4f`) |
 | 40 | Implement the official Instagram Reels publishing adapter | `[x]` (`1717039`) |
 | 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[x]` (`0176929`) |
-| 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[x]` (uncommitted) |
-| 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[ ]` |
+| 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[x]` (`147f056`) |
+| 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[x]` (uncommitted) |
 
 ## Phase G — Production hardening and cutover (Tasks 44-48)
 
@@ -2426,8 +2426,82 @@ truncates all tables. Re-run serially, the suite is clean.
 
 Final verification: Ruff check and Ruff format check passed; strict mypy passed over 210 source
 files; 2,499 backend tests passed with sixteen environment-gated skips at 92.81% coverage, and all
-three new modules reached complete line and branch coverage. No commit was created; the required
-owner commit message is `feat: orchestrate scheduled social publishing`.
+three new modules reached complete line and branch coverage. Landed in `147f056` as
+`feat: orchestrate scheduled social publishing`.
+
+### Task 43 — Connections, publishing dashboard, composer, history, and rollout gates
+
+Publishing now has a face, and its whole design is refusal. The composer preselects no destination,
+no privacy value, no disclosure, and no schedule; each destination is complete only when the member
+has answered every question that provider actually asks, and the publish control stays disabled
+until then. `features/publishing/destination-draft.ts` holds those answers per account, so nothing a
+member wrote for YouTube leaks into a TikTok post, and removing a destination that carries typed
+metadata asks before discarding it.
+
+Per-platform controls come from what each provider currently permits rather than from a shared
+lowest common denominator. YouTube asks for title, description, visibility, a made-for-kids answer,
+and a synthetic-media declaration, and offers only private visibility until this deployment reports
+`youtubePublicPrivacy`. Instagram asks for the Reels fields it supports and nothing else. TikTok
+reads the creator's own snapshot: the privacy levels this creator has, the interactions TikTok has
+switched off for them, the commercial-content disclosure with its branded-content terms and its
+refusal of a private branded post, the music and terms confirmations, and the AI declaration. Where
+that snapshot cannot be read, the control is disabled rather than guessed.
+
+The confirmation names every effect before anything leaves the Workspace: each account and provider,
+whether delivery is a direct post or a draft in the creator's inbox, the revision and rendered
+artifact, the requested time in the zone the member chose, the visibility, the disclosures, and that
+it cannot be undone from Clipah. Nothing is sent while it is open. One approval sends exactly one
+prepare, one preflight, and one confirm, under an idempotency key that is reused when the same
+submission is approved again after a failure, so a retried approval cannot become a second post.
+The consent instant is frozen when the confirmation opens, which is what makes that key stable.
+
+History and batch detail refuse to collapse a batch into one verdict. Every destination carries its
+own status, its own timeline of recorded moments, its provider identifier and permalink when there
+is one, an actionable reason when it failed, and its own retry or cancel control. Retry addresses
+one destination and never its siblings; a destination the provider may already have published
+answers that it has to be reconciled first, in the member's words rather than as a status code.
+Cancelling says what it can still stop and what it cannot, and a published destination offers no
+cancel control at all. A destination waiting on approval shows which approved value drifted, and one
+whose authorization is gone offers reconnection instead of a retry.
+
+Rollout gates are read from the deployment, not from the code. `GET /api/v1/me` now reports
+`socialPublishing`, `youtubePublishing`, `youtubePublicPrivacy`, `instagramPublishing`,
+`tiktokPublishing`, `tiktokDirectPost`, and `multiDestinationScheduling`, in the plan's own order,
+and the new `CLIPAH_MULTI_DESTINATION_SCHEDULING_ENABLED` setting refuses to open without social
+publishing behind it. A closed gate hides its provider entirely; a second destination is refused
+until multi-destination scheduling is open.
+
+**Two deliberate scope decisions, both recorded rather than quiet.**
+
+The first is that the destination projection had to grow. Task 43 asks for per-destination
+timelines, provider identifiers and links, actionable retry reasons, and `awaiting_approval` diffs,
+and `PublicationResponse` carried none of them. It now carries the batch identifier, the provider
+publication identifier and permalink, the normalized error code and sanitized message, the attempt
+count and next attempt, every lifecycle instant, and a `preflightDiff` read only from the approval
+drift inside a checkpoint that also holds transfer state. The checkpoint itself is still never
+exposed, which a test asserts by planting a secret beside the diff.
+
+The second is the end-to-end suite. Driving a real publication in a browser needs a provider's own
+OAuth credentials, which a local or CI deployment does not have, so `e2e/social-publishing.spec.ts`
+proves what a real stack can prove without them: the dashboard's honest empty state, connections
+offering exactly the providers whose gates are open, an unknown batch refused exactly like a
+forbidden one, a refusal shown instead of an empty timeline, and the composer refusing to publish
+until a destination is chosen. It was run twice against the real backend, once with every gate
+closed and once with the YouTube gate open, so both branches were exercised. A deployment with
+provider credentials should extend it with the connected-account path.
+
+Three invariants were re-checked by breaking the implementation and watching the matching test fail:
+the publishing role policy that decides whether an editor may publish, the idempotency key that
+keeps a repeated approval from publishing twice, and TikTok's refusal of a private branded-content
+post. The backend's sanitized approval diff was mutation-checked the same way.
+
+Final verification: backend Ruff check, Ruff format check, and strict mypy over 210 source files all
+passed, with 2,503 tests at 92.84% coverage; `scripts/check-contracts-clean.sh` reports the
+generated contract and client up to date; frontend lint, `tsc --noEmit`, and 411 unit tests passed;
+the full Playwright suite passed 77 tests across Chromium and WebKit with the fourteen pre-existing
+environment skips; and `scripts/run-social-provider-contracts.sh --adapter=fake` passed its 230
+provider contracts while the sandbox adapter failed closed for missing credentials, as designed. No
+commit was created; the required owner commit message is `feat: add social publishing workspace`.
 
 
 ## Browser suite: first run, and what it found

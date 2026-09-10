@@ -1489,3 +1489,136 @@ def test_publication_api_prepares_preflights_confirms_and_reads_independent_work
     assert listed.status_code == 200, listed.text
     confirmed_id = confirmed.json()["publications"][0]["id"]
     assert any(item["id"] == confirmed_id for item in listed.json()["publications"])
+
+
+def test_publication_projection_reports_batch_timeline_and_failure_without_secrets(
+    engine: Engine, clean_database: None
+) -> None:
+    """A destination view must carry what a member needs to act, and nothing private."""
+    del clean_database
+    clock = Clock(NOW)
+    app, login_flow, _ = build_app(clock, StubGoogleProvider(clock))
+    browser = Browser(app)
+    sign_in(browser, login_flow)
+    workspace_id = UUID(browser.get("/api/v1/workspaces").json()["workspaces"][0]["id"])
+    user_id = UUID(browser.get("/api/v1/me").json()["id"])
+    seed = _seed_publication(
+        engine, suffix="publication-view", user_id=user_id, workspace_id=workspace_id
+    )
+    path = (
+        f"/api/v1/edits/{seed['edit']}/revisions/1/publication-drafts?workspace_id={workspace_id}"
+    )
+    prepared = browser.request(
+        "POST",
+        path,
+        json={
+            "renderArtifactId": str(seed["render"]),
+            "destinations": [
+                {
+                    "socialAccountId": str(seed["account"]),
+                    "metadata": {"title": "Approved title"},
+                    "providerOptions": {"privacy": "private"},
+                    "consent": {"confirmed": True},
+                    "displayTimezone": "Asia/Jakarta",
+                }
+            ],
+        },
+        headers={"Idempotency-Key": "publication-view"},
+    )
+    batch_id = prepared.json()["id"]
+    browser.request(
+        "POST", f"/api/v1/publication-drafts/{batch_id}/preflight?workspace_id={workspace_id}"
+    )
+    confirmed = browser.request(
+        "POST", f"/api/v1/publication-drafts/{batch_id}/confirm?workspace_id={workspace_id}"
+    )
+    publication_id = confirmed.json()["publications"][0]["id"]
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                UPDATE publications
+                SET status = 'retryable_failed',
+                    provider_publication_id = 'provider-video-1',
+                    provider_permalink = 'https://youtube.test/watch?v=provider-video-1',
+                    normalized_error_code = 'provider_unavailable',
+                    sanitized_error_message = 'YouTube is temporarily unavailable.',
+                    attempt_count = 2,
+                    next_attempt_at = :next,
+                    dispatched_at = :now,
+                    failed_at = :now,
+                    checkpoint_metadata = '{"resumableSessionUrl": "https://secret.test/session"}',
+                    encrypted_checkpoint_reference = 'vault://secret'
+                WHERE id = :publication
+                """
+            ),
+            {"publication": publication_id, "now": NOW, "next": NOW + timedelta(minutes=5)},
+        )
+
+    read = browser.get(f"/api/v1/publications/{publication_id}?workspace_id={workspace_id}")
+
+    assert read.status_code == 200, read.text
+    body = read.json()
+    assert body["batchId"] == batch_id
+    assert body["providerPublicationId"] == "provider-video-1"
+    assert body["providerPermalink"] == "https://youtube.test/watch?v=provider-video-1"
+    assert body["normalizedErrorCode"] == "provider_unavailable"
+    assert body["sanitizedErrorMessage"] == "YouTube is temporarily unavailable."
+    assert body["attemptCount"] == 2
+    assert body["nextAttemptAt"] == (NOW + timedelta(minutes=5)).isoformat()
+    assert body["approvedAt"] is not None
+    assert body["dispatchedAt"] == NOW.isoformat()
+    assert body["failedAt"] == NOW.isoformat()
+    assert body["publishedAt"] is None
+    assert "secret" not in read.text
+    assert "checkpoint" not in read.text.lower()
+
+
+def test_publication_projection_exposes_only_the_approval_diff_from_its_checkpoint(
+    engine: Engine, clean_database: None
+) -> None:
+    """A member may see what drifted, and never the transfer state stored beside it."""
+    del clean_database
+    clock = Clock(NOW)
+    app, login_flow, _ = build_app(clock, StubGoogleProvider(clock))
+    browser = Browser(app)
+    sign_in(browser, login_flow)
+    workspace_id = UUID(browser.get("/api/v1/workspaces").json()["workspaces"][0]["id"])
+    user_id = UUID(browser.get("/api/v1/me").json()["id"])
+    seed = _seed_publication(
+        engine, suffix="publication-diff", user_id=user_id, workspace_id=workspace_id
+    )
+    with engine.begin() as connection:
+        connection.execute(
+            text(
+                """
+                UPDATE publications
+                SET status = 'awaiting_approval',
+                    checkpoint_metadata = :checkpoint
+                WHERE id = :publication
+                """
+            ),
+            {
+                "publication": seed["publication"],
+                "checkpoint": json.dumps(
+                    {
+                        "preflightDiff": [
+                            {
+                                "field": "capabilityVersion",
+                                "approved": "2026-01-01",
+                                "current": "2026-09-01",
+                            }
+                        ],
+                        "resumableSessionUrl": "https://secret.test/session",
+                    }
+                ),
+            },
+        )
+
+    read = browser.get(f"/api/v1/publications/{seed['publication']}?workspace_id={workspace_id}")
+
+    assert read.status_code == 200, read.text
+    assert read.json()["preflightDiff"] == [
+        {"field": "capabilityVersion", "approved": "2026-01-01", "current": "2026-09-01"}
+    ]
+    assert "secret.test" not in read.text

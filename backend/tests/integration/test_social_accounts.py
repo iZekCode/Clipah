@@ -888,3 +888,56 @@ def test_provider_rejection_erases_the_grant_and_requires_an_explicit_reconnect(
         "reason": "provider_grant_rejected",
         "status": "reconnect_required",
     }
+
+
+@pytest.mark.integration
+def test_capabilities_report_each_social_publishing_rollout_gate(
+    engine: Engine, clean_database: None
+) -> None:
+    """The browser learns exactly which staged gate this deployment has opened."""
+    del engine, clean_database
+    browser, _, _ = social_browser(
+        Clock(NOW),
+        StubSocialProvider(),
+        instagram_publishing_enabled=True,
+        instagram_oauth_client_id="instagram-client",
+        instagram_oauth_client_secret="instagram-client-secret",
+        instagram_oauth_redirect_uri="http://testserver/api/v1/social-oauth/instagram/callback",
+        tiktok_publishing_enabled=True,
+        tiktok_client_key="tiktok-client",
+        tiktok_client_secret="tiktok-client-secret",
+        tiktok_oauth_redirect_uri="http://testserver/api/v1/social-oauth/tiktok/callback",
+        tiktok_audit_approved=False,
+        multi_destination_scheduling_enabled=False,
+    )
+
+    capabilities = browser.get("/api/v1/me").json()["capabilities"]
+
+    assert capabilities["socialPublishing"] is True
+    assert capabilities["youtubePublishing"] is True
+    assert capabilities["youtubePublicPrivacy"] is False
+    assert capabilities["instagramPublishing"] is True
+    assert capabilities["tiktokPublishing"] is True
+    assert capabilities["tiktokDirectPost"] is False
+    assert capabilities["multiDestinationScheduling"] is False
+
+
+@pytest.mark.integration
+def test_capabilities_close_every_gate_a_deployment_has_not_switched_on(
+    engine: Engine, clean_database: None
+) -> None:
+    """A disabled deployment must never let the browser offer publishing at all."""
+    del engine, clean_database
+    app, login_flow, _ = build_app(Clock(NOW), StubGoogleProvider(Clock(NOW)))
+    browser = Browser(app)
+    sign_in(browser, login_flow)
+
+    capabilities = browser.get("/api/v1/me").json()["capabilities"]
+
+    assert capabilities["socialPublishing"] is False
+    assert capabilities["youtubePublishing"] is False
+    assert capabilities["youtubePublicPrivacy"] is False
+    assert capabilities["instagramPublishing"] is False
+    assert capabilities["tiktokPublishing"] is False
+    assert capabilities["tiktokDirectPost"] is False
+    assert capabilities["multiDestinationScheduling"] is False

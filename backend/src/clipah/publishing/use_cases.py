@@ -21,6 +21,7 @@ from clipah.models import (
     SocialAccount,
 )
 from clipah.publishing.models import (
+    PreflightDifference,
     PublicationBatchSummary,
     PublicationDestinationDraft,
     PublicationStatus,
@@ -564,11 +565,52 @@ def _publication_summary(publication: Publication) -> PublicationSummary:
     """Detach safe state from one mutable ORM row."""
     return PublicationSummary(
         publication_id=publication.id,
+        batch_id=publication.batch_id,
         social_account_id=publication.social_account_id,
         status=publication.status,
         scheduled_for=publication.scheduled_for,
         display_timezone=publication.display_timezone,
+        provider_publication_id=publication.provider_publication_id,
+        provider_permalink=publication.provider_permalink,
+        normalized_error_code=publication.normalized_error_code,
+        sanitized_error_message=publication.sanitized_error_message,
+        attempt_count=publication.attempt_count,
+        next_attempt_at=publication.next_attempt_at,
+        created_at=publication.created_at,
+        approved_at=publication.approved_at,
+        dispatched_at=publication.dispatched_at,
+        transferred_at=publication.transferred_at,
+        processing_at=publication.processing_at,
+        published_at=publication.published_at,
+        failed_at=publication.failed_at,
+        cancelled_at=publication.cancelled_at,
+        preflight_diff=_preflight_diff(publication),
     )
+
+
+def _preflight_diff(publication: Publication) -> tuple[PreflightDifference, ...]:
+    """Read only the approval drift out of a checkpoint that also holds transfer state."""
+    entries = (publication.checkpoint_metadata or {}).get("preflightDiff")
+    if not isinstance(entries, list):
+        return ()
+    return tuple(
+        PreflightDifference(
+            field=str(entry["field"]),
+            approved=_diff_value(entry.get("approved")),
+            current=_diff_value(entry.get("current")),
+        )
+        for entry in entries
+        if isinstance(entry, dict) and "field" in entry
+    )
+
+
+def _diff_value(value: object) -> str | None:
+    """Render one drifted value as text a member can compare, or nothing at all."""
+    if value is None:
+        return None
+    if isinstance(value, str | bool | int | float):
+        return str(value)
+    return None
 
 
 def _normalize_destination(
@@ -660,14 +702,5 @@ def _summary(
         batch_id=batch.id,
         edit_revision_id=batch.edit_revision_id,
         render_artifact_id=batch.render_artifact_id,
-        publications=tuple(
-            PublicationSummary(
-                publication_id=publication.id,
-                social_account_id=publication.social_account_id,
-                status=publication.status,
-                scheduled_for=publication.scheduled_for,
-                display_timezone=publication.display_timezone,
-            )
-            for publication in publications
-        ),
+        publications=tuple(_publication_summary(publication) for publication in publications),
     )

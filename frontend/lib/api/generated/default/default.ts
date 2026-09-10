@@ -107,6 +107,219 @@ export const useReceiveFalWebhookApiV1WebhooksGenerationFalPost = <TError = unkn
       return useMutation(mutationOptions, queryClient);
     }
     /**
+ * Verify one deletion callback and return the status URL and code Meta requires.
+ * @summary Receive Data Deletion
+ */
+export const getReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostUrl = () => {
+
+
+  
+
+  return `/api/v1/webhooks/instagram/data-deletion`
+}
+
+export const receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost = async ( options?: RequestInit): Promise<unknown> => {
+  
+  return apiFetch<unknown>(getReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>, TError,void, TContext> => {
+
+const mutationKey = ['receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>, void> = () => {
+          
+
+          return  receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostMutationResult = NonNullable<Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>>
+    
+    export type ReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostMutationError = unknown
+
+    /**
+ * @summary Receive Data Deletion
+ */
+export const useReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiveDataDeletionApiV1WebhooksInstagramDataDeletionPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getReceiveDataDeletionApiV1WebhooksInstagramDataDeletionPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Verify one deauthorization callback, await its injected sink, and acknowledge it.
+ * @summary Receive Deauthorization
+ */
+export const getReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostUrl = () => {
+
+
+  
+
+  return `/api/v1/webhooks/instagram/deauthorization`
+}
+
+export const receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost = async ( options?: RequestInit): Promise<void> => {
+  
+  return apiFetch<void>(getReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>, TError,void, TContext> => {
+
+const mutationKey = ['receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>, void> = () => {
+          
+
+          return  receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostMutationResult = NonNullable<Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>>
+    
+    export type ReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostMutationError = unknown
+
+    /**
+ * @summary Receive Deauthorization
+ */
+export const useReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getReceiveDeauthorizationApiV1WebhooksInstagramDeauthorizationPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Verify the raw delivery once, await its injected sink, and acknowledge it.
+ * @summary Receive Tiktok Webhook
+ */
+export const getReceiveTiktokWebhookApiV1WebhooksTiktokPostUrl = () => {
+
+
+  
+
+  return `/api/v1/webhooks/tiktok`
+}
+
+export const receiveTiktokWebhookApiV1WebhooksTiktokPost = async ( options?: RequestInit): Promise<void> => {
+  
+  return apiFetch<void>(getReceiveTiktokWebhookApiV1WebhooksTiktokPostUrl(),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getReceiveTiktokWebhookApiV1WebhooksTiktokPostMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>, TError,void, TContext> => {
+
+const mutationKey = ['receiveTiktokWebhookApiV1WebhooksTiktokPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>, void> = () => {
+          
+
+          return  receiveTiktokWebhookApiV1WebhooksTiktokPost(requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReceiveTiktokWebhookApiV1WebhooksTiktokPostMutationResult = NonNullable<Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>>
+    
+    export type ReceiveTiktokWebhookApiV1WebhooksTiktokPostMutationError = unknown
+
+    /**
+ * @summary Receive Tiktok Webhook
+ */
+export const useReceiveTiktokWebhookApiV1WebhooksTiktokPost = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof receiveTiktokWebhookApiV1WebhooksTiktokPost>>,
+        TError,
+        void,
+        TContext
+      > => {
+
+      const mutationOptions = getReceiveTiktokWebhookApiV1WebhooksTiktokPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
  * Confirm that the HTTP process can accept requests without external I/O.
  * @summary Live
  */

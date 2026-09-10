@@ -57,14 +57,39 @@ class PublicationDestinationDraft(BaseModel):
 
 
 @dataclass(frozen=True, slots=True)
+class PreflightDifference:
+    """One approved value that no longer matches what the provider reports."""
+
+    field: str
+    approved: str | None
+    current: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class PublicationSummary:
     """One destination state safe to return without provider secrets."""
 
     publication_id: UUID
+    batch_id: UUID
     social_account_id: UUID
     status: PublicationStatus
     scheduled_for: datetime | None
     display_timezone: str
+    provider_publication_id: str | None = None
+    provider_permalink: str | None = None
+    normalized_error_code: str | None = None
+    sanitized_error_message: str | None = None
+    attempt_count: int = 0
+    next_attempt_at: datetime | None = None
+    created_at: datetime | None = None
+    approved_at: datetime | None = None
+    dispatched_at: datetime | None = None
+    transferred_at: datetime | None = None
+    processing_at: datetime | None = None
+    published_at: datetime | None = None
+    failed_at: datetime | None = None
+    cancelled_at: datetime | None = None
+    preflight_diff: tuple[PreflightDifference, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

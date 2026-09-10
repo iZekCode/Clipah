@@ -1290,11 +1290,46 @@
           "collaboration": {
             "title": "Collaboration",
             "type": "boolean"
+          },
+          "instagramPublishing": {
+            "title": "Instagrampublishing",
+            "type": "boolean"
+          },
+          "multiDestinationScheduling": {
+            "title": "Multidestinationscheduling",
+            "type": "boolean"
+          },
+          "socialPublishing": {
+            "title": "Socialpublishing",
+            "type": "boolean"
+          },
+          "tiktokDirectPost": {
+            "title": "Tiktokdirectpost",
+            "type": "boolean"
+          },
+          "tiktokPublishing": {
+            "title": "Tiktokpublishing",
+            "type": "boolean"
+          },
+          "youtubePublicPrivacy": {
+            "title": "Youtubepublicprivacy",
+            "type": "boolean"
+          },
+          "youtubePublishing": {
+            "title": "Youtubepublishing",
+            "type": "boolean"
           }
         },
         "required": [
           "authenticatedYoutubeImport",
-          "collaboration"
+          "collaboration",
+          "socialPublishing",
+          "youtubePublishing",
+          "youtubePublicPrivacy",
+          "instagramPublishing",
+          "tiktokPublishing",
+          "tiktokDirectPost",
+          "multiDestinationScheduling"
         ],
         "title": "CapabilitiesResponse",
         "type": "object"
@@ -3352,6 +3387,71 @@
         "title": "PlatformPackagingResponse",
         "type": "object"
       },
+      "PreflightDifferenceResponse": {
+        "additionalProperties": false,
+        "description": "One approved value a member has to look at again before publishing.",
+        "properties": {
+          "approved": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approved"
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Current"
+          },
+          "field": {
+            "title": "Field",
+            "type": "string"
+          }
+        },
+        "required": [
+          "field",
+          "approved",
+          "current"
+        ],
+        "title": "PreflightDifferenceResponse",
+        "type": "object"
+      },
+      "PreparePublicationBody": {
+        "additionalProperties": false,
+        "description": "The exact render and destinations whose approval will later be frozen.",
+        "properties": {
+          "destinations": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationDestinationBody"
+            },
+            "maxItems": 20,
+            "minItems": 1,
+            "title": "Destinations",
+            "type": "array"
+          },
+          "renderArtifactId": {
+            "format": "uuid",
+            "title": "Renderartifactid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "renderArtifactId",
+          "destinations"
+        ],
+        "title": "PreparePublicationBody",
+        "type": "object"
+      },
       "ProjectAssetResponse": {
         "additionalProperties": false,
         "description": "One asset of a Project, in the shape the editor needs to place it.",
@@ -3676,6 +3776,329 @@
           "height"
         ],
         "title": "ProxyPlaybackResponse",
+        "type": "object"
+      },
+      "PublicationBatchResponse": {
+        "additionalProperties": false,
+        "description": "An immutable convenience group around independent destinations.",
+        "properties": {
+          "editRevisionId": {
+            "format": "uuid",
+            "title": "Editrevisionid",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationResponse"
+            },
+            "title": "Publications",
+            "type": "array"
+          },
+          "renderArtifactId": {
+            "format": "uuid",
+            "title": "Renderartifactid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "editRevisionId",
+          "renderArtifactId",
+          "publications"
+        ],
+        "title": "PublicationBatchResponse",
+        "type": "object"
+      },
+      "PublicationDestinationBody": {
+        "additionalProperties": false,
+        "description": "Validated choices for one independently recoverable destination.",
+        "properties": {
+          "consent": {
+            "additionalProperties": true,
+            "title": "Consent",
+            "type": "object"
+          },
+          "displayTimezone": {
+            "maxLength": 255,
+            "minLength": 1,
+            "title": "Displaytimezone",
+            "type": "string"
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "title": "Metadata",
+            "type": "object"
+          },
+          "providerOptions": {
+            "additionalProperties": true,
+            "title": "Provideroptions",
+            "type": "object"
+          },
+          "scheduledFor": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduledfor"
+          },
+          "socialAccountId": {
+            "format": "uuid",
+            "title": "Socialaccountid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "socialAccountId",
+          "displayTimezone"
+        ],
+        "title": "PublicationDestinationBody",
+        "type": "object"
+      },
+      "PublicationResponse": {
+        "additionalProperties": false,
+        "description": "One safe destination lifecycle projection.",
+        "properties": {
+          "approvedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Approvedat"
+          },
+          "attemptCount": {
+            "title": "Attemptcount",
+            "type": "integer"
+          },
+          "batchId": {
+            "format": "uuid",
+            "title": "Batchid",
+            "type": "string"
+          },
+          "cancelledAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Cancelledat"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "dispatchedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Dispatchedat"
+          },
+          "displayTimezone": {
+            "title": "Displaytimezone",
+            "type": "string"
+          },
+          "failedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Failedat"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "nextAttemptAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextattemptat"
+          },
+          "normalizedErrorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Normalizederrorcode"
+          },
+          "preflightDiff": {
+            "items": {
+              "$ref": "#/components/schemas/PreflightDifferenceResponse"
+            },
+            "title": "Preflightdiff",
+            "type": "array"
+          },
+          "processingAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Processingat"
+          },
+          "providerPermalink": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providerpermalink"
+          },
+          "providerPublicationId": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Providerpublicationid"
+          },
+          "publishedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Publishedat"
+          },
+          "sanitizedErrorMessage": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sanitizederrormessage"
+          },
+          "scheduledFor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Scheduledfor"
+          },
+          "socialAccountId": {
+            "format": "uuid",
+            "title": "Socialaccountid",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "transferredAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transferredat"
+          }
+        },
+        "required": [
+          "id",
+          "batchId",
+          "socialAccountId",
+          "status",
+          "scheduledFor",
+          "displayTimezone",
+          "providerPublicationId",
+          "providerPermalink",
+          "normalizedErrorCode",
+          "sanitizedErrorMessage",
+          "attemptCount",
+          "nextAttemptAt",
+          "createdAt",
+          "approvedAt",
+          "dispatchedAt",
+          "transferredAt",
+          "processingAt",
+          "publishedAt",
+          "failedAt",
+          "cancelledAt",
+          "preflightDiff"
+        ],
+        "title": "PublicationResponse",
+        "type": "object"
+      },
+      "PublicationsResponse": {
+        "additionalProperties": false,
+        "description": "Every publication visible in the requested Workspace.",
+        "properties": {
+          "publications": {
+            "items": {
+              "$ref": "#/components/schemas/PublicationResponse"
+            },
+            "title": "Publications",
+            "type": "array"
+          }
+        },
+        "required": [
+          "publications"
+        ],
+        "title": "PublicationsResponse",
         "type": "object"
       },
       "PublishingRolePolicy": {
@@ -4419,6 +4842,219 @@
         ],
         "title": "SearchTermsResponse",
         "type": "object"
+      },
+      "SocialAccountResponse": {
+        "additionalProperties": false,
+        "description": "One Social Account with only redacted grant status metadata.",
+        "properties": {
+          "accessTokenExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accesstokenexpiresat"
+          },
+          "accountType": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Accounttype"
+          },
+          "apiVersion": {
+            "title": "Apiversion",
+            "type": "string"
+          },
+          "authorizedByUserId": {
+            "format": "uuid",
+            "title": "Authorizedbyuserid",
+            "type": "string"
+          },
+          "avatarUrl": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatarurl"
+          },
+          "capabilityVersion": {
+            "title": "Capabilityversion",
+            "type": "string"
+          },
+          "connectionStatus": {
+            "title": "Connectionstatus",
+            "type": "string"
+          },
+          "createdAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Createdat"
+          },
+          "displayName": {
+            "title": "Displayname",
+            "type": "string"
+          },
+          "externalAccountId": {
+            "title": "Externalaccountid",
+            "type": "string"
+          },
+          "grantedScopes": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Grantedscopes",
+            "type": "array"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "lastValidatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lastvalidatedat"
+          },
+          "loginFamily": {
+            "title": "Loginfamily",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "refreshTokenExpiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refreshtokenexpiresat"
+          },
+          "revokedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Revokedat"
+          }
+        },
+        "required": [
+          "id",
+          "provider",
+          "externalAccountId",
+          "displayName",
+          "avatarUrl",
+          "accountType",
+          "loginFamily",
+          "apiVersion",
+          "connectionStatus",
+          "grantedScopes",
+          "capabilityVersion",
+          "authorizedByUserId",
+          "accessTokenExpiresAt",
+          "refreshTokenExpiresAt",
+          "lastValidatedAt",
+          "createdAt",
+          "revokedAt"
+        ],
+        "title": "SocialAccountResponse",
+        "type": "object"
+      },
+      "SocialAccountsResponse": {
+        "additionalProperties": false,
+        "description": "Every Social Account visible in one Workspace.",
+        "properties": {
+          "socialAccounts": {
+            "items": {
+              "$ref": "#/components/schemas/SocialAccountResponse"
+            },
+            "title": "Socialaccounts",
+            "type": "array"
+          }
+        },
+        "required": [
+          "socialAccounts"
+        ],
+        "title": "SocialAccountsResponse",
+        "type": "object"
+      },
+      "SocialCapabilitiesResponse": {
+        "additionalProperties": false,
+        "description": "One safe versioned provider capability snapshot.",
+        "properties": {
+          "capabilities": {
+            "additionalProperties": true,
+            "title": "Capabilities",
+            "type": "object"
+          },
+          "version": {
+            "title": "Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "version",
+          "capabilities"
+        ],
+        "title": "SocialCapabilitiesResponse",
+        "type": "object"
+      },
+      "SocialConnectionStartResponse": {
+        "additionalProperties": false,
+        "description": "The provider authorization URL a browser should visit next.",
+        "properties": {
+          "authorizationUrl": {
+            "title": "Authorizationurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "authorizationUrl"
+        ],
+        "title": "SocialConnectionStartResponse",
+        "type": "object"
+      },
+      "SocialProvider": {
+        "description": "Official social destinations Clipah can connect for publishing.",
+        "enum": [
+          "youtube",
+          "instagram",
+          "tiktok"
+        ],
+        "title": "SocialProvider",
+        "type": "string"
       },
       "SourceConnectionRequest": {
         "additionalProperties": false,
@@ -7013,6 +7649,90 @@
         ]
       }
     },
+    "/api/v1/edits/{edit_id}/revisions/{revision}/publication-drafts": {
+      "post": {
+        "description": "Prepare an idempotent batch without performing an external side effect.",
+        "operationId": "prepare_api_v1_edits__edit_id__revisions__revision__publication_drafts_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "title": "Revision",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "Idempotency-Key",
+            "required": true,
+            "schema": {
+              "maxLength": 255,
+              "minLength": 1,
+              "title": "Idempotency-Key",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PreparePublicationBody"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Prepare",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
     "/api/v1/jobs/events": {
       "get": {
         "description": "Stream every Job of one Workspace on the single connection its job center holds.",
@@ -8989,6 +9709,428 @@
         ]
       }
     },
+    "/api/v1/publication-batches/{draft_id}": {
+      "get": {
+        "description": "Read one draft or confirmed batch through its stable batch identifier.",
+        "operationId": "show_batch_api_v1_publication_batches__draft_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Batch",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publication-drafts/{draft_id}": {
+      "get": {
+        "description": "Read one draft or confirmed batch through its stable batch identifier.",
+        "operationId": "show_batch_api_v1_publication_drafts__draft_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Batch",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publication-drafts/{draft_id}/confirm": {
+      "post": {
+        "description": "Freeze approval evidence and schedule or queue each destination independently.",
+        "operationId": "confirm_api_v1_publication_drafts__draft_id__confirm_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Confirm",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publication-drafts/{draft_id}/preflight": {
+      "post": {
+        "description": "Validate a prepared batch before asking for irreversible approval.",
+        "operationId": "preflight_api_v1_publication_drafts__draft_id__preflight_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "draft_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Draft Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationBatchResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preflight",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications": {
+      "get": {
+        "description": "List safe lifecycle state for one Workspace.",
+        "operationId": "index_api_v1_publications_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}": {
+      "get": {
+        "description": "Read one destination while hiding guessed cross-Workspace identifiers.",
+        "operationId": "show_api_v1_publications__publication_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Publication Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/cancel": {
+      "post": {
+        "description": "Cancel only work whose provider side effect can still be stopped truthfully.",
+        "operationId": "cancel_api_v1_publications__publication_id__cancel_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Publication Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Cancel",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
+    "/api/v1/publications/{publication_id}/retry": {
+      "post": {
+        "description": "Queue one reconciled retry without duplicating ambiguous provider work.",
+        "operationId": "retry_api_v1_publications__publication_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "publication_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Publication Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublicationResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry",
+        "tags": [
+          "publications"
+        ]
+      }
+    },
     "/api/v1/renders/{render_id}": {
       "get": {
         "description": "Read one export, hiding another Workspace's export behind the same absence.",
@@ -9311,6 +10453,219 @@
         "summary": "Search",
         "tags": [
           "search"
+        ]
+      }
+    },
+    "/api/v1/social-accounts/{social_account_id}": {
+      "delete": {
+        "description": "Disconnect one Social Account and cryptographically erase its OAuth Grant.",
+        "operationId": "disconnect_api_v1_social_accounts__social_account_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "social_account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Social Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Disconnect",
+        "tags": [
+          "social-accounts"
+        ]
+      }
+    },
+    "/api/v1/social-accounts/{social_account_id}/capabilities": {
+      "get": {
+        "description": "Read the safe capability snapshot for one Social Account.",
+        "operationId": "capabilities_api_v1_social_accounts__social_account_id__capabilities_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "social_account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Social Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialCapabilitiesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Capabilities",
+        "tags": [
+          "social-accounts"
+        ]
+      }
+    },
+    "/api/v1/social-accounts/{social_account_id}/refresh": {
+      "post": {
+        "description": "Refresh and rotate one tenant-visible Social Account OAuth Grant.",
+        "operationId": "refresh_api_v1_social_accounts__social_account_id__refresh_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "social_account_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Social Account Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialAccountResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh",
+        "tags": [
+          "social-accounts"
+        ]
+      }
+    },
+    "/api/v1/social-oauth/{provider}/callback": {
+      "get": {
+        "description": "Redeem one exact single-use callback and return to Workspace Connections.",
+        "operationId": "callback_api_v1_social_oauth__provider__callback_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SocialProvider"
+            }
+          },
+          {
+            "in": "query",
+            "name": "code",
+            "required": true,
+            "schema": {
+              "title": "Code",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": true,
+            "schema": {
+              "title": "State",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Callback",
+        "tags": [
+          "social-accounts"
         ]
       }
     },
@@ -9797,6 +11152,47 @@
           }
         },
         "summary": "Receive Fal Webhook"
+      }
+    },
+    "/api/v1/webhooks/instagram/data-deletion": {
+      "post": {
+        "description": "Verify one deletion callback and return the status URL and code Meta requires.",
+        "operationId": "receive_data_deletion_api_v1_webhooks_instagram_data_deletion_post",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Receive Data Deletion"
+      }
+    },
+    "/api/v1/webhooks/instagram/deauthorization": {
+      "post": {
+        "description": "Verify one deauthorization callback, await its injected sink, and acknowledge it.",
+        "operationId": "receive_deauthorization_api_v1_webhooks_instagram_deauthorization_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Receive Deauthorization"
+      }
+    },
+    "/api/v1/webhooks/tiktok": {
+      "post": {
+        "description": "Verify the raw delivery once, await its injected sink, and acknowledge it.",
+        "operationId": "receive_tiktok_webhook_api_v1_webhooks_tiktok_post",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Receive Tiktok Webhook"
       }
     },
     "/api/v1/workspace-invites/{token}/accept": {
@@ -10347,6 +11743,102 @@
         "summary": "Transfer Workspace Ownership",
         "tags": [
           "workspace-memberships"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/social-accounts": {
+      "get": {
+        "description": "List redacted Social Account metadata for one live Workspace member.",
+        "operationId": "index_api_v1_workspaces__workspace_id__social_accounts_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialAccountsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Index",
+        "tags": [
+          "social-accounts"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/social-accounts/{provider}/connect": {
+      "post": {
+        "description": "Start one provider-specific OAuth ceremony with durable replay protection.",
+        "operationId": "start_connection_api_v1_workspaces__workspace_id__social_accounts__provider__connect_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "provider",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/SocialProvider"
+            }
+          },
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SocialConnectionStartResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Start Connection",
+        "tags": [
+          "social-accounts"
         ]
       }
     },

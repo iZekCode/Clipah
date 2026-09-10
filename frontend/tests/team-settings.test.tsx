@@ -7,7 +7,7 @@ import { InviteAcceptance } from '@/features/team/InviteAcceptance'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi } from './support/api'
-import { currentUser, workspace } from './support/fixtures'
+import { capabilities, currentUser, workspace } from './support/fixtures'
 
 const TEAM = workspace({ kind: 'team', role: 'owner', name: 'Review Team' })
 const MEMBERS = `GET /api/v1/workspaces/${TEAM.id}/members`
@@ -16,7 +16,7 @@ const INVITES = `GET /api/v1/workspaces/${TEAM.id}/invites`
 describe('team settings', () => {
   test('lists members and creates one explicit-role invite', async () => {
     const api = stubApi({
-      'GET /api/v1/me': { body: currentUser({ capabilities: { authenticatedYoutubeImport: false, collaboration: true } }) },
+      'GET /api/v1/me': { body: currentUser({ capabilities: capabilities({ collaboration: true }) }) },
       'GET /api/v1/workspaces': { body: { workspaces: [TEAM] } },
       [MEMBERS]: {
         body: {
@@ -85,7 +85,7 @@ describe('invite acceptance', () => {
     const api = stubApi({
       'GET /api/v1/me': {
         body: currentUser({
-          capabilities: { authenticatedYoutubeImport: false, collaboration: true },
+          capabilities: capabilities({ collaboration: true }),
         }),
       },
       [`POST /api/v1/workspace-invites/${token}/accept`]: {

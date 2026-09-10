@@ -148,6 +148,7 @@ class Settings(BaseSettings):
     collaboration_enabled: bool = False
     generative_video_enabled: bool = False
     social_publishing_enabled: bool = False
+    multi_destination_scheduling_enabled: bool = False
 
     youtube_publishing_enabled: bool = False
     youtube_oauth_client_id: str | None = None
@@ -409,6 +410,10 @@ class Settings(BaseSettings):
             raise ValueError("retired provider API configuration is not permitted")
 
     def _validate_enabled_social_providers(self) -> None:
+        if self.multi_destination_scheduling_enabled and not self.social_publishing_enabled:
+            raise ValueError(
+                "multi-destination scheduling requires CLIPAH_SOCIAL_PUBLISHING_ENABLED"
+            )
         providers = (
             (
                 "YouTube",
