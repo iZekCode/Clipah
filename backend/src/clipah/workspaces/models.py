@@ -31,6 +31,18 @@ class PersonalWorkspaceExistsError(WorkspaceError):
     """Login already created the single personal Workspace a User may own."""
 
 
+class WorkspaceAlreadyDeletedError(WorkspaceError):
+    """The Workspace is already deleted, so a second deletion would change nothing."""
+
+
+class WorkspaceRecoveryWindowElapsedError(WorkspaceError):
+    """The recovery window closed, so the data this Workspace held may already be gone."""
+
+
+class LastOwnerError(WorkspaceError):
+    """The caller is the only owner left, so leaving would strand the Workspace."""
+
+
 class WorkspaceAction(StrEnum):
     """Every distinct authority a Workspace role can carry."""
 
@@ -72,6 +84,18 @@ class WorkspaceSummary:
     publishing_role_policy: PublishingRolePolicy
     role: WorkspaceRole
     created_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class WorkspaceDeletion:
+    """What a member is told when they delete a Workspace.
+
+    The date is the promise Clipah is making: until then the Workspace can be brought
+    back, and after it the data is gone.
+    """
+
+    workspace_id: UUID
+    recoverable_until: datetime
 
 
 @dataclass(frozen=True, slots=True)

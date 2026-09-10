@@ -207,6 +207,13 @@ _DECLARED: tuple[Instrument, ...] = (
         "jobKind",
     ),
     _counter(
+        "clipah.retention.outcome",
+        "1",
+        "How one retention tombstone attempt ended.",
+        "outcome",
+        "code",
+    ),
+    _counter(
         "clipah.sse.connections",
         "1",
         "Change in the number of open job-event stream connections.",

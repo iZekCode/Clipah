@@ -462,6 +462,41 @@ def cancel_publication(
     return _publication_summary(publication)
 
 
+def cancel_publications_approved_by(
+    session: Session, *, workspace_id: UUID, user_id: UUID, now: datetime
+) -> int:
+    """Cancel unpublished work one departing person approved.
+
+    Their approval is the authority the Publication would be dispatched under, and that
+    authority ends with their account. Work somebody else approved is untouched, and
+    anything already published stays published.
+    """
+    publications = tuple(
+        session.scalars(
+            select(Publication)
+            .where(
+                Publication.workspace_id == workspace_id,
+                Publication.approved_by_user_id == user_id,
+                Publication.status.not_in(
+                    {
+                        PublicationStatus.PUBLISHED,
+                        PublicationStatus.PERMANENT_FAILED,
+                        PublicationStatus.CANCELLED,
+                    }
+                ),
+            )
+            .with_for_update()
+        )
+    )
+    for publication in publications:
+        publication.status = transition(
+            current=publication.status, target=PublicationStatus.CANCELLED
+        ).current
+        publication.cancelled_at = now
+    session.flush()
+    return len(publications)
+
+
 class PublicationFutureWorkCoordinator:
     """Pause or cancel one disconnected Social Account's unpublished work."""
 

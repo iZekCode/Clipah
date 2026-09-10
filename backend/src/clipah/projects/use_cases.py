@@ -14,6 +14,7 @@ from clipah.projects.schemas import (
     ProjectPageBoundary,
     ProjectSummary,
 )
+from clipah.retention.policy import RetentionEntityKind, RetentionPolicy, project_prefix
 from clipah.workspaces.models import WorkspaceAccess
 
 PROJECT_RECOVERY_WINDOW = timedelta(days=30)
@@ -125,11 +126,26 @@ def rename_project(
 
 
 def soft_delete_project(
-    repository: ProjectRepository, *, access: WorkspaceAccess, project_id: UUID, now: datetime
+    repository: ProjectRepository,
+    *,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    policy: RetentionPolicy,
+    now: datetime,
 ) -> None:
-    """Archive a visible Project so it remains recoverable for thirty days."""
+    """Archive a visible Project and start the clock on its permanent deletion.
+
+    Deletion is immediate to the member and to every admission check; what waits is
+    the purge, which is scheduled here so recovery and retention read the same date.
+    """
     if not repository.archive(workspace_id=access.workspace_id, project_id=project_id, now=now):
         raise ProjectNotFoundError("project is unavailable")
+    repository.schedule_retention(
+        workspace_id=access.workspace_id,
+        project_id=project_id,
+        storage_prefix=project_prefix(workspace_id=access.workspace_id, project_id=project_id),
+        eligible_at=policy.eligible_at(RetentionEntityKind.PROJECT, now=now),
+    )
 
 
 def restore_project(
@@ -146,6 +162,7 @@ def restore_project(
         raise ProjectConflictError("project recovery window elapsed")
     if result.project is None:
         raise ProjectNotFoundError("project is unavailable")
+    repository.cancel_retention(workspace_id=access.workspace_id, project_id=project_id)
     return result.project
 
 

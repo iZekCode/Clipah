@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from clipah.celery_app import (
     MAX_ATTEMPTS,
+    RETENTION_SWEEP_TASK,
     RETRY_BASE_SECONDS,
     RETRY_MAX_SECONDS,
     create_celery_app,
@@ -39,11 +40,13 @@ from clipah.jobs.models import (
     TerminalJobError,
 )
 from clipah.jobs.pipeline import advance_after
+from clipah.jobs.render_task import production_object_store
 from clipah.jobs.use_cases import cancel_job, complete_job_after_runner, fail_job, start_job
 from clipah.models import JobKind, JobStatus
 from clipah.observability.logging import get_logger, log_context
 from clipah.observability.metrics import count, observe
 from clipah.observability.tracing import span
+from clipah.retention.tasks import sweep
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import WorkspaceAction
 
@@ -225,6 +228,29 @@ def _run_stage(
         _announce(notifier, workspace_id=workspace, job_id=following_id)
     _record_stage(snapshot, outcome="succeeded", code="OK", started=started)
     return completed.status.value
+
+
+# Celery ships no type information, so its decorator erases the signature below.
+@celery_app.task(bind=True, name=RETENTION_SWEEP_TASK)  # type: ignore[untyped-decorator]
+def run_retention_sweep(self: Task) -> dict[str, int]:
+    """Run one retention pass for every Workspace on the configured schedule.
+
+    The sweep is scheduled rather than requested, so it takes nothing from a message:
+    its settings come from the process it runs in, and what it may delete comes from
+    the tombstones it finds.
+    """
+    settings = settings_for(self.app)
+    report = sweep(
+        settings=settings,
+        store=production_object_store(settings),
+        now=_now(),
+    )
+    return {
+        "scheduled": report.scheduled,
+        "purged": report.purged,
+        "deferred": report.deferred,
+        "failed": report.failed,
+    }
 
 
 def _dispatch_next(*, job_id: UUID, workspace_id: UUID, user_id: UUID, kind: JobKind) -> None:

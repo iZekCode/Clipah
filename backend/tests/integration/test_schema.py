@@ -150,7 +150,9 @@ API_TABLE_PRIVILEGES = {
     "social_renditions": {"SELECT", "INSERT"},
     "audit_events": {"SELECT", "INSERT"},
     "provider_usage": {"SELECT"},
-    "retention_tombstones": {"SELECT", "INSERT"},
+    # Recovery inside the window withdraws the pending tombstone a deletion scheduled,
+    # so the API may remove one, and the application only ever removes an undischarged one.
+    "retention_tombstones": {"SELECT", "INSERT", "DELETE"},
     "workspace_quota_reservations": {"SELECT", "INSERT"},
     # The searchable library is derived from every other row here and holds no authority
     # of its own, so both runtime roles may rewrite and drop what they can rebuild.

@@ -144,6 +144,21 @@ class Settings(BaseSettings):
     job_event_poll_seconds: float = 1.0
     job_event_heartbeat_seconds: float = 15.0
 
+    # Section 7 retention: how long each kind of deleted or abandoned data survives
+    # before a sweep may remove it. An operator shortens retention here, never in a
+    # worker module, and a zero-length window means "at the next sweep".
+    retention_abandoned_upload_hours: int = Field(default=24, ge=0)
+    retention_failed_job_workspace_days: int = Field(default=7, ge=0)
+    retention_soft_deleted_project_days: int = Field(default=30, ge=0)
+    retention_soft_deleted_workspace_days: int = Field(default=30, ge=0)
+    retention_rejected_generated_draft_hours: int = Field(default=24, ge=0)
+    retention_unselected_stock_preview_hours: int = Field(default=24, ge=0)
+    retention_deleted_user_days: int = Field(default=30, ge=0)
+    retention_batch_size: int = Field(default=50, gt=0)
+    retention_listing_page_size: int = Field(default=500, gt=0)
+    retention_max_failures: int = Field(default=10, gt=0)
+    retention_sweep_interval_seconds: float = Field(default=300.0, gt=0, allow_inf_nan=False)
+
     monthly_analyses: int = 30
     monthly_stock_requests: int = 200
     monthly_generated_images: int = 50

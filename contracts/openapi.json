@@ -6058,6 +6058,32 @@
         "title": "WorkspaceCreateRequest",
         "type": "object"
       },
+      "WorkspaceDeletionResponse": {
+        "additionalProperties": false,
+        "description": "What a member is told when they delete a Workspace.",
+        "properties": {
+          "publishedPostsRemainOnProviders": {
+            "default": true,
+            "title": "Publishedpostsremainonproviders",
+            "type": "boolean"
+          },
+          "recoverableUntil": {
+            "title": "Recoverableuntil",
+            "type": "string"
+          },
+          "workspaceId": {
+            "format": "uuid",
+            "title": "Workspaceid",
+            "type": "string"
+          }
+        },
+        "required": [
+          "workspaceId",
+          "recoverableUntil"
+        ],
+        "title": "WorkspaceDeletionResponse",
+        "type": "object"
+      },
       "WorkspaceKind": {
         "enum": [
           "personal",
@@ -6227,6 +6253,21 @@
   },
   "openapi": "3.1.0",
   "paths": {
+    "/api/v1/account": {
+      "delete": {
+        "description": "Delete the caller's account, once it can be deleted without stranding anyone.\n\nDeletion is refused while the caller is the last owner of a live Workspace: a\nWorkspace nobody owns cannot be recovered, renamed, or deleted by anyone, and other\nmembers would be left inside it. The caller transfers ownership or deletes the\nWorkspace first, and both are things only they can decide.",
+        "operationId": "destroy_api_v1_account_delete",
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Destroy",
+        "tags": [
+          "account"
+        ]
+      }
+    },
     "/api/v1/auth/google/callback": {
       "get": {
         "description": "Redeem the provider callback and start a Clipah Session for the resolved User.",
@@ -11301,6 +11342,48 @@
       }
     },
     "/api/v1/workspaces/{workspace_id}": {
+      "delete": {
+        "description": "Close one Workspace, revoke what it can still act with, and schedule its removal.",
+        "operationId": "destroy_api_v1_workspaces__workspace_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceDeletionResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Destroy",
+        "tags": [
+          "workspaces"
+        ]
+      },
       "get": {
         "description": "Describe one Workspace to one of its members.",
         "operationId": "show_api_v1_workspaces__workspace_id__get",
@@ -11743,6 +11826,50 @@
         "summary": "Transfer Workspace Ownership",
         "tags": [
           "workspace-memberships"
+        ]
+      }
+    },
+    "/api/v1/workspaces/{workspace_id}/restore": {
+      "post": {
+        "description": "Bring back a deleted Workspace for its owner while recovery is still possible.\n\nRecovery cannot go through the ordinary Workspace dependency, because that\ndependency refuses to admit a deleted Workspace exists at all \u2014 which is exactly\nwhat it should do everywhere else.",
+        "operationId": "restore_api_v1_workspaces__workspace_id__restore_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WorkspaceResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Restore",
+        "tags": [
+          "workspaces"
         ]
       }
     },

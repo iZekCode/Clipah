@@ -49,6 +49,19 @@ class StoredObject:
     duration_ms: int | None = None
 
 
+@dataclass(frozen=True)
+class ObjectListing:
+    """One bounded page of object keys under a prefix, plus how to ask for the next.
+
+    Retention is the only caller that enumerates storage, and it must never hold a
+    whole Workspace in memory to delete one, so a listing is always a page and a
+    resumption token rather than an iterator over everything the bucket holds.
+    """
+
+    keys: tuple[str, ...]
+    next_token: str | None
+
+
 class MultipartCompletionError(Exception):
     """Raised when a provider rejects submitted multipart part identifiers or ordering."""
 
@@ -89,6 +102,9 @@ class ObjectStore(Protocol):
 
     def delete_object(self, *, key: str) -> None:
         """Delete one exact object after a failed final metadata validation."""
+
+    def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
+        """List at most ``limit`` keys under one prefix, resuming from ``after``."""
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Sign a time-bounded private object download."""
@@ -160,6 +176,11 @@ class ObservedObjectStore:
         """Delete one exact object after a failed final metadata validation."""
         with _observed("delete_object"):
             self._inner.delete_object(key=key)
+
+    def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
+        """List at most ``limit`` keys under one prefix, resuming from ``after``."""
+        with _observed("list_objects"):
+            return self._inner.list_objects(prefix=prefix, limit=limit, after=after)
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Sign a time-bounded private object download."""
@@ -337,6 +358,23 @@ class S3ObjectStore:
         """Delete one known object key without prefix or listing operations."""
         self._client.delete_object(Bucket=self._bucket, Key=key)
 
+    def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
+        """Read one bounded S3 page under a prefix and hand back its resumption token."""
+        arguments: dict[str, Any] = {
+            "Bucket": self._bucket,
+            "Prefix": prefix,
+            "MaxKeys": limit,
+        }
+        if after is not None:
+            arguments["ContinuationToken"] = after
+        try:
+            response = self._client.list_objects_v2(**arguments)
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store listing unavailable") from error
+        keys = tuple(str(entry["Key"]) for entry in response.get("Contents", ()))
+        token = response.get("NextContinuationToken") if response.get("IsTruncated") else None
+        return ObjectListing(keys=keys, next_token=None if token is None else str(token))
+
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Generate a presigned GET URL for the caller-selected bounded lifetime."""
         try:
@@ -443,6 +481,14 @@ class FakeObjectStore:
         self.deleted.append(key)
         self.objects.pop(key, None)
         self.object_bodies.pop(key, None)
+
+    def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
+        """Page deterministically through fake keys so batch bounds stay observable."""
+        matching = sorted(key for key in self.objects if key.startswith(prefix))
+        start = 0 if after is None else int(after)
+        page = matching[start : start + limit]
+        remaining = start + limit < len(matching)
+        return ObjectListing(keys=tuple(page), next_token=str(start + limit) if remaining else None)
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Return a fake download URL that preserves requested expiration semantics."""

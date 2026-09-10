@@ -32,6 +32,7 @@ QUEUE_FOR_JOB_KIND: Mapping[JobKind, str] = {
     JobKind.CLEANUP: DEFAULT_QUEUE,
 }
 QUEUE_NAMES: tuple[str, ...] = tuple(dict.fromkeys(QUEUE_FOR_JOB_KIND.values()))
+RETENTION_SWEEP_TASK = "clipah.retention.sweep"
 
 
 def create_celery_app() -> Celery:
@@ -59,6 +60,16 @@ def configure_celery(app: Celery, settings: Settings) -> Celery:
         timezone="UTC",
         enable_utc=True,
     )
+    # Retention is the one piece of work nobody requests, so the schedule is part of
+    # the deployment rather than of any caller. It runs on the maintenance queue, where
+    # it cannot delay media work.
+    app.conf.beat_schedule = {
+        "retention-sweep": {
+            "task": RETENTION_SWEEP_TASK,
+            "schedule": settings.retention_sweep_interval_seconds,
+            "options": {"queue": DEFAULT_QUEUE},
+        }
+    }
     app.conf[SETTINGS_KEY] = settings
     return app
 

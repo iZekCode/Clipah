@@ -21,6 +21,7 @@ from clipah.models import (
     Job,
     JobKind,
     JobStatus,
+    Project,
     QuotaReservationStatus,
     QuotaResource,
     WorkspaceQuotaReservation,
@@ -61,6 +62,15 @@ class QuotaExceededError(Exception):
         self.retry_after = retry_after
 
 
+class ProjectUnavailableError(Exception):
+    """Raised when work is admitted against a Project that is deleted or was never visible.
+
+    A soft-deleted Project stays recoverable, but it stops accepting work the moment it
+    is deleted: a job admitted afterwards would either be wasted or would resurrect data
+    the member asked to remove.
+    """
+
+
 class QuotaReservationNotFoundError(Exception):
     """Raised when a reconciliation names a reservation this Workspace does not hold."""
 
@@ -84,6 +94,7 @@ class JobAdmission:
     ) -> Job:
         """Count this Workspace's unfinished jobs under a lock, then create one more."""
         self._lock_workspace(workspace_id)
+        self._require_active_project(workspace_id=workspace_id, project_id=project_id)
         active = self._session.scalar(
             select(func.count())
             .select_from(Job)
@@ -103,6 +114,24 @@ class JobAdmission:
         self._session.add(job)
         self._session.flush()
         return job
+
+    def _require_active_project(self, *, workspace_id: UUID, project_id: UUID) -> None:
+        """Refuse work for a Project that is deleted, locking it against a concurrent delete.
+
+        The row is locked rather than merely read, so a delete arriving while admission
+        is deciding either loses the race or wins it completely.
+        """
+        project = self._session.scalar(
+            select(Project)
+            .where(
+                Project.workspace_id == workspace_id,
+                Project.id == project_id,
+                Project.archived_at.is_(None),
+            )
+            .with_for_update()
+        )
+        if project is None:
+            raise ProjectUnavailableError("project is unavailable")
 
     def _lock_workspace(self, workspace_id: UUID) -> None:
         """Serialize admission for one Workspace so two callers cannot read one free slot."""

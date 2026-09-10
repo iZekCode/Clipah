@@ -17,6 +17,7 @@ from clipah.api.dependencies import (
     auth_components_for,
     require_csrf,
     require_workspace,
+    settings_for,
 )
 from clipah.api.errors import ApiError
 from clipah.models import ProjectStatus, SourceKind
@@ -33,6 +34,7 @@ from clipah.projects.use_cases import (
     restore_project,
     soft_delete_project,
 )
+from clipah.retention.policy import RetentionPolicy
 from clipah.search.indexer import index_project
 from clipah.workspaces.models import WorkspaceAction
 
@@ -197,6 +199,7 @@ def delete(
             ProjectRepository(session),
             access=workspace.access,
             project_id=project_id,
+            policy=RetentionPolicy.from_settings(settings_for(request)),
             now=auth_components_for(request).now(),
         )
     except ProjectNotFoundError as error:

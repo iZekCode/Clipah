@@ -376,6 +376,7 @@ export * from './videoOverlay';
 export * from './visualIntentResponse';
 export * from './workspaceCollectionResponse';
 export * from './workspaceCreateRequest';
+export * from './workspaceDeletionResponse';
 export * from './workspaceKind';
 export * from './workspaceResponse';
 export * from './workspaceRole';

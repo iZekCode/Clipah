@@ -28,6 +28,7 @@ import type {
   MemberCollectionResponse,
   WorkspaceCollectionResponse,
   WorkspaceCreateRequest,
+  WorkspaceDeletionResponse,
   WorkspaceResponse,
   WorkspaceUpdateRequest
 } from '.././model';
@@ -209,6 +210,77 @@ export const useCreateApiV1WorkspacesPost = <TError = HTTPValidationError,
       > => {
 
       const mutationOptions = getCreateApiV1WorkspacesPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Close one Workspace, revoke what it can still act with, and schedule its removal.
+ * @summary Destroy
+ */
+export const getDestroyApiV1WorkspacesWorkspaceIdDeleteUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}`
+}
+
+export const destroyApiV1WorkspacesWorkspaceIdDelete = async (workspaceId: string, options?: RequestInit): Promise<WorkspaceDeletionResponse> => {
+  
+  return apiFetch<WorkspaceDeletionResponse>(getDestroyApiV1WorkspacesWorkspaceIdDeleteUrl(workspaceId),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+
+
+
+
+export const getDestroyApiV1WorkspacesWorkspaceIdDeleteMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>, TError,{workspaceId: string}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>, TError,{workspaceId: string}, TContext> => {
+
+const mutationKey = ['destroyApiV1WorkspacesWorkspaceIdDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>, {workspaceId: string}> = (props) => {
+          const {workspaceId} = props ?? {};
+
+          return  destroyApiV1WorkspacesWorkspaceIdDelete(workspaceId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DestroyApiV1WorkspacesWorkspaceIdDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>>
+    
+    export type DestroyApiV1WorkspacesWorkspaceIdDeleteMutationError = HTTPValidationError
+
+    /**
+ * @summary Destroy
+ */
+export const useDestroyApiV1WorkspacesWorkspaceIdDelete = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>, TError,{workspaceId: string}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof destroyApiV1WorkspacesWorkspaceIdDelete>>,
+        TError,
+        {workspaceId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getDestroyApiV1WorkspacesWorkspaceIdDeleteMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
@@ -487,3 +559,79 @@ export function useMembersApiV1WorkspacesWorkspaceIdMembersGet<TData = Awaited<R
 
 
 
+/**
+ * Bring back a deleted Workspace for its owner while recovery is still possible.
+
+Recovery cannot go through the ordinary Workspace dependency, because that
+dependency refuses to admit a deleted Workspace exists at all — which is exactly
+what it should do everywhere else.
+ * @summary Restore
+ */
+export const getRestoreApiV1WorkspacesWorkspaceIdRestorePostUrl = (workspaceId: string,) => {
+
+
+  
+
+  return `/api/v1/workspaces/${workspaceId}/restore`
+}
+
+export const restoreApiV1WorkspacesWorkspaceIdRestorePost = async (workspaceId: string, options?: RequestInit): Promise<WorkspaceResponse> => {
+  
+  return apiFetch<WorkspaceResponse>(getRestoreApiV1WorkspacesWorkspaceIdRestorePostUrl(workspaceId),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getRestoreApiV1WorkspacesWorkspaceIdRestorePostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>, TError,{workspaceId: string}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>, TError,{workspaceId: string}, TContext> => {
+
+const mutationKey = ['restoreApiV1WorkspacesWorkspaceIdRestorePost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>, {workspaceId: string}> = (props) => {
+          const {workspaceId} = props ?? {};
+
+          return  restoreApiV1WorkspacesWorkspaceIdRestorePost(workspaceId,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RestoreApiV1WorkspacesWorkspaceIdRestorePostMutationResult = NonNullable<Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>>
+    
+    export type RestoreApiV1WorkspacesWorkspaceIdRestorePostMutationError = HTTPValidationError
+
+    /**
+ * @summary Restore
+ */
+export const useRestoreApiV1WorkspacesWorkspaceIdRestorePost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>, TError,{workspaceId: string}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof restoreApiV1WorkspacesWorkspaceIdRestorePost>>,
+        TError,
+        {workspaceId: string},
+        TContext
+      > => {
+
+      const mutationOptions = getRestoreApiV1WorkspacesWorkspaceIdRestorePostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    

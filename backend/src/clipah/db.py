@@ -24,6 +24,7 @@ from clipah.models import (
 )
 from clipah.observability.metrics import observe
 from clipah.observability.tracing import span
+from clipah.retention.policy import RETENTION_ACTOR_ID
 
 
 class RuntimeRole(StrEnum):
@@ -241,6 +242,47 @@ def session_scope(
             "clipah.db.duration",
             (perf_counter() - started) * 1000,
             role=runtime_role.value,
+            outcome=outcome,
+        )
+
+
+@contextmanager
+def retention_session_scope(
+    *,
+    settings: Settings | None = None,
+    workspace_id: UUID,
+) -> Iterator[Session]:
+    """Commit one retention unit of work against a single Workspace.
+
+    Retention is the only caller allowed to remove append-only history, and the trigger
+    that protects that history admits the table owner alone, so this scope connects with
+    the migration principal rather than a runtime role. It is still not privileged in the
+    tenant sense: row-level security is forced on the owner too, so every statement is
+    confined to the one Workspace named here, and the authorization the delete path needs
+    is bound to this transaction and expires with it.
+    """
+    resolved_settings = settings or Settings()
+    database_url = resolved_settings.migration_database_url
+    if not database_url:
+        raise RuntimeError("CLIPAH_MIGRATION_DATABASE_URL is required for retention")
+
+    started = perf_counter()
+    outcome = "failed"
+    try:
+        with (
+            span("db.session", role="retention"),
+            Session(_engine_for_url(database_url)) as session,
+            session.begin(),
+        ):
+            _set_transaction_context(session, workspace_id=workspace_id, user_id=RETENTION_ACTOR_ID)
+            authorize_retention_mutation(session)
+            yield session
+        outcome = "committed"
+    finally:
+        observe(
+            "clipah.db.duration",
+            (perf_counter() - started) * 1000,
+            role="retention",
             outcome=outcome,
         )
 

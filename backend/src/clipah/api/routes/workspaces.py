@@ -16,25 +16,33 @@ from clipah.api.dependencies import (
     auth_components_for,
     require_csrf,
     require_workspace,
+    settings_for,
 )
 from clipah.api.errors import ApiError
+from clipah.api.request_id import request_id_for
 from clipah.models import (
     PublishingRolePolicy,
     WorkspaceKind,
     WorkspaceRole,
     WorkspaceStatus,
 )
+from clipah.retention.policy import RetentionPolicy
 from clipah.workspaces.models import (
     MemberSummary,
     PersonalWorkspaceExistsError,
     WorkspaceAction,
+    WorkspaceAlreadyDeletedError,
+    WorkspaceNotFoundError,
+    WorkspaceRecoveryWindowElapsedError,
     WorkspaceSummary,
 )
 from clipah.workspaces.use_cases import (
     create_workspace,
+    delete_workspace,
     describe_workspace,
     list_members,
     list_workspaces,
+    restore_workspace,
     update_workspace,
 )
 
@@ -94,6 +102,26 @@ class MemberCollectionResponse(BaseModel):
     members: tuple[MemberResponse, ...]
 
 
+class WorkspaceDeletionResponse(BaseModel):
+    """What a member is told when they delete a Workspace."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    workspace_id: UUID = Field(alias="workspaceId")
+    recoverable_until: datetime = Field(alias="recoverableUntil")
+    # Stated rather than implied: Clipah stops publishing and forgets its credentials,
+    # but a post already live on YouTube, Instagram, or TikTok stays there until the
+    # member removes it on that platform themselves.
+    published_posts_remain_on_providers: bool = Field(
+        default=True, alias="publishedPostsRemainOnProviders"
+    )
+
+    @field_serializer("recoverable_until")
+    def serialize_recoverable_until(self, value: datetime) -> str:
+        """Preserve the API's established explicit UTC-offset timestamp shape."""
+        return value.isoformat()
+
+
 ReadableWorkspace = Annotated[
     CurrentWorkspace, Depends(require_workspace(WorkspaceAction.WORKSPACE_READ))
 ]
@@ -102,6 +130,9 @@ ManageableWorkspace = Annotated[
 ]
 ListableMembers = Annotated[
     CurrentWorkspace, Depends(require_workspace(WorkspaceAction.MEMBER_READ))
+]
+DeletableWorkspace = Annotated[
+    CurrentWorkspace, Depends(require_workspace(WorkspaceAction.WORKSPACE_DELETE))
 ]
 
 
@@ -194,6 +225,61 @@ def members(session: DatabaseSession, workspace: ListableMembers) -> MemberColle
             for member in list_members(session, workspace_id=workspace.access.workspace_id)
         )
     )
+
+
+@router.delete(
+    "/workspaces/{workspace_id}",
+    response_model=WorkspaceDeletionResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def destroy(
+    request: Request, session: DatabaseSession, workspace: DeletableWorkspace
+) -> WorkspaceDeletionResponse:
+    """Close one Workspace, revoke what it can still act with, and schedule its removal."""
+    try:
+        deletion = delete_workspace(
+            session,
+            access=workspace.access,
+            policy=RetentionPolicy.from_settings(settings_for(request)),
+            request_id=request_id_for(request),
+            now=auth_components_for(request).now(),
+        )
+    except WorkspaceAlreadyDeletedError as error:
+        raise ApiError(status_code=409, code="CONFLICT") from error
+    return WorkspaceDeletionResponse(
+        workspaceId=deletion.workspace_id, recoverableUntil=deletion.recoverable_until
+    )
+
+
+@router.post(
+    "/workspaces/{workspace_id}/restore",
+    response_model=WorkspaceResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def restore(
+    request: Request,
+    workspace_id: UUID,
+    session: DatabaseSession,
+    user: CurrentUserDependency,
+) -> WorkspaceResponse:
+    """Bring back a deleted Workspace for its owner while recovery is still possible.
+
+    Recovery cannot go through the ordinary Workspace dependency, because that
+    dependency refuses to admit a deleted Workspace exists at all — which is exactly
+    what it should do everywhere else.
+    """
+    try:
+        restored = restore_workspace(
+            session,
+            user_id=user.user_id,
+            workspace_id=workspace_id,
+            now=auth_components_for(request).now(),
+        )
+    except WorkspaceNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except WorkspaceRecoveryWindowElapsedError as error:
+        raise ApiError(status_code=409, code="CONFLICT") from error
+    return _workspace_body(restored)
 
 
 def _workspace_body(summary: WorkspaceSummary) -> WorkspaceResponse:

@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-43 have landed. **Task 44 is complete and awaiting the
-owner's commit.** Task 45 follows.
+**Current position:** Tasks 1-44 have landed. **Task 45 is complete and awaiting the
+owner's commit.** Task 46 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -94,8 +94,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 
 | # | Task | Status |
 | --- | --- | --- |
-| 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (uncommitted) |
-| 45 | Implement retention, Workspace/project recovery, and account deletion | `[ ]` |
+| 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (`3b61f43`) |
+| 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (uncommitted) |
 | 46 | Containerize local and production processes with pinned media tooling | `[ ]` |
 | 47 | Add CI, security scanning, load tests, and recovery drills | `[ ]` |
 | 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[ ]` |
@@ -2645,6 +2645,83 @@ checkbox.** They are recorded here rather than quietly built:
   bytes and speed ratio, but nothing here changes when the search index is rebuilt, so a
   clip's `exported` state can still lag until the next reindex.
 
+### Task 45 — Retention, recovery, and account deletion
+
+Complete and awaiting the owner's commit.
+
+**Nothing is deleted except through a tombstone, and a tombstone is the only thing that
+says what may go.** It names one Workspace, one entity, one storage prefix, and the
+instant that entity becomes eligible. `retention/policy.py` holds every duration Section 7
+gives — 24 hours for an abandoned upload, a rejected generated draft, and a stock preview
+nobody chose; 7 days for a failed Job's working directory; 30 days for a soft-deleted
+Project, a deleted Workspace, and a deleted account's identity data; nothing at all for a
+revoked source connection — read from settings so an operator shortens retention in the
+environment rather than in a worker module.
+
+`contains_key` is the rule the whole subsystem rests on: a prefix always ends in a
+separator, a key must lie strictly inside it, and a traversal segment is refused rather
+than resolved. Every key a provider returns is checked against it before deletion, because
+a listing is evidence about the world rather than an instruction — the test that proves
+this uses a store that answers with a key from another Workspace, and removing the check
+fails exactly that test.
+
+`retention/tasks.py` runs the sweep: scan a Workspace for what has expired, claim a
+bounded batch with `SELECT ... FOR UPDATE SKIP LOCKED`, then discharge each tombstone.
+Media goes before rows, because the row is the only remaining record of where an object
+lives; losing it while the object survives leaves storage nobody can find. Listings are
+bounded to one page per pass, so a large Workspace finishes across several sweeps with its
+tombstone left open. A Project or Workspace with an unfinished Job or an unsettled
+Publication defers rather than purging. A storage outage records `failure_count` and
+`RETENTION_STORAGE_UNAVAILABLE` against the same tombstone, keeps the rows, and never
+widens the target; after the configured number of failures the tombstone stops being
+claimed and waits for an operator. The sweep is scheduled through Celery beat on the
+`maintenance` queue, so nobody requests it and no message decides what it may delete.
+
+Row deletion follows the schema's own dependency order read backwards, so a foreign key
+cannot be violated by a table this task never thought about. Project scope is declared per
+table — tables without a `project_id` reach it through the parent they do carry — and a
+unit test asserts every tenant table is either scoped or explicitly out of scope, so a
+table added by a later task fails the test rather than surviving a purge unnoticed. A
+Workspace purge keeps exactly five tables: audit events, tombstones, Membership rows and
+their history, and the quota ledger. The Workspace row itself survives, marked deleted.
+
+**Retention connects as the migration principal**, because the trigger protecting
+append-only history admits the table owner alone and retention is the one caller allowed
+to remove that history. It is not privileged as a tenant: row-level security is forced on
+the owner too, so every statement is confined to the Workspace its transaction declared,
+the delete authorization is bound to that transaction, and the actor it declares
+(`RETENTION_ACTOR_ID`) belongs to no person and holds no Membership.
+
+Three surfaces changed around the engine:
+
+- **Projects.** Deletion schedules the tombstone and recovery withdraws it, so recovery and
+  retention read one date rather than two. Admission now locks the Project row and refuses
+  work for a deleted one, which is how "hidden immediately, recoverable for thirty days"
+  becomes true for jobs as well as for reads.
+- **Workspaces.** `DELETE /workspaces/{id}` and `POST /workspaces/{id}/restore` exist for
+  the first time. Deletion revokes every source connection and Social Account, erases each
+  OAuth Grant's material whether or not the provider could be reached, cancels unpublished
+  Publications, writes the audit event, and schedules the tombstone. Its response states
+  plainly that already-published posts stay on their platforms. Recovery needs its own
+  authorization path, because the ordinary Workspace dependency refuses to admit a deleted
+  Workspace exists — which is exactly what it should do everywhere else.
+- **Accounts.** `DELETE /account` requires a recent authentication and is refused with
+  `LAST_OWNER` while the caller is the only owner of a live Workspace, including their
+  personal one. Once accepted it revokes every Session, removes every Membership, cancels
+  the unpublished Publications that person approved, and marks the account deleted so the
+  same Google identity cannot sign in again. Thirty days later the purge deletes their
+  sign-in identities and replaces their name and address with a placeholder; the `users`
+  row survives, because Projects, audit events, and Membership history reference it, and
+  an audit trail that cannot name its actor is not an audit trail.
+
+Two supporting changes were needed. `ObjectStore` gained a bounded `list_objects`, which
+it deliberately lacked until now, and migration `0022` grants the API `DELETE` on
+`retention_tombstones` — recovery inside the window means the deletion did not happen, so
+the pending row is withdrawn; the application only ever withdraws an undischarged one.
+
+`docs/operations/data-retention.md` records the windows, the sweep, the deferral and
+failure behaviour, the three deletion flows, and the credentials retention runs with.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -2689,7 +2766,7 @@ oversight.
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Enabling authenticated YouTube import in production. The feature is built and tested, and `docs/security/youtube-import.md` records four open items — legal approval, data retention, incident response, and whether production wraps data keys with a managed key — each of which blocks enablement | the repository owner |
 | A managed key-management service client for wrapping data keys. Task 36 adds a social-specific envelope port, key references/versions, historical-key rotation, and fail-closed behavior; local deployments still derive wrapping keys from configured deployment material | Task 46, with production infrastructure wiring |
-| Sweeping expired source connections. A connection past its window is reported as expired and refuses every lease, but the row and its material are removed only when a member revokes it | Task 45, with retention |
+| ~~Sweeping expired source connections~~ | done in Task 45: the sweep tombstones every revoked or expired connection with no window at all, and its purge deletes the stored secret |
 | A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
 | ~~The Playwright member-removal scenario~~ | done in Task 35 |
@@ -2697,8 +2774,8 @@ oversight.
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
 | Replacing `nixpacks.toml` with per-process Railway deployment configuration for the frontend and backend | Task 46 |
-| Workspace delete and restore endpoints | Task 45 |
-| Reconcile provider multipart uploads orphaned by a crash or late database failure before a durable upload row exists | Task 45 — Task 8 supplies the `maintenance` queue this sweep will run on |
+| ~~Workspace delete and restore endpoints~~ | done in Task 45 |
+| Reconcile provider multipart uploads orphaned before a durable upload row exists. Task 45 expires every abandoned upload it has a row for, aborting it at the provider as well as deleting its key, but an upload created at the provider before the row was committed leaves nothing for a tombstone to name | whichever task adds a provider-side listing reconciliation; it needs a bucket-wide sweep, which is precisely what retention is built never to do |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |
 | Remaining metered job-creation routes that map `QuotaExceededError` onto the HTTP envelope; Task 10 now maps source-import concurrency admission | Tasks 11-16 |
 | Real stage runners for remaining `JobKind` values; Task 10 now registers `SOURCE_IMPORT`, while unsupported remaining kinds fail with `JOB_KIND_UNSUPPORTED` | Tasks 11-16 and later pipeline tasks |

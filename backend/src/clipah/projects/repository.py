@@ -17,6 +17,8 @@ from clipah.projects.schemas import (
     ProjectRestoreResult,
     ProjectSummary,
 )
+from clipah.retention.policy import RetentionEntityKind
+from clipah.retention.use_cases import cancel_tombstone, schedule_tombstone
 
 
 class ProjectRepository:
@@ -71,6 +73,28 @@ class ProjectRepository:
         project.updated_at = now
         self._session.flush()
         return _summary(project)
+
+    def schedule_retention(
+        self, *, workspace_id: UUID, project_id: UUID, storage_prefix: str, eligible_at: datetime
+    ) -> None:
+        """Record when this Project's media and rows stop being recoverable."""
+        schedule_tombstone(
+            self._session,
+            workspace_id=workspace_id,
+            entity_kind=RetentionEntityKind.PROJECT,
+            entity_id=project_id,
+            storage_prefix=storage_prefix,
+            eligible_at=eligible_at,
+        )
+
+    def cancel_retention(self, *, workspace_id: UUID, project_id: UUID) -> None:
+        """Withdraw a scheduled purge for a Project a member brought back."""
+        cancel_tombstone(
+            self._session,
+            workspace_id=workspace_id,
+            entity_kind=RetentionEntityKind.PROJECT,
+            entity_id=project_id,
+        )
 
     def archive(self, *, workspace_id: UUID, project_id: UUID, now: datetime) -> bool:
         """Soft-delete one active Project, reporting whether it was visible to this Workspace."""

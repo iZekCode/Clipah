@@ -80,3 +80,72 @@ def test_s3_sign_download_maps_provider_failures_to_a_sanitized_storage_error() 
 
     assert str(captured.value) == "object store signing unavailable"
     assert "secret" not in str(captured.value)
+
+
+class PagingS3Client:
+    """Return one bounded page of keys per request, exactly as S3 does."""
+
+    def __init__(self, keys: list[str]) -> None:
+        """Hold the keys this bucket would report under any prefix."""
+        self.keys = keys
+        self.requests: list[dict[str, Any]] = []
+
+    def list_objects_v2(self, **arguments: Any) -> dict[str, Any]:
+        """Answer one page and hand back a token only while keys remain."""
+        self.requests.append(arguments)
+        limit = int(arguments["MaxKeys"])
+        start = int(arguments.get("ContinuationToken", 0))
+        page = [key for key in self.keys if key.startswith(arguments["Prefix"])][
+            start : start + limit
+        ]
+        response: dict[str, Any] = {"Contents": [{"Key": key} for key in page]}
+        if start + limit < len(self.keys):
+            response["IsTruncated"] = True
+            response["NextContinuationToken"] = str(start + limit)
+        return response
+
+
+@pytest.mark.unit
+def test_s3_listing_is_bounded_and_resumes_where_the_previous_page_ended() -> None:
+    """Retention must walk a large prefix in pages rather than pulling a whole Workspace."""
+    client = PagingS3Client([f"workspaces/w/projects/p/source/{index}" for index in range(5)])
+    store = S3ObjectStore(bucket="private", client=client)
+
+    first = store.list_objects(prefix="workspaces/w/", limit=2)
+    second = store.list_objects(prefix="workspaces/w/", limit=2, after=first.next_token)
+
+    assert len(first.keys) == 2
+    assert first.next_token is not None
+    assert second.keys == ("workspaces/w/projects/p/source/2", "workspaces/w/projects/p/source/3")
+    assert [request["MaxKeys"] for request in client.requests] == [2, 2]
+
+
+@pytest.mark.unit
+def test_s3_listing_reports_the_end_of_a_prefix_without_a_further_token() -> None:
+    """A sweep stops when the store says there is nothing left, not after a fixed count."""
+    client = PagingS3Client(["workspaces/w/projects/p/source/0"])
+    store = S3ObjectStore(bucket="private", client=client)
+
+    listing = store.list_objects(prefix="workspaces/w/", limit=100)
+
+    assert listing.keys == ("workspaces/w/projects/p/source/0",)
+    assert listing.next_token is None
+
+
+class UnavailableListingS3Client:
+    """Model a provider that fails while enumerating a prefix."""
+
+    def list_objects_v2(self, **_arguments: Any) -> dict[str, Any]:
+        """Raise a provider diagnostic that must never reach a caller."""
+        raise RuntimeError("secret provider diagnostic")
+
+
+@pytest.mark.unit
+def test_s3_listing_maps_provider_failures_to_a_sanitized_storage_error() -> None:
+    """A failed listing is a retryable outage, not an empty prefix that invites deletion."""
+    store = S3ObjectStore(bucket="private", client=UnavailableListingS3Client())
+
+    with pytest.raises(ObjectStoreUnavailableError) as captured:
+        store.list_objects(prefix="workspaces/w/", limit=10)
+
+    assert "secret" not in str(captured.value)

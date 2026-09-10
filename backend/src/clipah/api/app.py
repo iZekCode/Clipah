@@ -17,6 +17,7 @@ from starlette.responses import Response
 from clipah.api.dependencies import AuthComponents, default_auth_components
 from clipah.api.errors import ApiError, error_response
 from clipah.api.request_id import REQUEST_ID_HEADER, assign_request_id, request_id_for
+from clipah.api.routes import account as account_routes
 from clipah.api.routes import analysis as analysis_routes
 from clipah.api.routes import assets as asset_routes
 from clipah.api.routes import auth as auth_routes
@@ -236,6 +237,7 @@ def create_app(
         return health_response()
 
     app.include_router(auth_routes.router)
+    app.include_router(account_routes.router)
     app.include_router(workspace_routes.router)
     app.include_router(workspace_membership_routes.router)
     app.include_router(project_routes.router)

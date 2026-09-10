@@ -32,6 +32,22 @@ def job_workspace(job_id: UUID) -> Iterator[Path]:
         _cleanup_workspace(workspace, root)
 
 
+def remove_job_workspaces(job_id: UUID) -> int:
+    """Remove any working directory one Job left behind, and nothing else.
+
+    A workspace normally disappears with the context manager that made it; one survives
+    only when the worker holding it died. Retention removes those, but the target is
+    still exactly the directories this Job's identifier prefixes: the root itself and
+    every other Job's work are out of reach by construction.
+    """
+    root = _configured_root()
+    removed = 0
+    for candidate in root.glob(f"{job_id}-*"):
+        _cleanup_workspace(candidate, root)
+        removed += 1
+    return removed
+
+
 def _configured_root() -> Path:
     """Create and validate the one root allowed to contain Job workspaces."""
     configured = Path(os.environ.get(WORKSPACE_ROOT_ENV, DEFAULT_WORKSPACE_ROOT)).absolute()
