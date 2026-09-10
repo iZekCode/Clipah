@@ -11,7 +11,7 @@ from uuid import UUID
 from sqlalchemy.orm import Session
 
 from clipah.assets.source_validation import validate_youtube_url
-from clipah.assets.storage import S3ObjectStore, StoredObject
+from clipah.assets.storage import StoredObject, observed_s3_store
 from clipah.assets.youtube import (
     NormalizedYouTubeUrl,
     SourceImporter,
@@ -255,7 +255,7 @@ def production_source_importer(settings: Settings) -> SourceImporter:
         or settings.object_store_secret_access_key is None
     ):
         raise RuntimeError("source-import worker requires configured object storage")
-    store = S3ObjectStore(
+    store = observed_s3_store(
         bucket=settings.object_store_bucket,
         endpoint_url=settings.object_store_endpoint,
         access_key_id=settings.object_store_access_key_id.get_secret_value(),

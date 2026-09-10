@@ -9,9 +9,14 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from clipah.models import Publication
+from clipah.observability.logging import get_logger, log_context
+from clipah.observability.metrics import observe
 from clipah.publishing.models import PublicationStatus
 from clipah.publishing.outbox import PublicationOutboxService
+from clipah.publishing.repository import publication_provider
 from clipah.publishing.state_machine import transition
+
+_logger = get_logger(__name__)
 
 
 class PublicationScheduler:
@@ -40,6 +45,7 @@ class PublicationScheduler:
         )
         outbox = PublicationOutboxService(self._session)
         for publication in publications:
+            _record_claim(self._session, publication, now=now)
             publication.status = transition(
                 current=publication.status, target=PublicationStatus.PREFLIGHTING
             ).current
@@ -54,3 +60,28 @@ class PublicationScheduler:
             )
         self._session.flush()
         return [publication.id for publication in publications]
+
+
+def _record_claim(session: Session, publication: Publication, *, now: datetime) -> None:
+    """Measure how late the scheduler was to a destination that was already due.
+
+    Lateness here is the difference between a member's chosen time and the time their
+    video actually starts being published, which is the only latency they can see.
+    """
+    scheduled_for = publication.scheduled_for
+    if scheduled_for is None:
+        return
+    late_ms = (now - scheduled_for).total_seconds() * 1000
+    provider = publication_provider(session, publication)
+    observe("clipah.scheduler.latency", max(late_ms, 0.0), provider=provider)
+    with log_context(
+        workspaceId=publication.workspace_id,
+        publicationId=publication.id,
+        batchId=publication.batch_id,
+    ):
+        _logger.info(
+            "publication.claimed",
+            provider=provider,
+            latencyMs=round(late_ms, 3),
+            attempt=publication.attempt_count,
+        )

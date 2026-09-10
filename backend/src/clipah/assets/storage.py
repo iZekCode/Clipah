@@ -4,10 +4,15 @@ from __future__ import annotations
 
 import base64
 import hashlib
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from time import perf_counter
 from typing import Any, BinaryIO, Protocol
+
+from clipah.observability.metrics import count, observe
+from clipah.observability.tracing import span
 
 
 @dataclass(frozen=True)
@@ -87,6 +92,115 @@ class ObjectStore(Protocol):
 
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Sign a time-bounded private object download."""
+
+
+class ObservedObjectStore:
+    """Time and count every object-store operation without naming a single object.
+
+    The wrapper exists because storage failures are slow rather than loud: an operator
+    needs the latency and the failure rate before anybody reports a stalled upload. The
+    key is deliberately never recorded, since it is the one part of the operation that
+    identifies a Workspace's media.
+    """
+
+    def __init__(self, inner: ObjectStore) -> None:
+        """Wrap one adapter, keeping its contract exactly."""
+        self._inner = inner
+
+    def create_multipart_upload(self, *, key: str, content_type: str) -> MultipartUpload:
+        """Create one private multipart upload for a server-generated key."""
+        with _observed("create_multipart_upload"):
+            return self._inner.create_multipart_upload(key=key, content_type=content_type)
+
+    def put_file(
+        self,
+        *,
+        key: str,
+        content_type: str,
+        file: BinaryIO,
+        sha256: bytes | None = None,
+    ) -> StoredObject:
+        """Upload one exact server-selected stream without any prefix or listing operation."""
+        with _observed("put_file"):
+            stored = self._inner.put_file(
+                key=key, content_type=content_type, file=file, sha256=sha256
+            )
+        count("clipah.bytes.uploaded", stored.content_length, operation="put_file")
+        return stored
+
+    def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
+        """Sign exactly one numbered part belonging to the recorded upload and key."""
+        with _observed("sign_upload_part"):
+            return self._inner.sign_upload_part(
+                upload_id=upload_id, key=key, part_number=part_number
+            )
+
+    def complete_multipart_upload(
+        self, *, upload_id: str, key: str, parts: list[CompletedPart]
+    ) -> StoredObject:
+        """Complete recorded parts and return provider-neutral final object metadata."""
+        with _observed("complete_multipart_upload"):
+            stored = self._inner.complete_multipart_upload(
+                upload_id=upload_id, key=key, parts=parts
+            )
+        count("clipah.bytes.uploaded", stored.content_length, operation="multipart")
+        return stored
+
+    def abort_multipart_upload(self, *, upload_id: str, key: str) -> None:
+        """Abort only the exact provider upload and object key recorded by Clipah."""
+        with _observed("abort_multipart_upload"):
+            self._inner.abort_multipart_upload(upload_id=upload_id, key=key)
+
+    def head_object(self, *, key: str) -> StoredObject:
+        """Read final object metadata without exposing provider payload types."""
+        with _observed("head_object"):
+            return self._inner.head_object(key=key)
+
+    def delete_object(self, *, key: str) -> None:
+        """Delete one exact object after a failed final metadata validation."""
+        with _observed("delete_object"):
+            self._inner.delete_object(key=key)
+
+    def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
+        """Sign a time-bounded private object download."""
+        with _observed("sign_download"):
+            return self._inner.sign_download(key=key, expires_in=expires_in)
+
+
+def observed_s3_store(
+    *,
+    bucket: str,
+    endpoint_url: str | None,
+    access_key_id: str,
+    secret_access_key: str,
+) -> ObjectStore:
+    """Build the production adapter every process uses, already instrumented."""
+    return ObservedObjectStore(
+        S3ObjectStore(
+            bucket=bucket,
+            endpoint_url=endpoint_url,
+            access_key_id=access_key_id,
+            secret_access_key=secret_access_key,
+        )
+    )
+
+
+@contextmanager
+def _observed(operation: str) -> Iterator[None]:
+    """Record one storage operation's duration and how it ended."""
+    started = perf_counter()
+    outcome = "failed"
+    try:
+        with span("storage.operation", operation=operation):
+            yield
+        outcome = "succeeded"
+    finally:
+        observe(
+            "clipah.storage.duration",
+            (perf_counter() - started) * 1000,
+            operation=operation,
+            outcome=outcome,
+        )
 
 
 class S3ObjectStore:

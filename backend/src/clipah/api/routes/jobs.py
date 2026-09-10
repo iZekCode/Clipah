@@ -44,6 +44,7 @@ from clipah.jobs.use_cases import (
     request_job_cancellation,
     workspace_job_events,
 )
+from clipah.observability.metrics import count
 from clipah.workspaces.models import WorkspaceAction
 
 router = APIRouter(prefix="/api/v1", tags=["jobs"])
@@ -161,6 +162,7 @@ def _event_frames(
     subscription = notifier.subscribe(workspace_id=workspace_id, job_id=job_id)
     heartbeat = settings.job_event_heartbeat_seconds
     quiet_since = time.monotonic()
+    count("clipah.sse.connections", 1, outcome="opened")
     try:
         while True:
             events = _read(
@@ -184,6 +186,7 @@ def _event_frames(
                 yield ": heartbeat\n\n"
     finally:
         subscription.close()
+        count("clipah.sse.connections", -1, outcome="closed")
 
 
 def _workspace_event_frames(
@@ -203,6 +206,7 @@ def _workspace_event_frames(
     subscription = notifier.subscribe_workspace(workspace_id=workspace_id)
     heartbeat = settings.job_event_heartbeat_seconds
     quiet_since = time.monotonic()
+    count("clipah.sse.connections", 1, outcome="opened")
     try:
         while True:
             events = _read_workspace(
@@ -222,6 +226,7 @@ def _workspace_event_frames(
                 yield ": heartbeat\n\n"
     finally:
         subscription.close()
+        count("clipah.sse.connections", -1, outcome="closed")
 
 
 def _read_workspace(

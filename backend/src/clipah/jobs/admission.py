@@ -25,6 +25,7 @@ from clipah.models import (
     QuotaResource,
     WorkspaceQuotaReservation,
 )
+from clipah.observability.metrics import count
 
 ACTIVE_JOB_STATUSES = (
     JobStatus.QUEUED,
@@ -134,6 +135,12 @@ class QuotaLedger:
         period_start = _period_start(now)
         limit = Decimal(self._limits[resource])
         if self._charged(workspace_id, resource, period_start) + units > limit:
+            count(
+                "clipah.provider.quota",
+                provider="clipah",
+                quotaResource=resource.value,
+                outcome="refused",
+            )
             raise QuotaExceededError(resource, retry_after=_period_end(period_start) - now)
         reservation = WorkspaceQuotaReservation(
             id=uuid4(),

@@ -15,6 +15,7 @@ from pydantic import BaseModel, ConfigDict, Field, SecretStr, field_validator
 from starlette.responses import Response
 
 from clipah.api.errors import ApiError
+from clipah.observability.metrics import count
 
 TIKTOK_WEBHOOK_INVALID_CODE = "TIKTOK_WEBHOOK_INVALID"
 TIKTOK_WEBHOOK_REPLAY_SECONDS = 300
@@ -141,8 +142,10 @@ async def receive_tiktok_webhook(request: Request) -> Response:
     try:
         event = verifier.verify(headers=request.headers, body=body, now=clock())
     except TikTokWebhookVerificationError:
+        count("clipah.webhook.rejected", provider="tiktok", reason="verification_failed")
         raise ApiError(status_code=400, code=TIKTOK_WEBHOOK_INVALID_CODE) from None
     await sink(event=event)
+    count("clipah.webhook.accepted", provider="tiktok", outcome="recorded")
     return Response(status_code=204)
 
 

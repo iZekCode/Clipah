@@ -12,7 +12,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from clipah.models import Publication, PublicationAttempt
+from clipah.observability.metrics import count, observe, record_publication_outcome
 from clipah.publishing.models import PublicationStatus
+from clipah.publishing.repository import publication_provider
 from clipah.publishing.state_machine import transition
 
 STUCK_TRANSFERRING_AFTER = timedelta(hours=1)
@@ -123,6 +125,10 @@ def aggregate_batch(session: Session, *, workspace_id: UUID, batch_id: UUID) -> 
         state = BatchState.FAILED
     else:
         state = BatchState.PARTIALLY_FAILED
+    if state is BatchState.PARTIALLY_FAILED and published:
+        providers = {publication_provider(session, item) for item in publications}
+        for provider in sorted(providers):
+            count("clipah.publication.partial_success", provider=provider)
     return BatchAggregate(
         batch_id=batch_id,
         state=state,
@@ -145,7 +151,7 @@ def find_stuck_publications(
     """Claim a bounded page of destinations that have waited longer than they should."""
     if limit < 1:
         return ()
-    return tuple(
+    stuck = tuple(
         session.scalars(
             select(Publication)
             .where(
@@ -164,6 +170,26 @@ def find_stuck_publications(
             .limit(limit)
             .with_for_update(skip_locked=True)
         )
+    )
+    for publication in stuck:
+        _record_stuck_age(session, publication, now=now)
+    return stuck
+
+
+def _record_stuck_age(session: Session, publication: Publication, *, now: datetime) -> None:
+    """Publish how old a stuck destination is, which is what an alert threshold reads."""
+    since = (
+        publication.processing_at
+        if publication.status is PublicationStatus.PROCESSING
+        else publication.dispatched_at
+    )
+    if since is None:
+        return
+    observe(
+        "clipah.publication.stuck_age",
+        max((now - since).total_seconds(), 0.0),
+        provider=publication_provider(session, publication),
+        status=publication.status.value,
     )
 
 
@@ -223,6 +249,7 @@ def reconcile_publication(
     publication.checkpoint_metadata = checkpoint
     _record(session, publication=publication, observation=observation, now=now)
     session.flush()
+    _record_reconciled_outcome(session, publication, now=now)
     return ReconciliationResult(
         publication_id=publication.id,
         observed=observation.state,
@@ -331,12 +358,31 @@ def _reconcile_retryable(
         publication.checkpoint_metadata = checkpoint
     _record(session, publication=publication, observation=observation, now=now)
     session.flush()
+    _record_reconciled_outcome(session, publication, now=now)
     return ReconciliationResult(
         publication_id=publication.id,
         observed=observation.state,
         previous_status=previous,
         status=publication.status,
         changed=publication.status is not previous,
+    )
+
+
+def _record_reconciled_outcome(
+    session: Session, publication: Publication, *, now: datetime
+) -> None:
+    """Report a destination whose end was decided by the provider rather than by us."""
+    if publication.status not in _TERMINAL:
+        return
+    approved_at = publication.approved_at
+    published = publication.status is PublicationStatus.PUBLISHED
+    record_publication_outcome(
+        provider=publication_provider(session, publication),
+        outcome="reconciled_published" if published else "reconciled_failed",
+        code=publication.normalized_error_code,
+        seconds_to_publish=(
+            (now - approved_at).total_seconds() if published and approved_at is not None else None
+        ),
     )
 
 

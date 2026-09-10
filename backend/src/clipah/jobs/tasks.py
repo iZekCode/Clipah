@@ -7,6 +7,7 @@ from collections.abc import Callable, Iterator, MutableMapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from functools import lru_cache
+from time import perf_counter
 from uuid import UUID
 
 from celery import Task, signals
@@ -30,10 +31,19 @@ from clipah.jobs.events import (
     PollingJobEventNotifier,
     RedisJobEventNotifier,
 )
-from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
+from clipah.jobs.models import (
+    JobCancelledError,
+    JobContext,
+    JobSnapshot,
+    RetryableJobError,
+    TerminalJobError,
+)
 from clipah.jobs.pipeline import advance_after
 from clipah.jobs.use_cases import cancel_job, complete_job_after_runner, fail_job, start_job
 from clipah.models import JobKind, JobStatus
+from clipah.observability.logging import get_logger, log_context
+from clipah.observability.metrics import count, observe
+from clipah.observability.tracing import span
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import WorkspaceAction
 
@@ -43,6 +53,7 @@ celery_app = create_celery_app()
 UNSUPPORTED_KIND_CODE = "JOB_KIND_UNSUPPORTED"
 INTERNAL_ERROR_CODE = "INTERNAL_ERROR"
 _STAGE_RUNNERS: dict[JobKind, StageRunner] = {}
+_logger = get_logger(__name__)
 
 
 def stage_runners() -> MutableMapping[JobKind, StageRunner]:
@@ -89,10 +100,65 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
         attempt=snapshot.attempt,
         settings=settings,
     )
+    with log_context(
+        jobId=job,
+        workspaceId=workspace,
+        projectId=snapshot.project_id,
+        jobKind=snapshot.kind.value,
+        attempt=snapshot.attempt,
+    ):
+        _record_queue_latency(snapshot)
+        count("clipah.jobs.active", 1, jobKind=snapshot.kind.value)
+        try:
+            with span("job.stage", jobKind=snapshot.kind.value):
+                return _run_stage(self, settings, notifier, context, snapshot)
+        finally:
+            count("clipah.jobs.active", -1, jobKind=snapshot.kind.value)
+
+
+def _record_queue_latency(snapshot: JobSnapshot) -> None:
+    """Measure how long this job waited for a worker, which is what saturation looks like."""
+    if snapshot.started_at is None:
+        return
+    waited_ms = (snapshot.started_at - snapshot.created_at).total_seconds() * 1000
+    observe(
+        "clipah.queue.latency",
+        max(waited_ms, 0.0),
+        jobKind=snapshot.kind.value,
+        queue=queue_for(snapshot.kind),
+    )
+
+
+def _record_stage(snapshot: JobSnapshot, *, outcome: str, code: str, started: float) -> None:
+    """Record how one stage attempt ended, and how long it took to end that way."""
+    duration_ms = (perf_counter() - started) * 1000
+    observe("clipah.stage.duration", duration_ms, jobKind=snapshot.kind.value, outcome=outcome)
+    count("clipah.stage.outcome", jobKind=snapshot.kind.value, outcome=outcome, code=code)
+    _logger.info(
+        "job.stage.finished",
+        outcome=outcome,
+        code=code,
+        durationMs=round(duration_ms, 3),
+    )
+
+
+def _run_stage(
+    self: Task,
+    settings: Settings,
+    notifier: JobEventNotifier,
+    context: JobContext,
+    snapshot: JobSnapshot,
+) -> str:
+    """Run one registered stage and record how the attempt ended."""
+    job = context.job_id
+    workspace = context.workspace_id
+    user = context.user_id
+    started = perf_counter()
     runner = stage_runners().get(snapshot.kind)
     if runner is None:
         _end_attempt(settings, context, error_code=UNSUPPORTED_KIND_CODE, retryable=False)
         _announce(notifier, workspace_id=workspace, job_id=job)
+        _record_stage(snapshot, outcome="failed", code=UNSUPPORTED_KIND_CODE, started=started)
         raise RuntimeError(f"no stage runner is registered for {snapshot.kind.value}")
 
     try:
@@ -101,25 +167,30 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
         with _transaction(settings, workspace, user) as session:
             cancel_job(session, workspace_id=workspace, job_id=job, now=_now())
         _announce(notifier, workspace_id=workspace, job_id=job)
+        _record_stage(snapshot, outcome="cancelled", code="CANCELLED", started=started)
         return JobStatus.CANCELED.value
     except RetryableJobError as error:
         _end_attempt(settings, context, error_code=_code_of(error), retryable=True)
         _announce(notifier, workspace_id=workspace, job_id=job)
         try:
+            _record_stage(snapshot, outcome="retried", code=_code_of(error), started=started)
             raise self.retry(countdown=retry_countdown(snapshot.attempt)) from error
         except MaxRetriesExceededError:
             # A job that keeps its Workspace's concurrency slot forever is worse than
             # one that ends honestly, so an exhausted budget is a permanent failure.
             _end_attempt(settings, context, error_code=_code_of(error), retryable=False)
             _announce(notifier, workspace_id=workspace, job_id=job)
+            _record_stage(snapshot, outcome="exhausted", code=_code_of(error), started=started)
             raise
     except TerminalJobError as error:
         _end_attempt(settings, context, error_code=_code_of(error), retryable=False)
         _announce(notifier, workspace_id=workspace, job_id=job)
+        _record_stage(snapshot, outcome="failed", code=_code_of(error), started=started)
         raise
     except Exception:
         _end_attempt(settings, context, error_code=INTERNAL_ERROR_CODE, retryable=False)
         _announce(notifier, workspace_id=workspace, job_id=job)
+        _record_stage(snapshot, outcome="failed", code=INTERNAL_ERROR_CODE, started=started)
         raise
 
     with _transaction(settings, workspace, user) as session:
@@ -152,6 +223,7 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
             job_id=following_id, workspace_id=workspace, user_id=user, kind=following_kind
         )
         _announce(notifier, workspace_id=workspace, job_id=following_id)
+    _record_stage(snapshot, outcome="succeeded", code="OK", started=started)
     return completed.status.value
 
 

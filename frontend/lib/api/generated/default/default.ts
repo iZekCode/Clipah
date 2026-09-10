@@ -421,7 +421,7 @@ export function useLiveHealthLiveGet<TData = Awaited<ReturnType<typeof liveHealt
 
 
 /**
- * Confirm that all mandatory infrastructure adapters are reachable.
+ * Confirm that all mandatory adapters are reachable and no version has retired.
  * @summary Ready
  */
 export const getReadyHealthReadyGetUrl = () => {

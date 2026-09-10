@@ -19,13 +19,14 @@ from sqlalchemy.orm import Session
 from clipah.assets.storage import (
     ObjectStore,
     ObjectStoreUnavailableError,
-    S3ObjectStore,
     StoredObject,
+    observed_s3_store,
 )
 from clipah.config import Settings
 from clipah.db import RuntimeRole, session_scope
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.models import Asset, AssetKind, Transcript
+from clipah.observability.usage import ProviderCallRecord, record_provider_usage
 from clipah.transcripts.assemblyai_adapter import AssemblyAITranscriber
 from clipah.transcripts.models import JsonValue, TranscriptResult
 from clipah.transcripts.provider import (
@@ -247,6 +248,21 @@ class TranscribeStageRunner:
                     raw_result_storage_key=raw_key,
                 )
             )
+            record_provider_usage(
+                session,
+                workspace_id=context.workspace_id,
+                job_id=context.job_id,
+                call=ProviderCallRecord(
+                    provider=result.provider,
+                    operation="transcribe",
+                    model_or_api_version=result.model,
+                    # Transcription bills by audio duration, so the media itself is the
+                    # unit; seconds keep the ledger comparable with every other provider.
+                    request_id=str(context.job_id),
+                    input_units=result.duration_ms // 1000,
+                    output_units=len(result.words),
+                ),
+            )
             session.flush()
 
 
@@ -320,7 +336,7 @@ def production_transcription_dependencies(settings: Settings) -> TranscriptionDe
         or settings.object_store_secret_access_key is None
     ):
         raise RuntimeError("transcription worker requires provider and object storage settings")
-    store = S3ObjectStore(
+    store = observed_s3_store(
         bucket=settings.object_store_bucket,
         endpoint_url=settings.object_store_endpoint,
         access_key_id=settings.object_store_access_key_id.get_secret_value(),

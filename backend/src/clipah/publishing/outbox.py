@@ -9,6 +9,9 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from clipah.models import PublicationOutbox
+from clipah.observability.logging import get_logger, log_context
+
+_logger = get_logger(__name__)
 
 
 class PublicationOutboxService:
@@ -82,3 +85,10 @@ class PublicationOutboxService:
         message.delivered_at = delivered_at
         message.attempt_count += 1
         self.session.flush()
+        waited_ms = (delivered_at - message.available_at).total_seconds() * 1000
+        with log_context(workspaceId=message.workspace_id, publicationId=message.publication_id):
+            _logger.info(
+                "publication.outbox.delivered",
+                latencyMs=round(max(waited_ms, 0.0), 3),
+                attempt=message.attempt_count,
+            )

@@ -71,6 +71,7 @@ from clipah.models import (
     BrollPlanRequest,
     BrollSuggestion,
 )
+from clipah.observability.metrics import count
 
 BROLL_RETRIEVE_STAGE = "broll_retrieve"
 SUGGESTION_STAGE = "broll_retrieve_suggestion"
@@ -256,6 +257,7 @@ class BrollRetrieveStageRunner:
         """Reuse footage this Workspace already holds, or fetch exactly the one selected."""
         candidate = best.candidate
         metadata = _selection_metadata(best)
+        count("clipah.broll.decision", decision="selected", provider=candidate.provider)
         if candidate.provider == WORKSPACE_PROVIDER:
             return _Selected(
                 asset_id=UUID(candidate.provider_asset_id),
@@ -575,7 +577,7 @@ def BrollRetrievalDependenciesBuilder(  # noqa: N802 - a factory named for what 
     that make a decision live in `stock_providers_for`, which is testable on its own.
     """
     from clipah.assets.ingest import HttpxSourceDownloader
-    from clipah.assets.storage import S3ObjectStore
+    from clipah.assets.storage import observed_s3_store
     from clipah.jobs.ingest_task import _validated_media_runner
 
     if (
@@ -588,7 +590,7 @@ def BrollRetrievalDependenciesBuilder(  # noqa: N802 - a factory named for what 
     return RetrievalDependencies(  # pragma: no cover - needs the pinned media toolchain
         stock=stock_providers_for(settings),
         reranker=DeterministicVisualReranker(),
-        object_store=S3ObjectStore(
+        object_store=observed_s3_store(
             bucket=settings.object_store_bucket,
             endpoint_url=settings.object_store_endpoint,
             access_key_id=settings.object_store_access_key_id.get_secret_value(),

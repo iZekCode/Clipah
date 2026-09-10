@@ -33,7 +33,9 @@ from clipah.highlights.provider_router import highlight_provider_router
 from clipah.highlights.rerank import RankedCandidate, RankingPolicy
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import update_job_progress
-from clipah.models import ClipCandidate, Project, ProjectStatus, ProviderUsage, Transcript
+from clipah.models import ClipCandidate, Project, ProjectStatus, Transcript
+from clipah.observability.metrics import count, observe
+from clipah.observability.usage import ProviderCallRecord, record_provider_usage
 from clipah.search.indexer import index_project
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
@@ -201,7 +203,20 @@ class AnalyzeStageRunner:
                     )
                 )
             for call in result.calls:
-                session.add(_usage_row(context, call))
+                record_provider_usage(
+                    session,
+                    workspace_id=context.workspace_id,
+                    job_id=context.job_id,
+                    call=ProviderCallRecord(
+                        provider=call.provider,
+                        operation=call.operation,
+                        model_or_api_version=call.model,
+                        request_id=call.request_id,
+                        input_units=call.input_units,
+                        output_units=call.output_units,
+                    ),
+                )
+            _record_analysis_shape(result, policy=policy)
             project = session.scalar(
                 select(Project).where(
                     Project.workspace_id == context.workspace_id,
@@ -252,18 +267,21 @@ def _candidate_row(
     )
 
 
-def _usage_row(context: JobContext, call: ProviderCall) -> ProviderUsage:
-    """Record exactly what one provider call cost this workspace."""
-    return ProviderUsage(
-        workspace_id=context.workspace_id,
-        provider=call.provider,
-        operation=call.operation,
-        model_or_api_version=call.model,
-        request_id=call.request_id,
-        input_units=call.input_units,
-        output_units=call.output_units,
-        job_id=context.job_id,
+def _record_analysis_shape(result: AnalysisResult, *, policy: AnalysisPolicy) -> None:
+    """Publish how many candidates survived, and how many carry a context warning.
+
+    A silent collapse in candidate count is the first visible sign that an extraction
+    prompt or a model has changed underneath this system.
+    """
+    observe("clipah.candidates.count", float(len(result.ranked)), stage="ranked")
+    observe(
+        "clipah.candidates.count",
+        float(sum(1 for ranked in result.ranked if ranked.rank <= policy.ranking.expose)),
+        stage="exposed",
     )
+    for ranked in result.ranked:
+        for warning in ranked.draft.context_warnings:
+            count("clipah.context.warnings", reason=str(warning))
 
 
 def _analysis_metadata(calls: tuple[ProviderCall, ...]) -> dict[str, Any]:

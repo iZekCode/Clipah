@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-42 have landed. **Task 43 is complete and awaiting the owner's
-commit.** Task 44 follows.
+**Current position:** Tasks 1-43 have landed. **Task 44 is complete and awaiting the
+owner's commit.** Task 45 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -88,13 +88,13 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 40 | Implement the official Instagram Reels publishing adapter | `[x]` (`1717039`) |
 | 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[x]` (`0176929`) |
 | 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[x]` (`147f056`) |
-| 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[x]` (uncommitted) |
+| 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[x]` (`421f2dd`) |
 
 ## Phase G — Production hardening and cutover (Tasks 44-48)
 
 | # | Task | Status |
 | --- | --- | --- |
-| 44 | Add structured observability, provider usage, and operational dashboards | `[ ]` |
+| 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (uncommitted) |
 | 45 | Implement retention, Workspace/project recovery, and account deletion | `[ ]` |
 | 46 | Containerize local and production processes with pinned media tooling | `[ ]` |
 | 47 | Add CI, security scanning, load tests, and recovery drills | `[ ]` |
@@ -2575,6 +2575,75 @@ planner actually produced, which means a language model and a stock provider: se
 licensed picture would mean inventing provenance, and refusing to do that is the whole
 point of Task 29. The engine-parity gate still needs a reference machine.
 
+
+### Task 44 — Structured observability, provider usage, and operational dashboards
+
+Complete and awaiting the owner's commit. Backend gates: Ruff check, Ruff format check,
+strict mypy over 215 files, and 2557 passed with 16 skipped at 92.84% coverage. The four
+new modules are at complete coverage. The frontend was untouched apart from one
+regenerated docstring in `contracts/openapi.json`, so lint, typecheck, 411 Vitest tests,
+and `scripts/check-contracts-clean.sh` were run and pass.
+
+**The design decision that carries this task is that a log event may only use field names
+somebody declared.** `LOG_FIELDS` is an allowlist; anything else is dropped and counted as
+`droppedFields` rather than written. A denylist fails the first time somebody is creative,
+and "no transcript, cookie, or token ever reaches a log" has to be a property of the
+system rather than a habit of its authors. Values that survive the allowlist are then
+scrubbed for authorization headers, absolute URLs, `name=value` assignments, local
+filesystem paths, and high-entropy runs. The scrubber deliberately leaves stable error
+codes, UUIDs, and provider request identifiers intact, because a record that says nothing
+is not worth retaining; `RENDER_ENCODER_UNAVAILABLE` survives and `ya29.…` does not, and
+both facts are tested.
+
+The same scrubber runs over span attributes, metric labels, and Sentry events. Sentry's
+`before_send` removes headers, cookies, and request bodies outright rather than scrubbing
+them, because no header this application sends is worth the risk of retaining one that
+carries a session. A failing span records the exception type and never the traceback.
+
+**Instrumentation went in at chokepoints rather than at call sites.** One HTTP middleware,
+one Celery entry point, `session_scope`, an `ObservedObjectStore` decorator over the
+storage protocol, and one shared usage recorder cover HTTP, jobs, the database, object
+storage, and every paid provider request without scattering telemetry through domain code.
+The two hand-written `_usage_row` helpers in the analysis and B-roll planners were replaced
+by `record_provider_usage`, which writes the ledger row and emits the units and cost
+metrics together: a row cannot be alerted on and a metric cannot be billed, so a deployment
+needs both. Transcription and generated media now record usage too, and generation cost is
+published per exported minute rather than per job, because cost per job cannot be compared
+across projects.
+
+Every instrument is declared with the labels it accepts, and `count`/`observe` refuse an
+undeclared metric or label at the call site. A typo that silently invents a metric is a
+dashboard that is quietly always empty, and one unbounded label ends a metrics backend.
+
+**The deprecation monitor deliberately knows almost nothing in code.** Only the Sora
+shutdown date is baked in, because it is the one date `plan.md` states. Every other
+announced retirement reaches the monitor through `CLIPAH_PROVIDER_SHUTDOWNS`, written
+`model:<identifier>=YYYY-MM-DD` or `api:<identifier>=YYYY-MM-DD` and refused at startup if
+malformed. Inventing sunset dates for provider API versions would have produced confident
+warnings about retirements nobody announced. The monitor warns 180 days ahead and fails
+`GET /health/ready` only once a configured version's date has passed: failing early takes
+down a deployment that could still schedule the migration, and failing late lets it learn
+about the retirement from its own users.
+
+`scripts/check-observability.sh` runs the local trace smoke test, the readiness monitor,
+and a redaction check against whatever configuration the shell has. It passes.
+
+Four invariants were mutation-checked, and each one failed exactly its own test: the log
+allowlist, the metric label guard, the retired-version failure, and the readiness gate in
+the health route.
+
+**Three earlier deferrals named Task 44 as their owner, and none of them is a Task 44
+checkbox.** They are recorded here rather than quietly built:
+
+- *Per-provider-request stock metering.* Task 44 supplies the per-request accounting that
+  was missing, so this is now unblocked, but changing what `BROLL_RETRIEVE` charges is a
+  quota-policy change no checkbox here asks for. It belongs to whichever task revisits
+  quota policy.
+- *Database enforcement for the quota ledger's polymorphic reference.* Unchanged and still
+  open; it needs the ledger-wide redesign Task 37 described.
+- *Reindexing a Project after a render lands.* Still open. A finished render now emits its
+  bytes and speed ratio, but nothing here changes when the search index is rebuilt, so a
+  clip's `exported` state can still lag until the next reindex.
 
 ## Deferrals
 

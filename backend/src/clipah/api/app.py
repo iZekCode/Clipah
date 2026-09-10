@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Awaitable, Callable, Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from time import perf_counter
 
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
@@ -51,7 +52,7 @@ from clipah.api.routes.instagram_webhooks import (
 )
 from clipah.api.routes.tiktok_webhooks import TikTokWebhookSink, TikTokWebhookVerifier
 from clipah.assets.source_validation import validate_youtube_url
-from clipah.assets.storage import ObjectStore, S3ObjectStore
+from clipah.assets.storage import ObjectStore, ObservedObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
 from clipah.broll.generation_policy import GenerationProviders, configured_generation_providers
 from clipah.config import Settings
@@ -60,6 +61,11 @@ from clipah.jobs.events import (
     PollingJobEventNotifier,
     RedisJobEventNotifier,
 )
+from clipah.observability import configure_observability
+from clipah.observability.logging import get_logger, log_context
+from clipah.observability.metrics import observe
+from clipah.observability.tracing import span
+from clipah.observability.usage import readiness_report
 from clipah.social_accounts.models import SocialProvider
 from clipah.social_accounts.oauth import SocialOAuthProvider
 from clipah.social_accounts.secrets import (
@@ -72,6 +78,7 @@ from clipah.variants.assessor import ContextSafetyAssessor, configured_context_a
 
 VERSION = "0.1.0"
 READINESS_TIMEOUT_SECONDS = 2.0
+_logger = get_logger(__name__)
 ReadinessProbe = Callable[[], Awaitable[None]]
 
 
@@ -118,6 +125,7 @@ def create_app(
     future_publications: FuturePublicationCoordinator | None = None,
 ) -> FastAPI:
     """Create the typed HTTP application with stable health and failure contracts."""
+    configure_observability(settings)
     probes = readiness_probes or ReadinessProbes()
     # Public error responses stay sanitized even when local configuration enables debugging.
     app = FastAPI(title="Clipah API", version=VERSION, debug=False)
@@ -146,13 +154,21 @@ def create_app(
     app.state.future_publications = future_publications
 
     @app.middleware("http")
-    async def add_request_id(
+    async def observe_request(
         request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
+        """Correlate, time, and trace one request without ever naming its contents."""
         request_id = assign_request_id(request)
-        response = await call_next(request)
-        response.headers[REQUEST_ID_HEADER] = request_id
-        return response
+        started = perf_counter()
+        status_code = 500
+        with log_context(requestId=request_id), span("http.request", method=request.method):
+            try:
+                response = await call_next(request)
+                status_code = response.status_code
+                response.headers[REQUEST_ID_HEADER] = request_id
+                return response
+            finally:
+                _record_request(request, status_code=status_code, started=started)
 
     @app.exception_handler(ApiError)
     async def handle_api_error(request: Request, error: ApiError) -> Response:
@@ -196,7 +212,18 @@ def create_app(
 
     @app.get("/health/ready")
     async def ready() -> dict[str, str]:
-        """Confirm that all mandatory infrastructure adapters are reachable."""
+        """Confirm that all mandatory adapters are reachable and no version has retired."""
+        report = readiness_report(settings, today=_utc_now().date())
+        for warning in report.warnings:
+            _logger.warning("provider.deprecation", reason=warning)
+        if not report.ready:
+            for failure in report.failures:
+                _logger.error("provider.retired", reason=failure)
+            raise ApiError(
+                status_code=503,
+                code="SERVICE_UNAVAILABLE",
+                message="A required service is unavailable.",
+            )
         results = await asyncio.gather(
             *(_run_probe(probe) for probe in probes.all()), return_exceptions=True
         )
@@ -239,6 +266,26 @@ def create_app(
     return app
 
 
+def _record_request(request: Request, *, status_code: int, started: float) -> None:
+    """Record one request as a duration and one access line, named only by its route."""
+    duration_ms = (perf_counter() - started) * 1000
+    route = getattr(request.scope.get("route"), "path", "unmatched")
+    observe(
+        "clipah.http.duration",
+        duration_ms,
+        method=request.method,
+        route=route,
+        statusCode=str(status_code),
+    )
+    _logger.info(
+        "http.request",
+        method=request.method,
+        route=route,
+        statusCode=status_code,
+        durationMs=round(duration_ms, 3),
+    )
+
+
 def _configured_job_event_notifier(settings: Settings) -> JobEventNotifier:
     """Push job wakeups over Redis when there is one, and poll the database otherwise."""
     if settings.redis_url is None:
@@ -254,11 +301,13 @@ def _configured_object_store(settings: Settings) -> ObjectStore | None:
         or settings.object_store_secret_access_key is None
     ):
         return None
-    return S3ObjectStore(
-        bucket=settings.object_store_bucket,
-        endpoint_url=settings.object_store_endpoint,
-        access_key_id=settings.object_store_access_key_id.get_secret_value(),
-        secret_access_key=settings.object_store_secret_access_key.get_secret_value(),
+    return ObservedObjectStore(
+        S3ObjectStore(
+            bucket=settings.object_store_bucket,
+            endpoint_url=settings.object_store_endpoint,
+            access_key_id=settings.object_store_access_key_id.get_secret_value(),
+            secret_access_key=settings.object_store_secret_access_key.get_secret_value(),
+        )
     )
 
 

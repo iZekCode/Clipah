@@ -18,6 +18,7 @@ from starlette.responses import JSONResponse, Response
 
 from clipah.api.errors import ApiError
 from clipah.config import Settings
+from clipah.observability.metrics import count
 
 INSTAGRAM_WEBHOOK_INVALID_CODE = "INSTAGRAM_WEBHOOK_INVALID"
 INSTAGRAM_WEBHOOK_REPLAY_SECONDS = 300
@@ -175,9 +176,12 @@ def _verified_event(
     if verifier is None or sink is None:
         raise ApiError(status_code=503, code="SERVICE_UNAVAILABLE")
     try:
-        return verifier.verify(kind=kind, signed_request=signed_request, now=clock())
+        verified = verifier.verify(kind=kind, signed_request=signed_request, now=clock())
     except InstagramWebhookVerificationError:
+        count("clipah.webhook.rejected", provider="instagram", reason="verification_failed")
         raise ApiError(status_code=400, code=INSTAGRAM_WEBHOOK_INVALID_CODE) from None
+    count("clipah.webhook.accepted", provider="instagram", outcome="recorded")
+    return verified
 
 
 def _sink(request: Request) -> InstagramWebhookSink:

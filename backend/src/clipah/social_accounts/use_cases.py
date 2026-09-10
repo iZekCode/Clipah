@@ -12,6 +12,7 @@ from uuid import UUID, uuid4
 from sqlalchemy.orm import Session
 
 from clipah.models import OAuthGrant, SocialAccount
+from clipah.observability.metrics import count, observe
 from clipah.social_accounts.models import (
     OAuthGrantMaterial,
     PublishingCapabilities,
@@ -356,6 +357,7 @@ class SocialAccountService:
                 refresh_token_expires_at = material.refresh_token_expires_at
                 del old_material, material, refreshed
         except (SocialProviderGrantRejectedError, SocialScopeMissingError):
+            count("clipah.oauth.refresh", provider=account.provider.value, outcome="rejected")
             self._mark_reconnect_required(
                 access=access,
                 account=account,
@@ -365,6 +367,14 @@ class SocialAccountService:
                 request_id=request_id,
             )
             raise SocialAccountReconnectRequiredError("Social Account must reconnect") from None
+        count("clipah.oauth.refresh", provider=account.provider.value, outcome="succeeded")
+        if access_token_expires_at is not None:
+            observe(
+                "clipah.connection.expiry",
+                (access_token_expires_at - now).total_seconds(),
+                provider=account.provider.value,
+                kind="access_token",
+            )
         _replace_grant(
             grant,
             encrypted=encrypted,

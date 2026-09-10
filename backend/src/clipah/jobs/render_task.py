@@ -13,6 +13,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
+from time import perf_counter
 from uuid import UUID, uuid4
 
 from sqlalchemy import select
@@ -22,7 +23,7 @@ from sqlalchemy.orm import Session
 from clipah.assets.ffmpeg import MEDIA_PROCESS_TIMEOUT, FFmpegRunner, MediaProcessError
 from clipah.assets.ingest import SIGNED_DOWNLOAD_TTL, HttpxSourceDownloader, SourceDownloader
 from clipah.assets.keys import render_artifact_key
-from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError, S3ObjectStore
+from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError, observed_s3_store
 from clipah.brands.models import BrandKitDefinition
 from clipah.config import Settings
 from clipah.db import RuntimeRole, session_scope
@@ -40,7 +41,9 @@ from clipah.jobs.models import (
 )
 from clipah.jobs.use_cases import update_job_progress
 from clipah.jobs.workspace import job_workspace
-from clipah.models import Asset, AssetProvenance, BrandKitVersion, RenderArtifact
+from clipah.models import Asset, AssetProvenance, BrandKitVersion, JobKind, RenderArtifact
+from clipah.observability.metrics import count, observe
+from clipah.observability.tracing import span
 from clipah.renders.compiler import compile_render_plan, input_path
 from clipah.renders.ffmpeg_renderer import FFmpegRenderer, RenderExecutionError
 from clipah.renders.models import (
@@ -88,12 +91,15 @@ class RenderStageRunner:
             with job_workspace(context.job_id) as workspace:
                 plan = self._prepare(context, target, store=store, workspace=workspace)
                 context.raise_if_cancelled()
-                output = self._renderer_factory(context.settings).render(
-                    plan,
-                    workspace=workspace,
-                    cancellation_check=context.raise_if_cancelled,
-                    progress=lambda ratio: self._report_progress(context, ratio),
-                )
+                encoding_started = perf_counter()
+                with span("ffmpeg.render", preset=target.preset.value):
+                    output = self._renderer_factory(context.settings).render(
+                        plan,
+                        workspace=workspace,
+                        cancellation_check=context.raise_if_cancelled,
+                        progress=lambda ratio: self._report_progress(context, ratio),
+                    )
+                _record_render_speed(output, started=encoding_started)
                 context.raise_if_cancelled()
                 self._store_output(context, target, output, store=store)
         except JobCancelledError:
@@ -225,6 +231,7 @@ class RenderStageRunner:
         ):
             store.delete_object(key=key)
             raise TerminalJobError(RENDER_INTEGRITY)
+        count("clipah.bytes.rendered", float(output.size_bytes), jobKind=JobKind.RENDER.value)
 
         with _transaction(context) as session:
             try:
@@ -271,6 +278,22 @@ class RenderStageRunner:
                 progress=ratio,
                 now=datetime.now(tz=UTC),
             )
+
+
+def _record_render_speed(output: RenderOutput, *, started: float) -> None:
+    """Publish encode wall time against the video's own duration.
+
+    A ratio above one means this deployment renders slower than real time, which is the
+    number that decides whether the render fleet is large enough.
+    """
+    if output.duration_ms <= 0:
+        return
+    elapsed_seconds = perf_counter() - started
+    observe(
+        "clipah.render.speed_ratio",
+        elapsed_seconds / (output.duration_ms / 1000),
+        jobKind=JobKind.RENDER.value,
+    )
 
 
 def _asset_descriptions(
@@ -343,7 +366,7 @@ def production_object_store(settings: Settings) -> ObjectStore:
         or settings.object_store_secret_access_key is None
     ):
         raise RuntimeError("render worker requires configured object storage")
-    return S3ObjectStore(
+    return observed_s3_store(
         bucket=settings.object_store_bucket,
         endpoint_url=settings.object_store_endpoint,
         access_key_id=settings.object_store_access_key_id.get_secret_value(),

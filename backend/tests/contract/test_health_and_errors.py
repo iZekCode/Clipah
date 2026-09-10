@@ -12,6 +12,7 @@ from httpx import ASGITransport, AsyncClient, Response
 from clipah.api.app import ReadinessProbes, create_app
 from clipah.api.errors import ApiError
 from clipah.config import Environment, Settings
+from clipah.observability.logging import capture_logs
 
 
 def test_live_reports_version_without_contacting_dependencies() -> None:
@@ -287,3 +288,48 @@ def assert_error(
         "error": {"code": code, "message": message, "requestId": actual_request_id}
     }
     assert actual_headers["X-Request-ID"] == actual_request_id
+
+
+def test_a_request_is_logged_with_its_identifier_route_and_outcome() -> None:
+    """An access log nobody can join to an error report is not evidence of anything."""
+    app = create_app(Settings(environment=Environment.TEST))
+
+    with capture_logs() as events:
+        response = request(app, "GET", "/health/live")
+
+    logged = [event for event in events if event["event"] == "http.request"]
+    assert logged
+    assert logged[-1]["route"] == "/health/live"
+    assert logged[-1]["statusCode"] == 200
+    assert logged[-1]["requestId"] == response.headers["X-Request-ID"]
+
+
+def test_an_unmatched_path_is_logged_without_repeating_what_was_asked_for() -> None:
+    """A scanned URL is attacker-controlled text and must not become a metric label."""
+    app = create_app(Settings(environment=Environment.TEST))
+
+    with capture_logs() as events:
+        request(app, "GET", "/../../etc/passwd", raise_app_exceptions=False)
+
+    logged = [event for event in events if event["event"] == "http.request"]
+    assert logged[-1]["route"] == "unmatched"
+    assert "passwd" not in repr(logged[-1])
+
+
+def test_readiness_fails_while_a_configured_provider_version_is_already_retired() -> None:
+    """A deployment calling a switched-off API is broken whether or not anybody looks."""
+    app = create_app(
+        Settings(
+            environment=Environment.TEST,
+            provider_shutdowns=("api:v3=2020-01-01",),
+        )
+    )
+
+    response = request(app, "GET", "/health/ready", raise_app_exceptions=False)
+
+    assert_error(
+        response,
+        status_code=503,
+        code="SERVICE_UNAVAILABLE",
+        message="A required service is unavailable.",
+    )

@@ -19,6 +19,7 @@ from starlette.responses import Response
 
 from clipah.api.errors import ApiError
 from clipah.broll.generation import GenerationStatus
+from clipah.observability.metrics import count
 
 FAL_JWKS_URL = "https://rest.fal.ai/.well-known/jwks.json"
 FAL_WEBHOOK_REPLAY_SECONDS = 300
@@ -173,8 +174,10 @@ async def receive_fal_webhook(request: Request) -> Response:
     try:
         event = verifier.verify(headers=request.headers, body=body, now=clock())
     except FalWebhookVerificationError:
+        count("clipah.webhook.rejected", provider="fal", reason="verification_failed")
         raise ApiError(status_code=400, code=FAL_WEBHOOK_INVALID_CODE) from None
     await sink(event=event)
+    count("clipah.webhook.accepted", provider="fal", outcome="recorded")
     return Response(status_code=204)
 
 

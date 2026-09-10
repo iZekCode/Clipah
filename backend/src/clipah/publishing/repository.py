@@ -9,7 +9,25 @@ from uuid import UUID, uuid4
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clipah.models import ProviderEvent, Publication, PublicationAttempt
+from clipah.models import ProviderEvent, Publication, PublicationAttempt, SocialAccount
+
+UNKNOWN_PROVIDER = "unknown"
+
+
+def publication_provider(session: Session, publication: Publication) -> str:
+    """Name the provider one destination belongs to, for telemetry that must not fail.
+
+    A Publication records the Social Account rather than the provider, so this reads the
+    account. It answers ``unknown`` instead of raising, because a missing account is a
+    problem for dispatch to refuse and never a reason to lose a metric.
+    """
+    provider = session.scalar(
+        select(SocialAccount.provider).where(
+            SocialAccount.workspace_id == publication.workspace_id,
+            SocialAccount.id == publication.social_account_id,
+        )
+    )
+    return UNKNOWN_PROVIDER if provider is None else str(provider)
 
 
 class PublicationRepository:

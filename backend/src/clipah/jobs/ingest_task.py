@@ -24,7 +24,7 @@ from clipah.assets.ingest import (
 )
 from clipah.assets.keys import derived_asset_key
 from clipah.assets.probe import MediaValidationError, sniff_mime
-from clipah.assets.storage import ObjectStoreUnavailableError, S3ObjectStore
+from clipah.assets.storage import ObjectStoreUnavailableError, observed_s3_store
 from clipah.config import Settings
 from clipah.db import RuntimeRole, session_scope
 from clipah.jobs.models import (
@@ -400,7 +400,7 @@ def production_asset_ingestor(settings: Settings) -> AssetIngestor:
         or settings.object_store_secret_access_key is None
     ):
         raise RuntimeError("ingest worker requires configured object storage")
-    store = S3ObjectStore(
+    store = observed_s3_store(
         bucket=settings.object_store_bucket,
         endpoint_url=settings.object_store_endpoint,
         access_key_id=settings.object_store_access_key_id.get_secret_value(),

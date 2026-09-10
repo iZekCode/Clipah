@@ -22,8 +22,11 @@ from clipah.models import (
     SocialRendition,
     WorkspaceQuotaReservation,
 )
+from clipah.observability.logging import get_logger, log_context
+from clipah.observability.metrics import record_publication_outcome
 from clipah.publishing.models import PublicationStatus
 from clipah.publishing.outbox import PublicationOutboxService
+from clipah.publishing.repository import publication_provider
 from clipah.publishing.state_machine import transition
 from clipah.publishing.tasks import (
     PublicationDispatchInvalidError,
@@ -38,6 +41,7 @@ MAX_BACKOFF = timedelta(hours=1)
 ACCOUNT_BUSY_BACKOFF = timedelta(seconds=15)
 PUBLICATION_QUOTA_UNITS = Decimal(1)
 QUOTA_REFERENCE_KIND = "publication"
+_logger = get_logger(__name__)
 
 _DISPATCHABLE = PublicationStatus.PREFLIGHTING
 
@@ -258,6 +262,9 @@ class PublicationDispatcher:
             return self._apply_failure(publication, failure=failure, now=now)
         self._settle_quota(publication, now=now)
         self._session.flush()
+        _record_outcome(
+            self._session, publication, outcome=DispatchOutcome.DELIVERED.value, now=now
+        )
         return _result(publication, DispatchOutcome.DELIVERED)
 
     def _claim_account(self, publication: Publication) -> bool:
@@ -341,6 +348,9 @@ class PublicationDispatcher:
         if failure.kind in {FailureKind.RECONNECT, FailureKind.PERMANENT}:
             self._release_quota(publication, now=now)
         self._session.flush()
+        _record_outcome(
+            self._session, publication, outcome=outcome.value, now=now, code=failure.code
+        )
         return _result(
             publication,
             outcome,
@@ -410,6 +420,41 @@ def _account_provider(session: Session, publication: Publication) -> SocialProvi
     if provider is None:
         raise PublicationDispatchInvalidError("Social Account is unavailable")
     return provider
+
+
+def _record_outcome(
+    session: Session,
+    publication: Publication,
+    *,
+    outcome: str,
+    now: datetime,
+    code: str | None = None,
+) -> None:
+    """Report one dispatch attempt's end, and how long an approved member waited for it."""
+    approved_at = publication.approved_at
+    seconds = None
+    if publication.status is PublicationStatus.PUBLISHED and approved_at is not None:
+        seconds = (now - approved_at).total_seconds()
+    provider = publication_provider(session, publication)
+    record_publication_outcome(
+        provider=provider,
+        outcome=outcome,
+        code=code,
+        seconds_to_publish=seconds,
+    )
+    with log_context(
+        workspaceId=publication.workspace_id,
+        publicationId=publication.id,
+        batchId=publication.batch_id,
+    ):
+        _logger.info(
+            "publication.attempt.finished",
+            provider=provider,
+            outcome=outcome,
+            code=code or "none",
+            status=publication.status.value,
+            attempt=publication.attempt_count,
+        )
 
 
 def _result(

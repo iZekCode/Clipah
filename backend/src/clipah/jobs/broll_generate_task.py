@@ -63,6 +63,11 @@ from clipah.models import (
     AssetSourceType,
     BrollSuggestion,
 )
+from clipah.observability.usage import (
+    ProviderCallRecord,
+    record_generation_cost,
+    record_provider_usage,
+)
 
 BROLL_GENERATE_STAGE = "broll_generate"
 SUBMITTED_STAGE = "broll_generate_submitted"
@@ -430,6 +435,9 @@ class BrollGenerateStageRunner:
                 job_id=context.job_id,
                 usage=result.usage,
                 now=now,
+                provider=handle.provider,
+                model=handle.model,
+                request_id=handle.provider_request_id,
             )
         self._report(context, stage=BROLL_GENERATE_STAGE, progress=0.9)
 
@@ -474,8 +482,16 @@ def settle_generation_usage(
     job_id: UUID,
     usage: GenerationUsage,
     now: datetime,
+    provider: str | None = None,
+    model: str | None = None,
+    request_id: str | None = None,
 ) -> None:
-    """Charge each generation budget the usage a provider actually reported, once."""
+    """Charge each generation budget the usage a provider actually reported, once.
+
+    The provider identity is optional because a webhook settlement may arrive without the
+    handle that produced it; when it is present the same usage is also recorded as a
+    Workspace-attributed ledger row and as a cost per exported minute.
+    """
     from clipah.jobs.admission import QuotaLedger
     from clipah.models import QuotaResource
 
@@ -494,6 +510,27 @@ def settle_generation_usage(
             actual_units=units,
             now=now,
         )
+    if provider is None or model is None or request_id is None:
+        return
+    record_provider_usage(
+        session,
+        workspace_id=workspace_id,
+        job_id=job_id,
+        call=ProviderCallRecord(
+            provider=provider,
+            operation="generate",
+            model_or_api_version=model,
+            request_id=request_id,
+            input_units=usage.generated_images + usage.generated_videos,
+            output_units=int(usage.generated_seconds),
+            estimated_cost_usd=float(usage.cost_usd),
+        ),
+    )
+    record_generation_cost(
+        provider=provider,
+        cost_usd=float(usage.cost_usd),
+        exported_seconds=float(usage.generated_seconds),
+    )
 
 
 def _asset(
@@ -704,7 +741,7 @@ def BrollGenerationDependenciesBuilder(  # noqa: N802 - a factory named for what
 ) -> GenerationDependencies:
     """Compose the configured generative providers and the pinned media toolchain."""
     from clipah.assets.ingest import HttpxSourceDownloader
-    from clipah.assets.storage import S3ObjectStore
+    from clipah.assets.storage import observed_s3_store
     from clipah.jobs.ingest_task import _validated_media_runner
 
     if (
@@ -716,7 +753,7 @@ def BrollGenerationDependenciesBuilder(  # noqa: N802 - a factory named for what
 
     return GenerationDependencies(  # pragma: no cover - needs the pinned media toolchain
         providers=configured_generation_providers(settings),
-        object_store=S3ObjectStore(
+        object_store=observed_s3_store(
             bucket=settings.object_store_bucket,
             endpoint_url=settings.object_store_endpoint,
             access_key_id=settings.object_store_access_key_id.get_secret_value(),

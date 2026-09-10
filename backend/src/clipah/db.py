@@ -7,6 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 from enum import StrEnum
 from functools import lru_cache
+from time import perf_counter
 from uuid import UUID, uuid4
 
 from sqlalchemy import Connection, Engine, create_engine, text
@@ -21,6 +22,8 @@ from clipah.models import (
     WorkspaceRole,
     WorkspaceStatus,
 )
+from clipah.observability.metrics import observe
+from clipah.observability.tracing import span
 
 
 class RuntimeRole(StrEnum):
@@ -219,12 +222,27 @@ def session_scope(
         if context_value is not None and not isinstance(context_value, UUID):
             raise ValueError(f"{context_name} must be a UUID")
 
-    with Session(get_engine(settings, runtime_role=runtime_role)) as session, session.begin():
-        # RuntimeRole is a closed enum, so the identifier cannot contain user input.
-        session.execute(text(f"SET LOCAL ROLE {runtime_role.value}"))
-        _assert_safe_runtime_identity(session, runtime_role=runtime_role)
-        _set_transaction_context(session, workspace_id=workspace_id, user_id=user_id)
-        yield session
+    started = perf_counter()
+    outcome = "failed"
+    try:
+        with (
+            span("db.session", role=runtime_role.value),
+            Session(get_engine(settings, runtime_role=runtime_role)) as session,
+            session.begin(),
+        ):
+            # RuntimeRole is a closed enum, so the identifier cannot contain user input.
+            session.execute(text(f"SET LOCAL ROLE {runtime_role.value}"))
+            _assert_safe_runtime_identity(session, runtime_role=runtime_role)
+            _set_transaction_context(session, workspace_id=workspace_id, user_id=user_id)
+            yield session
+        outcome = "committed"
+    finally:
+        observe(
+            "clipah.db.duration",
+            (perf_counter() - started) * 1000,
+            role=runtime_role.value,
+            outcome=outcome,
+        )
 
 
 def create_user_with_personal_workspace(

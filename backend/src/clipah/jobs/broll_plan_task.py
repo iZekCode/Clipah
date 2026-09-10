@@ -41,7 +41,9 @@ from clipah.db import RuntimeRole, session_scope
 from clipah.highlights.provider import ProviderCall
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import update_job_progress
-from clipah.models import BrollSuggestion, ProviderUsage, Transcript
+from clipah.models import BrollSuggestion, Transcript
+from clipah.observability.metrics import count
+from clipah.observability.usage import ProviderCallRecord, record_provider_usage
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
 BROLL_PLAN_STAGE = "broll_plan"
@@ -200,7 +202,25 @@ class BrollPlanStageRunner:
                     )
                 )
             for call in calls:
-                session.add(_usage_row(context, call))
+                record_provider_usage(
+                    session,
+                    workspace_id=context.workspace_id,
+                    job_id=context.job_id,
+                    call=ProviderCallRecord(
+                        provider=call.provider,
+                        operation=call.operation,
+                        model_or_api_version=call.model,
+                        request_id=call.request_id,
+                        input_units=call.input_units,
+                        output_units=call.output_units,
+                    ),
+                )
+            for suggestion in placed:
+                count(
+                    "clipah.broll.decision",
+                    decision=str(suggestion.placement_reason),
+                    provider=calls[0].provider if calls else "none",
+                )
             session.flush()
 
 
@@ -240,20 +260,6 @@ def _suggestion_row(
         status=BrollSuggestionStatus.PROPOSED,
         placement_reason=placed.placement_reason,
         provider_metadata=metadata,
-    )
-
-
-def _usage_row(context: JobContext, call: ProviderCall) -> ProviderUsage:
-    """Record exactly what one provider call cost this Workspace."""
-    return ProviderUsage(
-        workspace_id=context.workspace_id,
-        provider=call.provider,
-        operation=call.operation,
-        model_or_api_version=call.model,
-        request_id=call.request_id,
-        input_units=call.input_units,
-        output_units=call.output_units,
-        job_id=context.job_id,
     )
 
 

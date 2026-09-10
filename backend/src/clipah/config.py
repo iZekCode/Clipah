@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from enum import StrEnum
 from typing import Any, Literal, Self
 from urllib.parse import urlsplit
@@ -11,6 +12,7 @@ from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, Settings
 from sqlalchemy.engine import make_url
 
 HOST_COOKIE_PREFIX = "__Host-"
+_LOG_LEVELS = frozenset({"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"})
 
 
 class Environment(StrEnum):
@@ -55,6 +57,15 @@ class Settings(BaseSettings):
     object_store_secret_access_key: SecretStr | None = None
 
     frontend_origin: str | None = None
+
+    log_level: str = "INFO"
+    otel_exporter_endpoint: str | None = None
+    otel_service_name: str = "clipah"
+    sentry_dsn: SecretStr | None = None
+    # Announced provider retirements this deployment has been told about, each written as
+    # ``model:<identifier>=YYYY-MM-DD`` or ``api:<identifier>=YYYY-MM-DD``. Operators add a
+    # date when a provider announces one; the readiness monitor does the rest.
+    provider_shutdowns: tuple[str, ...] = ()
 
     google_oidc_client_id: str | None = None
     google_oidc_client_secret: SecretStr | None = None
@@ -243,6 +254,7 @@ class Settings(BaseSettings):
         """Fail closed for missing production dependencies and unsafe provider choices."""
         self._validate_analysis_policy()
         self._validate_generation_policy()
+        self._validate_observability()
         if self.environment is not Environment.PRODUCTION:
             return self
 
@@ -251,6 +263,24 @@ class Settings(BaseSettings):
         self._validate_provider_versions()
         self._validate_enabled_social_providers()
         return self
+
+    def _validate_observability(self) -> None:
+        """Reject telemetry configuration that would only be discovered during an incident."""
+        if self.log_level.upper() not in _LOG_LEVELS:
+            raise ValueError("CLIPAH_LOG_LEVEL must name a standard logging level")
+        for entry in self.provider_shutdowns:
+            kind, separator, remainder = entry.partition(":")
+            identifier, date_separator, announced = remainder.rpartition("=")
+            if not (separator and date_separator) or kind not in ("model", "api") or not identifier:
+                raise ValueError(
+                    "CLIPAH_PROVIDER_SHUTDOWNS entries must read kind:identifier=YYYY-MM-DD"
+                )
+            try:
+                date.fromisoformat(announced)
+            except ValueError as error:
+                raise ValueError(
+                    "CLIPAH_PROVIDER_SHUTDOWNS dates must be ISO calendar dates"
+                ) from error
 
     def _validate_analysis_policy(self) -> None:
         """Reject internally contradictory window, duration, and exposure settings."""
