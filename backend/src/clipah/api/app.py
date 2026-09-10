@@ -38,6 +38,7 @@ from clipah.api.routes import search as search_routes
 from clipah.api.routes import social_accounts as social_account_routes
 from clipah.api.routes import source_connections as source_connection_routes
 from clipah.api.routes import templates as template_routes
+from clipah.api.routes import tiktok_webhooks as tiktok_webhook_routes
 from clipah.api.routes import uploads as upload_routes
 from clipah.api.routes import variants as variant_routes
 from clipah.api.routes import workspace_memberships as workspace_membership_routes
@@ -48,6 +49,7 @@ from clipah.api.routes.instagram_webhooks import (
     InstagramWebhookSink,
     InstagramWebhookVerifier,
 )
+from clipah.api.routes.tiktok_webhooks import TikTokWebhookSink, TikTokWebhookVerifier
 from clipah.assets.source_validation import validate_youtube_url
 from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
@@ -106,6 +108,9 @@ def create_app(
     instagram_webhook_verifier: InstagramWebhookVerifier | None = None,
     instagram_webhook_sink: InstagramWebhookSink | None = None,
     instagram_webhook_clock: Callable[[], datetime] | None = None,
+    tiktok_webhook_verifier: TikTokWebhookVerifier | None = None,
+    tiktok_webhook_sink: TikTokWebhookSink | None = None,
+    tiktok_webhook_clock: Callable[[], datetime] | None = None,
     generation_providers: GenerationProviders | None = None,
     context_assessor: ContextSafetyAssessor | None = None,
     social_providers: Mapping[SocialProvider, SocialOAuthProvider] | None = None,
@@ -129,6 +134,9 @@ def create_app(
     app.state.instagram_webhook_verifier = instagram_webhook_verifier
     app.state.instagram_webhook_sink = instagram_webhook_sink
     app.state.instagram_webhook_clock = instagram_webhook_clock or _utc_now
+    app.state.tiktok_webhook_verifier = tiktok_webhook_verifier
+    app.state.tiktok_webhook_sink = tiktok_webhook_sink
+    app.state.tiktok_webhook_clock = tiktok_webhook_clock or _utc_now
     app.state.generation_providers = generation_providers or configured_generation_providers(
         settings
     )
@@ -221,6 +229,7 @@ def create_app(
     app.include_router(render_routes.router)
     app.include_router(generation_webhook_routes.router)
     app.include_router(instagram_webhook_routes.router)
+    app.include_router(tiktok_webhook_routes.router)
     app.include_router(variant_routes.router)
     app.include_router(claim_evidence_routes.router)
     app.include_router(brand_kit_routes.router)

@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-39 have landed. **Task 40 is complete and awaiting the owner's
-commit.** Task 41 follows.
+**Current position:** Tasks 1-40 have landed. **Task 41 is complete and awaiting the owner's
+commit.** Task 42 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -85,8 +85,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (`6c55780`) |
 | 38 | Build immutable provider renditions and publication preflight | `[x]` (`b92be20`) |
 | 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (`76d4c4f`) |
-| 40 | Implement the official Instagram Reels publishing adapter | `[x]` (uncommitted) |
-| 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[ ]` |
+| 40 | Implement the official Instagram Reels publishing adapter | `[x]` (`1717039`) |
+| 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[x]` (uncommitted) |
 | 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[ ]` |
 | 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[ ]` |
 
@@ -2272,7 +2272,77 @@ Final verification: Ruff check and Ruff format check passed; strict mypy passed 
 2,314 backend tests passed with fifteen environment-gated skips at 92.86% coverage, and all four new
 modules reached complete line and branch coverage. The opt-in sandbox smoke test in
 `tests/slow/test_instagram_publisher_smoke.py` was written and was not opted into during verification.
-No commit was created; the required owner commit message is `feat: publish reels through instagram api`.
+Landed in `1717039` as `feat: publish reels through instagram api`.
+
+### Task 41 — TikTok draft fallback and audited Direct Post
+
+TikTok is the destination where the honest answer is "not yet", and the adapter says so rather than
+pretending otherwise. `TikTokPolicy` is the audit gate: with no approval it returns the draft-inbox
+mode and freezes evidence naming the requested mode, the effective mode, the restriction, and the
+exact action still waiting for the member in the TikTok app. With approval it returns Direct Post and
+a null restriction. The Publication contract does not change across that flip, which is the point.
+
+The flip cannot happen silently. `tiktok_policy_evidence` is frozen into the Publication at preflight
+and compared again at confirmation and again at dispatch. A destination approved as a draft that has
+since become a Direct Post destination returns to `awaiting_approval` with a `tiktokPolicy` diff,
+exactly as a YouTube audit change already did.
+
+`oauth.py` holds the Login Kit scope policy. A draft needs `user.info.basic` and `video.upload`;
+Direct Post additionally needs `video.publish`, and a draft grant never implies it. Refresh honours
+TikTok's rotation: a response that returns the same refresh token is refused as unrotated rather than
+persisted as progress, and `invalid_grant` reaches the reconnect lifecycle instead of a retry loop.
+Neither token appears in the value's repr, and the client secret never enters a URL.
+
+`transfers.py` holds delivery policy, publish-status truth, sanitized errors, and the durable
+coordinator. TikTok reports failure inside a 200 response, so `normalize_tiktok_response` reads the
+error envelope rather than the status line, mapping twelve documented conditions onto reconnect,
+rate-limited, unavailable, permanent, and URL-ownership codes that carry no `log_id` or provider
+prose. `verified_pull_url` enforces what TikTok actually requires: HTTPS, no embedded credentials,
+the exact frozen rendition key, no token-shaped query parameter, a five-minute-to-one-hour lifetime,
+and membership in a prefix whose ownership this deployment has verified. A deployment with no
+verified prefix fails closed rather than earning a provider refusal later.
+
+`adapter.py` refuses to preselect anything. `TikTokPostRequest` gives privacy, all three interaction
+toggles, both commercial-content toggles, the AI-generated declaration, and consent no defaults at
+all, so omitting any one of them is a validation error rather than a silent choice. Consent is its
+own model with individually required music and consumer-terms confirmations.
+`require_current_declarations` then re-checks everything against fresh evidence immediately before
+submission: creator info and consent must each be under five minutes old, the chosen visibility must
+be one the provider currently offers, branded content cannot be posted privately and requires
+accepted terms, an interaction the creator has disabled cannot be re-enabled, and the clip must fit
+this creator's own `max_video_post_duration_sec`. A draft carries no privacy or interaction fields,
+so only the declarations TikTok requires of every creator apply there.
+
+`api/routes/tiktok_webhooks.py` verifies the timestamped HMAC over the exact raw bytes, enforces a
+five-minute replay window, refuses a delivery naming another client key, and derives a stable digest
+so duplicates dispatch once. It performs no state transition; a worker reconciles. An
+`authorization.removed` event never adopts a publish identifier even when one is present in the body.
+
+The coordinator keeps the draft fallback truthful. A delivery to the creator inbox reaches
+`processing`, never `published`, and carries the message naming the remaining in-app step. Only a
+Direct Post that TikTok reports as complete reaches `published`, with a permalink built from the
+frozen creator handle and the one publicly available post identifier. Reconciliation is monotonic, so
+a late, duplicated, or reordered event cannot regress a published destination.
+
+Duration, file size, aspect ratio, and the promotional-watermark prohibition were already enforced by
+Task 38's preflight against the checked-in TikTok profile; this task adds the per-creator duration
+limit that only live `creator_info` can supply.
+
+**One deliberate scope decision.** Delivery uses `PULL_FROM_URL` only; chunked `FILE_UPLOAD` is not
+implemented. No checkbox asks for it, the verified-prefix requirement applies only to the pull flow,
+and Clipah already stores every rendition behind a signed URL. A side effect worth keeping is that no
+TikTok upload URL ever enters the process, so the plan's rule against storing one has nothing to
+guard here. Whichever task needs a source that cannot be served over HTTPS owns the chunked path.
+
+Four invariants were re-checked by breaking the implementation on purpose and watching the matching
+test fail: the audit gate defaulting to drafts, the refresh-rotation requirement, the verified-prefix
+rule, and the return to approval when a destination flips from draft to direct.
+
+Final verification: Ruff check and Ruff format check passed; strict mypy passed over 207 source files;
+2,424 backend tests passed with sixteen environment-gated skips at 92.68% coverage, and all four new
+modules reached complete line and branch coverage. The opt-in sandbox smoke test in
+`tests/slow/test_tiktok_publisher_smoke.py` was written and was not opted into during verification.
+No commit was created; the required owner commit message is `feat: add audited tiktok publishing`.
 
 
 ## Browser suite: first run, and what it found

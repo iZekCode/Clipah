@@ -33,6 +33,7 @@ from clipah.publishing.preflight import (
     render_artifact_media,
 )
 from clipah.publishing.profiles import profile_for
+from clipah.publishing.providers.tiktok.adapter import TikTokPolicy
 from clipah.publishing.providers.youtube.adapter import (
     YouTubeAuditRestrictionError,
     YouTubePolicy,
@@ -228,6 +229,7 @@ def preflight_publication_draft(
     batch_id: UUID,
     now: datetime,
     youtube_audit_approved: bool = False,
+    tiktok_direct_post_approved: bool = False,
 ) -> PublicationBatchSummary:
     """Validate durable prerequisites and move every draft to approval review."""
     batch, publications = _locked_batch(
@@ -280,6 +282,12 @@ def preflight_publication_draft(
                 now=now,
                 audit_approved=youtube_audit_approved,
             )
+        elif account.provider is SocialProvider.TIKTOK:
+            checkpoint["tiktokPolicy"] = tiktok_policy_evidence(
+                publication=publication,
+                now=now,
+                audit_approved=tiktok_direct_post_approved,
+            )
         publication.checkpoint_metadata = checkpoint
         if publication.status is PublicationStatus.DRAFT:
             publication.status = transition(
@@ -298,6 +306,7 @@ def confirm_publication_draft(
     batch_id: UUID,
     now: datetime,
     youtube_audit_approved: bool = False,
+    tiktok_direct_post_approved: bool = False,
 ) -> PublicationBatchSummary:
     """Freeze approval evidence and independently schedule or dispatch each destination."""
     batch, publications = _locked_batch(
@@ -346,6 +355,14 @@ def confirm_publication_draft(
             audit_approved=youtube_audit_approved,
         ):
             raise PublicationInvalidError("Publication must pass current YouTube policy review")
+        if account.provider is SocialProvider.TIKTOK and checkpoint.get(
+            "tiktokPolicy"
+        ) != tiktok_policy_evidence(
+            publication=publication,
+            now=now,
+            audit_approved=tiktok_direct_post_approved,
+        ):
+            raise PublicationInvalidError("Publication must pass current TikTok policy review")
         publication.approved_by_user_id = access.user_id
         publication.approved_at = now
         publication.capability_version = capability_version
@@ -381,6 +398,14 @@ def youtube_policy_evidence(
         )
     except (ValueError, YouTubeAuditRestrictionError) as error:
         raise PublicationInvalidError("YouTube publication policy is invalid") from error
+
+
+def tiktok_policy_evidence(
+    *, publication: Publication, now: datetime, audit_approved: bool
+) -> dict[str, str | None]:
+    """Build reproducible TikTok delivery evidence from this deployment's audit state."""
+    del publication
+    return TikTokPolicy(direct_post_approved=audit_approved, now=now).confirmation_evidence()
 
 
 def retry_publication(

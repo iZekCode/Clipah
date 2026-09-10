@@ -204,6 +204,7 @@ def preflight(
             batch_id=draft_id,
             now=auth_components_for(request).now(),
             youtube_audit_approved=settings_for(request).youtube_audit_approved,
+            tiktok_direct_post_approved=settings_for(request).tiktok_audit_approved,
         )
     except PublicationNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
@@ -232,6 +233,7 @@ def confirm(
             batch_id=draft_id,
             now=auth_components_for(request).now(),
             youtube_audit_approved=settings_for(request).youtube_audit_approved,
+            tiktok_direct_post_approved=settings_for(request).tiktok_audit_approved,
         )
     except PublicationNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error

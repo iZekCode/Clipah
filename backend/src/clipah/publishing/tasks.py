@@ -24,7 +24,7 @@ from clipah.publishing.preflight import (
 )
 from clipah.publishing.profiles import profile_for
 from clipah.publishing.state_machine import transition
-from clipah.publishing.use_cases import youtube_policy_evidence
+from clipah.publishing.use_cases import tiktok_policy_evidence, youtube_policy_evidence
 from clipah.social_accounts.models import SocialConnectionStatus, SocialProvider
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import (
@@ -90,6 +90,7 @@ def revalidate_publication_dispatch(
     publication_id: UUID,
     now: datetime,
     youtube_audit_approved: bool = False,
+    tiktok_direct_post_approved: bool = False,
 ) -> PublicationSummary:
     """Recheck live authority, connection, and capabilities before provider I/O."""
     publication = session.scalar(
@@ -163,6 +164,7 @@ def revalidate_publication_dispatch(
         account=account,
         now=now,
         youtube_audit_approved=youtube_audit_approved,
+        tiktok_direct_post_approved=tiktok_direct_post_approved,
     ):
         publication.status = transition(
             current=publication.status, target=PublicationStatus.AWAITING_APPROVAL
@@ -178,6 +180,7 @@ def _current_preflight_matches(
     account: SocialAccount,
     now: datetime,
     youtube_audit_approved: bool,
+    tiktok_direct_post_approved: bool,
 ) -> bool:
     """Repeat provider validation against frozen bytes and choices immediately before I/O."""
     checkpoint = dict(publication.checkpoint_metadata or {})
@@ -197,6 +200,23 @@ def _current_preflight_matches(
                     "field": "youtubePolicy",
                     "approved": approved_policy,
                     "current": current_policy,
+                }
+            ]
+            publication.checkpoint_metadata = checkpoint
+            return False
+    if account.provider is SocialProvider.TIKTOK:
+        approved_delivery = checkpoint.get("tiktokPolicy")
+        current_delivery = tiktok_policy_evidence(
+            publication=publication,
+            now=now,
+            audit_approved=tiktok_direct_post_approved,
+        )
+        if approved_delivery != current_delivery:
+            checkpoint["preflightDiff"] = [
+                {
+                    "field": "tiktokPolicy",
+                    "approved": approved_delivery,
+                    "current": current_delivery,
                 }
             ]
             publication.checkpoint_metadata = checkpoint
