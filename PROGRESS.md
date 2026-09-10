@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-40 have landed. **Task 41 is complete and awaiting the owner's
-commit.** Task 42 follows.
+**Current position:** Tasks 1-41 have landed. **Task 42 is complete and awaiting the owner's
+commit.** Task 43 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -86,8 +86,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 38 | Build immutable provider renditions and publication preflight | `[x]` (`b92be20`) |
 | 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (`76d4c4f`) |
 | 40 | Implement the official Instagram Reels publishing adapter | `[x]` (`1717039`) |
-| 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[x]` (uncommitted) |
-| 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[ ]` |
+| 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[x]` (`0176929`) |
+| 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[x]` (uncommitted) |
 | 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[ ]` |
 
 ## Phase G — Production hardening and cutover (Tasks 44-48)
@@ -2342,7 +2342,92 @@ Final verification: Ruff check and Ruff format check passed; strict mypy passed 
 2,424 backend tests passed with sixteen environment-gated skips at 92.68% coverage, and all four new
 modules reached complete line and branch coverage. The opt-in sandbox smoke test in
 `tests/slow/test_tiktok_publisher_smoke.py` was written and was not opted into during verification.
-No commit was created; the required owner commit message is `feat: add audited tiktok publishing`.
+Landed in `0176929` as `feat: add audited tiktok publishing`.
+
+### Task 42 — Multi-destination scheduling, dispatch, and reconciliation
+
+Three destinations of one batch are now genuinely independent. `publishing/dispatcher.py` drives one
+Publication at a time and owns everything that is identical across providers: the account lock,
+revalidation, quota, retry policy, and the truthful terminal state. Provider work reaches it through
+an injected `DestinationDriver`, so YouTube, Instagram, and TikTok get the same orchestration rather
+than three copies of it. The three adapters meet the dispatcher at exactly one point,
+`failure_from_provider_error`, which is covered against the real sanitized error classes of all
+three.
+
+Dispatch acquires a bounded, non-blocking advisory lock on the Workspace and Social Account before
+any provider call. A second worker holding that account does not queue behind it; it returns
+`account_busy` with a short backoff and touches nothing. That keeps one destination's outage from
+consuming a worker for the length of a provider timeout.
+
+Revalidation happens immediately before external side effects and refuses in five distinct ways.
+A revoked membership cancels, a disconnected account reaches reconnection, a changed capability
+version returns to approval, a rendition whose bytes no longer match the approved checksum fails
+permanently, and a Publication whose consent evidence is missing fails permanently. None of those
+reach a driver at all, which the tests assert by checking the driver recorded nothing.
+
+Retry policy is one function. `backoff_delay` doubles from thirty seconds, applies full jitter so
+recovering destinations do not retry in lockstep, never waits less than a provider's own
+`Retry-After` hint, and is capped at one hour. A retryable failure records `next_attempt_at` and
+enqueues exactly one durable outbox message under a retry-scoped operation key. A reconnect or
+permanent refusal enqueues nothing, because retrying an authorization or policy refusal only repeats
+it. An exhausted attempt budget becomes `permanent_failed` with the `retry_budget_exhausted` code
+rather than looping forever.
+
+Quota is held once per destination, never per attempt. The dispatcher reserves one
+`social_publications` unit on the first attempt, settles it when the destination is delivered,
+releases it on a terminal refusal, and deliberately keeps it held across a retryable failure and an
+ambiguous one. A retryable attempt will run again and still costs one publication; an ambiguous
+attempt may already have spent it, and a held budget is evidence. A destination retried after an
+outage therefore still has exactly one reservation row.
+
+`publishing/reconciler.py` holds two things the plan asks for separately. `aggregate_batch` derives
+batch state from its children — completed, partially failed, failed, cancelled, or in progress — and
+counts published, failed, and cancelled destinations, so partial success can never be rounded into a
+single verdict. A batch identifier from another Workspace aggregates to `unknown` with a total of
+zero rather than revealing anything. The rest of the module recovers stuck work: a bounded
+skip-locked page of destinations that have been transferring for an hour or processing for six,
+observed through a `ProviderTruthObserver` before any state changes. An unreadable provider produces
+no change at all, because an outage during reconciliation must never be mistaken for provider truth,
+and a terminal destination is never touched.
+
+`operator_reconcile` is the operator command, and it is deliberately narrow. It refuses a destination
+that is not stuck, refuses one outside the caller's Workspace, and refuses to change anything when
+the observation comes back `unknown`. Its most useful case is the ambiguous one: a destination whose
+delivery could not be proved is resolved from what the provider actually reports, adopting the post
+when it exists and becoming an ordinary safe retry when it does not.
+
+`publishing/webhooks.py` is intake only. It resolves the Social Account from the provider identity,
+deduplicates by provider event ID or stable payload digest, records the evidence, and enqueues one
+reconciliation message for a worker. It performs no state transition, so a replayed delivery records
+once and wakes one worker, and a delivery whose signature did not verify is kept as a security
+observation while enqueuing nothing.
+
+The end-to-end suite in `tests/e2e/` covers what the checkboxes describe as one story: three
+destinations publishing together, one failing and being retried alone while its siblings are never
+re-delivered, a permanent refusal leaving the batch partially failed, an ambiguous destination going
+through reconciliation before it may be retried, a future schedule surviving a scheduler restart
+without publishing early, a cancelled destination dropping out of its own batch, and a live webhook
+queueing exactly one reconciliation.
+
+**One deliberate scope decision.** The per-provider drivers that wire each adapter into
+`DestinationDriver` are not implemented here. No file in Task 42 names them, the dispatcher's own
+contract is provider-neutral by design, and the tests exercise the three-provider matrix through
+drivers that raise the adapters' real error types. Whichever task owns the Celery publishing worker
+owns that wiring.
+
+Five invariants were re-checked by breaking the implementation on purpose and watching the matching
+test fail: the account lock, the schedule guard, the frozen-bytes revalidation, the refusal to treat
+an unreadable provider as truth, and the refusal to act on an unsigned webhook.
+
+One process note worth recording. The first full verification run reported four failures in
+`tests/contract/test_broll_api.py`, and they were mine rather than the code's: the mutation checks
+were running a second pytest process against the same Postgres database, and every test's fixture
+truncates all tables. Re-run serially, the suite is clean.
+
+Final verification: Ruff check and Ruff format check passed; strict mypy passed over 210 source
+files; 2,499 backend tests passed with sixteen environment-gated skips at 92.81% coverage, and all
+three new modules reached complete line and branch coverage. No commit was created; the required
+owner commit message is `feat: orchestrate scheduled social publishing`.
 
 
 ## Browser suite: first run, and what it found
