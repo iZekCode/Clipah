@@ -33,8 +33,13 @@ from clipah.publishing.preflight import (
     render_artifact_media,
 )
 from clipah.publishing.profiles import profile_for
+from clipah.publishing.providers.youtube.adapter import (
+    YouTubeAuditRestrictionError,
+    YouTubePolicy,
+    YouTubePrivacy,
+)
 from clipah.publishing.state_machine import may_cancel, transition
-from clipah.social_accounts.models import SocialConnectionStatus
+from clipah.social_accounts.models import SocialConnectionStatus, SocialProvider
 from clipah.workspaces.models import WorkspaceAccess
 
 
@@ -217,10 +222,14 @@ def prepare_publication_draft(
 
 
 def preflight_publication_draft(
-    session: Session, *, access: WorkspaceAccess, batch_id: UUID, now: datetime
+    session: Session,
+    *,
+    access: WorkspaceAccess,
+    batch_id: UUID,
+    now: datetime,
+    youtube_audit_approved: bool = False,
 ) -> PublicationBatchSummary:
     """Validate durable prerequisites and move every draft to approval review."""
-    del now
     batch, publications = _locked_batch(
         session, workspace_id=access.workspace_id, batch_id=batch_id
     )
@@ -265,6 +274,12 @@ def preflight_publication_draft(
                 "preflightCapabilityVersion": capability_version,
             }
         )
+        if account.provider is SocialProvider.YOUTUBE:
+            checkpoint["youtubePolicy"] = youtube_policy_evidence(
+                publication=publication,
+                now=now,
+                audit_approved=youtube_audit_approved,
+            )
         publication.checkpoint_metadata = checkpoint
         if publication.status is PublicationStatus.DRAFT:
             publication.status = transition(
@@ -277,7 +292,12 @@ def preflight_publication_draft(
 
 
 def confirm_publication_draft(
-    session: Session, *, access: WorkspaceAccess, batch_id: UUID, now: datetime
+    session: Session,
+    *,
+    access: WorkspaceAccess,
+    batch_id: UUID,
+    now: datetime,
+    youtube_audit_approved: bool = False,
 ) -> PublicationBatchSummary:
     """Freeze approval evidence and independently schedule or dispatch each destination."""
     batch, publications = _locked_batch(
@@ -318,6 +338,14 @@ def confirm_publication_draft(
             or checkpoint.get("preflightCapabilityVersion") != capability_version
         ):
             raise PublicationInvalidError("Publication must pass current preflight")
+        if account.provider is SocialProvider.YOUTUBE and checkpoint.get(
+            "youtubePolicy"
+        ) != youtube_policy_evidence(
+            publication=publication,
+            now=now,
+            audit_approved=youtube_audit_approved,
+        ):
+            raise PublicationInvalidError("Publication must pass current YouTube policy review")
         publication.approved_by_user_id = access.user_id
         publication.approved_at = now
         publication.capability_version = capability_version
@@ -338,6 +366,21 @@ def confirm_publication_draft(
             )
     session.flush()
     return _summary(batch, publications)
+
+
+def youtube_policy_evidence(
+    *, publication: Publication, now: datetime, audit_approved: bool
+) -> dict[str, str | None]:
+    """Build reproducible YouTube visibility evidence from frozen Publication choices."""
+    raw_privacy = publication.provider_options.get("privacy", YouTubePrivacy.PRIVATE.value)
+    try:
+        requested = YouTubePrivacy(raw_privacy)
+        return YouTubePolicy(audit_approved=audit_approved, now=now).confirmation_evidence_for(
+            requested=requested,
+            scheduled_for=publication.scheduled_for,
+        )
+    except (ValueError, YouTubeAuditRestrictionError) as error:
+        raise PublicationInvalidError("YouTube publication policy is invalid") from error
 
 
 def retry_publication(

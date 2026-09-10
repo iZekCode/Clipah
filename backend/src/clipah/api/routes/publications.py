@@ -16,6 +16,7 @@ from clipah.api.dependencies import (
     auth_components_for,
     require_csrf,
     require_workspace,
+    settings_for,
 )
 from clipah.api.errors import ApiError
 from clipah.models import PublicationBatch
@@ -202,6 +203,7 @@ def preflight(
             access=workspace.access,
             batch_id=draft_id,
             now=auth_components_for(request).now(),
+            youtube_audit_approved=settings_for(request).youtube_audit_approved,
         )
     except PublicationNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
@@ -229,6 +231,7 @@ def confirm(
             access=workspace.access,
             batch_id=draft_id,
             now=auth_components_for(request).now(),
+            youtube_audit_approved=settings_for(request).youtube_audit_approved,
         )
     except PublicationNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error

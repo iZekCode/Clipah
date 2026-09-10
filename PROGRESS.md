@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-37 have landed. **Task 38 is complete and awaiting the owner's
-commit.** Task 39 follows.
+**Current position:** Tasks 1-38 have landed. **Task 39 is complete and awaiting the owner's
+commit.** Task 40 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -83,8 +83,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | --- | --- | --- |
 | 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (`548cb5d`) |
 | 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (`6c55780`) |
-| 38 | Build immutable provider renditions and publication preflight | `[x]` (uncommitted) |
-| 39 | Implement the official YouTube Shorts publishing adapter | `[ ]` |
+| 38 | Build immutable provider renditions and publication preflight | `[x]` (`b92be20`) |
+| 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (uncommitted) |
 | 40 | Implement the official Instagram Reels publishing adapter | `[ ]` |
 | 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[ ]` |
 | 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[ ]` |
@@ -2171,6 +2171,42 @@ Final verification: Ruff check, Ruff format check, strict mypy, and 2155 backend
 thirteen environment-gated skips at 93.69% coverage. Migration `0021` downgraded to `0020`, upgraded
 back to head, and the Alembic drift check passed. No commit was created; the required owner commit
 message is `feat: add social publication renditions`.
+
+### Task 39 — Official YouTube Shorts publishing adapter
+
+An official YouTube Data API adapter now binds every publish attempt to the exact connected
+channel, requires `youtube.upload`, expands to `youtube.force-ssl` only for timed captions, and
+maps validated title, UTF-8-bounded description, individual tags, category, made-for-kids choice,
+synthetic-media disclosure, privacy, and native `publishAt` scheduling into strict provider
+requests. Shorts remain a property-based eligibility result for square or vertical videos up to
+three minutes; Clipah never promises YouTube classification and uses no unofficial upload path.
+
+The fail-closed compliance policy forces unaudited uploads to private visibility and freezes the
+requested/effective privacy plus restriction in preflight evidence. Confirmation and dispatch
+revalidation refuse audit-policy drift and return the Publication to approval with a stable diff.
+Audited future schedules use YouTube's private-to-public native transition, remain truthfully
+scheduled after processing, and become published only when authoritative provider visibility
+changes.
+
+Resumable upload sessions are stored only through a tenant-and-attempt-bound encrypted vault
+protocol. Postgres retains the opaque reference, checksum, total and acknowledged bytes,
+generation, and ambiguity flag. Transfers send one contiguous 256 KiB-aligned chunk, reconcile
+provider progress before retrying ambiguous bytes, preserve the authoritative video ID, and block
+automatic replay when an ambiguous final request can no longer be disproved. Status, OAuth,
+quota, rate-limit, transient, permanent, and malformed responses normalize to bounded secret-free
+errors.
+
+Timed captions and custom thumbnails are explicit post-upload operations with independent durable
+states and retry evidence. Their failure never clears the base video ID or falsifies a successfully
+processed or published video. The locked persistence coordinator verifies the bound YouTube Social
+Account and Social Rendition, appends safe Publication Attempts, and derives only a validated
+YouTube permalink.
+
+Final verification: Ruff check and Ruff format check passed; strict mypy passed over 197 source
+files; 2,211 backend tests passed with fourteen environment-gated skips at 93.06% coverage. The
+focused Task 39 suite passed 53 tests with the private live-upload smoke test skipped by default.
+Alembic was already at head and reported no new upgrade operations. No commit was created; the
+required owner commit message is `feat: publish shorts through youtube api`.
 
 
 ## Browser suite: first run, and what it found

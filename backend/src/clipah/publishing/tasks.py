@@ -24,7 +24,8 @@ from clipah.publishing.preflight import (
 )
 from clipah.publishing.profiles import profile_for
 from clipah.publishing.state_machine import transition
-from clipah.social_accounts.models import SocialConnectionStatus
+from clipah.publishing.use_cases import youtube_policy_evidence
+from clipah.social_accounts.models import SocialConnectionStatus, SocialProvider
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import (
     WorkspaceAction,
@@ -88,6 +89,7 @@ def revalidate_publication_dispatch(
     workspace_id: UUID,
     publication_id: UUID,
     now: datetime,
+    youtube_audit_approved: bool = False,
 ) -> PublicationSummary:
     """Recheck live authority, connection, and capabilities before provider I/O."""
     publication = session.scalar(
@@ -155,7 +157,13 @@ def revalidate_publication_dispatch(
                 }
             ]
         }
-    elif not _current_preflight_matches(session, publication=publication, account=account):
+    elif not _current_preflight_matches(
+        session,
+        publication=publication,
+        account=account,
+        now=now,
+        youtube_audit_approved=youtube_audit_approved,
+    ):
         publication.status = transition(
             current=publication.status, target=PublicationStatus.AWAITING_APPROVAL
         ).current
@@ -164,13 +172,35 @@ def revalidate_publication_dispatch(
 
 
 def _current_preflight_matches(
-    session: Session, *, publication: Publication, account: SocialAccount
+    session: Session,
+    *,
+    publication: Publication,
+    account: SocialAccount,
+    now: datetime,
+    youtube_audit_approved: bool,
 ) -> bool:
     """Repeat provider validation against frozen bytes and choices immediately before I/O."""
     checkpoint = dict(publication.checkpoint_metadata or {})
     approved_report = checkpoint.get("preflight")
     if not isinstance(approved_report, dict):
         return True
+    if account.provider is SocialProvider.YOUTUBE:
+        approved_policy = checkpoint.get("youtubePolicy")
+        current_policy = youtube_policy_evidence(
+            publication=publication,
+            now=now,
+            audit_approved=youtube_audit_approved,
+        )
+        if approved_policy != current_policy:
+            checkpoint["preflightDiff"] = [
+                {
+                    "field": "youtubePolicy",
+                    "approved": approved_policy,
+                    "current": current_policy,
+                }
+            ]
+            publication.checkpoint_metadata = checkpoint
+            return False
     current_profile = profile_for(account.provider)
     approved_version = approved_report.get("profileVersion")
     if approved_version != current_profile.version:

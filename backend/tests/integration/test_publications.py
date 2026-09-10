@@ -413,7 +413,7 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
     destination = PublicationDestinationDraft(
         social_account_id=seed["account"],
         metadata={"title": "Exact title", "caption": "Exact caption"},
-        provider_options={"privacy": "private"},
+        provider_options={"privacy": "public"},
         consent={"confirmed": True, "confirmedAt": NOW.isoformat()},
         scheduled_for=scheduled_local,
         display_timezone="Asia/Jakarta",
@@ -430,12 +430,19 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
             idempotency_key="confirmation-snapshot",
             now=NOW,
         )
-        preflight_publication_draft(session, access=_access(seed), batch_id=draft.batch_id, now=NOW)
+        preflight_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=True,
+        )
         confirmed = confirm_publication_draft(
             session,
             access=_access(seed),
             batch_id=draft.batch_id,
             now=NOW,
+            youtube_audit_approved=True,
         )
         publication_id = confirmed.publications[0].publication_id
 
@@ -454,7 +461,7 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
             "title": "Exact title",
             "caption": "Exact caption",
         }
-        assert publication.provider_options == {"privacy": "private"}
+        assert publication.provider_options == {"privacy": "public"}
         assert publication.consent_snapshot == {
             "confirmed": True,
             "confirmedAt": NOW.isoformat(),
@@ -479,6 +486,97 @@ def test_confirmation_freezes_every_approval_input_and_normalizes_schedule_to_ut
             text("UPDATE publications SET metadata_snapshot = '{}' WHERE id = :id"),
             {"id": publication_id},
         )
+
+
+def test_youtube_preflight_freezes_audit_limited_privacy_for_confirmation(
+    engine: Engine, clean_database: None
+) -> None:
+    """An unaudited broader request must visibly freeze the effective private upload policy."""
+    seed = _seed_publication(engine, suffix="youtube-audit-policy")
+    destination = PublicationDestinationDraft(
+        social_account_id=seed["account"],
+        metadata={"title": "Audit-limited upload"},
+        provider_options={"privacy": "public"},
+        consent={"confirmed": True},
+        scheduled_for=None,
+        display_timezone="UTC",
+    )
+
+    with Session(engine) as session, session.begin():
+        draft = prepare_publication_draft(
+            session,
+            access=_access(seed),
+            edit_id=seed["edit"],
+            revision=1,
+            render_artifact_id=seed["render"],
+            destinations=(destination,),
+            idempotency_key="youtube-audit-policy",
+            now=NOW,
+        )
+        preflight_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=False,
+        )
+        confirmed = confirm_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=False,
+        )
+        publication = session.get(Publication, confirmed.publications[0].publication_id)
+        assert publication is not None
+        assert publication.checkpoint_metadata is not None
+        assert publication.checkpoint_metadata["youtubePolicy"] == {
+            "requestedPrivacy": "public",
+            "effectivePrivacy": "private",
+            "restriction": "youtube_compliance_audit_required",
+        }
+
+
+def test_youtube_confirmation_rejects_changed_audit_policy(
+    engine: Engine, clean_database: None
+) -> None:
+    """Audit approval drift must return to human review instead of broadening visibility."""
+    seed = _seed_publication(engine, suffix="youtube-audit-drift")
+    destination = PublicationDestinationDraft(
+        social_account_id=seed["account"],
+        metadata={"title": "Frozen visibility"},
+        provider_options={"privacy": "public"},
+        consent={"confirmed": True},
+        scheduled_for=None,
+        display_timezone="UTC",
+    )
+    with Session(engine) as session, session.begin():
+        draft = prepare_publication_draft(
+            session,
+            access=_access(seed),
+            edit_id=seed["edit"],
+            revision=1,
+            render_artifact_id=seed["render"],
+            destinations=(destination,),
+            idempotency_key="youtube-audit-drift",
+            now=NOW,
+        )
+        preflight_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=False,
+        )
+
+        with pytest.raises(PublicationInvalidError, match="policy"):
+            confirm_publication_draft(
+                session,
+                access=_access(seed),
+                batch_id=draft.batch_id,
+                now=NOW,
+                youtube_audit_approved=True,
+            )
 
 
 def test_tiktok_preflight_records_promotional_watermark_remediation_and_blocks_confirmation(
@@ -1192,6 +1290,77 @@ def test_dispatch_revalidation_returns_profile_drift_to_approval_with_a_clear_di
                 "field": "profileVersion",
                 "approved": "2026-09-09",
                 "current": "2026-10-01",
+            }
+        ]
+
+
+def test_dispatch_revalidation_returns_youtube_audit_drift_to_approval(
+    engine: Engine, clean_database: None
+) -> None:
+    """A newly audited deployment must not broaden an already-approved upload silently."""
+    seed = _seed_publication(engine, suffix="dispatch-youtube-policy")
+    destination = PublicationDestinationDraft(
+        social_account_id=seed["account"],
+        metadata={"title": "Frozen audit policy"},
+        provider_options={"privacy": "public"},
+        consent={"confirmed": True},
+        scheduled_for=None,
+        display_timezone="UTC",
+    )
+    with Session(engine) as session, session.begin():
+        draft = prepare_publication_draft(
+            session,
+            access=_access(seed),
+            edit_id=seed["edit"],
+            revision=1,
+            render_artifact_id=seed["render"],
+            destinations=(destination,),
+            idempotency_key="dispatch-youtube-policy",
+            now=NOW,
+        )
+        preflight_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=False,
+        )
+        confirmed = confirm_publication_draft(
+            session,
+            access=_access(seed),
+            batch_id=draft.batch_id,
+            now=NOW,
+            youtube_audit_approved=False,
+        )
+        publication_id = confirmed.publications[0].publication_id
+
+    with Session(engine) as session, session.begin():
+        result = revalidate_publication_dispatch(
+            session,
+            workspace_id=seed["workspace"],
+            publication_id=publication_id,
+            now=NOW,
+            youtube_audit_approved=True,
+        )
+
+    assert result.status is PublicationStatus.AWAITING_APPROVAL
+    with Session(engine) as session:
+        publication = session.get(Publication, publication_id)
+        assert publication is not None
+        assert publication.checkpoint_metadata is not None
+        assert publication.checkpoint_metadata["preflightDiff"] == [
+            {
+                "field": "youtubePolicy",
+                "approved": {
+                    "requestedPrivacy": "public",
+                    "effectivePrivacy": "private",
+                    "restriction": "youtube_compliance_audit_required",
+                },
+                "current": {
+                    "requestedPrivacy": "public",
+                    "effectivePrivacy": "public",
+                    "restriction": None,
+                },
             }
         ]
 

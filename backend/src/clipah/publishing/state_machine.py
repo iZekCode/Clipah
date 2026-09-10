@@ -25,6 +25,7 @@ _ALLOWED_TARGETS = {
     PublicationStatus.SCHEDULED: frozenset(
         {
             PublicationStatus.PREFLIGHTING,
+            PublicationStatus.PUBLISHED,
             PublicationStatus.CANCELLED,
             PublicationStatus.RECONNECT_REQUIRED,
         }
@@ -49,6 +50,7 @@ _ALLOWED_TARGETS = {
     ),
     PublicationStatus.PROCESSING: frozenset(
         {
+            PublicationStatus.SCHEDULED,
             PublicationStatus.PUBLISHED,
             PublicationStatus.RETRYABLE_FAILED,
             PublicationStatus.RECONNECT_REQUIRED,
