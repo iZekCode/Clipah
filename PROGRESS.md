@@ -3,8 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-38 have landed. **Task 39 is complete and awaiting the owner's
-commit.** Task 40 follows.
+**Current position:** Tasks 1-39 have landed. **Task 40 is complete and awaiting the owner's
+commit.** Task 41 follows.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -84,8 +84,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 36 | Implement Social Account connections and encrypted OAuth Grants | `[x]` (`548cb5d`) |
 | 37 | Build the Publication domain, state machine, scheduler, and idempotency foundation | `[x]` (`6c55780`) |
 | 38 | Build immutable provider renditions and publication preflight | `[x]` (`b92be20`) |
-| 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (uncommitted) |
-| 40 | Implement the official Instagram Reels publishing adapter | `[ ]` |
+| 39 | Implement the official YouTube Shorts publishing adapter | `[x]` (`76d4c4f`) |
+| 40 | Implement the official Instagram Reels publishing adapter | `[x]` (uncommitted) |
 | 41 | Implement TikTok draft fallback and audited Direct Post adapter | `[ ]` |
 | 42 | Complete multi-destination scheduling, dispatch, and reconciliation | `[ ]` |
 | 43 | Build Connections, publishing dashboard, composer, history, and rollout gates | `[ ]` |
@@ -2205,8 +2205,74 @@ YouTube permalink.
 Final verification: Ruff check and Ruff format check passed; strict mypy passed over 197 source
 files; 2,211 backend tests passed with fourteen environment-gated skips at 93.06% coverage. The
 focused Task 39 suite passed 53 tests with the private live-upload smoke test skipped by default.
-Alembic was already at head and reported no new upgrade operations. No commit was created; the
-required owner commit message is `feat: publish shorts through youtube api`.
+Alembic was already at head and reported no new upgrade operations. Landed in `76d4c4f`
+as `feat: publish shorts through youtube api`.
+
+### Task 40 — Official Instagram Reels publishing adapter
+
+An official Instagram API with Instagram Login adapter now publishes Reels through the documented
+two-step container flow. `publishing/providers/instagram/oauth.py` holds the least-privilege scope
+policy — `instagram_business_basic` plus `instagram_business_content_publish`, both required — the
+professional-account eligibility rule, and long-lived token maintenance. A refresh is attempted only
+inside Instagram's own window: never before the credential is a day old, never after it has expired,
+and only within a week of expiry. The rotated credential travels in an `Authorization` header rather
+than a query string, so no provider log retains a reusable token.
+
+`containers.py` holds the container lifecycle. `build_pull_url` is the checkbox about the media URL
+made executable: a capability must be HTTPS, must carry no embedded credentials, must end in exactly
+the frozen rendition key, must carry none of the nine token-shaped query parameters, and must live
+between five minutes and an hour. `MediaPullUrl` has no serializer, and `ContainerCheckpoint.safe_dict`
+has no field that could hold one, so the capability cannot reach Postgres by accident. Before any
+container is created the adapter proves the rendition is actually fetchable — a HEAD that must return
+success, a `video/*` content type, and exactly the frozen byte length — so Instagram is never asked to
+pull bytes Clipah has not just seen.
+
+Scheduling is Clipah's, because Instagram has none. `scheduling_decision` returns one of four moves:
+wait, create, publish, or recreate an expired container. Creation happens no earlier than thirty
+minutes before the requested time, so a container cannot expire unused, and publishing happens no
+earlier than the requested instant. A container within fifteen minutes of its twenty-four-hour
+lifetime is reported expired rather than published on a guess.
+
+The two ambiguity cases are treated differently on purpose. A lost *creation* response is recorded as
+`creationAmbiguous` with no container ID; an unpublished container has no user-visible effect and
+expires on its own, so recreating one is safe once the ambiguity is durable. A lost *publish* response
+is never repeated. `reconcile_publish` polls the container instead: a container Instagram does not
+report as published leaves the Publication retryable, and a published one is resolved against the
+account's recent Reels, adopting exactly one match. Zero or several candidates raise the ambiguous
+error rather than attaching a wrong permalink.
+
+`InstagramPublishRequest` carries only fields Instagram documents — caption, share-to-feed, cover URL,
+thumbnail offset, audio name, location, and up to three distinct collaborators. It forbids extra
+fields, so a privacy, draft, visibility, or native-schedule control cannot be smuggled in; six such
+names are asserted rejected. An unset optional field is omitted from the container body rather than
+sent as an invented default.
+
+`api/routes/instagram_webhooks.py` serves the deauthorization and data-deletion callbacks. Each
+verifies Meta's `signed_request` HMAC against the app secret, requires the documented `HMAC-SHA256`
+algorithm, and enforces a five-minute replay window before anything is persisted. The route performs
+no state transition: it derives a stable digest over the callback kind and the signed payload, hands
+that to an awaited sink, and acknowledges. Duplicate deliveries produce the same digest and dispatch
+once. Data deletion returns the status URL and confirmation code Meta requires. The form field is read
+from the raw body rather than through `python-multipart`, so no dependency was added.
+
+`InstagramPublicationCoordinator` applies container truth to one locked Publication. Reconciliation is
+monotonic: a poll sequence at or below the last one applied is ignored, so a late, duplicated, or
+reordered event can never regress a published destination. A container error is terminal, an expired
+container is retryable, and a permalink from any host but Instagram's is discarded rather than stored.
+
+`Settings` already carried the Instagram publishing, OAuth, API-version, and audit fields from Task 1,
+and Postgres already carried the checkpoint JSONB the container evidence uses, so no migration and no
+configuration change were needed.
+
+Four invariants were re-checked by breaking the implementation on purpose and watching the matching
+test fail: the pull-URL credential check, the pre-container reachability proof, the poll-sequence
+monotonicity guard, and the permalink host check.
+
+Final verification: Ruff check and Ruff format check passed; strict mypy passed over 202 source files;
+2,314 backend tests passed with fifteen environment-gated skips at 92.86% coverage, and all four new
+modules reached complete line and branch coverage. The opt-in sandbox smoke test in
+`tests/slow/test_instagram_publisher_smoke.py` was written and was not opted into during verification.
+No commit was created; the required owner commit message is `feat: publish reels through instagram api`.
 
 
 ## Browser suite: first run, and what it found

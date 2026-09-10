@@ -28,6 +28,7 @@ from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import edit_reviews as edit_review_routes
 from clipah.api.routes import edits as edit_routes
 from clipah.api.routes import generation_webhooks as generation_webhook_routes
+from clipah.api.routes import instagram_webhooks as instagram_webhook_routes
 from clipah.api.routes import jobs as job_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
@@ -43,6 +44,10 @@ from clipah.api.routes import workspace_memberships as workspace_membership_rout
 from clipah.api.routes import workspaces as workspace_routes
 from clipah.api.routes import youtube_imports as youtube_import_routes
 from clipah.api.routes.generation_webhooks import FalWebhookVerifier, GenerationWebhookSink
+from clipah.api.routes.instagram_webhooks import (
+    InstagramWebhookSink,
+    InstagramWebhookVerifier,
+)
 from clipah.assets.source_validation import validate_youtube_url
 from clipah.assets.storage import ObjectStore, S3ObjectStore
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
@@ -98,6 +103,9 @@ def create_app(
     generation_webhook_verifier: FalWebhookVerifier | None = None,
     generation_webhook_sink: GenerationWebhookSink | None = None,
     generation_webhook_clock: Callable[[], datetime] | None = None,
+    instagram_webhook_verifier: InstagramWebhookVerifier | None = None,
+    instagram_webhook_sink: InstagramWebhookSink | None = None,
+    instagram_webhook_clock: Callable[[], datetime] | None = None,
     generation_providers: GenerationProviders | None = None,
     context_assessor: ContextSafetyAssessor | None = None,
     social_providers: Mapping[SocialProvider, SocialOAuthProvider] | None = None,
@@ -118,6 +126,9 @@ def create_app(
     app.state.generation_webhook_verifier = generation_webhook_verifier
     app.state.generation_webhook_sink = generation_webhook_sink
     app.state.generation_webhook_clock = generation_webhook_clock or _utc_now
+    app.state.instagram_webhook_verifier = instagram_webhook_verifier
+    app.state.instagram_webhook_sink = instagram_webhook_sink
+    app.state.instagram_webhook_clock = instagram_webhook_clock or _utc_now
     app.state.generation_providers = generation_providers or configured_generation_providers(
         settings
     )
@@ -209,6 +220,7 @@ def create_app(
     app.include_router(edit_review_routes.router)
     app.include_router(render_routes.router)
     app.include_router(generation_webhook_routes.router)
+    app.include_router(instagram_webhook_routes.router)
     app.include_router(variant_routes.router)
     app.include_router(claim_evidence_routes.router)
     app.include_router(brand_kit_routes.router)
