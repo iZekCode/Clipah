@@ -3,8 +3,12 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-47 have landed. **Task 48 is complete pending the owner
-commit**, in two parts: 48a prepared the cutover, 48b removed the legacy stack.
+**Current position:** All 48 tasks have landed. Task 48 ran in two parts: 48a prepared the
+cutover, 48b removed the legacy stack.
+
+The rebuild is code-complete. What remains is not a task in this plan: the staged traffic
+rollout, the live social-provider gating, and the seven-day rollback window are operator
+actions against a live deployment, and `docs/operations/cutover.md` specifies each one.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -98,7 +102,7 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (`ba19e39`) |
 | 46 | Containerize local and production processes with pinned media tooling | `[x]` (`14f20d6`) |
 | 47 | Add CI, security scanning, load tests, and recovery drills | `[x]` (`763fdaf`) |
-| 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[x]` (uncommitted; owner commit pending) |
+| 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[x]` (`5061909`) |
 
 ## What each completed task actually delivered
 
@@ -3024,5 +3028,5 @@ Final verification: Ruff check, Ruff format check, strict mypy, and 2788 backend
 with 20 environment-gated skips at 92.75% coverage; `pnpm lint`, `pnpm typecheck`, `pnpm test`
 (424 passed), and `pnpm build` all passed; `scripts/check-legacy-removed.sh` exits zero. The
 Section 12 matrix was not run end to end here: it needs the container stack, browser
-binaries, and live provider credentials. No commit was created; the required owner commit
-message is `refactor: complete production cutover`.
+binaries, and live provider credentials. Committed by the repository owner as `5061909`,
+`refactor: complete production cutover`.
