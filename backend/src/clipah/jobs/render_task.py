@@ -20,7 +20,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from clipah.assets.ffmpeg import MEDIA_PROCESS_TIMEOUT, FFmpegRunner, MediaProcessError
+from clipah.assets.ffmpeg import MEDIA_PROCESS_TIMEOUT, MediaProcessError
 from clipah.assets.ingest import SIGNED_DOWNLOAD_TTL, HttpxSourceDownloader, SourceDownloader
 from clipah.assets.keys import render_artifact_key
 from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError, observed_s3_store
@@ -55,6 +55,7 @@ from clipah.renders.models import (
     Watermark,
 )
 from clipah.renders.use_cases import RenderTarget, healthy_artifact, render_target
+from clipah.runtime.readiness import validate_media_runtime
 
 RENDER_TARGET_MISSING = "RENDER_TARGET_MISSING"
 RENDER_INTEGRITY = "RENDER_INTEGRITY"
@@ -377,13 +378,12 @@ def production_object_store(settings: Settings) -> ObjectStore:
 @lru_cache(maxsize=1)
 def _validated_renderer() -> FFmpegRenderer:
     """Validate the pinned media tools once before this process accepts render work."""
-    FFmpegRunner().validate_versions()
     return FFmpegRenderer()
 
 
 def validate_render_readiness() -> None:
     """Fail worker startup unless the pinned FFmpeg this renderer was written for is present."""
-    _validated_renderer()
+    validate_media_runtime()
 
 
 render_stage_runner = RenderStageRunner(

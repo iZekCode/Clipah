@@ -3,8 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-44 have landed. **Task 45 is complete and awaiting the
-owner's commit.** Task 46 follows.
+**Current position:** Tasks 1-46 have landed. **Task 46 is complete pending the owner commit.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -95,8 +94,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | # | Task | Status |
 | --- | --- | --- |
 | 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (`3b61f43`) |
-| 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (uncommitted) |
-| 46 | Containerize local and production processes with pinned media tooling | `[ ]` |
+| 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (`ba19e39`) |
+| 46 | Containerize local and production processes with pinned media tooling | `[x]` (uncommitted; owner commit pending) |
 | 47 | Add CI, security scanning, load tests, and recovery drills | `[ ]` |
 | 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[ ]` |
 
@@ -2647,7 +2646,7 @@ checkbox.** They are recorded here rather than quietly built:
 
 ### Task 45 — Retention, recovery, and account deletion
 
-Complete and awaiting the owner's commit.
+Landed in `ba19e39`.
 
 **Nothing is deleted except through a tombstone, and a tombstone is the only thing that
 says what may go.** It names one Workspace, one entity, one storage prefix, and the
@@ -2722,6 +2721,31 @@ the pending row is withdrawn; the application only ever withdraws an undischarge
 `docs/operations/data-retention.md` records the windows, the sweep, the deferral and
 failure behaviour, the three deletion flows, and the credentials retention runs with.
 
+### Task 46 — Reproducible production services
+
+Complete in the worktree; the owner should commit it as `build: add reproducible production services`.
+
+The runtime matrix now has digest-pinned backend, media-worker, source-import, and standalone
+frontend images. The root Docker ignore file keeps host dependencies, generated builds, virtual
+environments, and environment files out of every build context. FFmpeg 7.1.5 capabilities and
+Noto Sans are verified during image build and
+role startup; yt-dlp, yt-dlp-ejs, and Deno remain exclusive to source import. Application
+containers run as UID/GID 10001 with read-only roots, private job temp paths, bounded health and
+shutdown behaviour, explicit Celery queues/concurrency, provider credential allowlists, and AWS
+KMS-backed OAuth secret wrapping.
+
+Compose renders the full local fixture topology with loopback-only infrastructure, one-shot
+migrations, private MinIO setup, and independently configured workers. `scripts/verify-runtime.sh`
+builds the smoke target, waits at most five minutes, leaves healthy infrastructure running, and
+replays the fixed fixture identity twice; both runs execute 10 smoke tests without pytest-cache
+writes. Eight Railway service configurations select exact image targets and bounded commands.
+
+Final evidence: backend `ruff check`, `ruff format --check`, strict mypy, and `2627 passed,
+20 skipped` at `92.62%` coverage; frontend lint, typecheck, `411 passed`, and production build;
+Compose config validation; deployment contracts/runtime tests (`11 passed`); Docker Compose build
+and health wait; two successful runtime smoke passes; and `git diff --check`. No commit, push, or
+history rewrite was performed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -2729,7 +2753,7 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
-| Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket). `uvicorn` is in no lockfile, because every test drives the application in process; the browser suite was run with `uv run --with uvicorn` against a scratch entrypoint | Task 46, with the containerized processes |
+| ~~Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket)~~ — landed in Task 46's pinned API image and Compose MinIO fixture | done in Task 46 |
 | Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
 | Retrieving *stock* images, so a member can accept a still they did not pay a model for. Task 31 generates stills, and the editor places them as image overlays; both stock adapters still query the video endpoints only | whichever task revisits stock retrieval — Task 34 built the content library and no checkbox in it touches the stock adapters |
@@ -2746,7 +2770,7 @@ oversight.
 | Removing `@elah/core` and `elah-adapter.ts`, and the FFmpeg frame/timing parity gate the ADR still owes. Task 24 built the renderer the gate compares against, but running it needs browser binaries, long-form proxy media, and a reference machine together, which no session so far has had | the repository owner, then Task 26 |
 | A brand-mark policy: the watermark is compiled from one deployment-wide `CLIPAH_RENDER_WATERMARK_TEXT` setting, because composition version 1 carries no watermark field and Brand Kits do not exist yet | Task 33, with brand kits |
 | Rendering burned-in captions and drawn text through real FFmpeg; the local build has no libass or libfreetype, so those filters were exercised by the compiler's tests rather than by an encode | the repository owner, inside the pinned image |
-| A worker readiness gate for the filters the renderer depends on (`subtitles`, `drawtext`, `zoompan`); `validate_render_readiness` currently checks the pinned FFmpeg version only | Task 46, with the containerized processes |
+| ~~A worker readiness gate for the filters the renderer depends on (`subtitles`, `drawtext`, `zoompan`)~~ — shared media capability verification now runs at image build and worker startup | done in Task 46 |
 | Charging a metered Workspace budget for an export; a render spends a concurrency slot and no quota, because no render budget exists in the plan's limit table | Tasks 44-46, with operational cost accounting |
 | Frame and timing parity against the native FFmpeg renderer — the fixture render belongs to Task 24, so the scenario is a `test.fixme` rather than a test that would pass by doing nothing | Task 24 (`plan.md:1263-1290`) |
 | Frame-accurate preview compositing through Mediabunny — captions, crop, and overlays decoded into one canvas. The basic editor plays the proxy through the `PreviewEngine` port and draws captions and crop over it, which is honest for trim and caption work but is not what the export will look like pixel for pixel | Tasks 25 and 26, as a second implementation of the same port |
@@ -2765,7 +2789,7 @@ oversight.
 | Reconciling the bake-off fixture `contracts/fixtures/editor/parity-composition.json`, which is frame-based, with composition version 1, which is millisecond-based; the fixture drives the engine contract test rather than the product | Task 24, with the FFmpeg parity gate |
 | Server-side candidate filtering and sorting — the ranking policy exposes a bounded set (ten by default) and the review page reads all of it before offering any control, so no ordering is invented over a partial list. A larger exposed set would need `category` and duration query parameters on `GET /projects/{project_id}/candidates` | whichever task raises the exposure limit |
 | Enabling authenticated YouTube import in production. The feature is built and tested, and `docs/security/youtube-import.md` records four open items — legal approval, data retention, incident response, and whether production wraps data keys with a managed key — each of which blocks enablement | the repository owner |
-| A managed key-management service client for wrapping data keys. Task 36 adds a social-specific envelope port, key references/versions, historical-key rotation, and fail-closed behavior; local deployments still derive wrapping keys from configured deployment material | Task 46, with production infrastructure wiring |
+| ~~A managed key-management service client for wrapping data keys~~ — AWS KMS now implements the existing Social Secret Store port with exact encryption context and fail-closed production selection | done in Task 46 |
 | ~~Sweeping expired source connections~~ | done in Task 45: the sweep tombstones every revoked or expired connection with no window at all, and its purge deletes the stored secret |
 | A landmark on the editor's loading and error states. A page that is nothing but an error renders no `main`, so nothing anchors a screen reader; the alert itself is correct and announced | Task 35, with the accessibility quality gates |
 | A member-visible list of a Project's own past Jobs; the panel follows the one Job the Project is currently working through, and the Workspace-wide job center holds the rest | Task 35 (`plan.md:1571-1600`), with project review |
@@ -2773,7 +2797,7 @@ oversight.
 | Accepting a B-roll suggestion in a browser, marked `test.fixme`. The seed stages the pipeline's output up to the clip; staging a licensed picture would mean inventing provenance, which Task 29 exists to refuse | the repository owner, with real Groq and stock credentials |
 | A coverage floor for the frontend suite, and feature-level UI tests; Task 17 has smoke coverage only | Tasks 18-20 |
 | Removing the legacy Flask UI, its Tailwind CDN and unpkg Lucide script tags, and `static/script.js`; the new UI depends on none of them but the files still serve the legacy deployment | Task 48 |
-| Replacing `nixpacks.toml` with per-process Railway deployment configuration for the frontend and backend | Task 46 |
+| ~~Adding per-process Railway deployment configuration for the frontend and backend~~ — eight target-specific TOMLs now exist; removing legacy `nixpacks.toml` remains a Task 48 cutover | Task 48 |
 | ~~Workspace delete and restore endpoints~~ | done in Task 45 |
 | Reconcile provider multipart uploads orphaned before a durable upload row exists. Task 45 expires every abandoned upload it has a row for, aborting it at the provider as well as deleting its key, but an upload created at the provider before the row was committed leaves nothing for a tombstone to name | whichever task adds a provider-side listing reconciliation; it needs a bucket-wide sweep, which is precisely what retention is built never to do |
 | Bind readiness to a real configured object-store probe instead of the current no-op default | Tasks 44 and 46 |

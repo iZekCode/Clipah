@@ -239,8 +239,8 @@ class S3ObjectStore:
     ) -> None:
         """Bind one bucket and optional S3-compatible endpoint to this adapter."""
         if client is None:
-            import boto3  # type: ignore[import-untyped]
-            from botocore.config import Config  # type: ignore[import-untyped]
+            import boto3
+            from botocore.config import Config
 
             client = boto3.client(
                 "s3",

@@ -333,7 +333,7 @@ from clipah.jobs.ingest_task import (  # noqa: E402
     ingest_stage_runner,
     validate_ingest_readiness,
 )
-from clipah.jobs.render_task import render_stage_runner  # noqa: E402
+from clipah.jobs.render_task import render_stage_runner, validate_render_readiness  # noqa: E402
 from clipah.jobs.source_import_task import source_import_stage_runner  # noqa: E402
 from clipah.jobs.transcribe_task import transcribe_stage_runner  # noqa: E402
 
@@ -364,6 +364,20 @@ def _worker_accepts_ingest(queues: object) -> bool:
 def _validate_ingest_worker_startup(
     *, options: dict[str, object] | None = None, **_kwargs: object
 ) -> None:
-    """Validate native ingest dependencies before an ingest-capable worker starts."""
-    if _worker_accepts_ingest((options or {}).get("queues")):
+    """Validate only the native dependencies required by the selected worker queues."""
+    queues = (options or {}).get("queues")
+    if _worker_accepts_ingest(queues):
         validate_ingest_readiness()
+    if _worker_accepts_render(queues):
+        validate_render_readiness()
+
+
+def _worker_accepts_render(queues: object) -> bool:
+    """Return whether an explicit queue selection can execute rendering work."""
+    if isinstance(queues, str):
+        names = {name.strip() for name in queues.split(",")}
+    elif isinstance(queues, (tuple, list, set, frozenset)):
+        names = {str(getattr(queue, "name", queue)).strip() for queue in queues}
+    else:
+        return False
+    return bool({"render", "social_rendition"} & names)

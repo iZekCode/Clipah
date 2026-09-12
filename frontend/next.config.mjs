@@ -8,6 +8,7 @@ const apiOrigin = process.env.CLIPAH_API_ORIGIN ?? 'http://127.0.0.1:8000'
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+  output: 'standalone',
   images: {
     unoptimized: true,
   },

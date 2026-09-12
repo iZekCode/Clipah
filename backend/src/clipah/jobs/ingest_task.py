@@ -36,6 +36,7 @@ from clipah.jobs.models import (
 from clipah.jobs.use_cases import update_job_progress
 from clipah.jobs.workspace import job_workspace
 from clipah.models import Asset, AssetKind, AssetSourceType
+from clipah.runtime.readiness import validate_media_runtime
 
 IngestorFactory = Callable[[Settings], AssetIngestor]
 INGEST_INTEGRITY_CODE = "ASSET_INGEST_INTEGRITY"
@@ -416,14 +417,12 @@ def production_asset_ingestor(settings: Settings) -> AssetIngestor:
 @lru_cache(maxsize=1)
 def _validated_media_runner() -> FFmpegRunner:
     """Validate pinned media tools once before this worker process accepts ingest work."""
-    runner = FFmpegRunner()
-    runner.validate_versions()
-    return runner
+    return FFmpegRunner()
 
 
 def validate_ingest_readiness() -> None:
     """Fail worker startup unless both pinned media tools and native libmagic are usable."""
-    _validated_media_runner()
+    validate_media_runtime()
     sniff_mime(Path(__file__))
 
 

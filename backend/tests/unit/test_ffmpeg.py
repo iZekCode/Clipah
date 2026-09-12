@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 import clipah.jobs.ingest_task as ingest_task
+import clipah.jobs.render_task as render_task
 import clipah.jobs.tasks as job_tasks
 from clipah.assets.ffmpeg import (
     FFMPEG_FAILED,
@@ -158,7 +159,7 @@ def test_ingest_readiness_validates_media_versions_and_native_libmagic(
 ) -> None:
     """An ingest worker must prove both native boundaries before accepting work."""
     calls: list[object] = []
-    monkeypatch.setattr(ingest_task, "_validated_media_runner", lambda: calls.append("ffmpeg"))
+    monkeypatch.setattr(ingest_task, "validate_media_runtime", lambda: calls.append("ffmpeg"))
     monkeypatch.setattr(
         ingest_task,
         "sniff_mime",
@@ -171,12 +172,26 @@ def test_ingest_readiness_validates_media_versions_and_native_libmagic(
 
 
 @pytest.mark.unit
-def test_worker_startup_only_runs_ingest_readiness_for_ingest_capable_queues(
+def test_render_readiness_validates_complete_media_capabilities(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The source-import-only worker must not require media ingest readiness."""
-    calls: list[None] = []
-    monkeypatch.setattr(job_tasks, "validate_ingest_readiness", lambda: calls.append(None))
+    """A render worker must prove filters, encoders, and fonts before accepting work."""
+    calls: list[str] = []
+    monkeypatch.setattr(render_task, "validate_media_runtime", lambda: calls.append("media"))
+
+    render_task.validate_render_readiness()
+
+    assert calls == ["media"]
+
+
+@pytest.mark.unit
+def test_worker_startup_runs_only_readiness_owned_by_selected_media_queues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Source-import and non-media workers must not inherit unrelated native dependencies."""
+    calls: list[str] = []
+    monkeypatch.setattr(job_tasks, "validate_ingest_readiness", lambda: calls.append("ingest"))
+    monkeypatch.setattr(job_tasks, "validate_render_readiness", lambda: calls.append("render"))
 
     class Queue:
         """Represent the named queue objects Celery may pass to its startup signal."""
@@ -185,10 +200,13 @@ def test_worker_startup_only_runs_ingest_readiness_for_ingest_capable_queues(
 
     job_tasks._validate_ingest_worker_startup(options={"queues": "source_import"})
     job_tasks._validate_ingest_worker_startup(options={"queues": "source_import,ingest"})
+    job_tasks._validate_ingest_worker_startup(options={"queues": "render"})
+    job_tasks._validate_ingest_worker_startup(options={"queues": "social_rendition"})
+    job_tasks._validate_ingest_worker_startup(options={"queues": "ai"})
     job_tasks._validate_ingest_worker_startup(options={"queues": [Queue()]})
     job_tasks._validate_ingest_worker_startup(options={})
 
-    assert calls == [None, None, None]
+    assert calls == ["ingest", "render", "render", "ingest", "ingest"]
 
 
 @pytest.mark.unit

@@ -1,10 +1,14 @@
 #!/bin/sh
 set -eu
 
-uv run --frozen --no-sync python -m clipah.source_connectors.readiness
+python -m clipah.source_connectors.readiness
+concurrency="${CLIPAH_SOURCE_IMPORT_CONCURRENCY:-1}"
+case "$concurrency" in
+  ''|*[!0-9]*|0) echo 'source import concurrency unavailable' >&2; exit 1 ;;
+esac
 exec celery \
   --app clipah.source_connectors.worker:app \
   worker \
   --queues source_import \
-  --concurrency 1 \
+  --concurrency "$concurrency" \
   --loglevel INFO

@@ -31,6 +31,13 @@ class ProcessRole(StrEnum):
     WORKER = "worker"
 
 
+class SocialSecretBackend(StrEnum):
+    """Wrapping-key backends approved for Social Account OAuth Grants."""
+
+    LOCAL = "local"
+    AWS_KMS = "aws_kms"
+
+
 class Settings(BaseSettings):
     """Load application configuration from the environment and local ``.env`` files only."""
 
@@ -167,7 +174,9 @@ class Settings(BaseSettings):
     monthly_social_publications: int = 100
 
     secret_encryption_key: SecretStr | None = None
-    secret_manager_key_name: str | None = None
+    social_secret_backend: SocialSecretBackend = SocialSecretBackend.LOCAL
+    aws_kms_key_arn: str | None = None
+    aws_region: str | None = None
     secret_encryption_enabled: bool = False
 
     authenticated_source_import_enabled: bool = False
@@ -270,6 +279,7 @@ class Settings(BaseSettings):
         self._validate_analysis_policy()
         self._validate_generation_policy()
         self._validate_observability()
+        self._validate_social_secret_backend()
         if self.environment is not Environment.PRODUCTION:
             return self
 
@@ -358,38 +368,65 @@ class Settings(BaseSettings):
         ):
             raise ValueError("selecting Runway for video requires its complete configuration")
 
+    def _validate_social_secret_backend(self) -> None:
+        """Require an explicit, internally consistent AWS KMS identity when selected."""
+        if self.social_secret_backend is SocialSecretBackend.LOCAL:
+            return
+        missing = []
+        if _is_blank(self.aws_kms_key_arn):
+            missing.append("CLIPAH_AWS_KMS_KEY_ARN")
+        if _is_blank(self.aws_region):
+            missing.append("CLIPAH_AWS_REGION")
+        if missing:
+            raise ValueError(f"missing required AWS KMS settings: {', '.join(missing)}")
+        if self.aws_kms_key_arn is None or self.aws_region is None:
+            raise ValueError("AWS KMS configuration is incomplete")
+        arn = self.aws_kms_key_arn.split(":", maxsplit=5)
+        if (
+            len(arn) != 6
+            or arn[:3] != ["arn", "aws", "kms"]
+            or arn[3] != self.aws_region
+            or not arn[4]
+            or not arn[5].startswith("key/")
+        ):
+            raise ValueError("CLIPAH_AWS_KMS_KEY_ARN must be an exact key ARN in CLIPAH_AWS_REGION")
+
     def _validate_production_requirements(self) -> None:
         runtime_setting_name, runtime_url = self._runtime_database_configuration()
         required_values: dict[str, object | None] = {
             runtime_setting_name: runtime_url,
-            "CLIPAH_MIGRATION_DATABASE_URL": self.migration_database_url,
             "CLIPAH_REDIS_URL": self.redis_url,
-            "CLIPAH_OBJECT_STORE_ENDPOINT": self.object_store_endpoint,
-            "CLIPAH_OBJECT_STORE_BUCKET": self.object_store_bucket,
-            "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID": self.object_store_access_key_id,
-            "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY": self.object_store_secret_access_key,
-            "CLIPAH_FRONTEND_ORIGIN": self.frontend_origin,
-            "CLIPAH_GOOGLE_OIDC_CLIENT_ID": self.google_oidc_client_id,
-            "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET": self.google_oidc_client_secret,
-            "CLIPAH_GOOGLE_OIDC_REDIRECT_URI": self.google_oidc_redirect_uri,
-            "CLIPAH_ASSEMBLYAI_API_KEY": self.assemblyai_api_key,
-            "CLIPAH_GROQ_API_KEY": self.groq_api_key,
-            "CLIPAH_SESSION_SECRET": self.session_secret,
         }
+        if self.process_role is ProcessRole.API:
+            required_values.update(
+                {
+                    "CLIPAH_OBJECT_STORE_ENDPOINT": self.object_store_endpoint,
+                    "CLIPAH_OBJECT_STORE_BUCKET": self.object_store_bucket,
+                    "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID": self.object_store_access_key_id,
+                    "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY": self.object_store_secret_access_key,
+                    "CLIPAH_FRONTEND_ORIGIN": self.frontend_origin,
+                    "CLIPAH_GOOGLE_OIDC_CLIENT_ID": self.google_oidc_client_id,
+                    "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET": self.google_oidc_client_secret,
+                    "CLIPAH_GOOGLE_OIDC_REDIRECT_URI": self.google_oidc_redirect_uri,
+                    "CLIPAH_SESSION_SECRET": self.session_secret,
+                }
+            )
+            if self.social_secret_backend is SocialSecretBackend.LOCAL:
+                required_values["CLIPAH_SECRET_ENCRYPTION_KEY"] = self.secret_encryption_key
         missing = [name for name, value in required_values.items() if _is_blank(value)]
-        if _is_blank(self.secret_encryption_key) and _is_blank(self.secret_manager_key_name):
-            missing.append("CLIPAH_SECRET_ENCRYPTION_KEY or CLIPAH_SECRET_MANAGER_KEY_NAME")
         if missing:
             raise ValueError(f"missing required production settings: {', '.join(missing)}")
 
-        if runtime_url is None or self.migration_database_url is None:
-            raise ValueError("production database URLs are required")
+        if runtime_url is None:
+            raise ValueError("production runtime database URL is required")
         runtime_principal = make_url(runtime_url).username
-        migration_principal = make_url(self.migration_database_url).username
-        if (
-            runtime_principal is None
-            or migration_principal is None
-            or runtime_principal == migration_principal
+        migration_principal = (
+            make_url(self.migration_database_url).username
+            if self.migration_database_url is not None
+            else None
+        )
+        if runtime_principal is None or (
+            migration_principal is not None and runtime_principal == migration_principal
         ):
             raise ValueError(
                 f"{runtime_setting_name} and CLIPAH_MIGRATION_DATABASE_URL must use "
@@ -425,12 +462,14 @@ class Settings(BaseSettings):
     def _validate_production_security_defaults(self) -> None:
         if self.debug:
             raise ValueError("production debug must be disabled")
+        if not self.secret_encryption_enabled:
+            raise ValueError("production secret encryption must be enabled")
+        if self.process_role is ProcessRole.WORKER:
+            return
         if self.session_cookie_name != "__Host-clipah_session":
             raise ValueError("production session cookies must use the __Host- prefix")
         if not self.session_cookie_secure:
             raise ValueError("production session cookies must require HTTPS")
-        if not self.secret_encryption_enabled:
-            raise ValueError("production secret encryption must be enabled")
         if not _is_https_origin(self.frontend_origin):
             raise ValueError("CLIPAH_FRONTEND_ORIGIN must be an https origin without a path")
         if not str(self.google_oidc_redirect_uri).startswith("https://"):

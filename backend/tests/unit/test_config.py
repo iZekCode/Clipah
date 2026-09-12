@@ -23,15 +23,16 @@ def test_production_rejects_missing_required_service_configuration(
 
 
 @pytest.mark.unit
-def test_production_requires_a_separate_migration_database_url(
+def test_production_runtime_can_omit_the_migrator_database_url(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Removing the admin-only DSN must keep it out of the application runtime pool."""
+    """The one-shot migration service owns its DSN; application processes do not need it."""
     production_environment(monkeypatch)
     monkeypatch.delenv("CLIPAH_MIGRATION_DATABASE_URL")
 
-    with pytest.raises(ValidationError):
-        Settings()
+    settings = Settings()
+
+    assert settings.migration_database_url is None
 
 
 @pytest.mark.unit
@@ -79,6 +80,55 @@ def test_production_worker_process_can_omit_the_api_database_url(
     assert settings.process_role == "worker"
     assert settings.database_url is None
     assert settings.worker_database_url is not None
+
+
+@pytest.mark.unit
+def test_production_worker_can_start_without_unrelated_api_provider_or_storage_secrets(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A queue-specific worker must not need the API or another worker's credentials."""
+    production_environment(monkeypatch)
+    monkeypatch.setenv("CLIPAH_PROCESS_ROLE", "worker")
+    monkeypatch.setenv(
+        "CLIPAH_WORKER_DATABASE_URL",
+        "postgresql+psycopg://clipah_worker_runtime:worker@db/clipah",
+    )
+    for name in (
+        "CLIPAH_DATABASE_URL",
+        "CLIPAH_MIGRATION_DATABASE_URL",
+        "CLIPAH_OBJECT_STORE_ENDPOINT",
+        "CLIPAH_OBJECT_STORE_BUCKET",
+        "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID",
+        "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY",
+        "CLIPAH_FRONTEND_ORIGIN",
+        "CLIPAH_GOOGLE_OIDC_CLIENT_ID",
+        "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET",
+        "CLIPAH_GOOGLE_OIDC_REDIRECT_URI",
+        "CLIPAH_SESSION_SECRET",
+        "CLIPAH_SECRET_ENCRYPTION_KEY",
+    ):
+        monkeypatch.delenv(name)
+
+    settings = Settings()
+
+    assert settings.process_role == "worker"
+    assert settings.worker_database_url is not None
+
+
+@pytest.mark.unit
+def test_production_api_can_omit_worker_provider_and_migration_credentials(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The HTTP process receives browser dependencies, never worker-only credentials."""
+    production_environment(monkeypatch)
+    monkeypatch.delenv("CLIPAH_MIGRATION_DATABASE_URL")
+    monkeypatch.delenv("CLIPAH_ASSEMBLYAI_API_KEY")
+    monkeypatch.delenv("CLIPAH_GROQ_API_KEY")
+
+    settings = Settings()
+
+    assert settings.process_role == "api"
+    assert settings.migration_database_url is None
 
 
 @pytest.mark.unit
@@ -172,20 +222,32 @@ def test_dotenv_cannot_select_production_or_supply_production_credentials(
 
 
 @pytest.mark.unit
-def test_production_accepts_a_secret_manager_instead_of_an_encryption_key(
+def test_production_accepts_aws_kms_instead_of_a_local_encryption_key(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """A managed encryption key is a valid production secret-encryption mechanism."""
     production_environment(monkeypatch)
     monkeypatch.delenv("CLIPAH_SECRET_ENCRYPTION_KEY")
-    monkeypatch.setenv(
-        "CLIPAH_SECRET_MANAGER_KEY_NAME",
-        "projects/clipah/locations/global/keyRings/app/cryptoKeys/secrets",
-    )
+    monkeypatch.setenv("CLIPAH_SOCIAL_SECRET_BACKEND", "aws_kms")
+    monkeypatch.setenv("CLIPAH_AWS_KMS_KEY_ARN", "arn:aws:kms:ap-southeast-1:123:key/clipah")
+    monkeypatch.setenv("CLIPAH_AWS_REGION", "ap-southeast-1")
 
     settings = Settings()
 
-    assert settings.secret_manager_key_name is not None
+    assert settings.aws_kms_key_arn is not None
+
+
+@pytest.mark.unit
+def test_production_aws_kms_requires_an_explicit_region(monkeypatch: pytest.MonkeyPatch) -> None:
+    """A KMS deployment must not defer region selection to ambient machine configuration."""
+    production_environment(monkeypatch)
+    monkeypatch.delenv("CLIPAH_SECRET_ENCRYPTION_KEY")
+    monkeypatch.setenv("CLIPAH_SOCIAL_SECRET_BACKEND", "aws_kms")
+    monkeypatch.setenv("CLIPAH_AWS_KMS_KEY_ARN", "arn:aws:kms:ap-southeast-1:123:key/clipah")
+    monkeypatch.delenv("CLIPAH_AWS_REGION", raising=False)
+
+    with pytest.raises(ValidationError, match="CLIPAH_AWS_REGION"):
+        Settings()
 
 
 @pytest.mark.unit
@@ -205,7 +267,6 @@ def test_production_rejects_retired_provider_api_configuration(
     "setting",
     [
         "CLIPAH_DATABASE_URL",
-        "CLIPAH_MIGRATION_DATABASE_URL",
         "CLIPAH_REDIS_URL",
         "CLIPAH_OBJECT_STORE_ENDPOINT",
         "CLIPAH_OBJECT_STORE_BUCKET",
@@ -215,8 +276,6 @@ def test_production_rejects_retired_provider_api_configuration(
         "CLIPAH_GOOGLE_OIDC_CLIENT_ID",
         "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET",
         "CLIPAH_GOOGLE_OIDC_REDIRECT_URI",
-        "CLIPAH_ASSEMBLYAI_API_KEY",
-        "CLIPAH_GROQ_API_KEY",
         "CLIPAH_SESSION_SECRET",
         "CLIPAH_SECRET_ENCRYPTION_KEY",
     ],
@@ -240,8 +299,6 @@ def test_production_rejects_each_missing_required_setting(
         "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID",
         "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY",
         "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET",
-        "CLIPAH_ASSEMBLYAI_API_KEY",
-        "CLIPAH_GROQ_API_KEY",
         "CLIPAH_SESSION_SECRET",
         "CLIPAH_SECRET_ENCRYPTION_KEY",
     ],
@@ -497,14 +554,16 @@ def test_google_login_credentials_do_not_enable_youtube_publishing(
 
 @pytest.mark.unit
 @pytest.mark.parametrize("blank_value", ["", " \t "])
-def test_production_rejects_blank_secret_manager_when_encryption_key_is_missing(
+def test_production_rejects_blank_kms_key_when_local_encryption_key_is_missing(
     monkeypatch: pytest.MonkeyPatch,
     blank_value: str,
 ) -> None:
-    """A blank Secret Manager identifier cannot replace an encryption key."""
+    """A blank KMS key ARN cannot replace local wrapping material."""
     production_environment(monkeypatch)
     monkeypatch.delenv("CLIPAH_SECRET_ENCRYPTION_KEY")
-    monkeypatch.setenv("CLIPAH_SECRET_MANAGER_KEY_NAME", blank_value)
+    monkeypatch.setenv("CLIPAH_SOCIAL_SECRET_BACKEND", "aws_kms")
+    monkeypatch.setenv("CLIPAH_AWS_KMS_KEY_ARN", blank_value)
+    monkeypatch.setenv("CLIPAH_AWS_REGION", "ap-southeast-1")
 
     with pytest.raises(ValidationError):
         Settings()

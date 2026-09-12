@@ -1,14 +1,46 @@
 name: clipah-rebuild-foundation
 
+x-app: &app
+  user: "10001:10001"
+  read_only: true
+  init: true
+  restart: unless-stopped
+  stop_grace_period: 45s
+  tmpfs:
+    - /tmp:rw,noexec,nosuid,size=128m,uid=10001,gid=10001,mode=0700
+    - /var/run/clipah:rw,noexec,nosuid,size=16m,uid=10001,gid=10001,mode=0700
+    - /var/lib/clipah/job-workspaces:rw,noexec,nosuid,size=1g,uid=10001,gid=10001,mode=0700
+
+x-dependencies: &dependencies
+  postgres: {condition: service_healthy}
+  redis: {condition: service_healthy}
+  minio-init: {condition: service_completed_successfully}
+  migrate: {condition: service_completed_successfully}
+
+x-worker-build: &worker-build
+  context: ..
+  dockerfile: infra/docker/backend.Dockerfile
+  target: worker
+
+x-media-build: &media-build
+  context: ..
+  dockerfile: infra/docker/backend.Dockerfile
+  target: media-worker
+
+x-worker-health: &worker-health
+  test: ["CMD-SHELL", "celery --app clipah.runtime.worker:app inspect ping --destination clipah@$${HOSTNAME} --timeout 5"]
+  interval: 30s
+  timeout: 8s
+  retries: 3
+
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:17-alpine@sha256:18cfe3ef5e6815560c98237d6216d1e5119702fb0f3894c8785dd58b8bbe5d73
     environment:
       POSTGRES_DB: clipah_rebuild_foundation
       POSTGRES_USER: clipah_migrator
       POSTGRES_PASSWORD: clipah_migrator_local
-    ports:
-      - "127.0.0.1:55433:5432"
+    ports: ["127.0.0.1:55433:5432"]
     volumes:
       - clipah_rebuild_foundation_postgres:/var/lib/postgresql/data
       - ./postgres/init-runtime.sql:/docker-entrypoint-initdb.d/10-runtime-roles.sql:ro
@@ -17,37 +49,279 @@ services:
       interval: 2s
       timeout: 5s
       retries: 20
+    deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
 
   redis:
-    image: redis:7.4-alpine
+    image: redis:7.4-alpine@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
     command: ["redis-server", "--appendonly", "no"]
-    ports:
-      - "127.0.0.1:56380:6379"
+    ports: ["127.0.0.1:56380:6379"]
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 2s
       timeout: 5s
       retries: 20
+    deploy: {resources: {limits: {cpus: "0.5", memory: 256m}}}
 
   minio:
-    image: minio/minio:RELEASE.2025-07-23T15-54-02Z
+    image: minio/minio:RELEASE.2025-07-23T15-54-02Z@sha256:d249d1fb6966de4d8ad26c04754b545205ff15a62e4fd19ebd0f26fa5baacbc0
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: clipah_local
       MINIO_ROOT_PASSWORD: clipah_local_secret
-    ports:
-      - "127.0.0.1:59001:9000"
-      - "127.0.0.1:59002:9001"
-    volumes:
-      - clipah_rebuild_foundation_minio:/data
+    ports: ["127.0.0.1:59001:9000", "127.0.0.1:59002:9001"]
+    volumes: ["clipah_rebuild_foundation_minio:/data"]
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 2s
       timeout: 5s
       retries: 20
+    deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
+
+  minio-init:
+    image: minio/mc:RELEASE.2025-07-21T05-28-08Z@sha256:fb8f773eac8ef9d6da0486d5dec2f42f219358bcb8de579d1623d518c9ebd4cc
+    depends_on:
+      minio: {condition: service_healthy}
+    entrypoint: ["/bin/sh", "-ec"]
+    command: ["mc alias set local http://minio:9000 clipah_local clipah_local_secret; mc mb --ignore-existing local/clipah-local"]
+    restart: "no"
+    deploy: {resources: {limits: {cpus: "0.25", memory: 128m}}}
+
+  migrate:
+    build: {context: .., dockerfile: infra/docker/backend.Dockerfile, target: api}
+    <<: *app
+    restart: "no"
+    environment:
+      CLIPAH_RUNTIME_ROLE: migrate
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_PROCESS_ROLE: api
+      CLIPAH_MIGRATION_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@postgres:5432/clipah_rebuild_foundation
+    depends_on:
+      postgres: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "0.5", memory: 512m}}}
+
+  api:
+    build: {context: .., dockerfile: infra/docker/backend.Dockerfile, target: api}
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: api
+      CLIPAH_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_FRONTEND_ORIGIN: http://localhost:53000
+      CLIPAH_SESSION_SECRET: local-session-secret-at-least-32-bytes
+      CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      CLIPAH_FORWARDED_ALLOW_IPS: "127.0.0.1"
+    ports: ["127.0.0.1:58000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on: *dependencies
+    deploy: {resources: {limits: {cpus: "1.0", memory: 768m}}}
+
+  frontend:
+    build:
+      context: ..
+      dockerfile: infra/docker/frontend.Dockerfile
+      args: {CLIPAH_API_ORIGIN: http://api:8000}
+    <<: *app
+    environment: {HOSTNAME: 0.0.0.0, PORT: "3000"}
+    ports: ["127.0.0.1:53000:3000"]
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      api: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "1.0", memory: 512m}}}
+
+  source-import:
+    build: {context: .., dockerfile: infra/docker/source-import.Dockerfile}
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      CLIPAH_SOURCE_IMPORT_CONCURRENCY: "${CLIPAH_SOURCE_IMPORT_CONCURRENCY:-1}"
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=128m,uid=10001,gid=10001,mode=0700
+      - /var/cache/clipah/deno:rw,noexec,nosuid,size=256m,uid=10001,gid=10001,mode=0700
+      - /var/lib/clipah/job-workspaces:rw,noexec,nosuid,size=1g,uid=10001,gid=10001,mode=0700
+    depends_on: *dependencies
+    healthcheck:
+      test: ["CMD", "python", "-m", "clipah.source_connectors.readiness"]
+      interval: 30s
+      timeout: 25s
+      retries: 3
+    deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
+
+  worker-ingest-ai:
+    build: *media-build
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_MIGRATION_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_WORKER_QUEUES: ingest,ai,maintenance
+      CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_INGEST_AI_CONCURRENCY:-2}"
+      CLIPAH_ASSEMBLYAI_API_KEY: fake-assemblyai
+      CLIPAH_GROQ_API_KEY: fake-groq
+    depends_on: *dependencies
+    healthcheck: *worker-health
+    deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}
+
+  worker-broll:
+    build: *worker-build
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_WORKER_QUEUES: broll_retrieve,broll_generate
+      CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_BROLL_CONCURRENCY:-2}"
+      CLIPAH_PEXELS_API_KEY: fake-pexels
+      CLIPAH_PIXABAY_API_KEY: fake-pixabay
+      CLIPAH_FAL_API_KEY: fake-fal
+      CLIPAH_FAL_WEBHOOK_BASE_URL: https://example.invalid
+    depends_on: *dependencies
+    healthcheck: *worker-health
+    deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
+
+  worker-render:
+    build: *media-build
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_WORKER_QUEUES: render,social_rendition
+      CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_RENDER_CONCURRENCY:-1}"
+    depends_on: *dependencies
+    healthcheck: *worker-health
+    deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}
+
+  worker-social-publish:
+    build: *worker-build
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_WORKER_QUEUES: social_publish
+      CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_SOCIAL_PUBLISH_CONCURRENCY:-2}"
+      CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: fake-youtube
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: fake-youtube-secret
+      CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID: fake-instagram
+      CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET: fake-instagram-secret
+      CLIPAH_TIKTOK_CLIENT_KEY: fake-tiktok
+      CLIPAH_TIKTOK_CLIENT_SECRET: fake-tiktok-secret
+    depends_on: *dependencies
+    healthcheck: *worker-health
+    deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
+
+  worker-social-reconcile:
+    build: *worker-build
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_WORKER_QUEUES: social_reconcile
+      CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_SOCIAL_RECONCILE_CONCURRENCY:-2}"
+      CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: fake-youtube
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: fake-youtube-secret
+      CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID: fake-instagram
+      CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET: fake-instagram-secret
+      CLIPAH_TIKTOK_CLIENT_KEY: fake-tiktok
+      CLIPAH_TIKTOK_CLIENT_SECRET: fake-tiktok-secret
+    depends_on: *dependencies
+    healthcheck: *worker-health
+    deploy: {resources: {limits: {cpus: "0.5", memory: 768m}}}
+
+  scheduler:
+    build: {context: .., dockerfile: infra/docker/backend.Dockerfile, target: scheduler}
+    <<: *app
+    environment:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_DEBUG: "false"
+      CLIPAH_PROCESS_ROLE: worker
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://redis:6379/0
+      CLIPAH_RUNTIME_ROLE: scheduler
+    depends_on: *dependencies
+    healthcheck:
+      test: ["CMD", "python", "-c", "from pathlib import Path; import os; os.kill(int(Path('/var/run/clipah/celerybeat.pid').read_text()), 0)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    deploy: {resources: {limits: {cpus: "0.5", memory: 512m}}}
+
+  runtime-smoke:
+    profiles: ["smoke"]
+    build: {context: .., dockerfile: infra/docker/backend.Dockerfile, target: smoke}
+    <<: *app
+    restart: "no"
+    command: ["python", "tests/runtime/run_smoke.py", "--identity", "46000000-0000-4000-8000-000000000046"]
+    environment:
+      CLIPAH_TEST_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_TEST_API_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_TEST_WORKER_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
+      CLIPAH_TEST_REDIS_URL: redis://redis:6379/0
+    depends_on:
+      api: {condition: service_healthy}
+      frontend: {condition: service_healthy}
+      source-import: {condition: service_healthy}
+      worker-ingest-ai: {condition: service_healthy}
+      worker-broll: {condition: service_healthy}
+      worker-render: {condition: service_healthy}
+      worker-social-publish: {condition: service_healthy}
+      worker-social-reconcile: {condition: service_healthy}
+      scheduler: {condition: service_healthy}
+    deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}
 
 volumes:
-  clipah_rebuild_foundation_postgres:
-    name: clipah_rebuild_foundation_postgres
-  clipah_rebuild_foundation_minio:
-    name: clipah_rebuild_foundation_minio
+  clipah_rebuild_foundation_postgres: {name: clipah_rebuild_foundation_postgres}
+  clipah_rebuild_foundation_minio: {name: clipah_rebuild_foundation_minio}

@@ -1,0 +1,17 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "/infra/docker/backend.Dockerfile"
+dockerfileTarget = "media-worker"
+watchPatterns = ["/backend/**", "/infra/docker/backend.Dockerfile", "/infra/docker/backend-entrypoint.sh"]
+
+[deploy]
+startCommand = "celery --app clipah.runtime.worker:app worker --queues ingest,ai,maintenance --concurrency $CLIPAH_WORKER_CONCURRENCY --hostname clipah@%h --loglevel INFO"
+healthCommand = "celery --app clipah.runtime.worker:app inspect ping --destination clipah@$HOSTNAME --timeout 5"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+overlapSeconds = "0"
+drainingSeconds = "45"
+
+[clipah]
+imageTargetVariable = "CLIPAH_IMAGE_TARGET"
+requiredVariables = ["CLIPAH_WORKER_DATABASE_URL", "CLIPAH_MIGRATION_DATABASE_URL", "CLIPAH_REDIS_URL", "CLIPAH_OBJECT_STORE_ENDPOINT", "CLIPAH_OBJECT_STORE_BUCKET", "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID", "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY", "CLIPAH_ASSEMBLYAI_API_KEY", "CLIPAH_GROQ_API_KEY", "CLIPAH_WORKER_CONCURRENCY"]

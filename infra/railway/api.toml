@@ -1,0 +1,19 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "/infra/docker/backend.Dockerfile"
+dockerfileTarget = "api"
+watchPatterns = ["/backend/**", "/infra/docker/backend.Dockerfile", "/infra/docker/backend-entrypoint.sh"]
+
+[deploy]
+startCommand = "uvicorn clipah.runtime.api:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips $CLIPAH_FORWARDED_ALLOW_IPS"
+healthcheckPath = "/health/ready"
+healthcheckTimeout = 120
+healthCommand = "python -c \"import os,urllib.request; urllib.request.urlopen('http://127.0.0.1:'+os.environ['PORT']+'/health/ready', timeout=3).read()\""
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+overlapSeconds = "15"
+drainingSeconds = "45"
+
+[clipah]
+imageTargetVariable = "CLIPAH_IMAGE_TARGET"
+requiredVariables = ["CLIPAH_DATABASE_URL", "CLIPAH_REDIS_URL", "CLIPAH_OBJECT_STORE_ENDPOINT", "CLIPAH_OBJECT_STORE_BUCKET", "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID", "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY", "CLIPAH_FRONTEND_ORIGIN", "CLIPAH_GOOGLE_OIDC_CLIENT_ID", "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET", "CLIPAH_GOOGLE_OIDC_REDIRECT_URI", "CLIPAH_SESSION_SECRET", "CLIPAH_SOCIAL_SECRET_BACKEND", "CLIPAH_AWS_KMS_KEY_ARN", "CLIPAH_AWS_REGION"]

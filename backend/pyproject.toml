@@ -12,7 +12,6 @@ dependencies = [
     "cryptography>=44,<47",
     "fastapi>=0.115,<1",
     "google-api-python-client>=2.160,<3",
-    "google-cloud-kms>=3.5,<4",
     "groq>=0.18,<1",
     "httpx>=0.28,<1",
     "opentelemetry-api>=1.29,<2",
@@ -26,6 +25,7 @@ dependencies = [
     "sentry-sdk[fastapi]>=2.20,<3",
     "sqlalchemy>=2.0,<3",
     "structlog>=24,<26",
+    "uvicorn>=0.34,<1",
 ]
 
 [project.optional-dependencies]
@@ -98,6 +98,11 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 # AssemblyAI does not publish a py.typed marker; its values stay inside one adapter.
 module = ["assemblyai.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# boto3 and botocore publish no py.typed marker; AWS values stay behind typed local ports.
+module = ["boto3.*", "botocore.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

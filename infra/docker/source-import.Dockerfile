@@ -69,5 +69,5 @@ RUN chown -R clipah:clipah /app/backend
 USER clipah
 
 HEALTHCHECK --interval=30s --timeout=25s --start-period=10s --retries=3 \
-  CMD ["uv", "run", "--frozen", "--no-sync", "python", "-m", "clipah.source_connectors.readiness"]
+  CMD ["python", "-m", "clipah.source_connectors.readiness"]
 ENTRYPOINT ["source-import-entrypoint"]

@@ -71,7 +71,7 @@ from clipah.social_accounts.models import SocialProvider
 from clipah.social_accounts.oauth import SocialOAuthProvider
 from clipah.social_accounts.secrets import (
     SocialSecretStore,
-    local_social_secret_store,
+    social_secret_store_for,
 )
 from clipah.social_accounts.use_cases import FuturePublicationCoordinator
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
@@ -326,10 +326,8 @@ def _configured_rate_limiter(settings: Settings, app: FastAPI) -> RateLimiter | 
 
 
 def _configured_social_secret_store(settings: Settings) -> SocialSecretStore | None:
-    """Build local envelope encryption only when this process has wrapping material."""
-    if settings.secret_encryption_key is None:
-        return None
-    return local_social_secret_store(settings.secret_encryption_key.get_secret_value())
+    """Build the exact local or managed wrapping-key backend this process selected."""
+    return social_secret_store_for(settings)
 
 
 async def _run_probe(probe: ReadinessProbe) -> None:

@@ -1,0 +1,17 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "/infra/docker/backend.Dockerfile"
+dockerfileTarget = "scheduler"
+watchPatterns = ["/backend/**", "/infra/docker/backend.Dockerfile", "/infra/docker/backend-entrypoint.sh"]
+
+[deploy]
+startCommand = "celery --app clipah.runtime.worker:app beat --schedule /var/run/clipah/celerybeat-schedule --pidfile /var/run/clipah/celerybeat.pid --loglevel INFO"
+healthCommand = "python -c \"from pathlib import Path; import os; os.kill(int(Path('/var/run/clipah/celerybeat.pid').read_text()), 0)\""
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+overlapSeconds = "0"
+drainingSeconds = "45"
+
+[clipah]
+imageTargetVariable = "CLIPAH_IMAGE_TARGET"
+requiredVariables = ["CLIPAH_WORKER_DATABASE_URL", "CLIPAH_REDIS_URL"]
