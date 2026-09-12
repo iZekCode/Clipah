@@ -76,6 +76,7 @@ def create_upload(
 ) -> UploadCreated:
     """Create one bounded source upload after resolving its Project in the authorized Workspace."""
     _validate_declared_size(command.content_length)
+    _validate_filename(command.filename)
     _require_active_project(session, workspace_id=access.workspace_id, project_id=project_id)
     upload_id = uuid4()
     storage_key = source_upload_key(
@@ -251,6 +252,17 @@ def _validate_declared_size(content_length: int) -> None:
     """Enforce the initial-release 2 GiB source-media boundary before storage allocation."""
     if not 0 < content_length <= MAX_UPLOAD_BYTES:
         raise UploadValidationError("content length outside allowed range")
+
+
+def _validate_filename(filename: str) -> None:
+    """Refuse a display filename carrying characters that are not display at all.
+
+    The filename never reaches the object key, but it is kept and shown back, so a control
+    character in it is only ever useful somewhere else: a NUL cannot be stored in Postgres
+    text, and a newline is how one value is smuggled into a second log line or header.
+    """
+    if not filename.isprintable():
+        raise UploadValidationError("display filename contains control characters")
 
 
 def _validate_part_number(part_number: int) -> None:

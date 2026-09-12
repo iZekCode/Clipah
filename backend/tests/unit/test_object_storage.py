@@ -149,3 +149,44 @@ def test_s3_listing_maps_provider_failures_to_a_sanitized_storage_error() -> Non
         store.list_objects(prefix="workspaces/w/", limit=10)
 
     assert "secret" not in str(captured.value)
+
+
+class UnreachableS3Client:
+    """Model the store being unreachable: every operation fails at the transport."""
+
+    def __getattr__(self, name: str) -> Any:
+        """Fail any operation the adapter asks for, the way a dead endpoint does."""
+
+        def fail(*_args: object, **_kwargs: object) -> Any:
+            raise RuntimeError(f"secret provider diagnostic for {name}")
+
+        return fail
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda store: store.create_multipart_upload(key="k", content_type="video/mp4"),
+        lambda store: store.sign_upload_part(upload_id="u", key="k", part_number=1),
+        lambda store: store.complete_multipart_upload(upload_id="u", key="k", parts=[]),
+        lambda store: store.abort_multipart_upload(upload_id="u", key="k"),
+        lambda store: store.delete_object(key="k"),
+    ],
+    ids=["create", "sign-part", "complete", "abort", "delete"],
+)
+def test_every_s3_operation_reports_an_unreachable_store_as_an_outage(
+    operation: Any,
+) -> None:
+    """An unreachable store is a transient outage, and every operation must say so.
+
+    Without this, an outage reaches the API as an unexpected error: the caller is told the
+    request can never succeed, when it succeeds again as soon as the store is reachable.
+    The provider's own diagnostic stays inside the adapter either way.
+    """
+    store = S3ObjectStore(bucket="private", client=UnreachableS3Client())
+
+    with pytest.raises(ObjectStoreUnavailableError) as captured:
+        operation(store)
+
+    assert "secret" not in str(captured.value)

@@ -23,12 +23,16 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
+  // A production build, not `pnpm dev`. The development server compiles a route the first
+  // time it is asked for, and that compilation races every assertion with a five-second
+  // timeout — a flake that says nothing about the application. Building first costs a
+  // minute once and then serves each route immediately.
   webServer: process.env.CLIPAH_E2E_BASE_URL
     ? undefined
     : {
-        command: 'pnpm dev',
+        command: 'pnpm build && pnpm start',
         url: baseURL,
         reuseExistingServer: true,
-        timeout: 120_000,
+        timeout: 300_000,
       },
 })

@@ -19,6 +19,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from clipah.assets.probe import MediaValidationError, SourceMetadata
+from clipah.assets.provider_fetch import validate_provider_media_url
 from clipah.assets.storage import ObjectStoreUnavailableError, StoredObject
 from clipah.broll.models import (
     PLANNER_VERSION,
@@ -204,6 +205,16 @@ def _candidate(**overrides: Any) -> ExternalAssetCandidate:
     return ExternalAssetCandidate(**values)
 
 
+def _offline_media_url_policy(url: str) -> str:
+    """Run the real destination policy against an answer that never leaves the process.
+
+    The policy itself is proven in `tests/security/test_provider_media_urls.py`; here it
+    is wired in so these fixtures exercise the same code path a worker would, without a
+    DNS lookup for a fixture hostname.
+    """
+    return validate_provider_media_url(url, resolver=lambda host: ("93.184.216.34",))
+
+
 def _dependencies(
     *,
     stock: list[Any] | None = None,
@@ -218,6 +229,7 @@ def _dependencies(
         object_store=store or _Store(),
         downloader=downloader or _Downloader(),
         media=media or _Media(),
+        media_url_policy=_offline_media_url_policy,
         retrieval_policy=RetrievalPolicy(
             sufficient_local_results=4, max_provider_requests=2, min_relevance=0.5
         ),

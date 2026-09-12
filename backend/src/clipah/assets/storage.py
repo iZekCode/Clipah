@@ -255,9 +255,12 @@ class S3ObjectStore:
 
     def create_multipart_upload(self, *, key: str, content_type: str) -> MultipartUpload:
         """Create one S3 multipart upload while retaining only its opaque identifier."""
-        response = self._client.create_multipart_upload(
-            Bucket=self._bucket, Key=key, ContentType=content_type
-        )
+        try:
+            response = self._client.create_multipart_upload(
+                Bucket=self._bucket, Key=key, ContentType=content_type
+            )
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store upload unavailable") from error
         return MultipartUpload(upload_id=str(response["UploadId"]))
 
     def put_file(
@@ -303,17 +306,20 @@ class S3ObjectStore:
     def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> SignedUrl:
         """Generate a five-minute presigned URL for one S3 upload part."""
         expires_in = timedelta(minutes=5)
-        url = self._client.generate_presigned_url(
-            "upload_part",
-            Params={
-                "Bucket": self._bucket,
-                "Key": key,
-                "UploadId": upload_id,
-                "PartNumber": part_number,
-            },
-            ExpiresIn=int(expires_in.total_seconds()),
-            HttpMethod="PUT",
-        )
+        try:
+            url = self._client.generate_presigned_url(
+                "upload_part",
+                Params={
+                    "Bucket": self._bucket,
+                    "Key": key,
+                    "UploadId": upload_id,
+                    "PartNumber": part_number,
+                },
+                ExpiresIn=int(expires_in.total_seconds()),
+                HttpMethod="PUT",
+            )
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store signing unavailable") from error
         return SignedUrl(url=str(url), expires_at=self._now() + expires_in)
 
     def complete_multipart_upload(
@@ -332,12 +338,15 @@ class S3ObjectStore:
         except Exception as error:
             if _is_invalid_multipart_completion(error):
                 raise MultipartCompletionError("provider rejected multipart completion") from error
-            raise
+            raise ObjectStoreUnavailableError("object store completion unavailable") from error
         return self.head_object(key=key)
 
     def abort_multipart_upload(self, *, upload_id: str, key: str) -> None:
         """Abort only the S3 upload ID and key supplied by the durable record."""
-        self._client.abort_multipart_upload(Bucket=self._bucket, Key=key, UploadId=upload_id)
+        try:
+            self._client.abort_multipart_upload(Bucket=self._bucket, Key=key, UploadId=upload_id)
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store abort unavailable") from error
 
     def head_object(self, *, key: str) -> StoredObject:
         """Translate S3 head metadata into the provider-neutral object value."""
@@ -356,7 +365,10 @@ class S3ObjectStore:
 
     def delete_object(self, *, key: str) -> None:
         """Delete one known object key without prefix or listing operations."""
-        self._client.delete_object(Bucket=self._bucket, Key=key)
+        try:
+            self._client.delete_object(Bucket=self._bucket, Key=key)
+        except Exception as error:
+            raise ObjectStoreUnavailableError("object store deletion unavailable") from error
 
     def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
         """Read one bounded S3 page under a prefix and hand back its resumption token."""

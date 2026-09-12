@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 from clipah.assets.ingest import MediaProcessor, SourceDownloader
 from clipah.assets.keys import broll_asset_key
 from clipah.assets.probe import MediaValidationError
+from clipah.assets.provider_fetch import UnsafeProviderUrlError, validate_provider_media_url
 from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError
 from clipah.broll.models import (
     PLANNER_VERSION,
@@ -79,6 +80,7 @@ REQUEST_NOT_FOUND_CODE = "BROLL_RETRIEVE_REQUEST_NOT_FOUND"
 INTEGRITY_CODE = "BROLL_RETRIEVE_INTEGRITY"
 MEDIA_INVALID_CODE = "BROLL_ASSET_INVALID_MEDIA"
 STORAGE_UNAVAILABLE_CODE = "BROLL_ASSET_STORAGE_UNAVAILABLE"
+MEDIA_URL_UNSAFE_CODE = "BROLL_ASSET_SOURCE_UNSAFE"
 
 #: A retrieved clip is a few seconds of B-roll, never a feature film.
 MAX_ASSET_BYTES = 256 * 1024 * 1024
@@ -95,6 +97,9 @@ class RetrievalDependencies:
     media: MediaProcessor
     retrieval_policy: RetrievalPolicy = DEFAULT_RETRIEVAL_POLICY
     ranking_policy: RerankingPolicy = DEFAULT_RANKING_POLICY
+    # A stock catalogue names where its media lives, and a worker fetches that from inside
+    # the deployment's own network, so the destination is proven before anything is read.
+    media_url_policy: Callable[[str], str] = validate_provider_media_url
 
 
 DependenciesFactory = Callable[[Settings], RetrievalDependencies]
@@ -296,9 +301,10 @@ class BrollRetrieveStageRunner:
         provenance = provenance_of(candidate, retrieved_at_iso=retrieved_at.isoformat())
         with job_workspace(context.job_id) as directory:
             original = directory / "original"
+            download_url = _safe_download_url(candidate, dependencies=dependencies)
             with original.open("wb") as handle:
                 downloaded = dependencies.downloader.download(
-                    candidate.download_url,
+                    download_url,
                     handle,
                     expected_size=0,
                     max_bytes=MAX_ASSET_BYTES,
@@ -438,6 +444,22 @@ class BrollRetrieveStageRunner:
                     "source_type": None if selected is None else selected.source_type.value,
                 },
             )
+
+
+def _safe_download_url(
+    candidate: ExternalAssetCandidate, *, dependencies: RetrievalDependencies
+) -> str:
+    """Prove the catalogue's chosen destination before this worker connects to it.
+
+    The URL came from a provider's search response, so it is the one value in a retrieval
+    that somebody outside this deployment gets to choose. A destination inside our own
+    network is refused terminally: retrying it would only repeat the request the attacker
+    wanted.
+    """
+    try:
+        return dependencies.media_url_policy(candidate.download_url)
+    except UnsafeProviderUrlError as error:
+        raise TerminalJobError(MEDIA_URL_UNSAFE_CODE) from error
 
 
 def _put(store: ObjectStore, path: Path, key: str, content_type: str) -> Any:

@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from time import monotonic, sleep
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 from uuid import UUID, uuid4
@@ -941,3 +943,68 @@ def test_capabilities_close_every_gate_a_deployment_has_not_switched_on(
     assert capabilities["tiktokPublishing"] is False
     assert capabilities["tiktokDirectPost"] is False
     assert capabilities["multiDestinationScheduling"] is False
+
+
+class SerializationRecordingProvider(StubSocialProvider):
+    """Record exactly when each refresh entered and left the provider boundary."""
+
+    def __init__(self) -> None:
+        """Start with no recorded calls and a window wide enough to overlap in."""
+        super().__init__()
+        self.refresh_windows: list[tuple[float, float]] = []
+
+    def refresh(self, *, grant: OAuthGrantMaterial) -> RefreshedGrant:
+        """Take long enough that two unsynchronized refreshes would overlap here."""
+        started = monotonic()
+        try:
+            return super().refresh(grant=grant)
+        finally:
+            sleep(0.2)
+            self.refresh_windows.append((started, monotonic()))
+
+
+@pytest.mark.integration
+def test_two_refreshes_of_one_grant_never_reach_the_provider_at_once(
+    engine: Engine, clean_database: None
+) -> None:
+    """A refresh token spent twice at once is a token the provider may invalidate.
+
+    Every provider here rotates or may rotate refresh tokens, so two refreshes running
+    together would race to write the rotated material and could leave the loser's token
+    stored. The refresh reads its Grant `FOR UPDATE`, which is what this proves: the
+    provider boundary is entered by one refresh at a time, and both callers are answered.
+    """
+    del clean_database
+    provider = SerializationRecordingProvider()
+    clock = Clock(NOW)
+    browser, workspace_id, _ = social_browser(clock, provider)
+    state, _ = begin_social_connection(browser, workspace_id)
+    callback = browser.get(
+        f"/api/v1/social-oauth/youtube/callback?code={AUTHORIZATION_CODE}&state={state}"
+    )
+    assert callback.status_code == 303, callback.text
+    account_id = browser.get(f"/api/v1/workspaces/{workspace_id}/social-accounts").json()[
+        "socialAccounts"
+    ][0]["id"]
+    path = f"/api/v1/social-accounts/{account_id}/refresh?workspace_id={workspace_id}"
+    clock.advance(timedelta(seconds=1))
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        started = [pool.submit(_refresh, browser, path) for _ in range(2)]
+        responses = [future.result() for future in started]
+
+    assert [response.status_code for response in responses] == [200, 200]
+    assert len(provider.refresh_windows) == 2
+    first, second = sorted(provider.refresh_windows)
+    assert first[1] <= second[0], "two refreshes reached the provider at the same time"
+    with engine.connect() as connection:
+        versions = (
+            connection.execute(text("SELECT token_version FROM oauth_grants")).scalars().all()
+        )
+    # One version from the connection itself, then one from each refresh: neither was lost.
+    assert versions == [3]
+
+
+def _refresh(browser: Browser, path: str) -> Any:
+    """Ask for one refresh from its own thread, as a second process would."""
+    return browser.request("POST", path)

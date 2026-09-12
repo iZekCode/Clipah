@@ -31,6 +31,7 @@ from sqlalchemy.orm import Session
 from clipah.assets.ingest import MediaProcessor, SourceDownloader
 from clipah.assets.keys import generated_asset_key
 from clipah.assets.probe import MediaValidationError
+from clipah.assets.provider_fetch import UnsafeProviderUrlError, validate_provider_media_url
 from clipah.assets.storage import ObjectStore, ObjectStoreUnavailableError
 from clipah.broll.generation import (
     GenerationHandle,
@@ -77,6 +78,7 @@ MEDIA_INVALID_CODE = "BROLL_GENERATE_INVALID_MEDIA"
 STORAGE_UNAVAILABLE_CODE = "BROLL_GENERATE_STORAGE_UNAVAILABLE"
 PROVIDER_UNAVAILABLE_CODE = "BROLL_GENERATE_PROVIDER_UNAVAILABLE"
 POLL_TIMEOUT_CODE = "BROLL_GENERATE_POLL_TIMEOUT"
+MEDIA_URL_UNSAFE_CODE = "BROLL_GENERATE_OUTPUT_UNSAFE"
 
 #: Formats a still may arrive in. Anything else is refused before it is decoded.
 ALLOWED_IMAGE_FORMATS = {"PNG": "image/png", "JPEG": "image/jpeg", "WEBP": "image/webp"}
@@ -98,6 +100,9 @@ class GenerationDependencies:
     media: MediaProcessor
     sleep: Callable[[float], None] = sleep
     monotonic: Callable[[], float] = monotonic
+    # A generative provider hands back a URL this worker then fetches from inside the
+    # deployment's own network, so its destination is proven before anything is read.
+    media_url_policy: Callable[[str], str] = validate_provider_media_url
 
 
 GenerationDependenciesFactory = Callable[[Settings], GenerationDependencies]
@@ -292,7 +297,7 @@ class BrollGenerateStageRunner:
             original = directory / "original"
             with original.open("wb") as handle:
                 downloaded = dependencies.downloader.download(
-                    result.output.url.get_secret_value(),
+                    _safe_output_url(result.output.url.get_secret_value(), dependencies),
                     handle,
                     expected_size=0,
                     max_bytes=context.settings.generation_max_output_bytes,
@@ -589,6 +594,19 @@ def _validated_image(path: Path) -> tuple[str, int, int]:
     if width <= 0 or height <= 0 or width * height > MAX_IMAGE_PIXELS:
         raise MediaValidationError("generated image dimensions are out of bounds")
     return ALLOWED_IMAGE_FORMATS[image_format], width, height
+
+
+def _safe_output_url(url: str, dependencies: GenerationDependencies) -> str:
+    """Prove the provider's chosen destination before this worker connects to it.
+
+    A generated output URL is ephemeral and provider-controlled, which is exactly the
+    value an attacker who reached the provider account would change. A destination inside
+    our own network is refused terminally rather than retried.
+    """
+    try:
+        return dependencies.media_url_policy(url)
+    except UnsafeProviderUrlError as error:
+        raise TerminalJobError(MEDIA_URL_UNSAFE_CODE) from error
 
 
 def _put(store: ObjectStore, path: Path, key: str, content_type: str) -> Any:

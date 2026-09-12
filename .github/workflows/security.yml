@@ -1,0 +1,145 @@
+# Supply-chain and static-analysis gates.
+#
+# These run on the same pull requests as `ci.yml` and on a weekly schedule, because a
+# dependency does not have to change for its advisory to appear. The severity gate is
+# written down here rather than left to a tool's default: a high or critical advisory
+# fails the pull request, anything lower is reported and reviewed. A licence that is
+# unknown, or one of the prohibited family, fails outright — an unknown licence is an
+# obligation nobody has read.
+name: security
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+  schedule:
+    # Monday morning, so an advisory published over the weekend is seen before the week's
+    # work is built on top of it.
+    - cron: "0 6 * * 1"
+
+concurrency:
+  group: security-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  python-advisories:
+    name: Python dependency advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - name: Export the locked dependency set
+        working-directory: backend
+        # Written outside the checkout, so a scan never leaves the working tree dirty.
+        run: uv export --frozen --no-emit-project --all-extras --format requirements-txt > "$RUNNER_TEMP/requirements.lock.txt"
+      - name: pip-audit
+        working-directory: backend
+        run: uv tool run pip-audit --strict --requirement "$RUNNER_TEMP/requirements.lock.txt"
+
+  node-advisories:
+    name: Node dependency advisories
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: pnpm audit at the documented severity gate
+        # High and critical advisories fail. Moderate and low are printed in the step above
+        # this one so they are seen, but they do not block a merge on their own.
+        run: |
+          pnpm audit --audit-level moderate || true
+          pnpm audit --audit-level high
+
+  licences:
+    name: dependency licences
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Fail on a prohibited or unknown licence
+        run: scripts/check-editor-licenses.sh
+
+  secrets:
+    name: secret scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Gitleaks compares a range, so it needs the history the range refers to.
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  static-analysis:
+    name: Semgrep and Bandit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - name: Semgrep
+        run: uv tool run semgrep scan --error --config p/python --config p/javascript --config p/owasp-top-ten --exclude node_modules --exclude .next
+      - name: Bandit
+        # Only the shipped package is scanned: `assert` is how every test states its
+        # expectation, and scanning the suite would report each one as a finding.
+        run: uv tool run bandit --recursive backend/src --severity-level medium --confidence-level medium
+
+  containers:
+    name: container image scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        include:
+          - name: api
+            target: api
+            dockerfile: infra/docker/backend.Dockerfile
+          - name: worker
+            target: worker
+            dockerfile: infra/docker/backend.Dockerfile
+          - name: media-worker
+            target: media-worker
+            dockerfile: infra/docker/backend.Dockerfile
+          - name: frontend
+            target: runtime
+            dockerfile: infra/docker/frontend.Dockerfile
+          - name: source-import
+            target: runtime
+            dockerfile: infra/docker/source-import.Dockerfile
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build ${{ matrix.name }}
+        run: |
+          docker build --file ${{ matrix.dockerfile }} \
+            --target ${{ matrix.target }} --tag clipah-${{ matrix.name }}:ci .
+      - name: Trivy
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: clipah-${{ matrix.name }}:ci
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          exit-code: "1"

@@ -1,0 +1,86 @@
+# Does the backend still work on the Python it will move to next?
+#
+# Production is pinned to 3.13 and stays there. This workflow answers, on a schedule and
+# on demand, whether every dependency and every media smoke test already passes on 3.14 —
+# which is the evidence the pin is allowed to move on, and nothing else. It is deliberately
+# not a required check: a dependency that has not published a 3.14 wheel yet is information
+# about the ecosystem, not a defect in a pull request.
+name: python-314-compat
+
+on:
+  schedule:
+    # Wednesday, away from the Monday advisory run, so a red result here is never confused
+    # with a red result there.
+    - cron: "0 6 * * 3"
+  workflow_dispatch:
+
+concurrency:
+  group: python-314-compat
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CLIPAH_TEST_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_API_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_WORKER_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_REDIS_URL: redis://localhost:56380/0
+
+jobs:
+  backend-on-314:
+    name: backend suite on Python 3.14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    # Advisory by design: this reports, it does not gate.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Postgres, Redis, and MinIO
+        run: docker compose -f infra/compose.yaml up --detach --wait postgres redis minio minio-init
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - name: Resolve the whole dependency set against 3.14
+        working-directory: backend
+        run: uv sync --python 3.14 --all-extras
+      - name: Types
+        working-directory: backend
+        run: uv run --python 3.14 mypy src
+      - name: Tests and coverage
+        working-directory: backend
+        run: uv run --python 3.14 pytest -q --cov=clipah --cov-fail-under=90
+
+  media-on-314:
+    name: media toolchain on Python 3.14
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the media image on a 3.14 base
+        run: |
+          docker build --file infra/docker/backend.Dockerfile --target media-worker \
+            --build-arg PYTHON_IMAGE=python:3.14-slim-trixie \
+            --tag clipah-media-worker:py314 .
+      - name: Media readiness
+        run: docker run --rm clipah-media-worker:py314 python -m clipah.runtime.readiness media
+
+  report:
+    name: what this run means for the pin
+    needs: [backend-on-314, media-on-314]
+    runs-on: ubuntu-24.04
+    if: always()
+    steps:
+      - name: Say plainly whether the pin may move
+        run: |
+          backend='${{ needs.backend-on-314.result }}'
+          media='${{ needs.media-on-314.result }}'
+          echo "backend suite on 3.14: $backend"
+          echo "media toolchain on 3.14: $media"
+          if [ "$backend" = success ] && [ "$media" = success ]; then
+            echo 'Both passed. Production may be moved to 3.14 in its own change.'
+          else
+            echo 'Production stays on 3.13. Nothing here blocks a pull request.'
+          fi

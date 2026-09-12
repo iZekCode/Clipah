@@ -27,6 +27,7 @@ from sqlalchemy import Engine, select, text, update
 from sqlalchemy.orm import Session
 
 from clipah.assets.probe import SourceMetadata
+from clipah.assets.provider_fetch import validate_provider_media_url
 from clipah.assets.storage import StoredObject
 from clipah.broll.generation import (
     FakeGenerativeMediaProvider,
@@ -96,6 +97,16 @@ class _Fixture:
     project_id: UUID
     candidate_id: UUID
     suggestion_id: UUID
+
+
+def _offline_media_url_policy(url: str) -> str:
+    """Run the real destination policy against an answer that never leaves the process.
+
+    The policy itself is proven in `tests/security/test_provider_media_urls.py`; here it
+    is wired in so these fixtures exercise the same code path a worker would, without a
+    DNS lookup for a fixture hostname.
+    """
+    return validate_provider_media_url(url, resolver=lambda host: ("93.184.216.34",))
 
 
 def _estimate_path(fixture: _Fixture, suggestion_id: UUID | None = None) -> str:
@@ -1106,6 +1117,7 @@ def _generation_dependencies(
         media=_Media(),
         sleep=lambda _: None,
         monotonic=monotonic or (lambda: 0.0),
+        media_url_policy=_offline_media_url_policy,
     )
 
 

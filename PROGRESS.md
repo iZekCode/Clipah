@@ -3,7 +3,7 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-46 have landed. **Task 46 is complete pending the owner commit.**
+**Current position:** Tasks 1-46 have landed. **Task 47 is complete pending the owner commit.**
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -95,8 +95,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | --- | --- | --- |
 | 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (`3b61f43`) |
 | 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (`ba19e39`) |
-| 46 | Containerize local and production processes with pinned media tooling | `[x]` (uncommitted; owner commit pending) |
-| 47 | Add CI, security scanning, load tests, and recovery drills | `[ ]` |
+| 46 | Containerize local and production processes with pinned media tooling | `[x]` (`14f20d6`) |
+| 47 | Add CI, security scanning, load tests, and recovery drills | `[x]` (uncommitted; owner commit pending) |
 | 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[ ]` |
 
 ## What each completed task actually delivered
@@ -2746,6 +2746,112 @@ Compose config validation; deployment contracts/runtime tests (`11 passed`); Doc
 and health wait; two successful runtime smoke passes; and `git diff --check`. No commit, push, or
 history rewrite was performed.
 
+### Task 47 — Production quality gates, security tests, and recovery drills
+
+Complete in the worktree; the owner should commit it as `ci: enforce production quality and
+recovery gates`.
+
+**Continuous integration.** `.github/workflows/ci.yml` runs seven jobs on every pull request
+and on `master`: the four backend gates against real Postgres, Redis, and MinIO plus a
+migration downgrade/upgrade and the telemetry check; the four frontend gates plus the editor
+dependency licence scan; the generated-contract cleanliness check; the recorded-transport
+social provider contracts; the browser suite against a served production build with an API
+process beside it; the golden-frame comparison inside the pinned media image; and
+`scripts/verify-runtime.sh` for the container smoke. Nothing is advisory, because a gate that
+reports green without measuring anything is worse than no gate.
+
+`.github/workflows/security.yml` runs on the same events and weekly: pip-audit over the
+exported lockfile, `pnpm audit` at a documented gate (moderate is reported, high and critical
+fail), the licence scan that refuses an unknown or prohibited licence, Gitleaks, Semgrep and
+Bandit, and Trivy over all five built images at HIGH and CRITICAL.
+`.github/workflows/python-314-compat.yml` resolves, type-checks, and runs the whole backend
+suite on Python 3.14 and builds the media image on a 3.14 base. It is scheduled and
+`continue-on-error`, and its final job says plainly whether the 3.13 pin may move; production
+stays pinned either way.
+
+**Security tests.** `backend/tests/security/` grew from two modules to eight, 156 tests in
+all. `test_tenant_isolation.py` aims seventeen routes at another Workspace's Project, Clip
+Candidate, Job, and Edit while declaring the attacker's own Workspace, and requires the same
+status, code, and public message a never-issued UUID earns; a paired control aims every one
+of those probes at the caller's own rows and fails if any answers 404, so a mistyped probe
+cannot pass by proving nothing. It also covers a removed Membership taking effect on the very
+next request and a forged `workspace_id` never reaching the tenant context.
+`test_browser_session.py` covers the CSRF matrix, the `Referer` fallback, cookie attributes,
+session fixation, open redirects, and the absence of any Access-Control-Allow-Origin header.
+`test_login_ceremony.py` breaks one binding of the Google ceremony at a time — PKCE, the
+seal, the lifetime, the state, the nonce, the issuer, the audience — and proves a redeemed
+ceremony cannot be replayed. `test_object_access.py` proves no client filename reaches an
+object key and every signed capability lasts exactly five minutes.
+`test_provider_media_urls.py`, `test_media_bombs.py`, `test_untrusted_text.py`, and
+`test_webhook_intake.py` cover the remaining classes; the webhook guard enumerates the routes
+from the application, so a webhook route added later is covered the moment it exists.
+
+Four attack classes were already covered where they were built and are not duplicated: the
+row-level-security role privileges and the least-privilege grants in
+`tests/integration/test_schema.py`, the social-connection ceremony in
+`tests/security/test_oauth_grants.py`, the cookie-jar redaction in
+`tests/security/test_source_secret_redaction.py`, FFmpeg filter injection over member text in
+`tests/unit/test_render_compiler.py`, and malicious yt-dlp plugin output — output outside the
+Job workspace, a symlinked output, more than one final file, unbounded output — in
+`tests/unit/test_yt_dlp_adapter.py`.
+
+**Three defects the new tests found, and their fixes.** A stock catalogue's `download_url`
+and a generative provider's output URL were both fetched by a worker without any destination
+policy, so a compromised or poisoned provider answer could aim this deployment's own network
+at, for example, a cloud metadata service. `assets/provider_fetch.py` now proves HTTPS, no
+credentials in the URL, the usual port, and that every address the host resolves to is
+globally routable; both worker paths refuse an unsafe destination terminally with a stable
+code that repeats neither the URL nor the address. A display filename carrying a NUL was
+stored rather than refused, which Postgres rejects, turning a member's mistake into a server
+error; the upload boundary now refuses a filename that is not printable. And an unreachable
+object store reached the API as `500 INTERNAL_ERROR` — the S3 adapter wrapped only some of
+its operations — which tells a client a request can never succeed when it will succeed as
+soon as storage returns; every S3 operation now reports an outage, and the application
+answers `503 SERVICE_UNAVAILABLE`.
+
+**Load scenarios.** `tests/load/k6.js` holds ten scenarios: dashboard reads, upload-session
+creation, job polling, the Workspace event stream, render admission, Publication draft,
+preflight and confirm, scheduler-adjacent reads, a webhook burst, reconciliation reads, and a
+tenant-isolation probe. Three thresholds are asserted rather than observed — p95 under 500 ms
+over requests tagged `boundary:api` only, a hard zero on cross-Workspace visibility, and every
+limit refusal being one of the documented codes carrying `Retry-After`. Every identifier comes
+from the environment, so the script never mints its own Session. **It was not executed here:
+k6 is not installed on this machine.** The file is syntax-checked and no more than that.
+
+**Recovery drills.** `docs/operations/recovery.md` documents thirteen drills and says for
+each whether it runs against the local stack or is discharged by a suite. Seven were executed
+against the running compose stack: the API restart (readiness back in one second, the Job
+table unchanged either side), a `SIGKILL` to the render worker (no Job left running with
+nobody on it), a Redis restart, the scheduler pause and resume, the object-store outage, the
+migration downgrade and upgrade with `alembic check` reporting no drift, and
+`scripts/verify-runtime.sh` replaying one fixed identity twice with ten smoke checks passing
+each time. The object-store drill failed the first time it was run, which is how the third
+defect above was found; it was fixed and the drill re-run to a `503` with no durable row and
+a `201` once MinIO returned. Two honest notes are recorded in the document: `/health/ready`
+stays `200` through a storage outage, because readiness probes the database and the broker
+and not the object store; and the scheduler drill exercised the pause and the resume with no
+Publications due locally, so claim-once behaviour rests on its own integration test.
+
+One gap the drills exposed had no test at all: two concurrent refreshes of one OAuth Grant.
+`test_two_refreshes_of_one_grant_never_reach_the_provider_at_once` now runs two refreshes from
+two threads and proves the provider boundary is entered twice without the calls overlapping,
+and that the Grant's token version advances once per refresh rather than losing one.
+
+The golden-frame job was run here rather than only written: inside the pinned media image it
+reports `7 passed, 3 skipped`, the three skips being the caption, karaoke, and drawn-text
+scenarios that still have no signed-off golden frame checked in. The image can render them —
+it carries the `subtitles` and `drawtext` filters — but a golden frame is a human's sign-off
+on what a frame should look like, so generating them is left to the owner rather than done by
+the task that built the runner.
+
+Final verification: backend `ruff check`, `ruff format --check`, strict mypy, and
+`2771 passed, 20 skipped` at `92.75%` coverage; frontend lint, typecheck, `411 passed`, and
+the production build; `scripts/check-contracts-clean.sh`, `scripts/check-observability.sh`,
+`scripts/check-editor-licenses.sh`, and `scripts/run-social-provider-contracts.sh --adapter=fake`
+(`230 passed`); the migration downgrade/upgrade with `alembic check` reporting no drift; the
+golden-frame gate inside the pinned image; and `scripts/verify-runtime.sh` with both smoke
+passes green. No commit, push, or history rewrite was performed.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -2753,8 +2859,10 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| Running the k6 scenarios. `tests/load/k6.js` is written, syntax-checked, and asserts its three thresholds, but k6 is not installed on this machine, so no number in it has been observed | the repository owner, or a CI runner with k6 installed |
+| Probing the object store in `/health/ready`. Readiness covers the database and the broker, so a storage outage shows up as refused work rather than an unready API; this is recorded in `docs/operations/recovery.md` rather than silently assumed | whichever task revisits the health contract |
 | ~~Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket)~~ — landed in Task 46's pinned API image and Compose MinIO fixture | done in Task 46 |
-| Pointing the browser suite at a production build. `playwright.config.ts` starts `pnpm dev`, whose first-hit route compilation races the five-second assertion timeout | Task 47, with CI |
+| ~~Pointing the browser suite at a production build~~ — `playwright.config.ts` now builds and serves rather than starting `pnpm dev` | done in Task 47 |
 | The clip page's other halves — Revision history and exports — and the navigation into it. Task 30 wired only the B-roll a clip carries, and the page still needs its Project named in the URL because no route resolves a Clip Candidate to its Project | Tasks 34 and 35, with the content library and project review |
 | Retrieving *stock* images, so a member can accept a still they did not pay a model for. Task 31 generates stills, and the editor places them as image overlays; both stock adapters still query the video endpoints only | whichever task revisits stock retrieval — Task 34 built the content library and no checkbox in it touches the stock adapters |
 | Offering genuinely new alternatives for a replacement. Replacement swaps to another asset the Project owns, because only the selected candidate is ever downloaded | whichever task can pay for a second search inside the providers' terms |
@@ -2777,7 +2885,7 @@ oversight.
 | Detecting the faces smart crop reasons about, and the endpoint that would carry its suggestions into the editor. `assets/smart_crop.py` is the policy and is fully tested; nothing in the pipeline produces a face box yet, and no image in the plan pins a detector | the task that adds a face detector to the pinned image |
 | Preview-side golden frames. The gate compares an FFmpeg render against a signed-off frame; comparing a *browser preview* frame against the same golden needs the Mediabunny compositor that Tasks 25 and 26 both deferred | whichever task builds the frame-accurate preview compositor |
 | Golden frames for burned-in captions, karaoke, and drawn text; they need `subtitles` and `drawtext`, so the generator and the suite both skip them on a build without libass and libfreetype | the repository owner, inside the pinned image |
-| Failing CI below the perceptual threshold; the gate fails the suite, but no CI configuration exists to run it | Task 47 |
+| ~~Failing CI below the perceptual threshold~~ — the `golden-frames` job runs the gate inside the pinned media image | done in Task 47 |
 | Blend modes other than `normal`, and scale or rotation keyframes. The schema can express them and the renderer cannot reproduce them faithfully, so the compiler refuses them and the editor does not offer them | whichever task can prove a faithful FFmpeg reproduction |
 | Waveform display under a timeline item; nothing in the pipeline produces a `waveform` Asset yet, so there is no data to draw. Snapping, bookmarks, ripple editing, scene organization, and pointer drag/resize all landed in Task 25 | Task 26, once a waveform rendition exists |
 | Detaching a base video item's own audio. Composition version 1 carries no per-item mute, so a detached copy would play twice; Task 25's extract-audio places one asset's audio on its own extracted-audio lane instead | Task 26, with the per-item controls that would need the field |

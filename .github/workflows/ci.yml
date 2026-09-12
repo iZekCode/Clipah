@@ -1,0 +1,196 @@
+# The gates a change has to pass before it can be merged.
+#
+# Every job here is one of the four gates in AGENTS.md or one of the checks a task already
+# built and left without a runner: the generated contracts, the editor-engine and social
+# provider contracts, the browser suite, the golden-frame comparison, and the container
+# smoke. Nothing is advisory — a job that cannot run its check fails rather than passing
+# quietly, because a gate that reports green without measuring anything is worse than no
+# gate at all.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # The same loopback ports `infra/compose.yaml` publishes, so the defaults compiled into
+  # `tests/support.py` need no environment of their own.
+  CLIPAH_TEST_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_API_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_WORKER_RUNTIME_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/clipah_rebuild_foundation
+  CLIPAH_TEST_REDIS_URL: redis://localhost:56380/0
+
+jobs:
+  backend:
+    name: backend lint, types, tests, coverage
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Postgres, Redis, and MinIO
+        run: docker compose -f infra/compose.yaml up --detach --wait postgres redis minio minio-init
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - name: Lint
+        working-directory: backend
+        run: uv run ruff check .
+      - name: Formatting
+        working-directory: backend
+        run: uv run ruff format --check .
+      - name: Types
+        working-directory: backend
+        run: uv run mypy src
+      - name: Tests and coverage
+        working-directory: backend
+        run: uv run pytest -q --cov=clipah --cov-fail-under=90
+      - name: Migration downgrade and upgrade
+        working-directory: backend
+        run: |
+          uv run alembic downgrade base
+          uv run alembic upgrade head
+      - name: Telemetry
+        run: scripts/check-observability.sh
+
+  frontend:
+    name: frontend lint, types, unit tests, build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+      - name: Editor dependency licences
+        run: scripts/check-editor-licenses.sh
+
+  contracts:
+    name: generated contracts are current
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: OpenAPI, composition schema, templates, and the generated client
+        run: scripts/check-contracts-clean.sh
+
+  provider-contracts:
+    name: social provider contracts
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - name: Recorded-transport provider contracts
+        run: scripts/run-social-provider-contracts.sh --adapter=fake
+
+  browser:
+    name: browser end-to-end
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    # The browser suite seeds its members by running `clipah.dev.seed` itself, so the whole
+    # job needs the configuration the API process needs, not just the step that serves it.
+    env:
+      CLIPAH_ENVIRONMENT: local
+      CLIPAH_PROCESS_ROLE: api
+      CLIPAH_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@localhost:55433/clipah_rebuild_foundation
+      CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@localhost:55433/clipah_rebuild_foundation
+      CLIPAH_REDIS_URL: redis://localhost:56380/0
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://localhost:59001
+      CLIPAH_OBJECT_STORE_BUCKET: clipah-local
+      CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
+      CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
+      CLIPAH_FRONTEND_ORIGIN: http://localhost:3000
+      CLIPAH_SESSION_SECRET: local-session-secret-at-least-32-bytes
+      CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      CLIPAH_API_ORIGIN: http://127.0.0.1:8000
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start Postgres, Redis, and MinIO
+        run: docker compose -f infra/compose.yaml up --detach --wait postgres redis minio minio-init
+      - uses: astral-sh/setup-uv@v5
+        with:
+          version: "0.12.7"
+          enable-cache: true
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Migrate
+        working-directory: backend
+        run: uv run alembic upgrade head
+      - name: Serve the API the browser talks to
+        working-directory: backend
+        run: |
+          uv run uvicorn clipah.runtime.api:app --host 127.0.0.1 --port 8000 &
+          for _ in $(seq 1 60); do
+            curl --silent --fail http://127.0.0.1:8000/health/ready && break
+            sleep 2
+          done
+      - name: Install browser binaries
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Browser suite against a production build
+        working-directory: frontend
+        run: pnpm test:e2e
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: frontend/test-results
+          retention-days: 7
+
+  golden-frames:
+    name: rendered frames match what was signed off
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the pinned media image
+        run: docker compose -f infra/compose.yaml --profile smoke build runtime-smoke
+      - name: Compare every rendered frame against its golden
+        run: |
+          docker compose -f infra/compose.yaml up --detach --wait postgres
+          # The image's filesystem is read-only, so pytest is told not to look for a cache.
+          docker compose -f infra/compose.yaml --profile smoke run --rm --no-deps \
+            --entrypoint python runtime-smoke -m pytest -q -p no:cacheprovider \
+            tests/integration/test_golden_frames.py
+
+  containers:
+    name: container smoke
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build every image and replay the fixed smoke identity twice
+        run: scripts/verify-runtime.sh

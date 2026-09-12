@@ -14,7 +14,12 @@ from sqlalchemy import Engine, func, select, text
 from sqlalchemy.orm import Session
 
 from clipah.assets.keys import source_upload_key
-from clipah.assets.storage import CompletedPart, FakeObjectStore, S3ObjectStore
+from clipah.assets.storage import (
+    CompletedPart,
+    FakeObjectStore,
+    ObjectStoreUnavailableError,
+    S3ObjectStore,
+)
 from clipah.assets.uploads import (
     CreateUploadCommand,
     UploadConflictError,
@@ -686,3 +691,50 @@ def test_multipart_upload_routes_use_real_local_minio_for_signed_part_and_downlo
         assert_error(invalid_part_number, status_code=422, code="VALIDATION_ERROR")
     finally:
         store.delete_object(key=key)
+
+
+class UnavailableObjectStore(FakeObjectStore):
+    """Fail every provider operation the way an unreachable object store does."""
+
+    def create_multipart_upload(self, *, key: str, content_type: str) -> object:
+        """Refuse to allocate an upload, as a store that cannot be reached would."""
+        del key, content_type
+        raise ObjectStoreUnavailableError("object store upload unavailable")
+
+    def sign_upload_part(self, *, upload_id: str, key: str, part_number: int) -> object:
+        """Refuse to sign a part, as a store that cannot be reached would."""
+        del upload_id, key, part_number
+        raise ObjectStoreUnavailableError("object store signing unavailable")
+
+
+@pytest.mark.integration
+def test_an_unreachable_object_store_is_a_service_outage_rather_than_a_defect(
+    engine: Engine, clean_database: None
+) -> None:
+    """A storage outage is transient, so it must say so rather than report a bug.
+
+    This is drill 11 in `docs/operations/recovery.md`. An internal-error envelope would
+    tell a browser, and the member reading it, that the request can never succeed; the
+    truth is that it will succeed once the store is reachable again. Nothing durable may
+    be written for bytes that were never allocated.
+    """
+    del clean_database
+    clock = Clock(NOW)
+    app, flow, _ = build_app(
+        clock, StubGoogleProvider(clock), object_store=UnavailableObjectStore(now=clock)
+    )
+    browser = Browser(app)
+    sign_in(browser, flow)
+    workspace_id = _workspace_id(browser)
+    project = _create_project(browser, workspace_id, key="storage-outage")
+
+    response = browser.request(
+        "POST",
+        f"/api/v1/projects/{project['id']}/uploads?workspace_id={workspace_id}",
+        json={"filename": "drill.mp4", "contentType": "video/mp4", "contentLength": 1_048_576},
+    )
+
+    assert_error(response, status_code=503, code="SERVICE_UNAVAILABLE")
+    with Session(engine) as session:
+        stored = session.scalar(select(func.count()).select_from(MultipartUpload))
+    assert stored == 0

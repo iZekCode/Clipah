@@ -53,7 +53,12 @@ from clipah.api.routes.instagram_webhooks import (
 )
 from clipah.api.routes.tiktok_webhooks import TikTokWebhookSink, TikTokWebhookVerifier
 from clipah.assets.source_validation import validate_youtube_url
-from clipah.assets.storage import ObjectStore, ObservedObjectStore, S3ObjectStore
+from clipah.assets.storage import (
+    ObjectStore,
+    ObjectStoreUnavailableError,
+    ObservedObjectStore,
+    S3ObjectStore,
+)
 from clipah.auth.limits import RateLimiter, RedisRateLimiter
 from clipah.broll.generation_policy import GenerationProviders, configured_generation_providers
 from clipah.config import Settings
@@ -187,6 +192,20 @@ def create_app(
         return error_response(
             status_code=error.status_code,
             code=code,
+            request_id=request_id_for(request),
+        )
+
+    @app.exception_handler(ObjectStoreUnavailableError)
+    async def handle_storage_outage(request: Request, _: ObjectStoreUnavailableError) -> Response:
+        """Answer a storage outage as the transient thing it is.
+
+        An internal-error envelope would tell a client the request can never succeed, when
+        the truth is that it succeeds again as soon as the store is reachable. The envelope
+        stays sanitized either way: the provider's own message never leaves this handler.
+        """
+        return error_response(
+            status_code=503,
+            code="SERVICE_UNAVAILABLE",
             request_id=request_id_for(request),
         )
 

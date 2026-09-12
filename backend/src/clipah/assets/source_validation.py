@@ -19,7 +19,7 @@ MAX_SOURCE_REDIRECTS = 5
 def validate_youtube_url(url: str, *, resolver: Resolver | None = None) -> NormalizedYouTubeUrl:
     """Normalize one allowlisted single-video URL after validating all DNS answers."""
     host, video_id = normalize_youtube_syntax(url)
-    addresses = _resolve_public_addresses(host, resolver=resolver or _resolve_host)
+    addresses = _resolve_public_addresses(host, resolver=resolver or resolve_host)
     return NormalizedYouTubeUrl(
         canonical_url=f"https://www.youtube.com/watch?v={video_id}",
         video_id=video_id,
@@ -35,7 +35,7 @@ def revalidate_youtube_url(
     _, video_id = normalize_youtube_syntax(source.canonical_url)
     if source.host not in ALLOWED_YOUTUBE_HOSTS or video_id != source.video_id:
         raise SourceUnsupportedError
-    addresses = _resolve_public_addresses(source.host, resolver=resolver or _resolve_host)
+    addresses = _resolve_public_addresses(source.host, resolver=resolver or resolve_host)
     if addresses != source.addresses:
         raise SourceUnsupportedError
     return NormalizedYouTubeUrl(
@@ -111,6 +111,29 @@ def normalize_youtube_syntax(url: str) -> tuple[str, str]:
     return host, video_id
 
 
+def is_public_address(value: str) -> bool:
+    """Say whether one textual address is globally routable, for any caller that fetches.
+
+    The provider-media policy in `provider_fetch` judges its destinations by exactly this
+    rule, so the rule lives once rather than being restated where it would drift.
+    """
+    try:
+        address = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+    return _is_public_address(address)
+
+
+def resolve_host(host: str) -> Iterable[str]:
+    """Resolve one HTTPS host into unique numeric addresses without provider I/O."""
+    return {
+        str(sockaddr[0])
+        for _, _, _, _, sockaddr in socket.getaddrinfo(
+            host, 443, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
+        )
+    }
+
+
 def _resolve_public_addresses(
     host: str, *, resolver: Resolver
 ) -> frozenset[ipaddress.IPv4Address | ipaddress.IPv6Address]:
@@ -139,13 +162,3 @@ def _is_public_address(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -
         and not classified.is_reserved
         and not classified.is_unspecified
     )
-
-
-def _resolve_host(host: str) -> Iterable[str]:
-    """Resolve one HTTPS host into unique numeric addresses without provider I/O."""
-    return {
-        str(sockaddr[0])
-        for _, _, _, _, sockaddr in socket.getaddrinfo(
-            host, 443, family=socket.AF_UNSPEC, type=socket.SOCK_STREAM
-        )
-    }
