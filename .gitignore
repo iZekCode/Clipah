@@ -93,3 +93,6 @@ temp-audio.m4a
 # Playwright artifacts
 test-results/
 playwright-report/
+
+# Cutover and evaluation observations
+reports/

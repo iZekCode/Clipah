@@ -3,7 +3,8 @@
 Tracks the Clipah rebuild against Section 11 of `plan.md`. Tasks run in order; each one is
 complete only when its own checkboxes pass and all four gates in `AGENTS.md` are green.
 
-**Current position:** Tasks 1-46 have landed. **Task 47 is complete pending the owner commit.**
+**Current position:** Tasks 1-47 have landed. **Task 48 is complete pending the owner
+commit**, in two parts: 48a prepared the cutover, 48b removed the legacy stack.
 
 Legend: `[x]` landed · `[~]` in progress · `[ ]` not started
 
@@ -96,8 +97,8 @@ complete the editor-engine bake-off, trim/crop/style captions, and autosave one 
 | 44 | Add structured observability, provider usage, and operational dashboards | `[x]` (`3b61f43`) |
 | 45 | Implement retention, Workspace/project recovery, and account deletion | `[x]` (`ba19e39`) |
 | 46 | Containerize local and production processes with pinned media tooling | `[x]` (`14f20d6`) |
-| 47 | Add CI, security scanning, load tests, and recovery drills | `[x]` (uncommitted; owner commit pending) |
-| 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[ ]` |
+| 47 | Add CI, security scanning, load tests, and recovery drills | `[x]` (`763fdaf`) |
+| 48 | Migrate, cut over, remove legacy behavior, and update product documentation | `[x]` (uncommitted; owner commit pending) |
 
 ## What each completed task actually delivered
 
@@ -2942,4 +2943,86 @@ instead of unrestricted strings. Neither changes the completed Task 5 contract.
 
 - `AGENTS.md` holds the working rules, gate commands, and local infrastructure setup.
 - `CONTEXT.md` holds the canonical vocabulary.
-- The legacy Flask/Next.js stack at the repository root is untouched until Task 48.
+- The legacy Flask stack is gone. `scripts/check-legacy-removed.sh` keeps it gone.
+
+### Task 48 — Cutover, legacy removal, and product documentation
+
+Delivered in two parts. **48a** prepared the cutover without deleting anything; **48b**
+removed the legacy stack and proved it.
+
+**The rollout flag.** `NEW_CLIPAH_ENABLED` gates the Next.js application through
+`frontend/middleware.ts`. It fails closed — only the exact word `true`, trimmed and
+lowercased, exposes the UI — and every hidden product route answers a bare `404` naming no
+flag and no deployment, so a stage that has not been reached is indistinguishable from a host
+that never served Clipah. `/api/*` answers throughout, because the foundations are deployed
+and proven before anyone can see the UI in front of them.
+
+The first implementation was wrong in a way the unit tests could not see. It took the
+environment as an injected second parameter, and Next calls middleware as
+`(request, event)`, so the fetch event silently shadowed it and the UI stayed hidden even
+with the flag set. A real `next build` and `next start` found it: `/` answered `404` with the
+flag set at both build and run time. The middleware now reads `process.env` where it runs and
+`gateDecision` holds the decision, and the suite sets the flag where the middleware actually
+reads it rather than handing it in as an argument. Verified against a running server: on one
+build, `/` and `/dashboard` answer `404` with the flag unset and `200` with it set, so a
+rollback is a restart rather than a rebuild.
+
+**The environment inventory.** `ENVIRONMENT_SETUP.md` now documents all 129 settings plus 25
+variables read by a process, an image, or a test. It cannot go stale quietly:
+`tests/unit/test_environment_documentation.py` fails the build when a setting exists in
+`config.py` and appears nowhere, when a documented name is read by nothing, and when the
+runbook stops mapping a legacy key. `docs/operations/cutover.md` maps all six legacy
+variables to their replacements and records why `google-generativeai`, Flask-CORS, and
+MoviePy have no replacement at all.
+
+**The smoke comparison.** `scripts/new-stack-smoke.sh` and `scripts/legacy-smoke.sh` write
+the same observation shape, so the comparison is field by field rather than by eye. A run
+that cannot authenticate, or has no legacy deployment to call, records `"status":
+"unmeasured"` and exits non-zero — a smoke that did not run has not passed.
+`tests/contract/test_cutover_smoke_scripts.py` drives both through a fake `curl` that answers
+by URL and records every call, following the fake-`docker` pattern Task 46 established, so
+the request sequence and the CSRF header on every unsafe request are checked without either
+stack being up. The intentional differences between the two pipelines are listed in the
+runbook rather than left for a reader to rediscover.
+
+**Removed.** `app.py`, `templates/`, `static/script.js`, `static/style.css`, the root
+`requirements.txt`, and `nixpacks.toml`. Two more went with them: `styles/` held TrueType
+fonts that only the legacy renderer loaded, and the root `public/` held v0 scaffold
+placeholders nothing referenced. `static/clipah_logo.png` stays. No CI job referenced any of
+it, and the eight Railway service configurations never did.
+
+**Three deviations from the task's literal wording, each deliberate.**
+
+The task asks that `git grep` find no `threading.Thread`, `main_video.mp4`,
+`processing_status`, or `cookies.txt`. All four still appear, in code the plan itself asked
+for: threads drain a subprocess's pipes within a bound in `assets/ffmpeg.py` and the yt-dlp
+adapter, `test_workspace.py` uses the old shared filename deliberately to prove two
+concurrent Jobs can hold it without colliding, `processingStatus` is YouTube's own upload
+field in its publisher test, and Task 27's authenticated connector writes a leased cookie jar
+`0600` inside a Job's workspace. `scripts/check-legacy-removed.sh` therefore carries one
+named file exemption per pattern with the reason written beside it; a new file matching any
+pattern still fails. The sweep runs over untracked files too, so a file someone forgot to add
+is not a way past it, and it is wired into CI as its own job.
+
+The README and `ENVIRONMENT_SETUP.md` first claimed no code path accepts cookies at all. That
+was false — Task 27 built exactly such a path, behind a flag. Both documents now describe the
+leased jar honestly, including that the Terms of Service risk is the member's decision, which
+is why the capability is flagged off rather than assumed.
+
+The rollout stages, the per-provider social gates, and the seven-day rollback window are
+operator actions against a live deployment. The runbook specifies each one; none was
+performed, and none could be from here.
+
+**One defect found in the gates themselves.** The new subprocess tests call `python3`, which
+resolves to the suite's own interpreter, and pytest-cov auto-starts coverage in any such
+child. Those children run from the repository root, where the branch-coverage configuration
+is not found, so they wrote statement-only data files that then refused to combine with the
+suite's own — an `INTERNALERROR` after every test had already passed. The tests now drop the
+`COV_CORE*` handover variables when they spawn a script.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 2788 backend tests passed
+with 20 environment-gated skips at 92.75% coverage; `pnpm lint`, `pnpm typecheck`, `pnpm test`
+(424 passed), and `pnpm build` all passed; `scripts/check-legacy-removed.sh` exits zero. The
+Section 12 matrix was not run end to end here: it needs the container stack, browser
+binaries, and live provider credentials. No commit was created; the required owner commit
+message is `refactor: complete production cutover`.

@@ -186,6 +186,15 @@ jobs:
             --entrypoint python runtime-smoke -m pytest -q -p no:cacheprovider \
             tests/integration/test_golden_frames.py
 
+  legacy:
+    name: the legacy stack stays removed
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Sweep for legacy behaviour
+        run: scripts/check-legacy-removed.sh
+
   containers:
     name: container smoke
     runs-on: ubuntu-24.04
