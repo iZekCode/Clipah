@@ -712,3 +712,70 @@ def test_production_analysis_policy_reads_every_deployment_tuning_setting() -> N
     assert policy.deduplication.min_excerpt_cosine == 0.95
     assert policy.ranking.keep == 24
     assert policy.ranking.expose == 8
+
+
+@pytest.mark.unit
+def test_every_request_bounds_its_completion_and_reasoning_budget() -> None:
+    """A reasoning model with no budget reasons instead of answering.
+
+    The configured Groq models reason before they reply. Asked for strict-schema JSON with
+    no completion budget and no reasoning setting, they spend the whole response on
+    reasoning and emit no JSON at all, and Groq refuses the call with `json_validate_failed`
+    and an empty `failed_generation`. Measured against a real transcript window, the request
+    this adapter used to send produced valid output on none of three attempts; with these two
+    parameters it produced valid output on all three.
+    """
+    provider, completions, _ = _provider(_Response(json.dumps({"candidates": []})))
+
+    provider.extract(window=WINDOW, target_count=5)
+
+    request = completions.requests[0]
+    assert request["reasoning_effort"] == "low"
+    assert request["max_completion_tokens"] > 0
+
+
+@pytest.mark.unit
+def test_reranking_bounds_its_budget_the_same_way() -> None:
+    """Reranking runs on the larger model, which reasons at least as eagerly."""
+    provider, completions, _ = _provider(_Response(json.dumps({"order": [1, 0]})))
+
+    provider.rerank(candidates=[_draft("first"), _draft("second")], limit=2)
+
+    request = completions.requests[0]
+    assert request["reasoning_effort"] == "low"
+    assert request["max_completion_tokens"] > 0
+
+
+@pytest.mark.unit
+def test_retries_a_schema_validation_refusal() -> None:
+    """A model that failed to satisfy the schema once may satisfy it next time.
+
+    Groq validates strict-schema output on its own side and returns 400
+    `json_validate_failed` when the model's reply does not conform. That is a property of
+    one generation rather than of the request, so the window is worth asking for again;
+    treating it as terminal dropped the window on the first unlucky roll.
+    """
+    provider, completions, _ = _provider(
+        _ProviderError(400, "Failed to validate JSON. json_validate_failed"),
+        _Response(json.dumps({"candidates": []})),
+    )
+
+    result = provider.extract(window=WINDOW, target_count=5)
+
+    assert result.proposals == ()
+    assert len(completions.requests) == 2
+
+
+@pytest.mark.unit
+def test_reports_an_exhausted_schema_validation_budget_as_retryable() -> None:
+    """A model that never conforms is a provider problem, not a caller defect."""
+    provider, _, _ = _provider(
+        _ProviderError(400, "json_validate_failed"),
+        _ProviderError(400, "json_validate_failed"),
+        max_attempts=2,
+    )
+
+    with pytest.raises(HighlightProviderRetryableError) as raised:
+        provider.extract(window=WINDOW, target_count=5)
+
+    assert raised.value.code == "HIGHLIGHT_PROVIDER_SCHEMA_REFUSED"

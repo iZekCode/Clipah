@@ -35,13 +35,17 @@ Three services, all bound to loopback only:
 migration owner is `clipah_migrator`; the application connects as the least-privilege
 logins `clipah_api_runtime` and `clipah_worker_runtime`.
 
-**Create the object-store bucket once.** Compose does not create it for you:
+**The object-store bucket is created for you.** The `minio-init` service provisions
+`clipah-local` on first start, and every containerised service is configured to use it, so
+your own `backend/.env` has to name the same bucket:
 
-```bash
-docker exec -it clipah-rebuild-foundation-minio-1 \
-  mc alias set local http://127.0.0.1:9000 clipah_local clipah_local_secret
-docker exec -it clipah-rebuild-foundation-minio-1 mc mb local/clipah
+```env
+CLIPAH_OBJECT_STORE_BUCKET=clipah-local
 ```
+
+Naming a bucket that does not exist is not refused at startup, because the configuration
+cannot tell an unreachable store from an absent one. It surfaces later, as a job that
+downloads its media and then fails on upload with a sanitized storage error.
 
 ## Step 2: Write `backend/.env`
 

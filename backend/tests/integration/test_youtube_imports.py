@@ -505,7 +505,13 @@ def test_worker_retry_is_deterministic_and_creates_one_asset(engine: Engine) -> 
         assert asset.content_type == "video/mp4"
         assert asset.size_bytes == 1234
         assert asset.sha256 == b"x" * 32
-        assert asset.duration_ms == 42_000
+        # The provider's duration is a hint, not a measurement, and it is deliberately not
+        # persisted. yt-dlp reports whole seconds, ffprobe measures the real container
+        # duration, and ingest requires the stored duration to be absent or exactly equal.
+        # Storing the rounded value made every import of a video whose length is not a whole
+        # number of seconds fail ingest with an integrity error, after the proxy, thumbnail,
+        # and audio had already been produced and uploaded.
+        assert asset.duration_ms is None
         assert importer.keys == [asset.storage_key, asset.storage_key]
 
 

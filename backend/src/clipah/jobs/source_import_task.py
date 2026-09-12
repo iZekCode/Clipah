@@ -162,7 +162,13 @@ class SourceImportStageRunner:
                 storage_key=stored.key,
                 content_type=stored.content_type,
                 size_bytes=stored.content_length,
-                duration_ms=stored.duration_ms,
+                # The provider's duration is a hint, not a measurement: yt-dlp reports whole
+                # seconds. Ingest measures the real container duration with ffprobe and
+                # requires the stored value to be absent or exactly equal, so persisting the
+                # rounded number failed every import of a video whose length is not a whole
+                # number of seconds — after the proxy, thumbnail, and audio were already
+                # built and uploaded. Ingest is the one writer of this field.
+                duration_ms=None,
                 sha256=stored.sha256,
             )
             existing = repository.asset(

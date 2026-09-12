@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import os
 import subprocess
+import sys
 import tomllib
 from pathlib import Path
 from typing import Any
@@ -13,6 +14,7 @@ REPOSITORY_ROOT = Path(__file__).parents[3]
 COMPOSE_FILE = REPOSITORY_ROOT / "infra" / "compose.yaml"
 VERIFY_SCRIPT = REPOSITORY_ROOT / "scripts" / "verify-runtime.sh"
 RAILWAY_ROOT = REPOSITORY_ROOT / "infra" / "railway"
+JOB_WORKSPACE_PATH = "/var/lib/clipah/job-workspaces"
 EXPECTED_SERVICES = {
     "api",
     "frontend",
@@ -106,7 +108,12 @@ def test_compose_application_services_are_bounded_and_observable() -> None:
         assert int(service["deploy"]["resources"]["limits"]["memory"]) > 0
         writable = " ".join(service.get("tmpfs", ()))
         assert "/tmp" in writable
-        assert "/var/lib/clipah/job-workspaces" in writable
+        assert JOB_WORKSPACE_PATH in {mount["target"] for mount in service.get("volumes", ())}
+        # A RAM-backed workspace cannot serve the source ceiling the code accepts. yt-dlp
+        # fetches video and audio separately and then merges them, so peak usage runs to
+        # roughly twice the final size, and a 2 GiB source needs about 4 GiB of room. Held
+        # in tmpfs that is 4 GiB of the host's memory per worker, so the workspace is disk.
+        assert JOB_WORKSPACE_PATH not in writable
 
 
 def test_compose_workers_own_explicit_queues_and_concurrency() -> None:
@@ -267,3 +274,86 @@ def test_railway_files_name_requirements_without_embedding_credentials() -> None
         assert "fake-" not in source
         assert "local_secret" not in source
         assert "local-session" not in source
+
+
+#: A complete, valid deployment environment. The composition roots build `Settings()` at
+#: import time, so a process that is asked to import them needs every required value.
+DEPLOYMENT_ENVIRONMENT = {
+    "CLIPAH_ENVIRONMENT": "production",
+    "CLIPAH_DATABASE_URL": "postgresql+psycopg://clipah:clipah@db/clipah",
+    "CLIPAH_WORKER_DATABASE_URL": "postgresql+psycopg://clipah_worker:clipah@db/clipah",
+    "CLIPAH_MIGRATION_DATABASE_URL": "postgresql+psycopg://clipah_migrator:admin@db/clipah",
+    "CLIPAH_REDIS_URL": "redis://redis.example.test:6379/7",
+    "CLIPAH_OBJECT_STORE_ENDPOINT": "https://storage.example.test",
+    "CLIPAH_OBJECT_STORE_BUCKET": "clipah-production",
+    "CLIPAH_OBJECT_STORE_ACCESS_KEY_ID": "access-key",
+    "CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY": "secret-key",
+    "CLIPAH_FRONTEND_ORIGIN": "https://app.clipah.test",
+    "CLIPAH_GOOGLE_OIDC_CLIENT_ID": "google-client-id",
+    "CLIPAH_GOOGLE_OIDC_CLIENT_SECRET": "google-client-secret",
+    "CLIPAH_GOOGLE_OIDC_REDIRECT_URI": "https://api.clipah.test/api/v1/auth/google/callback",
+    "CLIPAH_ASSEMBLYAI_API_KEY": "assemblyai-key",
+    "CLIPAH_GROQ_API_KEY": "groq-key",
+    "CLIPAH_SESSION_SECRET": "s" * 32,
+    "CLIPAH_SECRET_ENCRYPTION_KEY": "e" * 32,
+    "CLIPAH_SESSION_COOKIE_NAME": "__Host-clipah_session",
+    "CLIPAH_SESSION_COOKIE_SECURE": "true",
+    "CLIPAH_SECRET_ENCRYPTION_ENABLED": "true",
+    "CLIPAH_DEBUG": "false",
+}
+
+
+def _broker_seen_by(module: str, role: str) -> subprocess.CompletedProcess[str]:
+    """Import one composition root and report the broker its dispatcher would use.
+
+    This runs in its own process because every composition root configures the shared
+    Celery application at import time. Importing one inside the test process would leave
+    that configuration behind for every test that followed.
+    """
+    # Each role is refused the other's connection string, so the environment carries only
+    # the one its own process is allowed to hold. Every other `CLIPAH_` value is dropped so
+    # a developer's own shell cannot change what this proves.
+    foreign = "CLIPAH_WORKER_DATABASE_URL" if role == "api" else "CLIPAH_DATABASE_URL"
+    return subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            (
+                f"import {module}\n"
+                "from clipah.jobs.tasks import run_job\n"
+                "print(run_job.app.conf.broker_url)\n"
+            ),
+        ],
+        cwd=REPOSITORY_ROOT / "backend",
+        env={
+            **{key: value for key, value in os.environ.items() if not key.startswith("CLIPAH_")},
+            **{key: value for key, value in DEPLOYMENT_ENVIRONMENT.items() if key != foreign},
+            "CLIPAH_PROCESS_ROLE": role,
+        },
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+
+
+def test_the_api_process_dispatches_to_the_configured_broker() -> None:
+    """An API that cannot reach the broker accepts work it can never start.
+
+    The API commits a Job and then dispatches it best-effort, suppressing broker failures
+    so a committed Job survives an outage. That deliberate silence means an unconfigured
+    broker does not announce itself: every request still answers 202 and every Job stays
+    queued forever. The composition root has to hand the dispatcher a configured
+    application, and nothing else in the suite would notice if it stopped.
+    """
+    completed = _broker_seen_by("clipah.runtime.api", "api")
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == DEPLOYMENT_ENVIRONMENT["CLIPAH_REDIS_URL"]
+
+
+def test_the_worker_process_dispatches_to_the_configured_broker() -> None:
+    """The worker chains its own next stage through the same dispatcher the API uses."""
+    completed = _broker_seen_by("clipah.runtime.worker", "worker")
+
+    assert completed.returncode == 0, completed.stderr
+    assert completed.stdout.strip() == DEPLOYMENT_ENVIRONMENT["CLIPAH_REDIS_URL"]

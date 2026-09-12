@@ -9,7 +9,12 @@ x-app: &app
   tmpfs:
     - /tmp:rw,noexec,nosuid,size=128m,uid=10001,gid=10001,mode=0700
     - /var/run/clipah:rw,noexec,nosuid,size=16m,uid=10001,gid=10001,mode=0700
-    - /var/lib/clipah/job-workspaces:rw,noexec,nosuid,size=1g,uid=10001,gid=10001,mode=0700
+  # Job workspaces are disk, not memory. yt-dlp fetches video and audio separately and then
+  # merges them, so peak usage runs to roughly twice the final size and a 2 GiB source needs
+  # about 4 GiB of room. In tmpfs that is 4 GiB of the host's RAM per worker, which silently
+  # capped imports at a few hundred megabytes and reported the source as unavailable.
+  volumes:
+    - clipah_rebuild_foundation_job_workspaces:/var/lib/clipah/job-workspaces
 
 x-dependencies: &dependencies
   postgres: {condition: service_healthy}
@@ -160,7 +165,8 @@ services:
     tmpfs:
       - /tmp:rw,noexec,nosuid,size=128m,uid=10001,gid=10001,mode=0700
       - /var/cache/clipah/deno:rw,noexec,nosuid,size=256m,uid=10001,gid=10001,mode=0700
-      - /var/lib/clipah/job-workspaces:rw,noexec,nosuid,size=1g,uid=10001,gid=10001,mode=0700
+    volumes:
+      - clipah_rebuild_foundation_job_workspaces:/var/lib/clipah/job-workspaces
     depends_on: *dependencies
     healthcheck:
       test: ["CMD", "python", "-m", "clipah.source_connectors.readiness"]
@@ -178,15 +184,21 @@ services:
       CLIPAH_PROCESS_ROLE: worker
       CLIPAH_WORKER_DATABASE_URL: postgresql+psycopg://clipah_worker_runtime:clipah_worker_runtime_local@postgres:5432/clipah_rebuild_foundation
       CLIPAH_REDIS_URL: redis://redis:6379/0
-      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      # The transcription provider fetches audio from a signed URL, so this host has to
+      # be one the provider can reach. It stays the in-network address by default and is
+      # overridden only for a deliberate live run against a real provider.
+      CLIPAH_OBJECT_STORE_ENDPOINT: "${CLIPAH_PUBLIC_OBJECT_STORE_ENDPOINT:-http://minio:9000}"
       CLIPAH_OBJECT_STORE_BUCKET: clipah-local
       CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
       CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
       CLIPAH_MIGRATION_DATABASE_URL: postgresql+psycopg://clipah_migrator:clipah_migrator_local@postgres:5432/clipah_rebuild_foundation
       CLIPAH_WORKER_QUEUES: ingest,ai,maintenance
       CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_INGEST_AI_CONCURRENCY:-2}"
-      CLIPAH_ASSEMBLYAI_API_KEY: fake-assemblyai
-      CLIPAH_GROQ_API_KEY: fake-groq
+      # A placeholder by default, so the fixture smoke never reaches a real provider and
+      # never spends anyone's quota. Export the real key to run the pipeline live; there
+      # was previously no way to do that, which made a local end-to-end run impossible.
+      CLIPAH_ASSEMBLYAI_API_KEY: "${CLIPAH_ASSEMBLYAI_API_KEY:-fake-assemblyai}"
+      CLIPAH_GROQ_API_KEY: "${CLIPAH_GROQ_API_KEY:-fake-groq}"
     depends_on: *dependencies
     healthcheck: *worker-health
     deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}
@@ -325,3 +337,4 @@ services:
 volumes:
   clipah_rebuild_foundation_postgres: {name: clipah_rebuild_foundation_postgres}
   clipah_rebuild_foundation_minio: {name: clipah_rebuild_foundation_minio}
+  clipah_rebuild_foundation_job_workspaces: {name: clipah_rebuild_foundation_job_workspaces}

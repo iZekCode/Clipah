@@ -2857,6 +2857,143 @@ the production build; `scripts/check-contracts-clean.sh`, `scripts/check-observa
 golden-frame gate inside the pinned image; and `scripts/verify-runtime.sh` with both smoke
 passes green. No commit, push, or history rewrite was performed.
 
+## First live run, and what it found
+
+The whole stack was run on one machine against real providers for the first time: Docker
+infrastructure, the containerised workers, the API and frontend on the host, a member signing
+in with Google, and a public YouTube video imported through the UI. Seven defects surfaced in
+an afternoon, none of which the test suite could have caught, because each one lives in the
+seam between a process and the thing it talks to.
+
+**The API never configured its Celery broker.** `configure_celery` was called in the two
+worker entrypoints and nowhere else, so inside the API process the client kept Celery's
+default AMQP broker on `localhost:5672`, where nothing listens. The route dispatches
+best-effort and suppresses broker failures — deliberately, so an outage cannot undo work
+Postgres already recorded — which meant every import answered `202`, created a durable Job,
+and left it queued forever with no log line anywhere. Every dispatch from the API was
+affected, not just imports. The in-process HTTP tests inject `RecordingJobDispatcher`, so
+nothing ever exercised the real wiring. `runtime/api.py` now configures the same application
+the dispatcher imports, and `test_runtime_deployment.py` asserts each composition root's
+broker matches the configured Redis; the API reported `None` before the fix.
+
+**Job workspaces could not hold a real video.** They were a 1 GiB tmpfs, so a 48-minute
+source filled them at around 130 MiB of a multi-hundred-megabyte download and the import
+reported the source as unavailable, five minutes at a time, three times over. yt-dlp fetches
+video and audio separately and merges them, so peak usage is roughly twice the final size and
+a 2 GiB source — which the code accepts — needs about 4 GiB. Those two numbers had never been
+reconciled. Job workspaces are now a disk-backed volume, and the deployment contract asserts
+the path is a volume rather than tmpfs.
+
+**The YouTube path stored a duration that guaranteed its own ingest failure.** Source import
+persisted yt-dlp's duration, which is whole seconds; ingest measures the real container
+duration with ffprobe and requires the stored value to be absent or exactly equal. The
+observed video was 2879108 ms against a stored 2879000. Ingest failed terminally with an
+integrity error *after* building and uploading the proxy, thumbnail, and audio. Direct
+uploads were unaffected because they store no duration, so only the YouTube path could fail
+this way, and it would fail for any video not a whole number of seconds long. The provider's
+duration is a hint; ffprobe's is the measurement, and ingest is now the only writer of that
+field.
+
+**The Groq adapter asked reasoning models to answer with no budget.** The configured models
+reason before replying. With no `max_completion_tokens` and no `reasoning_effort`, they spend
+the whole response reasoning and emit no JSON, and Groq refuses the call with
+`json_validate_failed` and an empty `failed_generation`. Measured against a real transcript
+window, the request the adapter sent produced valid output on **none of three attempts**;
+with an explicit budget and `reasoning_effort` low, on **all three**. Medium managed one of
+three, so the lowest setting is both the cheapest and the most reliable — extraction reads
+supplied text rather than deducing anything.
+
+**A schema refusal was treated as terminal.** Groq validates strict-schema output on its own
+side, and that outcome is a property of one generation rather than of the request. The
+adapter classified the 400 as a rejection and dropped the window on the first unlucky roll.
+It is now `HIGHLIGHT_PROVIDER_SCHEMA_REFUSED` and spends the existing retry budget.
+
+**Compose hardcoded fake provider keys** with no interpolation, so no local end-to-end run
+against a real provider was possible at all. The placeholder is now the default rather than
+the only value.
+
+**The local bucket name was wrong in the setup guide.** It told the reader to create a bucket
+named `clipah` and claimed Compose does not create one; Compose provisions `clipah-local` and
+points every service at it. A wrong bucket is not refused at startup, because the
+configuration cannot tell an unreachable store from an absent one. It surfaces as a job that
+downloads its media and then fails on upload.
+
+### What the run proved
+
+Import, ffprobe validation, proxy, thumbnail, transcription audio, and real transcription all
+work end to end on one machine. AssemblyAI routed the English source to `universal-2` and
+returned 510 words over 146 seconds with word timings and speaker labels. Job chaining,
+idempotency across repeated clicks, durable retries, and the one-source-per-project guard all
+behaved as designed.
+
+### What it did not prove, and why
+
+**Neither configured model can satisfy the candidate contract.** With the adapter fixed, both
+models return five well-formed candidates and every one of them is refused by local
+validation:
+
+| Model | Accepted | Refusals |
+| --- | --- | --- |
+| `openai/gpt-oss-20b` | 0 of 5 | four excerpt mismatches, one duration out of range |
+| `openai/gpt-oss-120b` | 0 of 5 | three excerpt mismatches, two duration out of range |
+
+The excerpt refusals are the guard working, not pedantry: three of the five excerpts are
+**longer than the word range they claim**, by up to 1.6x, so the model quotes text its own
+word IDs do not cover. Accepting them would produce clips whose boundaries are wrong, which is
+exactly the class of error Task 13 was built to make impossible. The evaluation harness could
+not find this because its offline provider proposes sentence-aligned candidates and the
+fixture labels are sentence-aligned the same way — the harness proves the plumbing, and only a
+live provider on real speech exercises the mapping from a quote to word IDs.
+
+**Sharpening the extraction prompt does not help, and that was measured rather than
+assumed.** Two variants were run against the same real window, three generations each, and
+every candidate from every generation was validated:
+
+| Extraction prompt | Accepted | Excerpt mismatch | Duration out of range |
+| --- | --- | --- | --- |
+| The current one | 0 of 15 | 12 | 3 |
+| Plus the alignment rule and word-count hints | 0 of 15 | 12 | 3 |
+
+The variant told the model that the i-th entry of `word_ids` names the i-th word of
+`transcript`, and supplied `seconds_per_word` with the minimum and maximum word counts that
+satisfy the 20-90 second preset, so the duration bound was no longer something the model had
+to guess at from a payload that carries no timings. It changed nothing.
+
+Two attempts along the way are worth recording so nobody repeats them. Pairing every word
+with its id in the payload — the obvious way to remove the alignment guesswork — pushed one
+window's request to 8087 tokens against Groq's free-tier limit of 8000, so it is not usable
+on that tier at all. And a firmer instruction to copy the excerpt "character for character"
+made the model refuse the task outright, returning "I'm sorry, but I can't comply with that
+request" instead of JSON.
+
+A single generation is not evidence here: one run of the alignment variant produced no
+excerpt mismatches at all, which looked like a fix and was noise. Three generations per
+variant was the least that showed it.
+
+The failure is therefore a capability limit rather than a misunderstanding: the model cannot
+reliably reproduce a 120-word span verbatim while also choosing its own boundaries. Closing
+this needs a deliberate decision:
+
+- **Drop the excerpt echo.** The word IDs already define the range and the stored excerpt is
+  always the transcript's own text, so the pipeline would work today and each call would be
+  cheaper. It removes the cross-check that caught the misalignment, leaving nothing verifying
+  the model's IDs.
+- **Verify the range with something smaller.** Ask for the first and last few words of the
+  span rather than the whole quote. That keeps a cross-check, costs almost nothing, and is
+  within what the model demonstrably can do. This is the cheapest option that preserves the
+  property Task 13 documented.
+- **Change the model or the provider.** Neither size in Groq's gpt-oss family manages it.
+
+**Transcription cannot run against local object storage.** The provider fetches audio from a
+signed URL, and AssemblyAI's own error names the problem: it could not reach
+`http://minio:9000`. The live run needed a public tunnel to MinIO and the worker's object
+store endpoint pointed at it. Nothing in the setup guide says so, and it is the first wall
+anyone hits.
+
+**Groq's free tier caps tokens per minute below one window.** The refusal reads
+`Limit 8000, Requested 18372`. A full-length video's windows exceed the allowance, so a real
+source needs a paid tier regardless of anything above.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -2864,6 +3001,11 @@ oversight.
 
 | Deferred | Owner |
 | --- | --- |
+| Making the extraction model satisfy the candidate contract. Both configured Groq models return well-formed candidates whose excerpts do not match the word range they claim, so local validation refuses every one. Sharpening the prompt was tried and measured: 0 accepted of 15 either way, so that route is closed. What remains is dropping the excerpt echo, replacing it with a smaller proof of the range such as the first and last few words, or changing model or provider; see "First live run" for every measurement | the repository owner, because each remaining option changes a safety property Task 13 documented |
+| Unicode normalization in the excerpt comparison. It ignores case, spacing, and ASCII punctuation but not unicode variants, so a model returning a non-breaking hyphen fails a match that should pass. Real but not what blocks the pipeline | whichever task revisits candidate validation |
+| Classifying a rejected provider credential as terminal. An invalid AssemblyAI key is reported as `TRANSCRIPTION_PROVIDER_UNAVAILABLE` and retried five times; a refused credential is not a transient outage and burning the retry budget delays the real answer | whichever task revisits transcription failure mapping |
+| Logging a suppressed broker dispatch failure. The route suppresses the exception by design so a committed Job survives an outage, but with no log line a misconfigured broker looks exactly like a working import until someone reads the database | whichever task revisits job dispatch |
+| Documenting that a live transcription run needs object storage the provider can reach. `ENVIRONMENT_SETUP.md` says nothing about it, and it is the first wall anyone hits locally | whichever task revisits the environment guide |
 | Running the k6 scenarios. `tests/load/k6.js` is written, syntax-checked, and asserts its three thresholds, but k6 is not installed on this machine, so no number in it has been observed | the repository owner, or a CI runner with k6 installed |
 | Probing the object store in `/health/ready`. Readiness covers the database and the broker, so a storage outage shows up as refused work rather than an unready API; this is recorded in `docs/operations/recovery.md` rather than silently assumed | whichever task revisits the health contract |
 | ~~Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket)~~ — landed in Task 46's pinned API image and Compose MinIO fixture | done in Task 46 |

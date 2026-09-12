@@ -37,8 +37,19 @@ UNAVAILABLE_CODE = "HIGHLIGHT_PROVIDER_UNAVAILABLE"
 REJECTED_CODE = "HIGHLIGHT_PROVIDER_REJECTED"
 INVALID_CODE = "HIGHLIGHT_PROVIDER_INVALID"
 WINDOW_TOO_LARGE_CODE = "HIGHLIGHT_WINDOW_TOO_LARGE"
+SCHEMA_REFUSED_CODE = "HIGHLIGHT_PROVIDER_SCHEMA_REFUSED"
+
+# The configured models reason before they answer. Left unbounded they spend the whole
+# response on reasoning and emit no JSON, which Groq refuses as `json_validate_failed` with
+# an empty `failed_generation`. Against a real transcript window the unbounded request
+# produced valid output on none of three attempts; these two parameters produced valid
+# output on all three. Extraction reads supplied text rather than deducing anything, so the
+# lowest reasoning setting is both the cheapest and, measured, the most reliable.
+REASONING_EFFORT = "low"
+MAX_COMPLETION_TOKENS = 8000
 
 _OVERFLOW_MARKERS = ("context_length_exceeded", "too large", "maximum context")
+_SCHEMA_REFUSAL_MARKERS = ("json_validate_failed", "failed to validate json")
 
 _EXTRACTION_SYSTEM_PROMPT = (
     "You find complete, self-contained short-form moments in a transcript window. "
@@ -158,6 +169,8 @@ class GroqHighlightProvider:
                     messages=messages,
                     temperature=0,
                     timeout=REQUEST_TIMEOUT_SECONDS,
+                    reasoning_effort=REASONING_EFFORT,
+                    max_completion_tokens=MAX_COMPLETION_TOKENS,
                     response_format={
                         "type": "json_schema",
                         "json_schema": {"name": schema_name, "strict": True, "schema": schema},
@@ -165,7 +178,7 @@ class GroqHighlightProvider:
                 )
             except Exception as error:
                 code = _failure_code(error)
-                if code in {RATE_LIMITED_CODE, UNAVAILABLE_CODE}:
+                if code in {RATE_LIMITED_CODE, UNAVAILABLE_CODE, SCHEMA_REFUSED_CODE}:
                     if attempt >= self._max_attempts:
                         raise HighlightProviderRetryableError(code) from None
                     self._sleep(RETRY_BASE_DELAY_SECONDS * attempt)
@@ -319,6 +332,11 @@ def _failure_code(error: Exception) -> str:
         return UNAVAILABLE_CODE
     if status == 400 and any(marker in str(error).casefold() for marker in _OVERFLOW_MARKERS):
         return WINDOW_TOO_LARGE_CODE
+    # Groq validates strict-schema output on its own side and refuses a reply that does not
+    # conform. That is a property of one generation, not of the request, so the same window
+    # is worth asking for again rather than being dropped on the first unlucky roll.
+    if status == 400 and any(marker in str(error).casefold() for marker in _SCHEMA_REFUSAL_MARKERS):
+        return SCHEMA_REFUSED_CODE
     return REJECTED_CODE
 
 
