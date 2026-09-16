@@ -87,7 +87,7 @@ export function PublicationBatchDetail({ batchId }: { batchId: string }) {
         {batch.data.publications.length === 1 ? 'destination' : 'destinations'}
       </h2>
       {failure === null ? null : (
-        <div role="alert" className="rounded border border-destructive/40 bg-destructive/10 p-4">
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm">{failure.message}</p>
           {failure.error instanceof ApiError && failure.error.requestId !== null ? (
             <p className="text-xs text-muted-foreground">Request ID: {failure.error.requestId}</p>
@@ -105,7 +105,7 @@ export function PublicationBatchDetail({ batchId }: { batchId: string }) {
         />
       ))}
       {cancelling === null ? null : (
-        <div role="alertdialog" aria-label="Cancel this destination" className="rounded border p-4">
+        <div role="alertdialog" aria-label="Cancel this destination" className="surface space-y-3 p-4">
           <p className="text-sm">
             This destination has not been sent to{' '}
             {providerLabel(byAccount.get(cancelling.socialAccountId)?.provider ?? '')} yet, so
@@ -149,7 +149,7 @@ function DestinationDetail({
   const provider = account?.provider ?? ''
   const reason = actionableReason(publication, provider)
   return (
-    <fieldset className="space-y-2 rounded border p-4 text-sm">
+    <fieldset className="surface space-y-2 p-5 text-sm">
       <legend className="px-1 font-medium">
         {account?.displayName ?? 'A disconnected account'} ({providerLabel(provider)})
       </legend>

@@ -33,7 +33,7 @@ export function KeyframeEditor({
     item === null ? null : (interpolatedAt(item.keyframes, relativeMs).transform ?? item.transform)
 
   return (
-    <section aria-label="Keyframes" className="flex flex-col gap-2 rounded-lg border p-3 text-xs">
+    <section aria-label="Keyframes" className="surface flex flex-col gap-2 p-4 text-xs">
       <h2 className="text-sm font-medium">Keyframes</h2>
 
       {item === null || current === null ? (
@@ -47,14 +47,14 @@ export function KeyframeEditor({
           <button
             type="button"
             onClick={() => onAdd(relativeMs, current)}
-            className="self-start rounded border px-2 py-1"
+            className="self-start rounded-lg border bg-card px-2.5 py-1"
           >
             Add a keyframe here
           </button>
 
           <ol className="flex flex-col gap-1">
             {item.keyframes.map((keyframe) => (
-              <li key={keyframe.atMs} className="flex items-center gap-2 rounded border p-2">
+              <li key={keyframe.atMs} className="flex items-center gap-2 rounded-lg border border-input bg-card p-2">
                 <span className="font-mono">{timecode(keyframe.atMs)}</span>
                 <span className="text-muted-foreground">
                   {keyframe.transform === null
@@ -74,14 +74,14 @@ export function KeyframeEditor({
                         onMove(keyframe.atMs, value)
                       }
                     }}
-                    className="w-24 rounded border px-2 py-1"
+                    className="w-24 rounded-lg border bg-card px-2.5 py-1"
                   />
                 </label>
                 <button
                   type="button"
                   aria-label={`Remove the keyframe at ${timecode(keyframe.atMs)}`}
                   onClick={() => onRemove(keyframe.atMs)}
-                  className="rounded border px-2 py-1"
+                  className="rounded-lg border bg-card px-2.5 py-1"
                 >
                   Remove
                 </button>

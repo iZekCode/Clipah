@@ -123,8 +123,8 @@ export function TeamSettings() {
                 <select id={`role-${member.userId}`} value={member.role} onChange={(event) => void changeRole(member.userId, event.target.value as WorkspaceRole)} className="rounded border bg-background p-2 text-sm">
                   {ASSIGNABLE_ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
                 </select>
-                {active.role === 'owner' ? <button type="button" onClick={() => void transfer(member.userId)} className="rounded border px-2 py-1 text-xs">Transfer ownership</button> : null}
-                <button type="button" onClick={() => void remove(member.userId)} className="rounded border px-2 py-1 text-xs">Remove {member.displayName}</button>
+                {active.role === 'owner' ? <button type="button" onClick={() => void transfer(member.userId)} className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary">Transfer ownership</button> : null}
+                <button type="button" onClick={() => void remove(member.userId)} className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary">Remove {member.displayName}</button>
               </div>
             ) : null}
           </li>
@@ -136,7 +136,7 @@ export function TeamSettings() {
         {pending.isPending ? <p role="status">Loading invites…</p> : null}
         <ul className="space-y-2">
           {(pending.data?.invites ?? []).map((item) => (
-            <li key={item.id} className="flex items-center justify-between gap-2 rounded border p-2 text-sm">
+            <li key={item.id} className="flex items-center justify-between gap-2 rounded-lg border border-input bg-card p-2 text-sm">
               <span>{item.email} · {item.role}</span>
               {canManage ? <button type="button" onClick={() => void revoke(item.id)} className="text-xs underline">Revoke invite for {item.email}</button> : null}
             </li>

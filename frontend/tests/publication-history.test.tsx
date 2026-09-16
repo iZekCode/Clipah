@@ -128,9 +128,11 @@ describe('history', () => {
 
     const rows = await screen.findAllByRole('listitem')
     expect(rows).toHaveLength(3)
-    expect(rows[0]).toHaveTextContent(/Rin on YouTube.*Published/s)
-    expect(rows[1]).toHaveTextContent(/Rin on Instagram.*Will retry/s)
-    expect(rows[2]).toHaveTextContent(/Rin on TikTok.*Scheduled/s)
+    expect(screen.getByRole('list', { name: 'Published' })).toHaveTextContent(/Rin on YouTube.*Published/s)
+    expect(screen.getByRole('list', { name: 'Needs attention' })).toHaveTextContent(
+      /Rin on Instagram.*Will retry/s,
+    )
+    expect(screen.getByRole('list', { name: 'Scheduled' })).toHaveTextContent(/Rin on TikTok.*Scheduled/s)
   })
 
   test('a partly failed batch says how many destinations reached their provider', async () => {
@@ -147,7 +149,7 @@ describe('history', () => {
 
     openHistory()
 
-    const row = (await screen.findAllByRole('listitem'))[2]
+    const row = await screen.findByRole('list', { name: 'Scheduled' })
     expect(row).toHaveTextContent('12 September 2026')
     expect(row).toHaveTextContent('09:00')
     expect(row).toHaveTextContent('Asia/Jakarta')

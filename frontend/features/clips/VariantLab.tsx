@@ -116,7 +116,7 @@ export function VariantLab({
           <select
             value={platform}
             onChange={(event) => setPlatform(event.target.value as Platform)}
-            className="rounded border px-2 py-1"
+            className="rounded-lg border bg-card px-2.5 py-1"
           >
             {PLATFORMS.map((value) => (
               <option key={value} value={value}>
@@ -131,7 +131,7 @@ export function VariantLab({
           onClick={() => {
             void request()
           }}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Offer variants
         </button>
@@ -146,7 +146,7 @@ export function VariantLab({
       ) : (
         <ul className="flex flex-col gap-2">
           {found.map((variant) => (
-            <li key={variant.id} className="flex flex-col gap-1 rounded border p-2">
+            <li key={variant.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2">
               <p className="font-medium">
                 {Math.round(variant.durationMs / 1_000)}s ·{' '}
                 {variant.hookStrategy.replaceAll('_', ' ')} ·{' '}
@@ -156,7 +156,7 @@ export function VariantLab({
               <button
                 type="button"
                 onClick={() => seek(player.current, variant)}
-                className="w-fit rounded border px-2 py-1"
+                className="w-fit rounded-lg border bg-card px-2.5 py-1"
               >
                 Preview this variant
               </button>

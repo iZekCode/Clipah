@@ -54,7 +54,7 @@ export function KaraokePanel({
   }
 
   return (
-    <section aria-label="Karaoke" className="flex flex-col gap-2 rounded-lg border p-3 text-xs">
+    <section aria-label="Karaoke" className="surface flex flex-col gap-2 p-4 text-xs">
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-medium">Karaoke</h2>
         <label className="ml-auto flex items-center gap-1">
@@ -94,7 +94,7 @@ export function KaraokePanel({
                   setDrafts((current) => ({ ...current, [`${word.id}-start`]: value }))
                 }}
                 onBlur={() => commit(word.id, 'start')}
-                className="w-24 rounded border px-2 py-1"
+                className="w-24 rounded-lg border bg-card px-2.5 py-1"
               />
             </label>
             <label className="flex items-center gap-1">
@@ -109,7 +109,7 @@ export function KaraokePanel({
                   setDrafts((current) => ({ ...current, [`${word.id}-end`]: value }))
                 }}
                 onBlur={() => commit(word.id, 'end')}
-                className="w-24 rounded border px-2 py-1"
+                className="w-24 rounded-lg border bg-card px-2.5 py-1"
               />
             </label>
             <span className="text-muted-foreground">{timecode(word.startMs)}</span>

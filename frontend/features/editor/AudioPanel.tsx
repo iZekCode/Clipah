@@ -48,7 +48,7 @@ export function AudioPanel({
   }
 
   return (
-    <section aria-label="Sound" className="flex flex-col gap-2 rounded-lg border p-3 text-xs">
+    <section aria-label="Sound" className="surface flex flex-col gap-2 p-4 text-xs">
       <h2 className="text-sm font-medium">Sound</h2>
 
       <label className="flex items-center justify-between gap-2">
@@ -70,7 +70,7 @@ export function AudioPanel({
               commit('gainDb')
             }
           }}
-          className="w-24 rounded border px-2 py-1"
+          className="w-24 rounded-lg border bg-card px-2.5 py-1"
         />
       </label>
       <label className="flex items-center justify-between gap-2">
@@ -92,13 +92,13 @@ export function AudioPanel({
               commit('musicGainDb')
             }
           }}
-          className="w-24 rounded border px-2 py-1"
+          className="w-24 rounded-lg border bg-card px-2.5 py-1"
         />
       </label>
 
       <ul className="flex flex-col gap-1">
         {composition.tracks.map((track) => (
-          <li key={track.id} className="flex items-center gap-2 rounded border p-2">
+          <li key={track.id} className="flex items-center gap-2 rounded-lg border border-input bg-card p-2">
             <span>{LANE_NAMES[track.type] ?? track.type}</span>
             <span className="font-mono text-muted-foreground">{track.id}</span>
             <span className="text-muted-foreground">{track.items.length} items</span>
@@ -116,13 +116,13 @@ export function AudioPanel({
       </ul>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => onAddTrack('music')} className="rounded border px-2 py-1">
+        <button type="button" onClick={() => onAddTrack('music')} className="rounded-lg border bg-card px-2.5 py-1">
           New music lane
         </button>
         <button
           type="button"
           onClick={() => onAddTrack('extractedAudio')}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           New extracted audio lane
         </button>

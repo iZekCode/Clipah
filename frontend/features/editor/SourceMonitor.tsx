@@ -38,7 +38,7 @@ export function SourceMonitor({
   const usable = markInMs !== null && markOutMs !== null && markOutMs - markInMs >= MIN_ITEM_MS
 
   return (
-    <section aria-label="Source monitor" className="flex flex-col gap-2 rounded-lg border p-3">
+    <section aria-label="Source monitor" className="surface flex flex-col gap-2 p-4">
       <h2 className="text-sm font-medium">Source monitor</h2>
 
       {source === null ? (
@@ -71,13 +71,13 @@ export function SourceMonitor({
       </label>
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <button type="button" onClick={() => onMarkIn(positionMs)} className="rounded border px-2 py-1">
+        <button type="button" onClick={() => onMarkIn(positionMs)} className="rounded-lg border bg-card px-2.5 py-1">
           Mark in
         </button>
         <button
           type="button"
           onClick={() => onMarkOut(positionMs)}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Mark out
         </button>
@@ -85,7 +85,7 @@ export function SourceMonitor({
           type="button"
           onClick={onClear}
           disabled={markInMs === null && markOutMs === null}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Clear marks
         </button>
@@ -93,7 +93,7 @@ export function SourceMonitor({
           type="button"
           onClick={onAdd}
           disabled={!usable}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Add to timeline
         </button>

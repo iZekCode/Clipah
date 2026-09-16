@@ -711,7 +711,7 @@ describe('editor screen', () => {
       </WorkspaceProvider>,
     )
 
-    await user.click(await screen.findByRole('button', { name: /edit this clip/i }))
+    await user.click(await screen.findByRole('button', { name: /^edit clip$/i }))
 
     await waitFor(() => {
       expect(push).toHaveBeenCalledWith(`/editor/${EDIT_ID}?workspace_id=${WORKSPACE_ID}`)

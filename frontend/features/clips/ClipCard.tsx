@@ -1,6 +1,7 @@
 'use client'
 
 import { useMutation, useQuery } from '@tanstack/react-query'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
@@ -78,52 +79,36 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
   })
 
   return (
-    <li className="space-y-3 px-4 py-4">
+    <li className="surface flex flex-col gap-4 p-5">
       <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 space-y-1">
-          <p className="text-xs text-muted-foreground">
-            #{candidate.rank} · {CATEGORY_LABELS[candidate.category] ?? candidate.category} ·{' '}
-            {formatDuration(candidate.durationMs)}
-          </p>
-          <h3 className="text-base font-medium">{candidate.hook}</h3>
-          <p className="text-sm">{candidate.payoff}</p>
-        </div>
-        <p className="shrink-0 text-sm font-semibold" aria-label="Score">
-          {Math.round(candidate.score * 100)}
-        </p>
-      </div>
-
-      <p className="text-sm text-muted-foreground">{candidate.reason}</p>
-      <blockquote className="border-l-2 pl-3 text-sm text-muted-foreground">
-        {candidate.transcriptExcerpt}
-      </blockquote>
-
-      {candidate.tags.length === 0 ? null : (
-        <ul aria-label="Tags" className="flex flex-wrap gap-1">
-          {candidate.tags.map((tag) => (
-            <li key={tag} className="rounded-full border px-2 py-0.5 text-xs">
-              {tag}
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs sm:grid-cols-4">
-        {SCORE_DIMENSIONS.map(([label, key]) => (
-          <div key={key} className="flex justify-between gap-2">
-            <dt className="text-muted-foreground">{label}</dt>
-            <dd>{Math.round(candidate.scoreBreakdown[key] * 100)}</dd>
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
+            <span className="rounded-full bg-accent px-2 py-0.5 font-semibold text-accent-foreground">
+              #{candidate.rank}
+            </span>
+            <span>{CATEGORY_LABELS[candidate.category] ?? candidate.category}</span>
+            <span aria-hidden="true">·</span>
+            <span>{formatDuration(candidate.durationMs)}</span>
           </div>
-        ))}
-      </dl>
+          <h3 className="text-base font-semibold leading-snug">{candidate.hook}</h3>
+          <p className="text-sm text-muted-foreground">{candidate.reason}</p>
+        </div>
+        <div className="shrink-0 text-right">
+          <p className="text-2xl font-semibold tabular-nums" aria-label="Score">
+            {Math.round(candidate.score * 100)}
+          </p>
+          <p className="text-[11px] uppercase tracking-wide text-muted-foreground">Score</p>
+        </div>
+      </div>
 
       {candidate.contextWarnings.length === 0 ? null : (
         <div
           role="group"
           aria-label="Context warnings"
-          className="rounded-md border border-destructive/40 bg-destructive/10 p-2"
+          className="rounded-lg border border-warning/30 bg-warning-soft p-3"
         >
-          <ul className="space-y-1 text-xs text-destructive">
+          <p className="text-xs font-semibold text-warning">Check before publishing</p>
+          <ul className="mt-1 space-y-1 text-xs text-warning">
             {candidate.contextWarnings.map((warning) => (
               <li key={warning}>{warning}</li>
             ))}
@@ -131,48 +116,22 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
         </div>
       )}
 
-      {candidate.contextDependencies.length === 0 ? null : (
-        <ul aria-label="Context this clip depends on" className="space-y-1 text-xs text-muted-foreground">
-          {candidate.contextDependencies.map((dependency) => (
-            <li key={dependency}>{dependency}</li>
-          ))}
-        </ul>
-      )}
-
-      {candidate.visualOpportunities.length === 0 ? null : (
-        <ul aria-label="Visual opportunities" className="space-y-1 text-xs text-muted-foreground">
-          {candidate.visualOpportunities.map((opportunity) => (
-            <li key={opportunity}>{opportunity}</li>
-          ))}
-        </ul>
-      )}
-
       <div className="flex flex-wrap items-center gap-2">
-        <LookSelection
-          workspaceId={active.id}
-          templateId={templateId}
-          brandKitId={brandKitId}
-          onTemplate={setTemplateId}
-          onBrandKit={setBrandKitId}
-        />
-      </div>
-
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          aria-expanded={previewing}
-          onClick={() => setPreviewing((open) => !open)}
-          className="rounded-md border px-3 py-1 text-sm"
-        >
-          Preview clip
-        </button>
         <button
           type="button"
           disabled={open.isPending}
           onClick={() => open.mutate()}
-          className="rounded-md border px-3 py-1 text-sm disabled:opacity-50"
+          className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
         >
-          {open.isPending ? 'Opening the editor…' : 'Edit this clip'}
+          {open.isPending ? 'Opening the editor…' : 'Edit clip'}
+        </button>
+        <button
+          type="button"
+          aria-expanded={previewing}
+          onClick={() => setPreviewing((current) => !current)}
+          className="inline-flex h-9 items-center rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary"
+        >
+          {previewing ? 'Hide preview' : 'Preview clip'}
         </button>
       </div>
       {open.isError ? <ErrorNotice error={open.error} /> : null}
@@ -183,6 +142,72 @@ export function ClipCard({ candidate }: { candidate: CandidateResponse }) {
           endMs={candidate.endMs}
         />
       ) : null}
+
+      <details className="group rounded-lg border bg-secondary/30 px-3 py-2">
+        <summary className="cursor-pointer text-sm font-medium text-muted-foreground hover:text-foreground">
+          Details, scores, and look
+        </summary>
+        <div className="space-y-4 pb-2 pt-3">
+          <div className="space-y-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">How it lands</p>
+            <p className="text-sm">{candidate.payoff}</p>
+          </div>
+          <blockquote className="border-l-2 border-primary/40 pl-3 text-sm text-muted-foreground">
+            {candidate.transcriptExcerpt}
+          </blockquote>
+
+          {candidate.tags.length === 0 ? null : (
+            <ul aria-label="Tags" className="flex flex-wrap gap-1">
+              {candidate.tags.map((tag) => (
+                <li key={tag} className="rounded-full border bg-card px-2 py-0.5 text-xs">
+                  {tag}
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <dl className="grid grid-cols-1 gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
+            {SCORE_DIMENSIONS.map(([label, key]) => (
+              <div key={key} className="flex justify-between gap-2">
+                <dt className="text-muted-foreground">{label}</dt>
+                <dd className="tabular-nums">{Math.round(candidate.scoreBreakdown[key] * 100)}</dd>
+              </div>
+            ))}
+          </dl>
+
+          {candidate.contextDependencies.length === 0 ? null : (
+            <ul aria-label="Context this clip depends on" className="space-y-1 text-xs text-muted-foreground">
+              {candidate.contextDependencies.map((dependency) => (
+                <li key={dependency}>{dependency}</li>
+              ))}
+            </ul>
+          )}
+
+          {candidate.visualOpportunities.length === 0 ? null : (
+            <ul aria-label="Visual opportunities" className="space-y-1 text-xs text-muted-foreground">
+              {candidate.visualOpportunities.map((opportunity) => (
+                <li key={opportunity}>{opportunity}</li>
+              ))}
+            </ul>
+          )}
+
+          <div className="flex flex-wrap items-center gap-3">
+            <LookSelection
+              workspaceId={active.id}
+              templateId={templateId}
+              brandKitId={brandKitId}
+              onTemplate={setTemplateId}
+              onBrandKit={setBrandKitId}
+            />
+          </div>
+          <Link
+            href={`/dashboard/clips/${candidate.id}`}
+            className="inline-block text-sm font-medium text-primary hover:underline"
+          >
+            Open clip page
+          </Link>
+        </div>
+      </details>
     </li>
   )
 }
@@ -232,7 +257,7 @@ function LookSelection({
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">Look</span>
           <select
-            className="rounded-md border px-2 py-1"
+            className="h-8 rounded-lg border bg-card px-2"
             value={templateId}
             onChange={(event) => onTemplate(event.target.value)}
           >
@@ -249,7 +274,7 @@ function LookSelection({
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">Brand</span>
           <select
-            className="rounded-md border px-2 py-1"
+            className="h-8 rounded-lg border bg-card px-2"
             value={brandKitId}
             onChange={(event) => onBrandKit(event.target.value)}
           >

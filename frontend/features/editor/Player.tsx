@@ -77,8 +77,13 @@ export function Player({
     <section aria-label="Preview" className="flex flex-col gap-2">
       <div
         data-testid="editor-canvas"
-        style={{ aspectRatio: aspect, background: composition.canvas.background }}
-        className="relative mx-auto w-full max-w-sm overflow-hidden rounded-lg"
+        style={{
+          aspectRatio: aspect,
+          background: composition.canvas.background,
+          // Fit the frame to the height the studio leaves free, whatever its shape.
+          maxWidth: `min(100%, calc((100vh - 24rem) * ${aspect}))`,
+        }}
+        className="relative mx-auto w-full overflow-hidden rounded-lg shadow-md"
       >
         <video
           ref={video}
@@ -109,7 +114,7 @@ export function Player({
         <button
           type="button"
           onClick={() => onPlayingChange(!playing)}
-          className="rounded-md border px-3 py-1 text-sm"
+          className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary"
         >
           {playing ? 'Pause' : 'Play'}
         </button>

@@ -102,7 +102,7 @@ def list_collection(
     except ValueError as error:
         raise ApiError(status_code=422, code="VALIDATION_ERROR") from error
     return CandidatePageResponse(
-        candidates=tuple(_candidate_body(candidate) for candidate in page.candidates),
+        candidates=tuple(candidate_body(candidate) for candidate in page.candidates),
         nextCursor=(None if page.next_boundary is None else _encode_cursor(page.next_boundary)),
     )
 
@@ -127,10 +127,10 @@ def show(
         )
     except CandidateNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
-    return _candidate_body(candidate)
+    return candidate_body(candidate)
 
 
-def _candidate_body(candidate: CandidateSummary) -> CandidateResponse:
+def candidate_body(candidate: CandidateSummary) -> CandidateResponse:
     """Render only the candidate evidence a reviewer is allowed to inspect."""
     breakdown = candidate.score_breakdown
     return CandidateResponse(

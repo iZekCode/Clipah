@@ -39,6 +39,7 @@ from clipah.api.routes import renders as render_routes
 from clipah.api.routes import search as search_routes
 from clipah.api.routes import social_accounts as social_account_routes
 from clipah.api.routes import source_connections as source_connection_routes
+from clipah.api.routes import studio as studio_routes
 from clipah.api.routes import templates as template_routes
 from clipah.api.routes import tiktok_webhooks as tiktok_webhook_routes
 from clipah.api.routes import uploads as upload_routes
@@ -284,6 +285,7 @@ def create_app(
     app.include_router(template_routes.router)
     app.include_router(campaign_routes.router)
     app.include_router(search_routes.router)
+    app.include_router(studio_routes.router)
     return app
 
 

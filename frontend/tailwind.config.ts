@@ -8,6 +8,7 @@ const config: Config = {
     "./pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./components/**/*.{js,ts,jsx,tsx,mdx}",
     "./app/**/*.{js,ts,jsx,tsx,mdx}",
+    "./features/**/*.{js,ts,jsx,tsx,mdx}",
     "*.{js,ts,jsx,tsx,mdx}"
   ],
   theme: {
@@ -42,6 +43,18 @@ const config: Config = {
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
+  			},
+  			success: {
+  				DEFAULT: 'hsl(var(--success))',
+  				soft: 'hsl(var(--success-soft))'
+  			},
+  			warning: {
+  				DEFAULT: 'hsl(var(--warning))',
+  				soft: 'hsl(var(--warning-soft))'
+  			},
+  			info: {
+  				DEFAULT: 'hsl(var(--info))',
+  				soft: 'hsl(var(--info-soft))'
   			},
   			border: 'hsl(var(--border))',
   			input: 'hsl(var(--input))',

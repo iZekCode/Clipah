@@ -194,7 +194,7 @@ export function BrollPanel({
   const unreadable = suggestions.isError && suggestions.error.status !== 404
 
   return (
-    <section aria-label="B-roll" className="flex flex-col gap-3 rounded-lg border p-3">
+    <section aria-label="B-roll" className="surface flex flex-col gap-3 p-4">
       <header>
         <h2 className="text-sm font-semibold">B-roll</h2>
         <p className="text-xs text-muted-foreground">
@@ -213,7 +213,7 @@ export function BrollPanel({
       />
 
       {refusal === null ? null : (
-        <p role="status" className="rounded border p-2 text-xs">
+        <p role="status" className="rounded-lg border border-input bg-card p-2 text-xs">
           {refusal}
         </p>
       )}

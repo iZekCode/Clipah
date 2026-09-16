@@ -108,7 +108,7 @@ test('the backend refuses a source form it does not support, in its own words', 
 
 test('the public import never offers to take a cookie file', async ({ page }) => {
   const member = await seedMember({
-    email: uniqueEmail('cookies'),
+    email: uniqueEmail('public-import'),
     displayName: 'Public Member',
     workspaceName: 'Public Workspace',
   })

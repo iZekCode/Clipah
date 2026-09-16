@@ -48,7 +48,7 @@ export function BrollSuggestionCard({
   return (
     <article
       aria-label={intent.subject}
-      className="flex flex-col gap-2 rounded-lg border p-3 text-xs"
+      className="surface flex flex-col gap-2 p-4 text-xs"
     >
       <header className="flex flex-col gap-1">
         <p className="font-medium">{intent.subject}</p>
@@ -93,7 +93,7 @@ export function BrollSuggestionCard({
             type="button"
             disabled={busy}
             onClick={onRemove}
-            className="rounded border px-2 py-1"
+            className="rounded-lg border bg-card px-2.5 py-1"
           >
             Remove
           </button>
@@ -103,7 +103,7 @@ export function BrollSuggestionCard({
               type="button"
               disabled={busy || !hasMedia}
               onClick={onAccept}
-              className="rounded border px-2 py-1"
+              className="rounded-lg border bg-card px-2.5 py-1"
             >
               Accept
             </button>
@@ -111,7 +111,7 @@ export function BrollSuggestionCard({
               type="button"
               disabled={busy}
               onClick={onReject}
-              className="rounded border px-2 py-1"
+              className="rounded-lg border bg-card px-2.5 py-1"
             >
               Reject
             </button>
@@ -122,7 +122,7 @@ export function BrollSuggestionCard({
             type="button"
             disabled={busy}
             onClick={onGenerate}
-            className="rounded border px-2 py-1"
+            className="rounded-lg border bg-card px-2.5 py-1"
           >
             Generate still
           </button>
@@ -138,7 +138,7 @@ export function BrollSuggestionCard({
                   onReplace(event.target.value)
                 }
               }}
-              className="rounded border px-2 py-1"
+              className="rounded-lg border bg-card px-2.5 py-1"
             >
               <option value="">Replace this picture…</option>
               {swappable.map((asset) => (

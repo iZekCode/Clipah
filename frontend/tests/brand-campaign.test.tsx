@@ -459,7 +459,7 @@ describe('opening a clip with a look and a brand', () => {
       template().id,
     )
     await userEvent.selectOptions(screen.getByRole('combobox', { name: /brand/i }), brandKit().id)
-    await userEvent.click(screen.getByRole('button', { name: /edit this clip/i }))
+    await userEvent.click(screen.getByRole('button', { name: /^edit clip$/i }))
 
     const call = api.calls.find((request) => request.method === 'POST')
     expect(call?.body).toEqual({ templateId: template().id, brandKitId: brandKit().id })
@@ -476,7 +476,7 @@ describe('opening a clip with a look and a brand', () => {
       </WorkspaceProvider>,
     )
 
-    expect(await screen.findByRole('button', { name: /edit this clip/i })).toBeVisible()
+    expect(await screen.findByRole('button', { name: /^edit clip$/i })).toBeVisible()
     expect(screen.queryByRole('combobox', { name: /look/i })).toBeNull()
   })
 })

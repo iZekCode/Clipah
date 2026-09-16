@@ -130,7 +130,7 @@ export function YouTubeConnectionDialog() {
             }
             void readAsText(file).then((contents) => setJar(encode(contents)))
           }}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         />
       </label>
 
@@ -166,7 +166,7 @@ export function YouTubeConnectionDialog() {
 
       <ul className="flex flex-col gap-2">
         {(connections.data?.connections ?? []).map((entry) => (
-          <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded border p-2 text-xs">
+          <li key={entry.id} className="flex flex-wrap items-center gap-2 rounded-lg border border-input bg-card p-2 text-xs">
             <span className="font-medium">{entry.label}</span>
             <span className="text-muted-foreground">{entry.domainScope}</span>
             <span className="text-muted-foreground">
@@ -178,7 +178,7 @@ export function YouTubeConnectionDialog() {
               <button
                 type="button"
                 onClick={() => revoke.mutate(entry.id)}
-                className="ml-auto rounded border px-2 py-1"
+                className="ml-auto rounded-lg border bg-card px-2.5 py-1"
               >
                 Revoke
               </button>

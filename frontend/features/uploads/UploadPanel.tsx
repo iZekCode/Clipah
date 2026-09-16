@@ -1,6 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useId, useState, type ChangeEvent } from 'react'
+import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } from 'react'
+
+import { Upload as UploadIcon } from 'lucide-react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { mayWriteProjects } from '@/features/workspaces/roles'
@@ -35,7 +37,7 @@ const KIND_LABELS: Record<string, string> = {
 }
 
 /** One Job of this Project, as the stream last described it. */
-interface ProjectJob {
+export interface ProjectJob {
   jobId: string
   kind: string
   status: string
@@ -58,25 +60,45 @@ interface UploadProgress {
  * is the backend's own account of the work, read from the Workspace event stream, so this
  * panel never guesses at a stage that has not been reported.
  */
-export function UploadPanel({ projectId }: { projectId: string }) {
+export function UploadPanel({
+  projectId,
+  addMedia = true,
+  onJob,
+}: {
+  projectId: string
+  /** Whether this Project still needs its video; a processed Project only shows its work. */
+  addMedia?: boolean
+  onJob?: (job: ProjectJob) => void
+}) {
   const { active } = useWorkspaceScope()
 
   if (!mayWriteProjects(active.role)) {
-    return (
+    return addMedia ? (
       <p className="text-sm text-muted-foreground">
         Only editors and above can add media to a project.
       </p>
-    )
+    ) : null
   }
-  return <SubmissionPanel projectId={projectId} workspaceId={active.id} />
+  return (
+    <SubmissionPanel
+      projectId={projectId}
+      workspaceId={active.id}
+      addMedia={addMedia}
+      onJob={onJob}
+    />
+  )
 }
 
 function SubmissionPanel({
   projectId,
   workspaceId,
+  addMedia,
+  onJob,
 }: {
   projectId: string
   workspaceId: string
+  addMedia: boolean
+  onJob?: (job: ProjectJob) => void
 }) {
   const fieldId = useId()
   const [uploading, setUploading] = useState<UploadProgress | null>(null)
@@ -85,6 +107,8 @@ function SubmissionPanel({
   const [job, setJob] = useState<ProjectJob | null>(null)
   const [connected, setConnected] = useState(true)
   const [analysisPending, setAnalysisPending] = useState(false)
+  const reportJob = useRef(onJob)
+  reportJob.current = onJob
 
   useEffect(() => {
     setJob(null)
@@ -98,6 +122,7 @@ function SubmissionPanel({
       const announced = readJob(event, projectId)
       if (announced !== null) {
         setJob(announced)
+        reportJob.current?.(announced)
       }
     }
     const onDrop = () => setConnected(false)
@@ -169,59 +194,136 @@ function SubmissionPanel({
   }
 
   const running = job !== null && !TERMINAL_STATUSES.has(job.status)
+  const label = submissionLabel({ uploading, uploadId, analysisPending, job })
+  const showStatus = uploading !== null || job !== null || uploadId !== null || analysisPending
 
   return (
     <section aria-label="Add media" className="space-y-4">
-      <section aria-label="Upload a video" className="space-y-2 rounded-lg border p-4">
-        <h3 className="text-sm font-medium">Upload a video</h3>
-        <p className="text-xs text-muted-foreground">
-          The file goes straight to storage in parts, and picking it again after a refresh
-          carries on where it stopped.
+      {addMedia ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          <section aria-label="Upload a video" className="surface space-y-3 p-5">
+            <div className="flex items-center gap-3">
+              <span className="flex size-9 items-center justify-center rounded-lg bg-accent text-accent-foreground">
+                <UploadIcon aria-hidden="true" className="size-4" />
+              </span>
+              <div>
+                <h3 className="text-sm font-semibold">Upload a video</h3>
+                <p className="text-xs text-muted-foreground">Recommended — the most reliable way in.</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              The file goes straight to storage in parts, and picking it again after a refresh
+              carries on where it stopped.
+            </p>
+            <label htmlFor={fieldId} className="block text-sm font-medium">
+              Video file
+            </label>
+            <input
+              id={fieldId}
+              type="file"
+              accept="video/*"
+              onChange={(event) => void pick(event)}
+              disabled={uploading !== null}
+              className="block w-full text-sm file:mr-3 file:rounded-lg file:border-0 file:bg-primary file:px-3 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:bg-primary/90"
+            />
+          </section>
+
+          <YouTubeImportForm projectId={projectId} onStarted={() => setFailure(null)} />
+        </div>
+      ) : null}
+
+      <div hidden={!showStatus} className="surface space-y-3 p-5">
+        <PipelineSteps job={job} uploading={uploading !== null} />
+        <p role="status" className="text-sm font-medium">
+          {label}
         </p>
-        <label htmlFor={fieldId} className="block text-sm font-medium">
-          Video file
-        </label>
-        <input
-          id={fieldId}
-          type="file"
-          accept="video/*"
-          onChange={(event) => void pick(event)}
-          disabled={uploading !== null}
-          className="block text-sm"
-        />
-      </section>
-
-      <YouTubeImportForm projectId={projectId} onStarted={() => setFailure(null)} />
-
-      <p role="status" className="text-sm">
-        {submissionLabel({ uploading, uploadId, analysisPending, job })}
-      </p>
-      {job !== null && job.errorCode !== null ? (
-        <p className="text-xs text-muted-foreground">Reported as {job.errorCode}.</p>
-      ) : null}
-      {connected ? null : (
-        <p className="text-xs text-muted-foreground">Reconnecting to live updates…</p>
-      )}
-      {running ? (
-        <button
-          type="button"
-          onClick={() => void stopJob(job.jobId)}
-          className="rounded-md border px-3 py-1 text-sm"
-        >
-          Stop this job
-        </button>
-      ) : null}
-      {uploadId !== null && !running ? (
-        <button
-          type="button"
-          onClick={() => void findMoments(uploadId)}
-          className="rounded-md border px-3 py-1 text-sm"
-        >
-          Find moments again
-        </button>
-      ) : null}
+        {uploading === null ? null : (
+          <div
+            role="progressbar"
+            aria-label="Upload progress"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={percent(uploading)}
+            className="h-2 overflow-hidden rounded-full bg-secondary"
+          >
+            <div
+              className="h-full rounded-full bg-primary transition-[width]"
+              style={{ width: `${percent(uploading)}%` }}
+            />
+          </div>
+        )}
+        {job !== null && job.errorCode !== null ? (
+          <p className="text-xs text-muted-foreground">Reported as {job.errorCode}.</p>
+        ) : null}
+        {connected ? null : (
+          <p className="text-xs text-warning">Reconnecting to live updates…</p>
+        )}
+        <div className="flex flex-wrap gap-2">
+          {running ? (
+            <button
+              type="button"
+              onClick={() => void stopJob(job.jobId)}
+              className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Stop this job
+            </button>
+          ) : null}
+          {uploadId !== null && !running ? (
+            <button
+              type="button"
+              onClick={() => void findMoments(uploadId)}
+              className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary"
+            >
+              Find moments again
+            </button>
+          ) : null}
+        </div>
+      </div>
       {failure === null ? null : <UploadFailure failure={failure} />}
     </section>
+  )
+}
+
+const PIPELINE = [
+  { label: 'Import', kinds: ['source_import', 'ingest'] },
+  { label: 'Transcribe', kinds: ['transcribe'] },
+  { label: 'Find moments', kinds: ['analyze'] },
+] as const
+
+/**
+ * The three stages a video passes through, marked only from what the backend reported.
+ * No percentage is invented: a stage is done, current, or still ahead.
+ */
+function PipelineSteps({ job, uploading }: { job: ProjectJob | null; uploading: boolean }) {
+  const current = job === null ? -1 : PIPELINE.findIndex((step) => (step.kinds as readonly string[]).includes(job.kind))
+  const finished = job !== null && job.status === 'succeeded'
+  if (current === -1 && !uploading) {
+    return null
+  }
+  return (
+    <ol aria-label="Processing stages" className="flex flex-wrap items-center gap-2 text-xs">
+      {PIPELINE.map((step, index) => {
+        const done = index < current || (index === current && finished)
+        const active = index === current && !finished
+        return (
+          <li key={step.label} className="flex items-center gap-2">
+            <span
+              className={`rounded-full px-2.5 py-1 font-medium ${
+                done
+                  ? 'bg-success-soft text-success'
+                  : active
+                    ? 'bg-info-soft text-info'
+                    : 'bg-secondary text-muted-foreground'
+              }`}
+            >
+              {step.label}
+              <span className="sr-only">{done ? ' (done)' : active ? ' (in progress)' : ' (not started)'}</span>
+            </span>
+            {index < PIPELINE.length - 1 ? <span aria-hidden="true" className="text-muted-foreground">→</span> : null}
+          </li>
+        )
+      })}
+    </ol>
   )
 }
 

@@ -4,11 +4,13 @@
  * Clipah API
  * OpenAPI spec version: 0.1.0
  */
+import type { RenderRequestBodyExpectedRevision } from './renderRequestBodyExpectedRevision';
 import type { RenderPreset } from './renderPreset';
 
 /**
  * The one thing a member chooses when they export a clip.
  */
 export interface RenderRequestBody {
+  expectedRevision?: RenderRequestBodyExpectedRevision;
   preset: RenderPreset;
 }

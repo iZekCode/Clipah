@@ -225,6 +225,7 @@ test('campaign copy is written from one approved cut and publishes nothing', asy
     `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}` +
       `&editId=${edit.id}&revision=${edit.currentRevision}`,
   )
+  await page.locator('summary', { hasText: 'Campaign copy' }).click()
   await page.getByRole('button', { name: /write campaign copy/i }).click()
 
   await expect(page.getByText(new RegExp(`revision ${edit.currentRevision}`, 'i'))).toBeVisible()

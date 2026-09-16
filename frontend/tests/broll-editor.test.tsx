@@ -12,6 +12,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 import { ClipDetail } from '@/features/clips/ClipDetail'
 import { EditorScreen } from '@/features/editor/EditorScreen'
+import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import {
   canonicalJson,
   editorReducer,
@@ -23,7 +24,7 @@ import {
 import type { BrollSuggestionResponse } from '@/lib/api/generated/model'
 
 import { renderWithApi, stubApi, errorBody, type StubbedApi } from './support/api'
-import { composition, currentUser, edit, project, workspace } from './support/fixtures'
+import { candidate, composition, currentUser, edit, project, workspace } from './support/fixtures'
 
 const EDIT_ID = edit().id
 const PROJECT_ID = project().id
@@ -278,14 +279,43 @@ describe('the document a decision produces', () => {
   })
 })
 
+const CLIP_DETAIL = `GET /api/v1/clips/${CANDIDATE_ID}`
+
+/** The clip page as the resolver answers it: the candidate, its Project, and one Edit. */
+function clipDetail() {
+  return {
+    candidate: candidate({ id: CANDIDATE_ID, projectId: PROJECT_ID }),
+    project: { id: PROJECT_ID, name: project().name, status: 'ready' },
+    edits: [
+      {
+        id: EDIT_ID,
+        currentRevision: 1,
+        createdAt: '2026-02-01T00:00:00+00:00',
+        updatedAt: '2026-02-01T00:00:00+00:00',
+      },
+    ],
+    exports: [],
+  }
+}
+
+/** Render the clip page inside the Workspace the member is viewing. */
+function renderClipDetail() {
+  renderWithApi(
+    <WorkspaceProvider>
+      <ClipDetail candidateId={CANDIDATE_ID} />
+    </WorkspaceProvider>,
+  )
+}
+
 describe('the clip detail page', () => {
   test('every picture in the clip is listed with the licence that traces it', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'placed' })] } },
     })
-    renderWithApi(<ClipDetail projectId={PROJECT_ID} candidateId={CANDIDATE_ID} />)
+    renderClipDetail()
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
     await userEvent.click(within(row).getByRole('button', { name: /where this came from/i }))
@@ -301,6 +331,7 @@ describe('the clip detail page', () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: {
         body: {
           suggestions: [
@@ -313,29 +344,43 @@ describe('the clip detail page', () => {
         },
       },
     })
-    renderWithApi(<ClipDetail projectId={PROJECT_ID} candidateId={CANDIDATE_ID} />)
+    renderClipDetail()
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
     expect(within(row).getByText(/ai-generated/i)).toBeInTheDocument()
   })
 
-  test('a clip reached without its Project says how to open it properly', async () => {
+  test('a clip resolves its own Project from nothing but its identifier', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
+      [SUGGESTIONS]: { body: { suggestions: [] } },
     })
-    renderWithApi(<ClipDetail projectId={null} candidateId={CANDIDATE_ID} />)
+    renderWithApi(
+      <WorkspaceProvider>
+        <ClipDetail candidateId={CANDIDATE_ID} />
+      </WorkspaceProvider>,
+    )
 
-    expect(await screen.findByText(/open this clip from its project/i)).toBeInTheDocument()
+    expect(await screen.findByRole('link', { name: project().name })).toHaveAttribute(
+      'href',
+      `/dashboard/projects/${PROJECT_ID}`,
+    )
+    expect(screen.getByRole('link', { name: /continue editing/i })).toHaveAttribute(
+      'href',
+      `/editor/${EDIT_ID}`,
+    )
   })
 
   test('a suggestion nobody accepted contributes no licence to the clip', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'rejected' })] } },
     })
-    renderWithApi(<ClipDetail projectId={PROJECT_ID} candidateId={CANDIDATE_ID} />)
+    renderClipDetail()
 
     expect(await screen.findByText(/no b-roll in this clip/i)).toBeInTheDocument()
   })

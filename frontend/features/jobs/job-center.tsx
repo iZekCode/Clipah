@@ -3,10 +3,11 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { StatusBadge, type StatusTone } from '@/components/status-badge'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 
 /** Every event type a Job appends to its own history. */
-const JOB_EVENT_TYPES = [
+export const JOB_EVENT_TYPES = [
   'created',
   'started',
   'progress',
@@ -28,12 +29,41 @@ const STAGE_LABELS: Record<string, string> = {
   publishing: 'Publishing',
 }
 
+/** What each kind of work is called in plain words. */
+export const JOB_KIND_LABELS: Record<string, string> = {
+  source_import: 'Importing video',
+  ingest: 'Preparing video',
+  transcribe: 'Transcribing',
+  analyze: 'Finding moments',
+  broll_plan: 'Planning B-roll',
+  broll_retrieve: 'Finding B-roll',
+  broll_generate: 'Generating B-roll',
+  render: 'Exporting clip',
+  campaign_generate: 'Writing campaign copy',
+  social_rendition: 'Preparing for publishing',
+  social_publish: 'Publishing',
+  social_reconcile: 'Checking publication',
+  cleanup: 'Cleaning up',
+}
+
 const STATUS_LABELS: Record<string, string> = {
   queued: 'Waiting',
   running: 'Working',
+  retrying: 'Retrying',
+  cancel_requested: 'Stopping',
   succeeded: 'Finished',
   failed: 'Failed',
   canceled: 'Canceled',
+}
+
+const STATUS_TONES: Record<string, StatusTone> = {
+  queued: 'neutral',
+  running: 'progress',
+  retrying: 'attention',
+  cancel_requested: 'attention',
+  succeeded: 'success',
+  failed: 'danger',
+  canceled: 'neutral',
 }
 
 /** One Job the center is announcing, as the stream last described it. */
@@ -54,7 +84,11 @@ interface AnnouncedJob {
  * switch: the connection is closed and the list emptied, so one Workspace's work is never
  * shown while another is open.
  */
-export function JobCenter() {
+export function JobCenter({
+  onActiveCountChange,
+}: {
+  onActiveCountChange?: (count: number) => void
+} = {}) {
   const { active } = useWorkspaceScope()
   const [jobs, setJobs] = useState<AnnouncedJob[]>([])
 
@@ -84,19 +118,41 @@ export function JobCenter() {
     }
   }, [active.id])
 
+  const running = jobs.filter((job) => !TERMINAL_STATUSES.has(job.status)).length
+  useEffect(() => {
+    onActiveCountChange?.(running)
+  }, [onActiveCountChange, running])
+
+  // Newest work first: what a creator just started is what they are looking for.
+  const ordered = [...jobs].reverse()
+
   return (
-    <section aria-label="Job center" className="space-y-2">
-      <h2 className="text-sm font-medium">Activity</h2>
+    <section aria-label="Job center" className="space-y-3">
+      <div className="flex items-baseline justify-between">
+        <h2 className="text-sm font-semibold">Activity</h2>
+        <span className="text-xs text-muted-foreground">
+          {running === 0 ? 'All caught up' : `${running} running`}
+        </span>
+      </div>
       {jobs.length === 0 ? (
         <p className="text-xs text-muted-foreground">Nothing is running.</p>
       ) : (
         <ul className="space-y-2">
-          {jobs.map((job) => (
-            <li key={job.jobId} className="rounded-md border px-3 py-2 text-xs">
-              <p>{stageLabel(job)}</p>
-              <p className="text-muted-foreground">{statusLabel(job.status)}</p>
+          {ordered.map((job) => (
+            <li key={job.jobId} className="space-y-1.5 rounded-lg border bg-card px-3 py-2.5 text-xs">
+              <div className="flex items-center justify-between gap-2">
+                <p className="font-medium">{stageLabel(job)}</p>
+                <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>
+                  {statusLabel(job.status)}
+                </StatusBadge>
+              </div>
               {job.projectId === null ? null : (
-                <Link href={`/dashboard/projects/${job.projectId}`}>Open project</Link>
+                <Link
+                  href={`/dashboard/projects/${job.projectId}`}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
+                >
+                  Open project
+                </Link>
               )}
             </li>
           ))}
@@ -106,12 +162,12 @@ export function JobCenter() {
   )
 }
 
-/** Name the work being done, or the outcome once there is nothing left to do. */
+/** Name the work being done, or what the work was once there is nothing left to do. */
 function stageLabel(job: AnnouncedJob): string {
   if (TERMINAL_STATUSES.has(job.status)) {
-    return `${job.kind} · ${Math.round(job.progress * 100)}%`
+    return JOB_KIND_LABELS[job.kind] ?? job.kind
   }
-  return STAGE_LABELS[job.stage] ?? job.stage
+  return STAGE_LABELS[job.stage] ?? JOB_KIND_LABELS[job.kind] ?? job.stage
 }
 
 function statusLabel(status: string): string {

@@ -53,7 +53,7 @@ export function GenerationConfirmDialog({
       role="dialog"
       aria-modal="true"
       aria-label={isVideo ? 'Generate a clip' : 'Generate a still'}
-      className="flex flex-col gap-3 rounded-lg border p-3 text-xs"
+      className="surface flex flex-col gap-3 p-4 text-xs"
     >
       <header className="flex items-start justify-between gap-2">
         <div>
@@ -69,7 +69,7 @@ export function GenerationConfirmDialog({
           type="button"
           disabled={submitting}
           onClick={onClose}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Close
         </button>
@@ -98,7 +98,7 @@ export function GenerationConfirmDialog({
             type="button"
             disabled={busy}
             onClick={onConfirm}
-            className="rounded border px-2 py-1 font-medium"
+            className="rounded-lg border bg-card px-2.5 py-1 font-medium"
           >
             {isVideo
               ? `Generate video for $${estimate.costUsd}`
@@ -110,7 +110,7 @@ export function GenerationConfirmDialog({
             type="button"
             disabled={busy}
             onClick={onConsiderVideo}
-            className="rounded border px-2 py-1"
+            className="rounded-lg border bg-card px-2.5 py-1"
           >
             Consider video instead
           </button>

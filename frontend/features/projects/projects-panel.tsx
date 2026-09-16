@@ -1,15 +1,30 @@
 'use client'
 
 import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import Link from 'next/link'
-import { useId, useRef, useState, type FormEvent } from 'react'
+import { FolderOpen } from 'lucide-react'
+import { useState, type FormEvent } from 'react'
 
+import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
+import { Field, inputClassName } from '@/components/field'
+import { ItemMenu } from '@/components/item-menu'
+import { LoadingState } from '@/components/loading-state'
+import { MediaCard, ProjectThumbnail } from '@/components/media-card'
+import { PageHeader } from '@/components/page-header'
+import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import {
-  createApiV1ProjectsPost,
   deleteApiV1ProjectsProjectIdDelete,
   listCollectionApiV1ProjectsGet,
   renameApiV1ProjectsProjectIdPatch,
@@ -17,17 +32,16 @@ import {
 } from '@/lib/api/generated/projects/projects'
 import type { ProjectPageResponse, ProjectResponse } from '@/lib/api/generated/model'
 
-import { projectStatusLabel } from './status-labels'
+import { NewProjectButton } from './new-project'
+import { projectsQueryKey } from './query-keys'
+import { projectStatusLabel, projectStatusTone } from './status-labels'
 
-const PAGE_SIZE = 20
+const PAGE_SIZE = 24
 
-/** The query key one Workspace's Project list is cached under. */
-export function projectsQueryKey(workspaceId: string) {
-  return ['/api/v1/projects', workspaceId] as const
-}
+export { projectsQueryKey }
 
 /**
- * List the Projects of the active Workspace, one page at a time.
+ * The Project library of the active Workspace, as a browsable grid of media.
  *
  * Pages are asked for by the cursor the backend handed back, so the browser never holds
  * a whole Workspace in memory and never invents an ordering of its own.
@@ -42,6 +56,7 @@ function ProjectsList() {
   const { active } = useWorkspaceScope()
   const queryClient = useQueryClient()
   const [deleted, setDeleted] = useState<ProjectResponse[]>([])
+  const [renaming, setRenaming] = useState<ProjectResponse | null>(null)
   const mayWrite = mayWriteProjects(active.role)
 
   const projects = useInfiniteQuery<ProjectPageResponse, ApiError>({
@@ -60,25 +75,36 @@ function ProjectsList() {
     retry: false,
   })
 
+  const header = (
+    <PageHeader
+      title="Projects"
+      description="Each project holds one video and everything made from it."
+      actions={mayWrite ? <NewProjectButton /> : undefined}
+    />
+  )
+
   if (projects.isPending) {
     return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading projects…
-      </p>
+      <section>
+        {header}
+        <LoadingState label="Loading projects…" variant="cards" count={6} />
+      </section>
     )
   }
   if (projects.isError) {
-    return <ErrorNotice error={projects.error} />
+    return (
+      <section>
+        {header}
+        <ErrorNotice error={projects.error} onRetry={() => void projects.refetch()} />
+      </section>
+    )
   }
 
   const listed = projects.data.pages.flatMap((page) => page.projects)
 
   return (
-    <section className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold tracking-tight">Projects</h1>
-        {mayWrite ? <CreateProject /> : null}
-      </div>
+    <section className="space-y-6">
+      {header}
 
       {deleted.map((project) => (
         <RestoreNotice
@@ -92,16 +118,20 @@ function ProjectsList() {
       ))}
 
       {listed.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No projects yet. Import a video to start one.
-        </p>
+        <EmptyState
+          icon={FolderOpen}
+          title="No projects yet"
+          description="Import a video to start one. Clipah will transcribe it and suggest the best moments."
+          action={mayWrite ? <NewProjectButton /> : undefined}
+        />
       ) : (
-        <ul aria-label="Projects" className="divide-y rounded-lg border">
+        <ul aria-label="Projects" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {listed.map((project) => (
-            <ProjectRow
+            <ProjectCard
               key={project.id}
               project={project}
               mayWrite={mayWrite}
+              onRename={() => setRenaming(project)}
               onDeleted={() => setDeleted((pending) => [...pending, project])}
             />
           ))}
@@ -109,32 +139,39 @@ function ProjectsList() {
       )}
 
       {projects.hasNextPage ? (
-        <button
-          type="button"
-          onClick={() => void projects.fetchNextPage()}
-          disabled={projects.isFetchingNextPage}
-          className="rounded-md border px-3 py-2 text-sm"
-        >
-          Load more
-        </button>
+        <div className="flex justify-center">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void projects.fetchNextPage()}
+            disabled={projects.isFetchingNextPage}
+          >
+            {projects.isFetchingNextPage ? 'Loading…' : 'Load more'}
+          </Button>
+        </div>
       ) : null}
+
+      {renaming === null ? null : (
+        <RenameDialog project={renaming} onDone={() => setRenaming(null)} />
+      )}
     </section>
   )
 }
 
-/** One Project in the list, with the writing controls this member is allowed. */
-function ProjectRow({
+/** One Project in the grid, with the contextual actions this member is allowed. */
+function ProjectCard({
   project,
   mayWrite,
+  onRename,
   onDeleted,
 }: {
   project: ProjectResponse
   mayWrite: boolean
+  onRename: () => void
   onDeleted: () => void
 }) {
   const { active } = useWorkspaceScope()
   const queryClient = useQueryClient()
-  const [renaming, setRenaming] = useState(false)
 
   const remove = useMutation<void, ApiError>({
     mutationFn: () =>
@@ -146,46 +183,48 @@ function ProjectRow({
   })
 
   return (
-    <li className="flex items-center justify-between gap-4 px-4 py-3">
-      <div className="min-w-0">
-        <Link href={`/dashboard/projects/${project.id}`} className="text-sm font-medium">
-          {project.name}
-        </Link>
-        <p className="text-xs text-muted-foreground">{projectStatusLabel(project.status)}</p>
-      </div>
-      {mayWrite ? (
-        <div className="flex shrink-0 items-center gap-2">
-          {renaming ? (
-            <RenameForm project={project} onDone={() => setRenaming(false)} />
-          ) : (
-            <button
-              type="button"
-              onClick={() => setRenaming(true)}
-              className="rounded-md border px-2 py-1 text-xs"
-            >
-              Rename {project.name}
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={() => remove.mutate()}
-            className="rounded-md border px-2 py-1 text-xs"
-          >
-            Delete {project.name}
-          </button>
-        </div>
-      ) : null}
+    <li className="space-y-2">
+      <MediaCard
+        href={`/dashboard/projects/${project.id}`}
+        title={project.name}
+        thumbnail={<ProjectThumbnail
+                    workspaceId={active.id}
+                    projectId={project.id}
+                    hasMedia={project.status !== 'created' && project.status !== 'uploading'}
+                  />}
+        status={
+          <StatusBadge tone={projectStatusTone(project.status)}>
+            {projectStatusLabel(project.status)}
+          </StatusBadge>
+        }
+        subtitle={`Created ${formatDate(project.createdAt)}`}
+        menu={
+          mayWrite ? (
+            <ItemMenu
+              label={`Actions for ${project.name}`}
+              actions={[
+                { label: `Rename ${project.name}`, onSelect: onRename },
+                {
+                  label: `Delete ${project.name}`,
+                  onSelect: () => remove.mutate(),
+                  destructive: true,
+                  disabled: remove.isPending,
+                },
+              ]}
+            />
+          ) : undefined
+        }
+      />
       {remove.isError ? <ErrorNotice error={remove.error} /> : null}
     </li>
   )
 }
 
 /** Rename a Project, showing the new name before the backend has answered. */
-function RenameForm({ project, onDone }: { project: ProjectResponse; onDone: () => void }) {
+function RenameDialog({ project, onDone }: { project: ProjectResponse; onDone: () => void }) {
   const { active } = useWorkspaceScope()
   const queryClient = useQueryClient()
   const [name, setName] = useState(project.name)
-  const fieldId = useId()
 
   const rename = useMutation<ProjectResponse, ApiError, string>({
     mutationFn: (nextName) =>
@@ -204,24 +243,36 @@ function RenameForm({ project, onDone }: { project: ProjectResponse; onDone: () 
 
   function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    rename.mutate(name)
+    if (name.trim() !== '') {
+      rename.mutate(name.trim())
+    }
   }
 
   return (
-    <form onSubmit={submit} className="flex items-center gap-2">
-      <label htmlFor={fieldId} className="sr-only">
-        Project name
-      </label>
-      <input
-        id={fieldId}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        className="rounded-md border px-2 py-1 text-xs"
-      />
-      <button type="submit" className="rounded-md border px-2 py-1 text-xs">
-        Save
-      </button>
-    </form>
+    <Dialog open onOpenChange={(open) => (open ? undefined : onDone())}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Rename project</DialogTitle>
+          <DialogDescription>The new name is used everywhere this project appears.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={submit} className="space-y-4">
+          <Field label="Project name">
+            <input
+              value={name}
+              maxLength={200}
+              onChange={(event) => setName(event.target.value)}
+              className={inputClassName}
+            />
+          </Field>
+          <DialogFooter className="gap-2">
+            <Button type="button" variant="ghost" onClick={onDone}>
+              Cancel
+            </Button>
+            <Button type="submit">Save</Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   )
 }
 
@@ -241,82 +292,19 @@ function RestoreNotice({
   })
 
   return (
-    <div className="flex items-center justify-between rounded-md border px-4 py-2 text-sm">
-      <p>{project.name} was deleted.</p>
-      <button
-        type="button"
-        onClick={() => restore.mutate()}
-        className="rounded-md border px-2 py-1 text-xs"
-      >
-        Restore {project.name}
-      </button>
-    </div>
-  )
-}
-
-/** Start a new Project in the active Workspace. */
-function CreateProject() {
-  const { active } = useWorkspaceScope()
-  const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
-  const [name, setName] = useState('')
-  const fieldId = useId()
-
-  // One key per submission: a retry of the same submission converges on the Project the
-  // first attempt created, while a later submission is new work and gets a new key. The
-  // route requires the header, so a request without one is refused outright.
-  const submission = useRef<string | null>(null)
-
-  const create = useMutation<ProjectResponse, ApiError, string>({
-    mutationFn: (projectName) => {
-      submission.current ??= crypto.randomUUID()
-      return createApiV1ProjectsPost(
-        { name: projectName, sourceKind: 'upload' },
-        { workspace_id: active.id },
-        { headers: { 'Idempotency-Key': `projects:create:${submission.current}` } },
-      )
-    },
-    onSuccess: () => {
-      submission.current = null
-      setOpen(false)
-      setName('')
-      void queryClient.invalidateQueries({ queryKey: projectsQueryKey(active.id) })
-    },
-  })
-
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="rounded-md bg-primary px-3 py-2 text-sm font-medium text-primary-foreground"
-      >
-        Create project
-      </button>
-    )
-  }
-
-  return (
-    <form
-      onSubmit={(event) => {
-        event.preventDefault()
-        create.mutate(name)
-      }}
-      className="flex items-center gap-2"
+    <div
+      role="status"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-sm"
     >
-      <label htmlFor={fieldId} className="sr-only">
-        New project name
-      </label>
-      <input
-        id={fieldId}
-        value={name}
-        onChange={(event) => setName(event.target.value)}
-        className="rounded-md border px-2 py-1 text-sm"
-      />
-      <button type="submit" className="rounded-md border px-2 py-1 text-sm">
-        Start project
-      </button>
-    </form>
+      <p>
+        <span className="font-medium">{project.name}</span> was deleted. You can restore it
+        for 30 days.
+      </p>
+      <Button type="button" size="sm" variant="outline" onClick={() => restore.mutate()}>
+        Restore {project.name}
+      </Button>
+      {restore.isError ? <ErrorNotice error={restore.error} /> : null}
+    </div>
   )
 }
 
@@ -350,4 +338,12 @@ function withRenamedProject(projectId: string, name: string) {
             ),
           })),
         }
+}
+
+function formatDate(value: string): string {
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) {
+    return value
+  }
+  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
 }

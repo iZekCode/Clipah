@@ -34,7 +34,7 @@ export function AssetsPanel({
   })
 
   return (
-    <section aria-label="Assets" className="flex flex-col gap-2 rounded-lg border p-3">
+    <section aria-label="Assets" className="surface flex flex-col gap-2 p-4">
       <h2 className="text-sm font-medium">Assets</h2>
       <p className="text-xs text-muted-foreground">
         Media this project owns. Upload more from the project page.
@@ -52,7 +52,7 @@ export function AssetsPanel({
 
       <ul className="flex flex-col gap-2">
         {(assets.data?.assets ?? []).map((asset) => (
-          <li key={asset.id} className="flex flex-col gap-1 rounded border p-2 text-xs">
+          <li key={asset.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
             <span className="font-mono">{asset.contentType}</span>
             <span className="text-muted-foreground">
               {asset.durationMs === null ? 'Still image' : `${Math.round(asset.durationMs / 1000)}s`}
@@ -61,13 +61,13 @@ export function AssetsPanel({
                 : ` · ${asset.width}×${asset.height}`}
             </span>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => onAdd(asset)} className="rounded border px-2 py-1">
+              <button type="button" onClick={() => onAdd(asset)} className="rounded-lg border bg-card px-2.5 py-1">
                 Add to a sound lane
               </button>
               <button
                 type="button"
                 onClick={() => onExtract(asset)}
-                className="rounded border px-2 py-1"
+                className="rounded-lg border bg-card px-2.5 py-1"
               >
                 Extract audio
               </button>

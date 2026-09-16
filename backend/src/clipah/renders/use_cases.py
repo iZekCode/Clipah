@@ -37,6 +37,14 @@ class RenderNotFoundError(Exception):
     """The Edit or the export does not exist, or the caller may not know that it does."""
 
 
+class RenderRevisionConflictError(Exception):
+    """The Edit moved past the Revision the caller meant to export."""
+
+    def __init__(self, current_revision: int) -> None:
+        super().__init__(str(current_revision))
+        self.current_revision = current_revision
+
+
 @dataclass(frozen=True, slots=True)
 class RenderArtifactSummary:
     """One finished export, as it is safe to show a member of its Workspace."""
@@ -81,11 +89,18 @@ def request_render(
     preset: RenderPreset,
     idempotency_key: str,
     now: datetime,
+    expected_revision: int | None = None,
 ) -> RenderAdmission:
-    """Reuse a healthy export of this exact composition, or admit the Job that makes one."""
+    """Reuse a healthy export of this exact composition, or admit the Job that makes one.
+
+    A caller that names the Revision it saved is refused when the Edit has moved on, so an
+    export is never silently made from newer work than the member approved.
+    """
     revision = _current_revision(session, workspace_id=access.workspace_id, edit_id=edit_id)
     if revision is None:
         raise RenderNotFoundError(str(edit_id))
+    if expected_revision is not None and expected_revision != revision.revision:
+        raise RenderRevisionConflictError(revision.revision)
     existing = _healthy_artifact(
         session,
         workspace_id=access.workspace_id,
@@ -205,6 +220,7 @@ class _CurrentRevision:
     """The Revision an export would be made from, and the Project it belongs to."""
 
     revision_id: UUID
+    revision: int
     project_id: UUID
     composition_hash: bytes
 
@@ -214,7 +230,12 @@ def _current_revision(
 ) -> _CurrentRevision | None:
     """Read the Revision one Edit currently points at, inside one active Project."""
     row = session.execute(
-        select(ClipEditRevision.id, ClipCandidate.project_id, ClipEditRevision.composition_hash)
+        select(
+            ClipEditRevision.id,
+            ClipEditRevision.revision,
+            ClipCandidate.project_id,
+            ClipEditRevision.composition_hash,
+        )
         .join(
             ClipEdit,
             (ClipEdit.workspace_id == ClipEditRevision.workspace_id)
@@ -239,9 +260,12 @@ def _current_revision(
     ).first()
     if row is None:
         return None
-    revision_id, project_id, composition_hash = row
+    revision_id, revision, project_id, composition_hash = row
     return _CurrentRevision(
-        revision_id=revision_id, project_id=project_id, composition_hash=composition_hash
+        revision_id=revision_id,
+        revision=revision,
+        project_id=project_id,
+        composition_hash=composition_hash,
     )
 
 

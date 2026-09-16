@@ -81,6 +81,7 @@ test('a reviewer accepts an invite, comments, and approves one immutable revisio
     window.sessionStorage.setItem('clipah.workspace', workspaceId)
   }, owner.workspaceId)
   await reviewerPage.goto(`/editor/${editId}`)
+  await reviewerPage.getByRole('tab', { name: 'Review' }).click()
   await expect(reviewerPage.getByText('Tighten the opening pause.')).toBeVisible()
   await expect(reviewerPage.getByText('Approved', { exact: true })).toBeVisible()
   await expect(reviewerPage.getByRole('heading', { name: /accessibility quality/i })).toBeVisible()
@@ -100,6 +101,7 @@ test('a reviewer accepts an invite, comments, and approves one immutable revisio
   expect(revised.status()).toBe(200)
 
   await reviewerPage.reload()
+  await reviewerPage.getByRole('tab', { name: 'Review' }).click()
   await expect(reviewerPage.getByText('Awaiting approval', { exact: true })).toBeVisible()
   const requestChanges = reviewerPage.getByRole('button', { name: /request changes/i })
   await requestChanges.focus()

@@ -91,7 +91,7 @@ export function SocialConnections() {
       </h2>
       {accounts.isError ? <ErrorNotice error={accounts.error} /> : null}
       {failure === null ? null : (
-        <div role="alert" className="rounded border border-destructive/40 bg-destructive/10 p-4">
+        <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm">{failure.message}</p>
           {failure.error instanceof ApiError && failure.error.requestId !== null ? (
             <p className="text-xs text-muted-foreground">Request ID: {failure.error.requestId}</p>
@@ -104,7 +104,7 @@ export function SocialConnections() {
       ) : null}
 
       {(accounts.data?.socialAccounts ?? []).map((account) => (
-        <fieldset key={account.id} className="space-y-2 rounded border p-4 text-sm">
+        <fieldset key={account.id} className="surface space-y-2 p-4 text-sm">
           <legend className="px-1 font-medium">
             {account.displayName} ({providerLabel(account.provider)})
           </legend>
@@ -162,7 +162,7 @@ export function SocialConnections() {
       ) : null}
 
       {ending === null ? null : (
-        <div role="alertdialog" aria-label="Disconnect this account" className="rounded border p-4">
+        <div role="alertdialog" aria-label="Disconnect this account" className="surface p-4">
           <p className="text-sm">
             Disconnecting ends Clipah&apos;s permission to post as {ending.displayName}. This cannot
             be undone: reconnecting starts a new authorization.

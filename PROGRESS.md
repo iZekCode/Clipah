@@ -3386,3 +3386,68 @@ with 20 environment-gated skips at 92.75% coverage; `pnpm lint`, `pnpm typecheck
 Section 12 matrix was not run end to end here: it needs the container stack, browser
 binaries, and live provider credentials. Committed by the repository owner as `5061909`,
 `refactor: complete production cutover`.
+
+## Post-rebuild extension — Guided Creator Studio redesign
+
+Specified in `redesign-plan.md` and recorded as Section 13 of `plan.md`. Not a numbered task:
+it reshapes the product around one creator journey — New project → Import video → Choose
+moments → Edit → Export → Publish — and adds the read-only backend it needs.
+
+**Backend.** `clipah/studio/use_cases.py` and `api/routes/studio.py` add Workspace-scoped,
+cursor-paginated browsing derived from existing rows: `GET /clips` (filter by Project and by
+stage — suggested, edited, exported), `GET /clips/{candidate_id}` (candidate, Project, Edits,
+exports), `GET /exports` (Render Requests joined to their Job and healthy Render Artifact;
+filter by Edit, Project, and state), `GET /assets` with provenance, and five-minute signed
+previews at `GET /assets/{asset_id}/preview-url` and `GET /projects/{project_id}/thumbnail`.
+Foreign and missing identifiers answer the same 404; forged cursors answer 422. Render requests
+accept an optional `expectedRevision`; a stale one is refused as `409 EDIT_REVISION_CONFLICT`
+with `X-Clipah-Current-Revision`, and omitting it keeps the old behaviour. No migration was
+needed: the API role already reads every joined table. The search module already owned an
+`ExportState` schema name, so the new filter is `ExportListState`. Contracts regenerated;
+`scripts/check-contracts-clean.sh` reports them up to date.
+
+One known limit: exports are listed per Render Request. A render reused by composition hash
+from a *different* Edit creates no request, so it is not listed under the second Edit. Edit
+compositions carry Edit-specific identifiers, so this does not arise in practice.
+
+**Frontend.** New design tokens (warm off-white, white surfaces, charcoal, violet primary,
+status colours, reduced motion) and shared components: page header, empty state, status badge,
+skeleton loading, media card with lazily signed thumbnails, item menu, fields, and a retryable
+error notice. The shell groups navigation as Home / Projects / Clips / Publishing / Library /
+Settings, with Workspace switcher, search, an activity indicator whose job center stays mounted,
+a user menu with sign-out, and a global New project dialog. Pages rebuilt: Home, Projects grid
+(rename and delete in item menus), Project detail (source preview, next step from durable state,
+live pipeline stages, Moments / Edits / Exports / Activity tabs), Clips browser, clip page
+resolved from its identifier alone, studio editor (tool rail, mounted tool panels, preview,
+inspector, timeline; phone shows a preview and a pointer to a larger screen), Export dialog
+(saves via the new `Autosave.saveNow()`, then renders bound to that Revision), export lists with
+Download and Publish, Publishing queue grouped by state, New publication starting from a finished
+export, Assets browser, template previews, brand kit versions and swatches, Settings (workspace,
+usage, sessions, members, connections — unimplemented preference promises removed), and landing,
+sign-in, demo, and invitation pages. Existing URLs, including search `?t=` deep links and the
+legacy publishing query form, still work.
+
+**Verification.**
+
+- Backend: Ruff check, Ruff format check, strict mypy (230 files) pass; pytest 2,880 passed,
+  20 skipped, 92.85% coverage. One failure is environmental and pre-existing:
+  `test_upgrade_rejects_a_missing_externally_provisioned_runtime_role` cannot drop
+  `clipah_worker` because a leftover local database, `clipah_contract_probe_test`, holds objects
+  owned by it. Nothing in the repository creates that database; it was left in place.
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (443 passed, 16 new in
+  `tests/creator-studio.test.tsx`), and `pnpm build` pass.
+- Browser suite (Chromium and WebKit, real API, production build, fixture-backed seeding):
+  88 passed, 14 skipped with collaboration off; the invite and member-removal specs need
+  `CLIPAH_COLLABORATION_ENABLED=true` and pass (14) with it on, while the campaign-copy spec
+  needs it off because the backend then requires an approved Revision. That conflict predates
+  this work. `clip-variants.spec.ts` "a generated variant is compared against one proxy" fails
+  in both engines because the backend returns no variants for the seeded single-sentence
+  fixture; the spec had never been run before (see Task 32) and the lab's logic is unchanged.
+- Responsive review of Home, Projects, Project, Clips, clip page, editor, Export dialog,
+  Publishing, Assets, Settings, landing, sign-in, and demo at 1440, 820, and 390 px: no
+  horizontal overflow. Two issues found and fixed: the editor preview overflowed vertically, and
+  the inspector was unreachable on tablets.
+- Not verified here: a real export, download, and publish end to end. Rendering needs the worker
+  and real media, and publishing needs provider credentials; live-provider checks were not run.
+
+Required owner commit message: `feat: guided creator studio redesign`.

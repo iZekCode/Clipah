@@ -66,7 +66,7 @@ export function CaptionsPanel({
   }
 
   return (
-    <section aria-label="Captions" className="flex flex-col gap-3 rounded-lg border p-3">
+    <section aria-label="Captions" className="surface flex flex-col gap-3 p-4">
       <h2 className="text-sm font-medium">Captions</h2>
 
       <div className="flex flex-wrap items-center gap-3 text-xs">
@@ -234,7 +234,7 @@ export function CaptionsPanel({
                   commit(word.id)
                 }
               }}
-              className="flex-1 rounded border px-2 py-1"
+              className="flex-1 rounded-lg border bg-card px-2.5 py-1"
             />
           </li>
         ))}

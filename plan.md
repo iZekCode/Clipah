@@ -1990,6 +1990,48 @@ scripts/check-editor-licenses.sh
 
 ---
 
+## 13. Post-Rebuild Extension — Guided Creator Studio Redesign
+
+Recorded after Task 48, from `redesign-plan.md`. It changes presentation and adds read-only
+browsing endpoints; it adds no workflow state machine, media subsystem, AI-provider change, or
+subscription system.
+
+**Journey.** New project → Import video → Choose moments → Edit → Export → Publish, in a calm
+light visual system (warm off-white ground, white surfaces, charcoal text, violet primary).
+
+**Navigation.** Home, Projects, Clips, Publishing; Library groups Assets, Templates, and Brand
+kits; Team (`/dashboard/team`) and Connections (`/dashboard/settings/connections`) sit inside
+Settings. Every established URL, including search deep links with `?t=` timecodes, is kept.
+
+**Backend additions (workspace-scoped, derived from existing rows):**
+
+- `GET /api/v1/clips` — paginated exposed Clip Candidates across active Projects, filterable by
+  `projectId` and `stage` (`suggested` | `edited` | `exported`).
+- `GET /api/v1/clips/{candidate_id}` — the candidate, its Project, its Edits, and its exports.
+- `GET /api/v1/exports` — paginated Render Requests joined to their Job and healthy Render
+  Artifact, filterable by `editId`, `projectId`, and `state` (`ready` | `in_progress` | `failed`).
+- `GET /api/v1/assets` and `GET /api/v1/assets/{asset_id}/preview-url` — member media (source,
+  B-roll, render) with provenance, and a five-minute signed preview.
+- `GET /api/v1/projects/{project_id}/thumbnail` — a five-minute signed frame, or the same 404 as
+  a missing Project.
+- `POST /api/v1/edits/{edit_id}/renders` accepts optional `expectedRevision`; a stale value is
+  refused with `409 EDIT_REVISION_CONFLICT` and `X-Clipah-Current-Revision`. Omitted, behaviour
+  is unchanged.
+
+Every new read returns the same 404 for a foreign identifier as for a missing one.
+
+**Frontend.** Shared page headers, media cards, empty states, skeletons, status badges, and
+retryable error notices; a global New project dialog (upload by default, YouTube as a second
+tab, editable name suggested from the file); Project detail with source preview, next step, and
+Moments / Edits / Exports / Activity tabs; a Clips browser; a resolver-backed clip page; a studio
+editor (header, tool rail, tool panel, preview, inspector, timeline) whose panels stay mounted
+across tool switches; an Export dialog that saves first and binds the render to the saved
+Revision; export lists with Download and Publish; a publishing queue grouped by state with New
+publication starting from a finished export; an asset browser; template previews; brand kit
+version details; Settings for workspace, members, connections, sessions, and usage; and redesigned
+landing, sign-in, demo, and invitation pages. Phones get import, review, download, and publishing,
+and an editor preview that points to a larger screen for editing.
+
 ## Execution Guidance
 
 - Execute tasks in numerical order. Tasks within one phase may be parallelized only when their listed interfaces are already merged.

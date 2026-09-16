@@ -1,5 +1,6 @@
 'use client'
 
+import { ChevronsUpDown } from 'lucide-react'
 import { useId } from 'react'
 
 import { useWorkspaceScope } from './workspace-context'
@@ -10,15 +11,15 @@ export function WorkspaceSwitcher() {
   const fieldId = useId()
 
   return (
-    <div className="flex items-center gap-2">
-      <label htmlFor={fieldId} className="text-xs uppercase tracking-wide text-muted-foreground">
+    <div className="relative flex items-center">
+      <label htmlFor={fieldId} className="sr-only">
         Workspace
       </label>
       <select
         id={fieldId}
         value={active.id}
         onChange={(event) => select(event.target.value)}
-        className="rounded-md border bg-background px-2 py-1 text-sm"
+        className="h-9 max-w-44 appearance-none truncate rounded-lg border bg-card py-1 pl-3 pr-8 text-sm font-medium shadow-sm hover:bg-secondary sm:max-w-56"
       >
         {workspaces.map((workspace) => (
           <option key={workspace.id} value={workspace.id}>
@@ -26,6 +27,10 @@ export function WorkspaceSwitcher() {
           </option>
         ))}
       </select>
+      <ChevronsUpDown
+        aria-hidden="true"
+        className="pointer-events-none absolute right-2.5 size-3.5 text-muted-foreground"
+      />
     </div>
   )
 }

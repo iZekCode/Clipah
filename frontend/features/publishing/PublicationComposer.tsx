@@ -221,14 +221,14 @@ export function PublicationComposer({
 
   return (
     <section aria-labelledby="composer-heading" className="space-y-6">
-      <h2 id="composer-heading" className="text-lg font-semibold">
+      <h2 id="composer-heading" className="text-base font-semibold">
         Publish this clip
       </h2>
       {accounts.isError ? <ErrorNotice error={accounts.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
 
-      <fieldset className="space-y-2 rounded border p-4">
-        <legend className="px-1 text-sm font-medium">Destinations</legend>
+      <fieldset className="surface space-y-3 p-5">
+        <legend className="px-1 text-sm font-semibold">Destinations</legend>
         {connectable.length === 0 ? (
           <p>
             No account is connected for a provider this deployment publishes to.{' '}
@@ -291,8 +291,8 @@ export function PublicationComposer({
         />
       ))}
 
-      <fieldset className="space-y-2 rounded border p-4">
-        <legend className="px-1 text-sm font-medium">When to publish</legend>
+      <fieldset className="surface space-y-3 p-5">
+        <legend className="px-1 text-sm font-semibold">When to publish</legend>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="radio"
@@ -319,7 +319,7 @@ export function PublicationComposer({
                 type="datetime-local"
                 value={localTime}
                 onChange={(event) => setLocalTime(event.target.value)}
-                className="rounded border p-2"
+                className="h-10 rounded-lg border border-input bg-card px-3"
               />
             </label>
             <label className="block space-y-1 text-sm font-medium">
@@ -327,7 +327,7 @@ export function PublicationComposer({
               <select
                 value={timezone}
                 onChange={(event) => setTimezone(event.target.value)}
-                className="rounded border p-2"
+                className="h-10 rounded-lg border border-input bg-card px-3"
               >
                 {timezoneOptions().map((zone) => (
                   <option key={zone} value={zone}>
@@ -343,7 +343,7 @@ export function PublicationComposer({
 
       <button
         type="button"
-        className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+        className="h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
         disabled={!ready}
         onClick={() => setConfirming(new Date().toISOString())}
       >
@@ -351,7 +351,7 @@ export function PublicationComposer({
       </button>
 
       {result === null ? null : (
-        <div role="status" className="space-y-1 rounded border p-4 text-sm">
+        <div role="status" className="surface space-y-1 p-4 text-sm">
           <p>What each destination is doing now:</p>
           <ul>
             {result.publications.map((item) => {
@@ -368,7 +368,7 @@ export function PublicationComposer({
       )}
 
       {discarding === null ? null : (
-        <div role="alertdialog" aria-label="Discard this destination" className="rounded border p-4">
+        <div role="alertdialog" aria-label="Discard this destination" className="surface space-y-3 border-warning/40 p-4">
           <p>Removing this destination will discard what you wrote for it. Continue?</p>
           <button type="button" onClick={() => discard(discarding)}>
             Discard and remove
@@ -380,7 +380,7 @@ export function PublicationComposer({
       )}
 
       {confirming !== null ? (
-        <div role="dialog" aria-label="Confirm publication" className="space-y-3 rounded border p-4">
+        <div role="dialog" aria-label="Confirm publication" className="surface space-y-3 border-primary/40 p-5 shadow-md">
           <p className="text-sm font-medium">
             Revision {revision}, rendered artifact{' '}
             {renderDigest === null ? renderArtifactId : `${renderDigest.slice(0, 12)}…`},{' '}
@@ -415,7 +415,7 @@ export function PublicationComposer({
           </p>
           <button
             type="button"
-            className="rounded bg-primary px-4 py-2 text-sm text-primary-foreground disabled:opacity-50"
+            className="mr-2 h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
             disabled={sending}
             onClick={() => {
               void publish()
@@ -423,7 +423,11 @@ export function PublicationComposer({
           >
             {approvalLabel}
           </button>
-          <button type="button" onClick={() => setConfirming(null)}>
+          <button
+            type="button"
+            className="h-10 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-secondary"
+            onClick={() => setConfirming(null)}
+          >
             Go back
           </button>
         </div>

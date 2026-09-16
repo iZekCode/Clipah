@@ -61,14 +61,16 @@ export function LibrarySearch({
   projectId,
   heading = 'Search this Workspace',
   description = 'Find a Project, a moment in a transcript, a clip, or the copy written for it.',
+  initialQuestion = '',
 }: {
   defaultTypes?: SearchEntityType[]
   projectId?: string
   heading?: string
   description?: string
+  initialQuestion?: string
 } = {}) {
   const { active } = useWorkspaceScope()
-  const [question, setQuestion] = useState('')
+  const [question, setQuestion] = useState(initialQuestion)
   const [filters, setFilters] = useState<Filters>({
     types: defaultTypes,
     projectId: '',
@@ -134,7 +136,7 @@ export function LibrarySearch({
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
           placeholder="A word, a name, or a &quot;quoted phrase&quot;"
-          className="w-full rounded-md border px-3 py-2 text-sm"
+          className="w-full rounded-lg border border-input bg-card px-3 py-2 text-sm"
         />
       </label>
 
@@ -162,7 +164,7 @@ export function LibrarySearch({
         <>
           <ul aria-label="Search results" className="space-y-3">
             {results.map((result) => (
-              <li key={result.id} className="rounded-lg border p-4">
+              <li key={result.id} className="surface p-4">
                 <SearchResult result={result} />
               </li>
             ))}
@@ -172,7 +174,7 @@ export function LibrarySearch({
               type="button"
               onClick={() => void found.fetchNextPage()}
               disabled={found.isFetchingNextPage}
-              className="rounded-md border px-3 py-2 text-sm"
+              className="rounded-lg border border-input bg-card px-3 py-2 text-sm"
             >
               {found.isFetchingNextPage ? 'Loading…' : 'More results'}
             </button>

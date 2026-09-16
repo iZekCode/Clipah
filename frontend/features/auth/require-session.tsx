@@ -30,17 +30,19 @@ export function RequireSession({ children }: { children: ReactNode }) {
       return <ErrorNotice error={session.error} />
     }
     return (
-      <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center gap-4 px-6">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in to continue</h1>
-        <p className="text-sm text-muted-foreground">
-          This area belongs to a Workspace, so it opens only for a signed-in member.
-        </p>
-        <Link
-          href="/signin"
-          className="inline-flex w-fit rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"
-        >
-          Sign in
-        </Link>
+      <div className="flex min-h-screen items-center justify-center bg-background px-6">
+        <div className="surface w-full max-w-md space-y-4 p-8 text-center shadow-md">
+          <h1 className="text-2xl font-semibold tracking-tight">Sign in to continue</h1>
+          <p className="text-sm text-muted-foreground">
+            This area belongs to a Workspace, so it opens only for a signed-in member.
+          </p>
+          <Link
+            href="/signin"
+            className="inline-flex h-10 items-center rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+          >
+            Sign in
+          </Link>
+        </div>
       </div>
     )
   }

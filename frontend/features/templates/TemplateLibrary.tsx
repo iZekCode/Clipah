@@ -3,7 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 
+import { LayoutTemplate } from 'lucide-react'
+
+import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
+import { LoadingState } from '@/components/loading-state'
+import { PageHeader } from '@/components/page-header'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -76,13 +81,10 @@ export function TemplateLibrary() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Templates</h1>
-        <p className="text-sm text-muted-foreground">
-          Reusable looks for captions and drawn text. Applying one writes its type into a clip
-          and records the version it came from.
-        </p>
-      </header>
+      <PageHeader
+        title="Templates"
+        description="Reusable looks for captions and drawn text. Applying one writes its type into a clip and records the version it came from."
+      />
 
       {templates.isError ? <ErrorNotice error={templates.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
@@ -102,16 +104,22 @@ export function TemplateLibrary() {
       </label>
 
       {templates.isPending ? (
-        <p className="text-sm text-muted-foreground">Reading this Workspace’s looks…</p>
+        <LoadingState label="Reading this Workspace’s looks…" variant="cards" />
       ) : found.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No look has been published yet.</p>
+        <EmptyState
+          icon={LayoutTemplate}
+          title="No look has been published yet."
+          description="Publish a look below to reuse the same caption style across clips."
+        />
       ) : (
-        <ul className="space-y-2">
+        <ul aria-label="Looks" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {found.map((template) => (
-            <li key={template.id} className="rounded-lg border p-3">
+            <li key={template.id} className="surface overflow-hidden p-0">
+              <LookPreview template={template} />
+              <div className="p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-medium">{template.name}</span>
-                <span className="text-xs text-muted-foreground">Version {template.version}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">Version {template.version}</span>
               </div>
               <p className="mt-1 text-xs text-muted-foreground">
                 {template.definition.captionMode} captions ·{' '}
@@ -126,12 +134,13 @@ export function TemplateLibrary() {
               {mayWrite && template.archivedAt === null ? (
                 <button
                   type="button"
-                  className="mt-2 rounded-md border px-2 py-1 text-xs"
+                  className="mt-2 rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
                   onClick={() => void archive(template)}
                 >
                   Archive
                 </button>
               ) : null}
+              </div>
             </li>
           ))}
         </ul>
@@ -139,17 +148,17 @@ export function TemplateLibrary() {
 
       {mayWrite ? (
         <form
-          className="space-y-3 rounded-lg border p-3"
+          className="surface max-w-xl space-y-4 p-5"
           onSubmit={(event) => {
             event.preventDefault()
             void publish()
           }}
         >
-          <h2 className="text-sm font-medium">Publish a look</h2>
+          <h2 className="text-base font-semibold">Publish a look</h2>
           <label className="block space-y-1 text-sm">
             <span className="text-muted-foreground">Look name</span>
             <input
-              className="w-full rounded-md border px-2 py-1"
+              className="h-10 w-full rounded-lg border border-input bg-card px-3"
               value={name}
               onChange={(event) => setName(event.target.value)}
             />
@@ -157,7 +166,7 @@ export function TemplateLibrary() {
           <label className="block space-y-1 text-sm">
             <span className="text-muted-foreground">Captions</span>
             <select
-              className="w-full rounded-md border px-2 py-1"
+              className="h-10 w-full rounded-lg border border-input bg-card px-3"
               value={captionMode}
               onChange={(event) =>
                 setCaptionMode(event.target.value as (typeof CAPTION_MODES)[number])
@@ -170,12 +179,51 @@ export function TemplateLibrary() {
               ))}
             </select>
           </label>
-          <button type="submit" className="rounded-md border px-3 py-1 text-sm font-medium">
+          <button type="submit" className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
             Publish look
           </button>
         </form>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * A small vertical frame showing how the look's captions read over footage.
+ *
+ * It uses the look's own font, colour, weight, background, and highlight, so the preview
+ * is the definition rather than an illustration of it.
+ */
+function LookPreview({ template }: { template: TemplateResponse }) {
+  const style = template.definition.captionStyle
+  const karaoke = template.definition.captionMode === 'karaoke'
+  const hidden = template.definition.captionMode === 'off'
+  return (
+    <div
+      aria-hidden="true"
+      className="flex aspect-[16/10] items-end justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-violet-900 p-4"
+    >
+      {hidden ? (
+        <span className="mb-6 rounded bg-black/30 px-2 py-1 text-xs text-white/70">No captions</span>
+      ) : (
+        <span
+          className="mb-4 max-w-full rounded px-2 py-1 text-center leading-tight"
+          style={{
+            fontFamily: `${style.fontFamily}, ui-sans-serif, system-ui`,
+            fontWeight: style.weight,
+            fontStyle: style.italic ? 'italic' : 'normal',
+            color: style.color,
+            fontSize: `${Math.max(14, Math.min(24, style.fontSize / 3))}px`,
+            backgroundColor: style.backgroundEnabled ? style.backgroundColor : 'transparent',
+            textShadow: style.backgroundEnabled ? 'none' : '0 1px 3px rgba(0,0,0,0.6)',
+          }}
+        >
+          This is how{' '}
+          <span style={{ color: karaoke ? (style.highlightColor ?? style.color) : style.color }}>captions</span>{' '}
+          look
+        </span>
+      )}
+    </div>
   )
 }
 

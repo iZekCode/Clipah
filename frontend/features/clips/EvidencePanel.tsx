@@ -109,7 +109,7 @@ export function EvidencePanel({
       ) : (
         <ul className="flex flex-col gap-2">
           {found.map((item) => (
-            <li key={item.id} className="flex flex-col gap-1 rounded border p-2">
+            <li key={item.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2">
               <p className="font-medium">{item.claimText}</p>
               <p>
                 <a
@@ -132,7 +132,7 @@ export function EvidencePanel({
       )}
 
       {refusal === null ? null : (
-        <p role="status" className="rounded border p-2">
+        <p role="status" className="rounded-lg border border-input bg-card p-2">
           {refusal}
         </p>
       )}
@@ -151,7 +151,7 @@ export function EvidencePanel({
         <Field label="Publisher" value={draft.publisher} onChange={(v) => setDraft({ ...draft, publisher: v })} />
         <Field label="First word" value={draft.startWordId} onChange={(v) => setDraft({ ...draft, startWordId: v })} />
         <Field label="Last word" value={draft.endWordId} onChange={(v) => setDraft({ ...draft, endWordId: v })} />
-        <button type="submit" disabled={working} className="w-fit rounded border px-2 py-1">
+        <button type="submit" disabled={working} className="w-fit rounded-lg border bg-card px-2.5 py-1">
           Attach source
         </button>
       </form>
@@ -176,7 +176,7 @@ function Field({
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="rounded border px-2 py-1"
+        className="rounded-lg border bg-card px-2.5 py-1"
       />
     </label>
   )

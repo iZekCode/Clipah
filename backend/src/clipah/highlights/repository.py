@@ -201,6 +201,19 @@ class HighlightRepository:
         )
         return None if row is None else _candidate_summary(row)
 
+    def candidate_in_workspace(
+        self, *, workspace_id: UUID, candidate_id: UUID
+    ) -> CandidateSummary | None:
+        """Read one exposed candidate when only its Workspace, not its Project, is known."""
+        row = self._session.scalar(
+            select(ClipCandidate).where(
+                ClipCandidate.workspace_id == workspace_id,
+                ClipCandidate.id == candidate_id,
+                ClipCandidate.model_metadata["exposed"].as_boolean().is_(True),
+            )
+        )
+        return None if row is None else _candidate_summary(row)
+
 
 def _candidate_summary(row: ClipCandidate) -> CandidateSummary:
     """Detach only public review evidence from one persisted candidate."""

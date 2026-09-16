@@ -118,7 +118,7 @@ export function CampaignPanel({ editId, revision }: { editId: string; revision: 
       <button
         type="button"
         disabled={working || platforms.length === 0 || languages.length === 0}
-        className="rounded-md border px-3 py-1 text-sm font-medium"
+        className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary font-medium"
         onClick={() => void write()}
       >
         Write campaign copy
@@ -175,7 +175,7 @@ export function CampaignPanel({ editId, revision }: { editId: string; revision: 
               <div className="flex flex-wrap gap-2">
                 <button
                   type="button"
-                  className="rounded-md border px-2 py-1 text-xs"
+                  className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
                   onClick={() => void copy(output)}
                 >
                   Copy post

@@ -1,9 +1,6 @@
-/** Settings: Workspace and personal preferences */
+import { GeneralSettings } from '@/features/settings/GeneralSettings'
+
+/** Settings: this Workspace, its monthly usage, and where the member is signed in. */
 export default function SettingsPage() {
-  return (
-    <section className="space-y-2">
-      <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <p className="text-sm text-muted-foreground">Workspace profile, language, retention, export defaults, and quota visibility live here.</p>
-    </section>
-  )
+  return <GeneralSettings />
 }

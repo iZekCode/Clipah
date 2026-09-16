@@ -1,9 +1,11 @@
+import 'fake-indexeddb/auto'
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { RequireSession } from '@/features/auth/require-session'
 import { ProjectDetail } from '@/features/projects/project-detail'
+import { NewProjectButton } from '@/features/projects/new-project'
 import { ProjectsPanel } from '@/features/projects/projects-panel'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
@@ -16,14 +18,16 @@ const ME = 'GET /api/v1/me'
 const WORKSPACES = 'GET /api/v1/workspaces'
 const PROJECTS = 'GET /api/v1/projects'
 const pathname = vi.hoisted(() => ({ current: '/dashboard' }))
+const push = vi.hoisted(() => vi.fn())
 
 vi.mock('next/navigation', () => ({
   usePathname: () => pathname.current,
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
 }))
 
 beforeEach(() => {
   pathname.current = '/dashboard'
+  push.mockReset()
   window.sessionStorage.clear()
 })
 
@@ -80,7 +84,7 @@ describe('the signed-in shell', () => {
     )
 
     expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Overview' })).not.toHaveAttribute('aria-current')
+    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
   })
 
   test('keeps its navigation reachable on a narrow screen behind one labelled control', async () => {
@@ -272,7 +276,8 @@ describe('the project list', () => {
       </WorkspaceProvider>,
     )
 
-    await user.click(await screen.findByRole('button', { name: /rename episode 12/i }))
+    await user.click(await screen.findByRole('button', { name: /actions for episode 12/i }))
+    await user.click(screen.getByRole('button', { name: /rename episode 12/i }))
     const field = screen.getByRole('textbox', { name: /project name/i })
     await user.clear(field)
     await user.type(field, 'Episode 12 final')
@@ -303,7 +308,8 @@ describe('the project list', () => {
       </WorkspaceProvider>,
     )
 
-    await user.click(await screen.findByRole('button', { name: /delete episode 12/i }))
+    await user.click(await screen.findByRole('button', { name: /actions for episode 12/i }))
+    await user.click(screen.getByRole('button', { name: /delete episode 12/i }))
     await user.click(await screen.findByRole('button', { name: /restore episode 12/i }))
 
     await waitFor(() => {
@@ -329,7 +335,8 @@ describe('the project list', () => {
     expect(await screen.findByRole('link', { name: 'Episode 12' })).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /rename/i })).not.toBeInTheDocument()
     expect(screen.queryByRole('button', { name: /delete/i })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /create project/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /actions for/i })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /new project/i })).not.toBeInTheDocument()
   })
 })
 
@@ -354,7 +361,7 @@ describe('one project', () => {
 })
 
 describe('starting a project', () => {
-  test('the create request carries an idempotency key', async () => {
+  test('the create request carries an idempotency key and the name the member chose', async () => {
     // The backend requires one on this route, so a browser that omits it cannot create a
     // Project at all — a refusal no stubbed test would ever see.
     const user = userEvent.setup()
@@ -363,51 +370,84 @@ describe('starting a project', () => {
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
       [PROJECTS]: { body: { projects: [], nextCursor: null } },
       'POST /api/v1/projects': { status: 201, body: project({ name: 'Episode 12' }) },
+      [`POST /api/v1/projects/${project().id}/youtube-imports`]: { status: 202, body: {} },
     })
 
     renderWithApi(
       <WorkspaceProvider>
-        <ProjectsPanel />
+        <NewProjectButton />
       </WorkspaceProvider>,
     )
-    await user.click(await screen.findByRole('button', { name: /create project/i }))
-    await user.type(screen.getByRole('textbox', { name: /new project name/i }), 'Episode 12')
-    await user.click(screen.getByRole('button', { name: /start project/i }))
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.click(screen.getByRole('tab', { name: /youtube link/i }))
+    await user.type(
+      screen.getByRole('textbox', { name: /youtube video link/i }),
+      'https://www.youtube.com/watch?v=abc',
+    )
+    await user.type(screen.getByRole('textbox', { name: /project name/i }), 'Episode 12')
+    await user.click(screen.getByRole('button', { name: /create and import/i }))
 
     await waitFor(() => {
-      expect(api.calls.some((call) => call.method === 'POST')).toBe(true)
+      expect(api.calls.some((call) => call.path.endsWith('/youtube-imports'))).toBe(true)
     })
-    const created = api.calls.find((call) => call.method === 'POST')
+    const created = api.calls.find((call) => call.method === 'POST' && call.path === '/api/v1/projects')
     expect(created?.headers.get('Idempotency-Key')).toMatch(/.+/)
+    expect(created?.body).toEqual({ name: 'Episode 12', sourceKind: 'public_url' })
+    expect(push).toHaveBeenCalledWith(`/dashboard/projects/${project().id}`)
   })
 
-  test('two separate submissions are two different pieces of work', async () => {
+  test('suggests the file name and keeps the project when the upload fails', async () => {
     const user = userEvent.setup()
     const api = stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [PROJECTS]: { body: { projects: [], nextCursor: null } },
-      'POST /api/v1/projects': { status: 201, body: project() },
+      'POST /api/v1/projects': { status: 201, body: project({ name: 'interview take 2' }) },
+      [`POST /api/v1/projects/${project().id}/uploads`]: { status: 500 },
     })
 
     renderWithApi(
       <WorkspaceProvider>
-        <ProjectsPanel />
+        <NewProjectButton />
       </WorkspaceProvider>,
     )
-    for (const name of ['Episode 12', 'Episode 13']) {
-      await user.click(await screen.findByRole('button', { name: /create project/i }))
-      await user.type(screen.getByRole('textbox', { name: /new project name/i }), name)
-      await user.click(screen.getByRole('button', { name: /start project/i }))
-      await waitFor(() => {
-        expect(api.calls.filter((call) => call.method === 'POST').length).toBeGreaterThan(0)
-      })
-    }
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.upload(
+      screen.getByLabelText(/video file/i),
+      new File([new Uint8Array(1024)], 'interview_take 2.mp4', { type: 'video/mp4' }),
+    )
+    expect(screen.getByRole('textbox', { name: /project name/i })).toHaveValue('interview take 2')
 
-    const keys = api.calls
-      .filter((call) => call.method === 'POST')
-      .map((call) => call.headers.get('Idempotency-Key'))
-    expect(keys).toHaveLength(2)
-    expect(new Set(keys).size).toBe(2)
+    await user.click(screen.getByRole('button', { name: /create and upload/i }))
+    expect(await screen.findByRole('button', { name: /open project/i })).toBeInTheDocument()
+
+    await user.click(screen.getByRole('button', { name: /try again/i }))
+    await waitFor(() => {
+      expect(
+        api.calls.filter((call) => call.path === `/api/v1/projects/${project().id}/uploads`),
+      ).toHaveLength(2)
+    })
+    expect(
+      api.calls.filter((call) => call.method === 'POST' && call.path === '/api/v1/projects'),
+    ).toHaveLength(1)
+  })
+
+  test('refuses to start without a video, before asking the backend for anything', async () => {
+    const user = userEvent.setup()
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <NewProjectButton />
+      </WorkspaceProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.type(screen.getByRole('textbox', { name: /project name/i }), 'Episode 12')
+    await user.click(screen.getByRole('button', { name: /create and upload/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/choose a video/i)
+    expect(api.calls.some((call) => call.method === 'POST')).toBe(false)
   })
 })

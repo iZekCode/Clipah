@@ -89,6 +89,7 @@ test('a member splits a real clip and the timeline shows both halves', async ({ 
 
 test('a member writes a text overlay and it survives a reload', async ({ page }) => {
   const { page: editor, editId } = await openEditor(page, 'editor-text', 'Titled Episode')
+  await editor.getByRole('tab', { name: 'Text' }).click()
   const panel = editor.getByRole('region', { name: /^Text$/ })
 
   const saved = savedResponse(editor, editId)
@@ -97,6 +98,7 @@ test('a member writes a text overlay and it survives a reload', async ({ page })
   await saved
 
   await editor.reload()
+  await editor.getByRole('tab', { name: 'Text' }).click()
   const reopened = editor.getByRole('region', { name: /^Text$/ })
   await expect(reopened.getByRole('textbox', { name: /text of/i })).toHaveValue('A written title')
 })

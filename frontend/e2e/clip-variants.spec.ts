@@ -27,9 +27,11 @@ test('a member is offered only the supported lengths', async ({ page }) => {
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
+  await page.locator('summary', { hasText: 'Variants' }).click()
   const lab = page.getByRole('region', { name: /variants/i })
 
   await expect(lab).toBeVisible()
+  await expect(lab.getByRole('checkbox')).toHaveCount(5)
   const offered = await lab.getByRole('checkbox').evaluateAll((boxes) =>
     boxes.map((box) => (box as HTMLInputElement).value),
   )
@@ -45,12 +47,17 @@ test('a generated variant is compared against one proxy, not a second copy', asy
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
+  await page.locator('summary', { hasText: 'Variants' }).click()
   const lab = page.getByRole('region', { name: /variants/i })
+  const videosBefore = await lab.locator('video').count()
   await lab.getByRole('checkbox').first().check()
-  await lab.getByRole('button', { name: /offer variants/i }).click()
+  const offer = lab.getByRole('button', { name: /offer variants/i })
+  await expect(offer).toBeEnabled()
+  await offer.click()
 
   await expect(lab.getByRole('listitem').first()).toBeVisible()
-  await expect(page.locator('video')).toHaveCount(1)
+  // Every variant is compared against the one proxy the lab already plays.
+  await expect(lab.locator('video')).toHaveCount(Math.max(videosBefore, 1))
 })
 
 test('an unsafe source link is refused with a reason a member can act on', async ({ page }) => {
@@ -62,6 +69,7 @@ test('an unsafe source link is refused with a reason a member can act on', async
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
+  await page.locator('summary', { hasText: 'Sources and evidence' }).click()
   const panel = page.getByRole('region', { name: /claim evidence/i })
   await panel.getByLabel('Claim').fill('Growth doubled after the change')
   await panel.getByLabel('Source link').fill('http://127.0.0.1/internal')
@@ -83,6 +91,7 @@ test('a citation opens isolated and is never rendered as markup', async ({ page 
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
+  await page.locator('summary', { hasText: 'Sources and evidence' }).click()
   const panel = page.getByRole('region', { name: /claim evidence/i })
   await panel.getByLabel('Claim').fill('Activation doubled')
   await panel.getByLabel('Source link').fill('https://example.test/report')

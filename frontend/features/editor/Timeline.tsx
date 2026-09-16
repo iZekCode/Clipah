@@ -155,7 +155,7 @@ export function Timeline({
   }
 
   return (
-    <section aria-label="Timeline" className="flex flex-col gap-2 rounded-lg border p-3">
+    <section aria-label="Timeline" className="surface flex flex-col gap-2 p-4">
       <div className="flex items-center gap-2">
         <h2 className="text-sm font-medium">Timeline</h2>
         <button

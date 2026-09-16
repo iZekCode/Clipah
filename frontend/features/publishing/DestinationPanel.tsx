@@ -29,7 +29,7 @@ export function DestinationPanel({
   onChange: (change: Partial<DestinationDraft>) => void
 }) {
   return (
-    <fieldset className="space-y-4 rounded border p-4">
+    <fieldset className="surface space-y-4 p-4">
       <legend className="px-1 text-sm font-medium">
         {account.displayName} ({providerLabel(account.provider)})
       </legend>
@@ -297,7 +297,7 @@ function Text({
   const shared = {
     value,
     onChange: (event: { target: { value: string } }) => onChange(event.target.value),
-    className: 'w-full rounded border p-2 text-sm',
+    className: 'w-full rounded-lg border border-input bg-card px-3 py-2 text-sm',
   }
   return (
     <label className="block space-y-1 text-sm font-medium">

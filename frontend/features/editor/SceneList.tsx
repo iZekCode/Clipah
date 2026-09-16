@@ -27,14 +27,14 @@ export function SceneList({
   const list = scenes(composition)
 
   return (
-    <section aria-label="Scenes" className="flex flex-col gap-2 rounded-lg border p-3">
+    <section aria-label="Scenes" className="surface flex flex-col gap-2 p-4">
       <h2 className="text-sm font-medium">Scenes</h2>
       {list.length === 0 ? (
         <p className="text-xs text-muted-foreground">This clip has no transcript words yet.</p>
       ) : null}
       <ol className="flex flex-col gap-2">
         {list.map((scene) => (
-          <li key={scene.id} className="flex flex-col gap-1 rounded border p-2 text-xs">
+          <li key={scene.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
             <div className="flex items-center gap-2">
               <span className="font-mono text-muted-foreground">
                 {timecode(scene.startMs)}–{timecode(scene.endMs)}
@@ -44,7 +44,7 @@ export function SceneList({
               <button
                 type="button"
                 onClick={() => onSeek(scene.startMs)}
-                className="ml-auto rounded border px-2 py-1"
+                className="ml-auto rounded-lg border bg-card px-2.5 py-1"
               >
                 Go to
               </button>
@@ -58,7 +58,7 @@ export function SceneList({
                   const value = event.currentTarget.value
                   setDrafts((current) => ({ ...current, [scene.id]: value }))
                 }}
-                className="flex-1 rounded border px-2 py-1"
+                className="flex-1 rounded-lg border bg-card px-2.5 py-1"
               />
               <button
                 type="button"
@@ -68,7 +68,7 @@ export function SceneList({
                     onLabel(scene.startMs, label)
                   }
                 }}
-                className="rounded border px-2 py-1"
+                className="rounded-lg border bg-card px-2.5 py-1"
               >
                 Label
               </button>

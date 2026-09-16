@@ -3,7 +3,12 @@
 import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 
+import { Palette } from 'lucide-react'
+
+import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
+import { LoadingState } from '@/components/loading-state'
+import { PageHeader } from '@/components/page-header'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -134,32 +139,50 @@ export function BrandKitEditor() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Brand kits</h1>
-        <p className="text-sm text-muted-foreground">
-          The colours, type, safe areas, and claims this Workspace holds its clips to. Editing
-          a kit publishes a new version; clips already judged by an older version keep it.
-        </p>
-      </header>
+      <PageHeader
+        title="Brand kits"
+        description="The colours, type, safe areas, and claims this Workspace holds its clips to. Editing a kit publishes a new version; clips already judged by an older version keep it."
+      />
 
       {kits.isError ? <ErrorNotice error={kits.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
       {published === null ? null : (
-        <p className="text-sm text-muted-foreground">Published version {published}.</p>
+        <p role="status" className="rounded-lg bg-success-soft px-3 py-2 text-sm font-medium text-success">
+          Published version {published}.
+        </p>
       )}
 
       {kits.isPending ? (
-        <p className="text-sm text-muted-foreground">Reading this Workspace’s brand…</p>
+        <LoadingState label="Reading this Workspace’s brand…" variant="rows" />
       ) : found.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No brand kit has been published yet.</p>
+        <EmptyState
+          icon={Palette}
+          title="No brand kit has been published yet."
+          description="A brand kit keeps every clip in your colours and type, and flags claims you never make."
+        />
       ) : (
-        <ul className="space-y-2">
+        <ul aria-label="Brand kits" className="grid gap-4 sm:grid-cols-2">
           {found.map((kit) => (
-            <li key={kit.id} className="rounded-lg border p-3">
+            <li key={kit.id} className={`surface p-4 ${editing?.id === kit.id ? 'ring-2 ring-primary' : ''}`}>
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span className="font-medium">{kit.name}</span>
-                <span className="text-xs text-muted-foreground">Version {kit.version}</span>
+                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">Version {kit.version}</span>
               </div>
+              <div role="group" aria-label={`Palette of ${kit.name}`} className="mt-3 flex flex-wrap gap-1.5">
+                {kit.definition.colors.map((colour) => (
+                  <span
+                    key={`${colour.hex}-${colour.name}`}
+                    title={colour.name}
+                    className="size-7 rounded-md border shadow-inner"
+                    style={{ backgroundColor: colour.hex }}
+                  >
+                    <span className="sr-only">{colour.hex}</span>
+                  </span>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-muted-foreground" style={{ fontFamily: `${kit.definition.fonts[0]?.family ?? 'Inter'}, ui-sans-serif` }}>
+                {kit.definition.fonts[0]?.family ?? 'Inter'}
+              </p>
               <p className="mt-1 text-xs text-muted-foreground">
                 {kit.definition.colors.length} colours · type {kit.definition.captionRules.minFontSize}
                 –{kit.definition.captionRules.maxFontSize} ·{' '}
@@ -174,14 +197,14 @@ export function BrandKitEditor() {
                 <div className="mt-2 flex gap-2">
                   <button
                     type="button"
-                    className="rounded-md border px-2 py-1 text-xs"
+                    className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
                     onClick={() => load(kit)}
                   >
                     Edit
                   </button>
                   <button
                     type="button"
-                    className="rounded-md border px-2 py-1 text-xs"
+                    className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
                     onClick={() => void archive(kit)}
                   >
                     Archive
@@ -195,15 +218,33 @@ export function BrandKitEditor() {
 
       {mayWrite ? (
         <form
-          className="space-y-3 rounded-lg border p-3"
+          className="surface space-y-4 p-5"
           onSubmit={(event) => {
             event.preventDefault()
             void publish()
           }}
         >
-          <h2 className="text-sm font-medium">
-            {editing === null ? 'Publish a brand kit' : `Publish a new version of ${editing.name}`}
-          </h2>
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold">
+              {editing === null ? 'Publish a brand kit' : `Publish a new version of ${editing.name}`}
+            </h2>
+            {editing === null ? null : (
+              <p className="text-sm text-muted-foreground">
+                Currently at version {editing.version}. Saving publishes version {editing.version + 1};
+                clips judged by earlier versions keep them.{' '}
+                <button
+                  type="button"
+                  className="font-medium text-primary hover:underline"
+                  onClick={() => {
+                    setEditing(null)
+                    setDraft(EMPTY)
+                  }}
+                >
+                  Cancel editing
+                </button>
+              </p>
+            )}
+          </div>
           <Field label="Brand kit name" value={draft.name} onChange={(value) => change('name', value)} />
           <Field
             label="Colours (#RRGGBB, comma separated)"
@@ -260,7 +301,7 @@ export function BrandKitEditor() {
           <button
             type="submit"
             disabled={working}
-            className="rounded-md border px-3 py-1 text-sm font-medium"
+            className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
           >
             {editing === null ? 'Publish brand kit' : 'Publish new version'}
           </button>
@@ -284,7 +325,7 @@ function Field({
     <label className="block space-y-1 text-sm">
       <span className="text-muted-foreground">{label}</span>
       <input
-        className="w-full rounded-md border px-2 py-1"
+        className="h-10 w-full rounded-lg border border-input bg-card px-3"
         value={value}
         onChange={(event) => onChange(event.target.value)}
       />

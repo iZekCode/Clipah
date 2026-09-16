@@ -151,6 +151,33 @@ export class Autosave {
     await this.run()
   }
 
+  /**
+   * Save everything pending and wait until nothing is in flight.
+   *
+   * Work that must name a saved Revision — an export — calls this first. It answers
+   * whether the document on screen is now the saved one; a conflict or a lost connection
+   * answers no, because exporting then would export something other than what is shown.
+   */
+  async saveNow(pollMs = 100, attempts = 100): Promise<boolean> {
+    for (let attempt = 0; attempt < attempts; attempt += 1) {
+      if (this.blocked) {
+        return false
+      }
+      if (this.inFlight) {
+        await new Promise((resolve) => setTimeout(resolve, pollMs))
+        continue
+      }
+      if (this.pending === null) {
+        return true
+      }
+      if (this.state === 'offline' && attempt > 0) {
+        return false
+      }
+      await this.flush()
+    }
+    return false
+  }
+
   /** Try again after the connection came back. */
   async retryPending(): Promise<void> {
     await this.run()

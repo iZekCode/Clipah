@@ -133,6 +133,106 @@
         "title": "AnalysisJobResponse",
         "type": "object"
       },
+      "AssetKind": {
+        "enum": [
+          "source",
+          "proxy",
+          "thumbnail",
+          "waveform",
+          "transcription_audio",
+          "render",
+          "broll",
+          "broll_proxy"
+        ],
+        "title": "AssetKind",
+        "type": "string"
+      },
+      "AssetPageResponse": {
+        "additionalProperties": false,
+        "description": "One page of library assets and its opaque continuation cursor.",
+        "properties": {
+          "assets": {
+            "items": {
+              "$ref": "#/components/schemas/LibraryAssetResponse"
+            },
+            "title": "Assets",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "assets",
+          "nextCursor"
+        ],
+        "title": "AssetPageResponse",
+        "type": "object"
+      },
+      "AssetProvenanceResponse": {
+        "additionalProperties": false,
+        "description": "Where one retrieved or generated asset came from, and under what licence.",
+        "properties": {
+          "attributionText": {
+            "title": "Attributiontext",
+            "type": "string"
+          },
+          "author": {
+            "title": "Author",
+            "type": "string"
+          },
+          "generated": {
+            "title": "Generated",
+            "type": "boolean"
+          },
+          "licenseName": {
+            "title": "Licensename",
+            "type": "string"
+          },
+          "licenseUrl": {
+            "title": "Licenseurl",
+            "type": "string"
+          },
+          "provider": {
+            "title": "Provider",
+            "type": "string"
+          },
+          "sourceUrl": {
+            "title": "Sourceurl",
+            "type": "string"
+          }
+        },
+        "required": [
+          "provider",
+          "author",
+          "licenseName",
+          "licenseUrl",
+          "sourceUrl",
+          "attributionText",
+          "generated"
+        ],
+        "title": "AssetProvenanceResponse",
+        "type": "object"
+      },
+      "AssetSourceType": {
+        "enum": [
+          "user_upload",
+          "source_import",
+          "derived",
+          "generated",
+          "stock"
+        ],
+        "title": "AssetSourceType",
+        "type": "string"
+      },
       "AudioMix": {
         "additionalProperties": false,
         "description": "The two gains a version 1 composition can set.",
@@ -1821,6 +1921,242 @@
         "title": "ClipCategory",
         "type": "string"
       },
+      "ClipDetailResponse": {
+        "additionalProperties": false,
+        "description": "Everything a clip page resolves from the one identifier in its URL.",
+        "properties": {
+          "candidate": {
+            "$ref": "#/components/schemas/CandidateResponse"
+          },
+          "edits": {
+            "items": {
+              "$ref": "#/components/schemas/ClipEditResponse"
+            },
+            "title": "Edits",
+            "type": "array"
+          },
+          "exports": {
+            "items": {
+              "$ref": "#/components/schemas/ExportResponse"
+            },
+            "title": "Exports",
+            "type": "array"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ClipProjectResponse"
+          }
+        },
+        "required": [
+          "candidate",
+          "project",
+          "edits",
+          "exports"
+        ],
+        "title": "ClipDetailResponse",
+        "type": "object"
+      },
+      "ClipEditResponse": {
+        "additionalProperties": false,
+        "description": "One Edit opened from a clip, and the Revision it currently points at.",
+        "properties": {
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "currentRevision": {
+            "title": "Currentrevision",
+            "type": "integer"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "updatedAt": {
+            "title": "Updatedat",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "currentRevision",
+          "createdAt",
+          "updatedAt"
+        ],
+        "title": "ClipEditResponse",
+        "type": "object"
+      },
+      "ClipPageResponse": {
+        "additionalProperties": false,
+        "description": "One page of browsable moments and its opaque continuation cursor.",
+        "properties": {
+          "clips": {
+            "items": {
+              "$ref": "#/components/schemas/ClipSummaryResponse"
+            },
+            "title": "Clips",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "clips",
+          "nextCursor"
+        ],
+        "title": "ClipPageResponse",
+        "type": "object"
+      },
+      "ClipProjectResponse": {
+        "additionalProperties": false,
+        "description": "The Project one clip belongs to.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "status"
+        ],
+        "title": "ClipProjectResponse",
+        "type": "object"
+      },
+      "ClipStage": {
+        "description": "How far one moment has travelled from suggestion to finished file.",
+        "enum": [
+          "suggested",
+          "edited",
+          "exported"
+        ],
+        "title": "ClipStage",
+        "type": "string"
+      },
+      "ClipSummaryResponse": {
+        "additionalProperties": false,
+        "description": "One browsable moment, the Project it belongs to, and how far it has got.",
+        "properties": {
+          "category": {
+            "$ref": "#/components/schemas/ClipCategory"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "currentRevision": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currentrevision"
+          },
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "editId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editid"
+          },
+          "endMs": {
+            "title": "Endms",
+            "type": "integer"
+          },
+          "exportCount": {
+            "title": "Exportcount",
+            "type": "integer"
+          },
+          "hook": {
+            "title": "Hook",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "rank": {
+            "title": "Rank",
+            "type": "integer"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "score": {
+            "title": "Score",
+            "type": "number"
+          },
+          "stage": {
+            "$ref": "#/components/schemas/ClipStage"
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "rank",
+          "score",
+          "hook",
+          "reason",
+          "category",
+          "startMs",
+          "endMs",
+          "durationMs",
+          "stage",
+          "editId",
+          "currentRevision",
+          "exportCount",
+          "createdAt"
+        ],
+        "title": "ClipSummaryResponse",
+        "type": "object"
+      },
       "ClipVariantListResponse": {
         "additionalProperties": false,
         "description": "One candidate's variants, ordered so two readings can be compared.",
@@ -2675,6 +3011,178 @@
         "title": "EditSelectionRequest",
         "type": "object"
       },
+      "ExportListState": {
+        "description": "The piles an export list may be narrowed to.",
+        "enum": [
+          "ready",
+          "in_progress",
+          "failed"
+        ],
+        "title": "ExportListState",
+        "type": "string"
+      },
+      "ExportPageResponse": {
+        "additionalProperties": false,
+        "description": "One page of exports and its opaque continuation cursor.",
+        "properties": {
+          "exports": {
+            "items": {
+              "$ref": "#/components/schemas/ExportResponse"
+            },
+            "title": "Exports",
+            "type": "array"
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Nextcursor"
+          }
+        },
+        "required": [
+          "exports",
+          "nextCursor"
+        ],
+        "title": "ExportPageResponse",
+        "type": "object"
+      },
+      "ExportResponse": {
+        "additionalProperties": false,
+        "description": "One requested export: the finished file, or the state of the Job making it.",
+        "properties": {
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "completedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completedat"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "editId": {
+            "format": "uuid",
+            "title": "Editid",
+            "type": "string"
+          },
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "jobId": {
+            "format": "uuid",
+            "title": "Jobid",
+            "type": "string"
+          },
+          "preset": {
+            "title": "Preset",
+            "type": "string"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "renderId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Renderid"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "revisionId": {
+            "format": "uuid",
+            "title": "Revisionid",
+            "type": "string"
+          },
+          "sizeBytes": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sizebytes"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "jobId",
+          "status",
+          "errorCode",
+          "preset",
+          "projectId",
+          "projectName",
+          "candidateId",
+          "editId",
+          "revisionId",
+          "revision",
+          "renderId",
+          "durationMs",
+          "sizeBytes",
+          "createdAt",
+          "completedAt"
+        ],
+        "title": "ExportResponse",
+        "type": "object"
+      },
       "ExportState": {
         "description": "Whether the work a document describes has left Clipah as a rendered file.",
         "enum": [
@@ -3117,6 +3625,128 @@
           "style"
         ],
         "title": "Keyframe",
+        "type": "object"
+      },
+      "LibraryAssetResponse": {
+        "additionalProperties": false,
+        "description": "One library asset, the Project that owns it, and its provenance when it has one.",
+        "properties": {
+          "contentType": {
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Durationms"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AssetKind"
+          },
+          "projectId": {
+            "format": "uuid",
+            "title": "Projectid",
+            "type": "string"
+          },
+          "projectName": {
+            "title": "Projectname",
+            "type": "string"
+          },
+          "provenance": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/AssetProvenanceResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "sizeBytes": {
+            "title": "Sizebytes",
+            "type": "integer"
+          },
+          "sourceType": {
+            "$ref": "#/components/schemas/AssetSourceType"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          }
+        },
+        "required": [
+          "id",
+          "projectId",
+          "projectName",
+          "kind",
+          "sourceType",
+          "contentType",
+          "sizeBytes",
+          "durationMs",
+          "width",
+          "height",
+          "createdAt",
+          "provenance"
+        ],
+        "title": "LibraryAssetResponse",
+        "type": "object"
+      },
+      "MediaPreviewResponse": {
+        "additionalProperties": false,
+        "description": "One five-minute capability to look at stored media.",
+        "properties": {
+          "contentType": {
+            "title": "Contenttype",
+            "type": "string"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "expiresAt",
+          "contentType"
+        ],
+        "title": "MediaPreviewResponse",
         "type": "object"
       },
       "MemberCollectionResponse": {
@@ -4157,6 +4787,18 @@
         "additionalProperties": false,
         "description": "The one thing a member chooses when they export a clip.",
         "properties": {
+          "expectedRevision": {
+            "anyOf": [
+              {
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expectedrevision"
+          },
           "preset": {
             "$ref": "#/components/schemas/RenderPreset"
           }
@@ -6268,6 +6910,165 @@
         ]
       }
     },
+    "/api/v1/assets": {
+      "get": {
+        "description": "Browse member media across the Workspace, with where each file came from.",
+        "operationId": "asset_collection_api_v1_assets_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/AssetKind"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Kind"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssetPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Asset Collection",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/v1/assets/{asset_id}/preview-url": {
+      "get": {
+        "description": "Sign five minutes of access to one library asset this member may read.",
+        "operationId": "preview_asset_api_v1_assets__asset_id__preview_url_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Asset",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
     "/api/v1/auth/google/callback": {
       "get": {
         "description": "Redeem the provider callback and start a Clipah Session for the resolved User.",
@@ -6883,6 +7684,165 @@
         "summary": "Update Verification",
         "tags": [
           "claim-evidence"
+        ]
+      }
+    },
+    "/api/v1/clips": {
+      "get": {
+        "description": "Browse every exposed moment in the Workspace before anything is searched for.",
+        "operationId": "browse_clip_collection_api_v1_clips_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "stage",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ClipStage"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Stage"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 24,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Browse Clip Collection",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/v1/clips/{candidate_id}": {
+      "get": {
+        "description": "Resolve one clip's Project, Edits, and exports from the clip identifier alone.",
+        "operationId": "show_clip_api_v1_clips__candidate_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "candidate_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Candidate Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Clip",
+        "tags": [
+          "studio"
         ]
       }
     },
@@ -7771,6 +8731,128 @@
         "summary": "Prepare",
         "tags": [
           "publications"
+        ]
+      }
+    },
+    "/api/v1/exports": {
+      "get": {
+        "description": "List exports newest first, including the ones still being encoded.",
+        "operationId": "export_collection_api_v1_exports_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "editId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Editid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "projectId",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "uuid",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Projectid"
+            }
+          },
+          {
+            "in": "query",
+            "name": "state",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/ExportListState"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 20,
+              "maximum": 100,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExportPageResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Export Collection",
+        "tags": [
+          "studio"
         ]
       }
     },
@@ -9372,6 +10454,60 @@
         "summary": "Restore",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/thumbnail": {
+      "get": {
+        "description": "Sign five minutes of access to the frame ingest captured for one Project.",
+        "operationId": "thumbnail_api_v1_projects__project_id__thumbnail_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MediaPreviewResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Thumbnail",
+        "tags": [
+          "studio"
         ]
       }
     },

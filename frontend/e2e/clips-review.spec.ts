@@ -53,7 +53,7 @@ test('a Project with no analysis says there is nothing to review yet', async ({ 
 
   await page.goto(`/dashboard/projects/${projectId}`)
 
-  await expect(page.getByText(/no clips to review yet/i)).toBeVisible()
+  await expect(page.getByText(/moments appear when processing finishes/i)).toBeVisible()
   await expect(page.getByRole('list', { name: /ranked clips/i })).toHaveCount(0)
 })
 

@@ -48,7 +48,7 @@ export function TextPanel({
   const written = overlays.filter((overlay): overlay is TextOverlay => overlay.type === 'text')
 
   return (
-    <section aria-label="Text" className="flex flex-col gap-2 rounded-lg border p-3">
+    <section aria-label="Text" className="surface flex flex-col gap-2 p-4">
       <h2 className="text-sm font-medium">Text</h2>
 
       <div className="flex items-center gap-2 text-xs">
@@ -58,7 +58,7 @@ export function TextPanel({
           value={draft}
           onChange={(event) => setDraft(event.currentTarget.value)}
           placeholder="Say something on screen"
-          className="flex-1 rounded border px-2 py-1"
+          className="flex-1 rounded-lg border bg-card px-2.5 py-1"
         />
         <button
           type="button"
@@ -66,7 +66,7 @@ export function TextPanel({
             onAdd(draft)
             setDraft('')
           }}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Add text
         </button>
@@ -74,13 +74,13 @@ export function TextPanel({
 
       <ol className="flex flex-col gap-2">
         {written.map((overlay) => (
-          <li key={overlay.id} className="flex flex-col gap-1 rounded border p-2 text-xs">
+          <li key={overlay.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
             <input
               type="text"
               aria-label={`Text of ${overlay.id}`}
               value={overlay.text}
               onChange={(event) => onUpdate(overlay.id, { text: event.currentTarget.value })}
-              className="rounded border px-2 py-1"
+              className="rounded-lg border bg-card px-2.5 py-1"
             />
             <div className="flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1">
@@ -93,7 +93,7 @@ export function TextPanel({
                   onChange={(event) =>
                     onMove(overlay.id, Number(event.currentTarget.value), overlay.timelineEndMs)
                   }
-                  className="w-24 rounded border px-2 py-1"
+                  className="w-24 rounded-lg border bg-card px-2.5 py-1"
                 />
               </label>
               <label className="flex items-center gap-1">
@@ -106,7 +106,7 @@ export function TextPanel({
                   onChange={(event) =>
                     onMove(overlay.id, overlay.timelineStartMs, Number(event.currentTarget.value))
                   }
-                  className="w-24 rounded border px-2 py-1"
+                  className="w-24 rounded-lg border bg-card px-2.5 py-1"
                 />
               </label>
               <label className="flex items-center gap-1">
@@ -120,7 +120,7 @@ export function TextPanel({
                   onChange={(event) =>
                     onUpdate(overlay.id, { style: { fontSize: Number(event.currentTarget.value) } })
                   }
-                  className="w-20 rounded border px-2 py-1"
+                  className="w-20 rounded-lg border bg-card px-2.5 py-1"
                 />
               </label>
               <label className="flex items-center gap-1">
@@ -145,7 +145,7 @@ export function TextPanel({
               <button
                 type="button"
                 onClick={() => onRemove(overlay.id)}
-                className="ml-auto rounded border px-2 py-1"
+                className="ml-auto rounded-lg border bg-card px-2.5 py-1"
               >
                 Remove {overlay.id}
               </button>

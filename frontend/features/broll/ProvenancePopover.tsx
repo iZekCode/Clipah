@@ -31,7 +31,7 @@ export function ProvenancePopover({
         Where this came from
       </button>
       {open ? (
-        <dl className="mt-1 flex flex-col gap-1 rounded border p-2">
+        <dl className="mt-1 flex flex-col gap-1 rounded-lg border border-input bg-card p-2">
           <div className="flex gap-1">
             <dt className="text-muted-foreground">Provider</dt>
             <dd>{provenance.provider}</dd>

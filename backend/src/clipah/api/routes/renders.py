@@ -22,6 +22,7 @@ from clipah.api.dependencies import (
     settings_for,
 )
 from clipah.api.errors import ApiError
+from clipah.api.routes.edits import CURRENT_REVISION_HEADER
 from clipah.assets.storage import ObjectStore
 from clipah.auth.limits import RateLimitExceededError
 from clipah.jobs.admission import ConcurrencyLimitError, QuotaExceededError, admission_policy
@@ -30,6 +31,7 @@ from clipah.renders.models import RenderPreset
 from clipah.renders.use_cases import (
     RenderArtifactSummary,
     RenderNotFoundError,
+    RenderRevisionConflictError,
     get_render,
     render_download,
     request_render,
@@ -53,6 +55,8 @@ class RenderRequestBody(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     preset: RenderPreset
+    # The Revision the member saved before exporting. Omitted, the current one is used.
+    expected_revision: int | None = Field(default=None, alias="expectedRevision", ge=1)
 
 
 class RenderResponse(BaseModel):
@@ -115,9 +119,16 @@ def create(
             preset=body.preset,
             idempotency_key=idempotency_key,
             now=auth_components_for(request).now(),
+            expected_revision=body.expected_revision,
         )
     except RenderNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except RenderRevisionConflictError as error:
+        raise ApiError(
+            status_code=409,
+            code="EDIT_REVISION_CONFLICT",
+            headers={CURRENT_REVISION_HEADER: str(error.current_revision)},
+        ) from error
     except RateLimitExceededError as error:
         raise ApiError(
             status_code=429,

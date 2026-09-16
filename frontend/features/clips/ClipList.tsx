@@ -3,7 +3,12 @@
 import { useInfiniteQuery } from '@tanstack/react-query'
 import { useEffect, useMemo, useState } from 'react'
 
+import { Clapperboard } from 'lucide-react'
+
+import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
+import { selectClassName } from '@/components/field'
+import { LoadingState } from '@/components/loading-state'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { listCollectionApiV1ProjectsProjectIdCandidatesGet } from '@/lib/api/generated/candidates/candidates'
@@ -91,11 +96,7 @@ export function ClipList({ projectId }: { projectId: string }) {
   )
 
   if (clips.isPending || hasNextPage) {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading clips…
-      </p>
-    )
+    return <LoadingState label="Loading clips…" variant="rows" count={3} />
   }
   if (clips.isError) {
     // Absence is the backend's one answer for a Project that is still being analysed, one
@@ -103,29 +104,41 @@ export function ClipList({ projectId }: { projectId: string }) {
     // possible on a Project the member is already looking at, so say that rather than
     // raising an alarm about a Project that is simply not finished.
     if (clips.error.status === 404) {
-      return <p className="text-sm text-muted-foreground">No clips to review yet.</p>
+      return (
+        <EmptyState
+          compact
+          icon={Clapperboard}
+          title="No clips to review yet"
+          description="Suggested moments appear here once the video has been transcribed and analysed."
+        />
+      )
     }
     return <ErrorNotice error={clips.error} />
   }
   if (listed.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">
-        No clips yet. The analysis found no moment it could stand behind.
-      </p>
+      <EmptyState
+        compact
+        icon={Clapperboard}
+        title="No clips yet"
+        description="The analysis found no moment it could stand behind. Try a longer video with a clear speaker."
+      />
     )
   }
 
   return (
     <section aria-label="Clips" className="space-y-4">
-      <div className="flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-semibold tracking-tight">Clips</h2>
+      <div className="flex flex-wrap items-center gap-2">
+        <p className="mr-auto text-sm text-muted-foreground">
+          {listed.length} suggested {listed.length === 1 ? 'moment' : 'moments'}, best first.
+        </p>
         <label className="text-xs text-muted-foreground">
           <span className="sr-only">Sort clips</span>
           <select
             aria-label="Sort clips"
             value={sort}
             onChange={(event) => setSort(event.target.value as SortKey)}
-            className="rounded-md border px-2 py-1 text-sm"
+            className={selectClassName}
           >
             {Object.entries(SORTS).map(([value, label]) => (
               <option key={value} value={value}>
@@ -138,7 +151,7 @@ export function ClipList({ projectId }: { projectId: string }) {
           aria-label="Filter by category"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
-          className="rounded-md border px-2 py-1 text-sm"
+          className={selectClassName}
         >
           <option value="all">Every category</option>
           {Object.values(ClipCategory).map((value) => (
@@ -151,7 +164,7 @@ export function ClipList({ projectId }: { projectId: string }) {
           aria-label="Maximum length"
           value={maxDurationMs}
           onChange={(event) => setMaxDurationMs(event.target.value)}
-          className="rounded-md border px-2 py-1 text-sm"
+          className={selectClassName}
         >
           {LENGTHS.map(([value, label]) => (
             <option key={value} value={value}>
@@ -162,9 +175,9 @@ export function ClipList({ projectId }: { projectId: string }) {
       </div>
 
       {shown.length === 0 ? (
-        <p className="text-sm text-muted-foreground">No clips match those filters.</p>
+        <EmptyState compact title="No clips match those filters" description="Try another category or a longer maximum length." />
       ) : (
-        <ul aria-label="Ranked clips" className="divide-y rounded-lg border">
+        <ul aria-label="Ranked clips" className="grid gap-4 xl:grid-cols-2">
           {shown.map((clip) => (
             <ClipCard key={clip.id} candidate={clip} />
           ))}

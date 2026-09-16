@@ -20,7 +20,7 @@ export function TemplatesPanel({
   const applied = composition.template
 
   return (
-    <section aria-label="Templates" className="flex flex-col gap-2 rounded-lg border p-3 text-xs">
+    <section aria-label="Templates" className="surface flex flex-col gap-2 p-4 text-xs">
       <h2 className="text-sm font-medium">Templates</h2>
       <ul className="flex flex-col gap-2">
         {TEMPLATES.map((template) => {
@@ -32,7 +32,7 @@ export function TemplatesPanel({
                 type="button"
                 aria-pressed={current}
                 onClick={() => onApply(template)}
-                className={`w-full rounded border p-2 text-left ${
+                className={`w-full rounded-lg border border-input bg-card p-2 text-left ${
                   current ? 'border-primary bg-primary/10' : ''
                 }`}
               >

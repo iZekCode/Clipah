@@ -37,7 +37,7 @@ export function CoverageControl({
           value={coverage}
           disabled={!enabled || busy}
           onChange={(event) => onCoverage(event.target.value as BrollCoverage)}
-          className="rounded border px-2 py-1 text-xs"
+          className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
         >
           {(Object.keys(COVERAGE_LABELS) as BrollCoverage[]).map((option) => (
             <option key={option} value={option}>
@@ -50,7 +50,7 @@ export function CoverageControl({
         type="button"
         disabled={busy}
         onClick={onSuggest}
-        className="rounded border px-3 py-1 text-xs font-medium"
+        className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium hover:bg-secondary font-medium"
       >
         {busy ? 'Looking for B-roll…' : 'Suggest B-roll'}
       </button>

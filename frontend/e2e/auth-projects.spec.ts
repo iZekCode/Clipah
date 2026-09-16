@@ -91,24 +91,48 @@ test('a member creates, renames, deletes, and recovers a Project', async ({ page
     workspaceName: 'Lifecycle Workspace',
   })
 
-  await open(page, member, '/dashboard/projects')
-
-  await page.getByRole('button', { name: /create project/i }).click()
-  await page.getByRole('textbox', { name: /new project name/i }).fill('Episode 12')
-  await page.getByRole('button', { name: /start project/i }).click()
+  await signIn(page.context(), member, SITE)
+  // A Project is started from the New project dialog together with its video; the
+  // lifecycle under test here is what happens to it afterwards, so it is created directly.
+  await createProject(page.request, member, member.workspaceId, 'Episode 12')
+  await page.goto('/dashboard/projects')
   await expect(page.getByRole('link', { name: 'Episode 12' })).toBeVisible()
 
+  await page.getByRole('button', { name: /actions for episode 12/i }).click()
   await page.getByRole('button', { name: /rename episode 12/i }).click()
   await page.getByRole('textbox', { name: /project name/i }).fill('Episode 12 final')
-  await page.getByRole('button', { name: /save/i }).click()
+  await page.getByRole('button', { name: /^save$/i }).click()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toBeVisible()
 
+  await page.getByRole('button', { name: /actions for episode 12 final/i }).click()
   await page.getByRole('button', { name: /delete episode 12 final/i }).click()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toHaveCount(0)
 
   await page.getByRole('button', { name: /restore episode 12 final/i }).click()
   await page.reload()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toBeVisible()
+})
+
+test('the New project dialog refuses to start without a video and keeps the name typed', async ({
+  page,
+}) => {
+  const member = await seedMember({
+    email: uniqueEmail('new-project'),
+    displayName: 'Starting Member',
+    workspaceName: 'Starting Workspace',
+  })
+
+  await open(page, member, '/dashboard')
+  await page.getByRole('button', { name: /^new project$/i }).first().click()
+
+  const dialog = page.getByRole('dialog', { name: /new project/i })
+  await expect(dialog.getByRole('tab', { name: /upload a file/i })).toHaveAttribute('aria-selected', 'true')
+  await dialog.getByRole('textbox', { name: /project name/i }).fill('Episode 40')
+  await dialog.getByRole('button', { name: /create and upload/i }).click()
+  await expect(dialog.getByRole('alert')).toContainText(/choose a video/i)
+
+  await dialog.getByRole('tab', { name: /youtube link/i }).click()
+  await expect(dialog.getByRole('textbox', { name: /project name/i })).toHaveValue('Episode 40')
 })
 
 test("another Workspace's Project URL answers like a Project that never existed", async ({

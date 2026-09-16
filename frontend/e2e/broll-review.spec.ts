@@ -135,6 +135,7 @@ test('a clip with no plan yet offers to find B-roll and nothing else', async ({ 
   const editId = (await opened.json()).id as string
 
   await page.goto(`/editor/${editId}?workspace_id=${member.workspaceId}`)
+  await page.getByRole('tab', { name: 'Media' }).click()
   const panel = page.getByRole('region', { name: /b-roll/i })
 
   await expect(panel).toBeVisible()

@@ -34,7 +34,7 @@ export function ContextWarnings({ warnings }: { warnings: ContextWarningResponse
       {warnings.map((warning) => (
         <li
           key={`${warning.type}:${warning.evidenceWordIds.join(',')}`}
-          className="rounded border p-2"
+          className="rounded-lg border border-input bg-card p-2"
         >
           <p className="font-medium">{EXPLANATIONS[warning.type] ?? warning.type}</p>
           <p className="text-muted-foreground">

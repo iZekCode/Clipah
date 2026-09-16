@@ -118,7 +118,7 @@ export function ReviewPanel({
 
       <ul aria-label="Review comments" className="space-y-2">
         {(summary.data?.comments ?? []).map((item) => (
-          <li key={item.id} className="rounded border p-2 text-sm">
+          <li key={item.id} className="rounded-lg border border-input bg-card p-2 text-sm">
             <p>{item.text}</p>
             <p className="text-xs text-muted-foreground">
               {item.anchor.kind === 'timestamp' ? `At ${item.anchor.timestampMs ?? 0} ms` : `On ${item.anchor.itemId ?? 'item'}`}

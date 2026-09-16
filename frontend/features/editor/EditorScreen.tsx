@@ -1,7 +1,29 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from 'react'
+import {
+  ArrowLeft,
+  AudioLines,
+  Captions,
+  ClipboardCheck,
+  Film,
+  LayoutGrid,
+  Palette,
+  Redo2,
+  Type,
+  Undo2,
+  Upload,
+} from 'lucide-react'
+import Link from 'next/link'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react'
 
 import { BrollPanel, type DecisionRequest } from '@/features/broll/BrollPanel'
 import { ErrorNotice } from '@/components/error-notice'
@@ -18,14 +40,17 @@ import {
   showApiV1EditsEditIdGet,
 } from '@/lib/api/generated/edits/edits'
 import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
+import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
 import type {
   AccessibilityResponse,
   EditResponse,
+  ProjectResponse,
   ProxyPlaybackResponse,
   RevisionHistoryResponse,
 } from '@/lib/api/generated/model'
 
 import { AssetsPanel } from './AssetsPanel'
+import { ExportDialog, presetForCanvas } from './ExportDialog'
 import { AccessibilityPanel } from './AccessibilityPanel'
 import { AudioPanel } from './AudioPanel'
 import { CaptionsPanel } from './CaptionsPanel'
@@ -53,6 +78,28 @@ import {
   type Aspect,
   type EditorAction,
 } from './store'
+
+/** The editing tools, in the order a creator usually reaches for them. */
+const TOOLS = [
+  { id: 'captions', label: 'Captions', icon: Captions },
+  { id: 'layout', label: 'Layout', icon: LayoutGrid },
+  { id: 'media', label: 'Media', icon: Film },
+  { id: 'audio', label: 'Audio', icon: AudioLines },
+  { id: 'text', label: 'Text', icon: Type },
+  { id: 'style', label: 'Style', icon: Palette },
+  { id: 'review', label: 'Review', icon: ClipboardCheck },
+] as const
+
+type ToolId = (typeof TOOLS)[number]['id']
+
+/** What the editor says about work that has not reached the backend yet. */
+const SAVE_LABELS: Record<SaveStatus, string> = {
+  idle: 'Not saved yet',
+  saving: 'Saving…',
+  saved: 'Saved',
+  offline: 'Offline — your changes are kept here',
+  conflict: 'Conflict',
+}
 
 /** One editor screen, inside a confirmed Session and the Workspace that owns the Edit. */
 export function EditorScreen({ editId, engine }: { editId: string; engine?: PreviewEngine }) {
@@ -131,6 +178,7 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
       revisionId={history.data?.revisions[0]?.id ?? null}
       workspaceId={active.id}
       canReview={active.role !== 'viewer'}
+      canExport={active.role === 'owner' || active.role === 'admin' || active.role === 'editor'}
       collaborationEnabled={session.data?.capabilities.collaboration === true}
       proxy={proxy.data ?? null}
       proxyError={proxy.isError ? proxy.error : null}
@@ -158,6 +206,7 @@ function LoadedEditor({
   revisionId,
   workspaceId,
   canReview,
+  canExport,
   collaborationEnabled,
   proxy,
   proxyError,
@@ -177,6 +226,7 @@ function LoadedEditor({
   revisionId: string | null
   workspaceId: string
   canReview: boolean
+  canExport: boolean
   collaborationEnabled: boolean
   proxy: ProxyPlaybackResponse | null
   proxyError: ApiError | null
@@ -343,16 +393,87 @@ function LoadedEditor({
     onSave: save,
   })
 
+  const [tool, setTool] = useState<ToolId>('captions')
+  const [exporting, setExporting] = useState(false)
+  const project = useQuery<ProjectResponse, ApiError>({
+    queryKey: ['/api/v1/projects', workspaceId, edit.projectId],
+    queryFn: ({ signal }) =>
+      showApiV1ProjectsProjectIdGet(edit.projectId, { workspace_id: workspaceId }, { signal }),
+    retry: false,
+  })
+  const saveLabel = dirty && status === 'saved' ? SAVE_LABELS.idle : SAVE_LABELS[status]
+
   return (
-    <main className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
-      <header className="flex items-center gap-2">
-        <h1 className="text-lg font-semibold">Editing clip</h1>
-        <p className="text-xs text-muted-foreground">Revision {autosave.expectedRevision}</p>
+    <main className="flex min-h-screen flex-col bg-background md:h-screen">
+      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card px-4 py-2.5">
+        <Link
+          href={`/dashboard/projects/${edit.projectId}`}
+          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+        >
+          <ArrowLeft aria-hidden="true" className="size-4" />
+          <span className="max-w-40 truncate">{project.data?.name ?? 'Back to project'}</span>
+        </Link>
+        <div className="min-w-0">
+          <h1 className="text-sm font-semibold">Editing clip</h1>
+          <p className="text-xs text-muted-foreground">Revision {autosave.expectedRevision}</p>
+        </div>
+        <p
+          role="status"
+          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+            status === 'conflict' || status === 'offline'
+              ? 'bg-warning-soft text-warning'
+              : status === 'saving' || (dirty && status === 'saved')
+                ? 'bg-info-soft text-info'
+                : 'bg-success-soft text-success'
+          }`}
+        >
+          {saveLabel}
+        </p>
+        <div className="ml-auto flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'undo' })}
+            disabled={!canUndo(state)}
+            aria-label="Undo"
+            title="Undo (⌘Z)"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+          >
+            <Undo2 aria-hidden="true" className="size-4" />
+            <span className="hidden sm:inline">Undo</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => dispatch({ type: 'redo' })}
+            disabled={!canRedo(state)}
+            aria-label="Redo"
+            title="Redo (⇧⌘Z)"
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
+          >
+            <Redo2 aria-hidden="true" className="size-4" />
+            <span className="hidden sm:inline">Redo</span>
+          </button>
+          <button
+            type="button"
+            onClick={save}
+            title="Save (⌘S)"
+            className="inline-flex h-9 items-center rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary"
+          >
+            Save
+          </button>
+          <button
+            type="button"
+            onClick={() => setExporting(true)}
+            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
+          >
+            <Upload aria-hidden="true" className="size-4" />
+            Export
+          </button>
+        </div>
       </header>
 
       {conflict === null ? null : (
-        <div role="alert" className="rounded-lg border border-destructive/40 bg-destructive/10 p-4">
-          <p className="text-sm font-medium text-destructive">
+        <div role="alert" className="border-b border-warning/30 bg-warning-soft px-4 py-3">
+          <p className="text-sm font-medium text-warning">
             This clip changed since you opened it. Choose which version to keep.
           </p>
           <div className="mt-2 flex gap-2">
@@ -365,7 +486,7 @@ function LoadedEditor({
                 onConflict(null)
                 void autosave.flush()
               }}
-              className="rounded border px-3 py-1 text-xs"
+              className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium"
             >
               Keep my version
             </button>
@@ -380,7 +501,7 @@ function LoadedEditor({
                   onConflict(null)
                 })
               }}
-              className="rounded border px-3 py-1 text-xs"
+              className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium"
             >
               Take the newer version
             </button>
@@ -388,112 +509,231 @@ function LoadedEditor({
         </div>
       )}
 
-      {proxyError !== null ? <ErrorNotice error={proxyError} /> : null}
+      {proxyError !== null ? (
+        <div className="px-4 pt-3">
+          <ErrorNotice error={proxyError} />
+        </div>
+      ) : null}
 
-      <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="flex flex-col gap-4">
-          {proxy === null ? (
-            <p role="status" className="text-xs text-muted-foreground">
-              Loading the preview…
-            </p>
-          ) : (
-            <Player
+      <p className="mx-4 mt-3 rounded-lg bg-info-soft p-3 text-sm text-info md:hidden">
+        This is a preview. Captions, timing, and layout are edited on a larger screen — open
+        this clip on a tablet or computer to continue. Export and download work here.
+      </p>
+
+      <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+        <nav
+          aria-label="Editing tools"
+          className="hidden shrink-0 border-r bg-card md:flex md:w-20 md:flex-col md:items-stretch md:gap-1 md:p-2"
+        >
+          <div role="tablist" aria-orientation="vertical" aria-label="Editing tools" className="flex flex-col gap-1">
+            {TOOLS.map((entry) => {
+              const Icon = entry.icon
+              return (
+                <button
+                  key={entry.id}
+                  type="button"
+                  role="tab"
+                  id={`editor-tool-${entry.id}`}
+                  aria-selected={tool === entry.id}
+                  aria-controls={`editor-panel-${entry.id}`}
+                  onClick={() => setTool(entry.id)}
+                  className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors ${
+                    tool === entry.id
+                      ? 'bg-accent text-accent-foreground'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                  }`}
+                >
+                  <Icon aria-hidden="true" className="size-5" />
+                  {entry.label}
+                </button>
+              )
+            })}
+          </div>
+        </nav>
+
+        {/*
+          Every tool panel stays mounted and is only hidden when another tool is chosen, so
+          switching tools never throws away a half-typed caption, a draft overlay, or an
+          open B-roll decision.
+        */}
+        <aside
+          aria-label="Tool panel"
+          className="hidden shrink-0 overflow-y-auto border-r bg-card md:block md:w-72 xl:w-96"
+        >
+          <ToolPanel id="captions" active={tool}>
+            <CaptionsPanel
+              captions={composition.captions}
+              onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
+              onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
+            />
+            <KaraokePanel
+              captions={composition.captions}
+              playheadMs={state.playheadMs}
+              onRetime={(wordId, startMs, endMs) =>
+                dispatch({ type: 'retimeWord', wordId, startMs, endMs })
+              }
+              onMode={(mode) => dispatch({ type: 'captionMode', mode })}
+            />
+          </ToolPanel>
+          <ToolPanel id="layout" active={tool}>
+            <KeyframeEditor
+              item={selected}
+              playheadMs={state.playheadMs}
+              onAdd={(atMs, transform) =>
+                selected === null
+                  ? undefined
+                  : dispatch({ type: 'addKeyframe', targetId: selected.id, atMs, transform })
+              }
+              onMove={(atMs, toMs) =>
+                selected === null
+                  ? undefined
+                  : dispatch({ type: 'moveKeyframe', targetId: selected.id, atMs, toMs })
+              }
+              onRemove={(atMs) =>
+                selected === null
+                  ? undefined
+                  : dispatch({ type: 'removeKeyframe', targetId: selected.id, atMs })
+              }
+            />
+            <MotionPanel
+              composition={composition}
+              onMotion={(targetId, preset) => dispatch({ type: 'setMotion', targetId, preset })}
+            />
+          </ToolPanel>
+          <ToolPanel id="media" active={tool}>
+            <BrollPanel
+              projectId={edit.projectId}
+              candidateId={edit.candidateId}
+              workspaceId={workspaceId}
+              clipStartMs={composition.sourceRange.inMs}
+              deciding={deciding}
+              onDecide={(request) => {
+                void decide(request)
+              }}
+            />
+            <AssetsPanel
+              projectId={edit.projectId}
+              workspaceId={workspaceId}
+              onAdd={(asset) =>
+                dispatch({
+                  type: 'addSound',
+                  kind: 'music',
+                  assetId: asset.id,
+                  atMs: state.playheadMs,
+                  sourceInMs: 0,
+                  sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
+                })
+              }
+              onExtract={(asset) =>
+                dispatch({
+                  type: 'addSound',
+                  kind: 'extractedAudio',
+                  assetId: asset.id,
+                  atMs: state.playheadMs,
+                  sourceInMs: 0,
+                  sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
+                })
+              }
+            />
+            <SourceMonitor
               composition={composition}
               source={proxy}
-              playheadMs={state.playheadMs}
-              playing={playing}
-              engine={engine}
-              onSeek={(ms) => dispatch({ type: 'seek', ms })}
-              onPlayingChange={onPlaying}
+              markInMs={state.markInMs}
+              markOutMs={state.markOutMs}
+              onMarkIn={(ms) => dispatch({ type: 'markIn', ms })}
+              onMarkOut={(ms) => dispatch({ type: 'markOut', ms })}
+              onClear={() => dispatch({ type: 'clearMarks' })}
+              onAdd={() => dispatch({ type: 'addFromSource' })}
             />
-          )}
-          <TimelineToolbar
-            snapping={snapping}
-            ripple={ripple}
-            hasSelection={state.selectedItemId !== null}
-            markerCount={composition.bookmarks.length}
-            onSnapping={setSnapping}
-            onRipple={setRipple}
-            onSplit={() =>
-              state.selectedItemId === null
-                ? undefined
-                : dispatch({ type: 'split', itemId: state.selectedItemId, atMs: state.playheadMs })
-            }
-            onSplitAwayLeft={() =>
-              state.selectedItemId === null
-                ? undefined
-                : dispatch({
-                    type: 'splitSide',
-                    itemId: state.selectedItemId,
-                    atMs: state.playheadMs,
-                    keep: 'right',
-                  })
-            }
-            onSplitAwayRight={() =>
-              state.selectedItemId === null
-                ? undefined
-                : dispatch({
-                    type: 'splitSide',
-                    itemId: state.selectedItemId,
-                    atMs: state.playheadMs,
-                    keep: 'left',
-                  })
-            }
-            onDuplicate={() =>
-              state.selectedItemId === null
-                ? undefined
-                : dispatch({ type: 'duplicateItem', itemId: state.selectedItemId })
-            }
-            onDelete={() =>
-              state.selectedItemId === null
-                ? undefined
-                : dispatch({ type: 'deleteItem', itemId: state.selectedItemId, ripple })
-            }
-            onAddMarker={(label) => dispatch({ type: 'addBookmark', label })}
-            onPreviousMarker={() => toMarker(-1)}
-            onNextMarker={() => toMarker(1)}
-            onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
-          />
-          <Timeline
-            composition={composition}
-            selectedItemId={state.selectedItemId}
-            selectedTrackId={state.selectedTrackId}
-            playheadMs={state.playheadMs}
-            zoom={zoom}
-            snapping={snapping}
-            lockedTrackIds={state.lockedTrackIds}
-            onSelect={(itemId) => dispatch({ type: 'select', itemId })}
-            onSelectTrack={(trackId) => dispatch({ type: 'selectTrack', trackId })}
-            onSeek={(ms) => dispatch({ type: 'seek', ms })}
-            onZoom={onZoom}
-            onMove={(itemId, toMs) => dispatch({ type: 'moveItem', itemId, toMs })}
-            onResize={(itemId, edge, toMs) => dispatch({ type: 'resizeItem', itemId, edge, toMs })}
-            onRemoveMarker={(bookmarkId) => dispatch({ type: 'removeBookmark', bookmarkId })}
-          />
-          <SceneList
-            composition={composition}
-            onSeek={(ms) => dispatch({ type: 'seek', ms })}
-            onLabel={(atMs, label) => {
-              // Naming a scene twice renames its marker rather than leaving two.
-              const existing = composition.bookmarks.find(
-                (bookmark) => bookmark.timelineMs === atMs,
-              )
-              dispatch(
-                existing === undefined
-                  ? { type: 'addBookmark', label, atMs }
-                  : { type: 'renameBookmark', bookmarkId: existing.id, label },
-              )
-            }}
-          />
-        </div>
-        <div className="flex flex-col gap-4">
+          </ToolPanel>
+          <ToolPanel id="audio" active={tool}>
+            <AudioPanel
+              composition={composition}
+              lockedTrackIds={state.lockedTrackIds}
+              onAudio={(patch) => dispatch({ type: 'audio', patch })}
+              onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+              onToggleLock={(trackId) => dispatch({ type: 'toggleTrackLock', trackId })}
+            />
+          </ToolPanel>
+          <ToolPanel id="text" active={tool}>
+            <TextPanel
+              overlays={composition.overlays}
+              onAdd={(text) => dispatch({ type: 'addText', text })}
+              onUpdate={(overlayId, patch) => dispatch({ type: 'updateOverlay', overlayId, patch })}
+              onMove={(overlayId, startMs, endMs) =>
+                dispatch({ type: 'moveOverlay', overlayId, startMs, endMs })
+              }
+              onRemove={(overlayId) => dispatch({ type: 'deleteOverlay', overlayId })}
+            />
+          </ToolPanel>
+          <ToolPanel id="style" active={tool}>
+            <TemplatesPanel
+              composition={composition}
+              onApply={(template) => dispatch({ type: 'applyTemplate', template })}
+            />
+          </ToolPanel>
+          <ToolPanel id="review" active={tool}>
+            <SceneList
+              composition={composition}
+              onSeek={(ms) => dispatch({ type: 'seek', ms })}
+              onLabel={(atMs, label) => {
+                // Naming a scene twice renames its marker rather than leaving two.
+                const existing = composition.bookmarks.find(
+                  (bookmark) => bookmark.timelineMs === atMs,
+                )
+                dispatch(
+                  existing === undefined
+                    ? { type: 'addBookmark', label, atMs }
+                    : { type: 'renameBookmark', bookmarkId: existing.id, label },
+                )
+              }}
+            />
+            {revisionId === null ? null : (
+              <RevisionQualityPanels
+                editId={edit.id}
+                revisionId={revisionId}
+                workspaceId={workspaceId}
+                canReview={canReview}
+                collaborationEnabled={collaborationEnabled}
+                playheadMs={state.playheadMs}
+                onSelect={(itemId, timeMs) => {
+                  if (timeMs !== null) dispatch({ type: 'seek', ms: timeMs })
+                  if (itemId !== null) dispatch({ type: 'select', itemId })
+                }}
+              />
+            )}
+          </ToolPanel>
+        </aside>
+
+        <section aria-label="Stage" className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-secondary/40">
+          <div className="flex flex-1 items-center justify-center p-4 lg:p-6">
+            {proxy === null ? (
+              <p role="status" className="text-xs text-muted-foreground">
+                Loading the preview…
+              </p>
+            ) : (
+              <div className="w-full max-w-3xl">
+                <Player
+                  composition={composition}
+                  source={proxy}
+                  playheadMs={state.playheadMs}
+                  playing={playing}
+                  engine={engine}
+                  onSeek={(ms) => dispatch({ type: 'seek', ms })}
+                  onPlayingChange={onPlaying}
+                />
+              </div>
+            )}
+          </div>
+        </section>
+
+        <aside
+          aria-label="Properties"
+          className="hidden shrink-0 overflow-y-auto border-l bg-card p-3 md:block md:w-56 lg:w-72"
+        >
           <Inspector
             composition={composition}
             item={selected}
-            status={status}
-            dirty={dirty}
-            canUndo={canUndo(state)}
-            canRedo={canRedo(state)}
             playheadMs={state.playheadMs}
             onTrim={(sourceInMs, sourceOutMs) =>
               selected === null
@@ -512,127 +752,105 @@ function LoadedEditor({
             onDelete={() =>
               selected === null ? undefined : dispatch({ type: 'deleteItem', itemId: selected.id })
             }
-            onUndo={() => dispatch({ type: 'undo' })}
-            onRedo={() => dispatch({ type: 'redo' })}
-            onSave={save}
           />
-          {revisionId === null ? null : (
-            <RevisionQualityPanels
-              editId={edit.id}
-              revisionId={revisionId}
-              workspaceId={workspaceId}
-              canReview={canReview}
-              collaborationEnabled={collaborationEnabled}
-              playheadMs={state.playheadMs}
-              onSelect={(itemId, timeMs) => {
-                if (timeMs !== null) dispatch({ type: 'seek', ms: timeMs })
-                if (itemId !== null) dispatch({ type: 'select', itemId })
-              }}
-            />
-          )}
-          <BrollPanel
-            projectId={edit.projectId}
-            candidateId={edit.candidateId}
-            workspaceId={workspaceId}
-            clipStartMs={composition.sourceRange.inMs}
-            deciding={deciding}
-            onDecide={(request) => {
-              void decide(request)
-            }}
-          />
-          <CaptionsPanel
-            captions={composition.captions}
-            onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
-            onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
-          />
-          <TemplatesPanel
-            composition={composition}
-            onApply={(template) => dispatch({ type: 'applyTemplate', template })}
-          />
-          <KaraokePanel
-            captions={composition.captions}
-            playheadMs={state.playheadMs}
-            onRetime={(wordId, startMs, endMs) =>
-              dispatch({ type: 'retimeWord', wordId, startMs, endMs })
-            }
-            onMode={(mode) => dispatch({ type: 'captionMode', mode })}
-          />
-          <KeyframeEditor
-            item={selected}
-            playheadMs={state.playheadMs}
-            onAdd={(atMs, transform) =>
-              selected === null
-                ? undefined
-                : dispatch({ type: 'addKeyframe', targetId: selected.id, atMs, transform })
-            }
-            onMove={(atMs, toMs) =>
-              selected === null
-                ? undefined
-                : dispatch({ type: 'moveKeyframe', targetId: selected.id, atMs, toMs })
-            }
-            onRemove={(atMs) =>
-              selected === null
-                ? undefined
-                : dispatch({ type: 'removeKeyframe', targetId: selected.id, atMs })
-            }
-          />
-          <MotionPanel
-            composition={composition}
-            onMotion={(targetId, preset) => dispatch({ type: 'setMotion', targetId, preset })}
-          />
-          <TextPanel
-            overlays={composition.overlays}
-            onAdd={(text) => dispatch({ type: 'addText', text })}
-            onUpdate={(overlayId, patch) => dispatch({ type: 'updateOverlay', overlayId, patch })}
-            onMove={(overlayId, startMs, endMs) =>
-              dispatch({ type: 'moveOverlay', overlayId, startMs, endMs })
-            }
-            onRemove={(overlayId) => dispatch({ type: 'deleteOverlay', overlayId })}
-          />
-          <AudioPanel
-            composition={composition}
-            lockedTrackIds={state.lockedTrackIds}
-            onAudio={(patch) => dispatch({ type: 'audio', patch })}
-            onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
-            onToggleLock={(trackId) => dispatch({ type: 'toggleTrackLock', trackId })}
-          />
-          <AssetsPanel
-            projectId={edit.projectId}
-            workspaceId={workspaceId}
-            onAdd={(asset) =>
-              dispatch({
-                type: 'addSound',
-                kind: 'music',
-                assetId: asset.id,
-                atMs: state.playheadMs,
-                sourceInMs: 0,
-                sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
-              })
-            }
-            onExtract={(asset) =>
-              dispatch({
-                type: 'addSound',
-                kind: 'extractedAudio',
-                assetId: asset.id,
-                atMs: state.playheadMs,
-                sourceInMs: 0,
-                sourceOutMs: asset.durationMs ?? MIN_ITEM_MS * 10,
-              })
-            }
-          />
-          <SourceMonitor
-            composition={composition}
-            source={proxy}
-            markInMs={state.markInMs}
-            markOutMs={state.markOutMs}
-            onMarkIn={(ms) => dispatch({ type: 'markIn', ms })}
-            onMarkOut={(ms) => dispatch({ type: 'markOut', ms })}
-            onClear={() => dispatch({ type: 'clearMarks' })}
-            onAdd={() => dispatch({ type: 'addFromSource' })}
-          />
-        </div>
+        </aside>
       </div>
+
+      <section
+        aria-label="Editing lanes"
+        className="hidden max-h-[40vh] shrink-0 flex-col gap-2 overflow-y-auto border-t bg-card p-3 md:flex"
+      >
+        <TimelineToolbar
+          snapping={snapping}
+          ripple={ripple}
+          hasSelection={state.selectedItemId !== null}
+          markerCount={composition.bookmarks.length}
+          onSnapping={setSnapping}
+          onRipple={setRipple}
+          onSplit={() =>
+            state.selectedItemId === null
+              ? undefined
+              : dispatch({ type: 'split', itemId: state.selectedItemId, atMs: state.playheadMs })
+          }
+          onSplitAwayLeft={() =>
+            state.selectedItemId === null
+              ? undefined
+              : dispatch({
+                  type: 'splitSide',
+                  itemId: state.selectedItemId,
+                  atMs: state.playheadMs,
+                  keep: 'right',
+                })
+          }
+          onSplitAwayRight={() =>
+            state.selectedItemId === null
+              ? undefined
+              : dispatch({
+                  type: 'splitSide',
+                  itemId: state.selectedItemId,
+                  atMs: state.playheadMs,
+                  keep: 'left',
+                })
+          }
+          onDuplicate={() =>
+            state.selectedItemId === null
+              ? undefined
+              : dispatch({ type: 'duplicateItem', itemId: state.selectedItemId })
+          }
+          onDelete={() =>
+            state.selectedItemId === null
+              ? undefined
+              : dispatch({ type: 'deleteItem', itemId: state.selectedItemId, ripple })
+          }
+          onAddMarker={(label) => dispatch({ type: 'addBookmark', label })}
+          onPreviousMarker={() => toMarker(-1)}
+          onNextMarker={() => toMarker(1)}
+          onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+        />
+        <Timeline
+          composition={composition}
+          selectedItemId={state.selectedItemId}
+          selectedTrackId={state.selectedTrackId}
+          playheadMs={state.playheadMs}
+          zoom={zoom}
+          snapping={snapping}
+          lockedTrackIds={state.lockedTrackIds}
+          onSelect={(itemId) => dispatch({ type: 'select', itemId })}
+          onSelectTrack={(trackId) => dispatch({ type: 'selectTrack', trackId })}
+          onSeek={(ms) => dispatch({ type: 'seek', ms })}
+          onZoom={onZoom}
+          onMove={(itemId, toMs) => dispatch({ type: 'moveItem', itemId, toMs })}
+          onResize={(itemId, edge, toMs) => dispatch({ type: 'resizeItem', itemId, edge, toMs })}
+          onRemoveMarker={(bookmarkId) => dispatch({ type: 'removeBookmark', bookmarkId })}
+        />
+      </section>
+
+      <ExportDialog
+        open={exporting}
+        onOpenChange={setExporting}
+        editId={edit.id}
+        workspaceId={workspaceId}
+        defaultPreset={presetForCanvas(composition.canvas.width, composition.canvas.height)}
+        mayExport={canExport}
+        saveNow={() => autosave.saveNow()}
+        currentRevision={() => autosave.expectedRevision}
+      />
     </main>
+  )
+}
+
+/** One editing tool's panel, kept mounted while another tool is showing. */
+function ToolPanel({ id, active, children }: { id: ToolId; active: ToolId; children: ReactNode }) {
+  return (
+    <div
+      role="tabpanel"
+      id={`editor-panel-${id}`}
+      aria-labelledby={`editor-tool-${id}`}
+      data-state={id === active ? 'active' : 'inactive'}
+      className={id === active ? 'flex flex-col gap-4 overflow-x-auto p-4' : 'hidden'}
+    >
+      {children}
+    </div>
   )
 }
 

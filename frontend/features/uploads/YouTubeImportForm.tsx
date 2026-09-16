@@ -58,8 +58,8 @@ export function YouTubeImportForm({
   }
 
   return (
-    <section aria-label="Import from YouTube" className="space-y-2 rounded-lg border p-4">
-      <h3 className="text-sm font-medium">Import from YouTube</h3>
+    <section aria-label="Import from YouTube" className="surface space-y-3 p-5">
+      <h3 className="text-sm font-semibold">Import from YouTube</h3>
       <p className="text-xs text-muted-foreground">
         A convenience connector for one public, non-live video you have the right to use.
         Private, members-only, and age-restricted videos cannot be imported.
@@ -78,12 +78,12 @@ export function YouTubeImportForm({
             setAttempt(crypto.randomUUID())
           }}
           placeholder="https://www.youtube.com/watch?v=…"
-          className="min-w-64 flex-1 rounded-md border px-2 py-1 text-sm"
+          className="h-10 min-w-0 flex-1 rounded-lg border border-input bg-card px-3 text-sm shadow-sm"
         />
         <button
           type="submit"
           disabled={startImport.isPending}
-          className="rounded-md border px-3 py-1 text-sm"
+          className="h-10 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-secondary disabled:opacity-50"
         >
           Import video
         </button>
@@ -99,7 +99,7 @@ export function YouTubeImportForm({
 }
 
 /** Say why this URL cannot be imported, or nothing when the backend should decide. */
-function unusableUrl(raw: string): string | null {
+export function unusableUrl(raw: string): string | null {
   let parsed: URL
   try {
     parsed = new URL(raw.trim())

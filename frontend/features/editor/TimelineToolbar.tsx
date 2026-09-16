@@ -53,7 +53,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onSplit}
           disabled={!hasSelection}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Split
         </button>
@@ -61,7 +61,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onSplitAwayLeft}
           disabled={!hasSelection}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Split away the left
         </button>
@@ -69,7 +69,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onSplitAwayRight}
           disabled={!hasSelection}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Split away the right
         </button>
@@ -77,7 +77,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onDuplicate}
           disabled={!hasSelection}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Duplicate
         </button>
@@ -85,7 +85,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onDelete}
           disabled={!hasSelection}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Delete
         </button>
@@ -117,7 +117,7 @@ export function TimelineToolbar({
           value={label}
           onChange={(event) => setLabel(event.currentTarget.value)}
           placeholder="Marker label"
-          className="w-32 rounded border px-2 py-1"
+          className="w-32 rounded-lg border bg-card px-2.5 py-1"
         />
         <button
           type="button"
@@ -125,7 +125,7 @@ export function TimelineToolbar({
             onAddMarker(label.trim() === '' ? 'Marker' : label)
             setLabel('')
           }}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Add marker
         </button>
@@ -133,7 +133,7 @@ export function TimelineToolbar({
           type="button"
           onClick={onPreviousMarker}
           disabled={markerCount === 0}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Previous marker
         </button>
@@ -141,20 +141,20 @@ export function TimelineToolbar({
           type="button"
           onClick={onNextMarker}
           disabled={markerCount === 0}
-          className="rounded border px-2 py-1 disabled:opacity-50"
+          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
         >
           Next marker
         </button>
       </div>
 
       <div className="flex items-center gap-1">
-        <button type="button" onClick={() => onAddTrack('music')} className="rounded border px-2 py-1">
+        <button type="button" onClick={() => onAddTrack('music')} className="rounded-lg border bg-card px-2.5 py-1">
           Add a music lane
         </button>
         <button
           type="button"
           onClick={() => onAddTrack('extractedAudio')}
-          className="rounded border px-2 py-1"
+          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Add an audio lane
         </button>
