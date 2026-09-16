@@ -20,7 +20,7 @@ docker compose -f infra/compose.yaml up --detach --wait
 ```
 
 The stack this brings up is the one in `AGENTS.md`: Postgres on 55433, Redis on 56380,
-MinIO on 59001, the API on 58000, the frontend on 53000, and one worker per queue. Every
+MinIO on 59001, the API on 58000, the frontend on 3000, and one worker per queue. Every
 command below is run from the repository root.
 
 Two things are true of every drill and are not repeated in each one. No drill may lose a
@@ -196,7 +196,7 @@ docker compose -f infra/compose.yaml stop minio
 # Any call that needs storage; this one needs a Session, which `clipah.dev.seed` prints.
 curl -s -w '\nstatus=%{http_code}\n' -X POST \
   "http://127.0.0.1:58000/api/v1/projects/$PROJECT_ID/uploads?workspace_id=$WORKSPACE_ID" \
-  -H "Origin: http://localhost:53000" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
+  -H "Origin: http://localhost:3000" -H "X-CSRF-Token: $CSRF" -H 'Content-Type: application/json' \
   -b "clipah_session=$SESSION; clipah_csrf=$CSRF" \
   -d '{"filename":"drill.mp4","contentType":"video/mp4","contentLength":1048576}'
 docker compose -f infra/compose.yaml up --detach --wait minio

@@ -11,7 +11,8 @@ from datetime import date
 
 from clipah.config import Settings
 from clipah.highlights.groq_adapter import GroqHighlightProvider
-from clipah.highlights.models import ClipCandidateDraft, TranscriptWindow
+from clipah.highlights.models import CandidatePolicy, ClipCandidateDraft, TranscriptWindow
+from clipah.highlights.openrouter_adapter import OpenRouterHighlightProvider
 from clipah.highlights.provider import (
     ExtractionResult,
     HighlightProvider,
@@ -22,6 +23,8 @@ from clipah.highlights.provider import (
 SUPPORTED_HIGHLIGHT_MODELS: Mapping[str, date | None] = {
     "openai/gpt-oss-20b": None,
     "openai/gpt-oss-120b": None,
+    "nvidia/nemotron-3-super-120b-a12b": None,
+    "nvidia/nemotron-3-super-120b-a12b:free": None,
 }
 
 
@@ -68,17 +71,47 @@ def highlight_provider_router(
     supported_models: Mapping[str, date | None] = SUPPORTED_HIGHLIGHT_MODELS,
     fallback: HighlightProvider | None = None,
 ) -> HighlightProviderRouter:
-    """Build the production router after proving both configured models are still usable."""
+    """Build the configured provider after proving both of its models are still usable."""
+    primary = (
+        _openrouter_provider(settings, today=today, supported_models=supported_models)
+        if settings.highlight_provider == "openrouter"
+        else _groq_provider(settings, today=today, supported_models=supported_models)
+    )
+    return HighlightProviderRouter(primary=primary, fallback=fallback)
+
+
+def _groq_provider(
+    settings: Settings, *, today: date, supported_models: Mapping[str, date | None]
+) -> HighlightProvider:
+    """Build the Groq adapter, refusing a deployment without its credential."""
     if settings.groq_api_key is None:
         raise RuntimeError("highlight analysis requires a configured Groq API key")
     for alias in (settings.groq_extraction_model, settings.groq_reranking_model):
         assert_model_supported(alias, today=today, supported_models=supported_models)
-    primary = GroqHighlightProvider(
+    return GroqHighlightProvider(
         api_key=settings.groq_api_key.get_secret_value(),
         extraction_model=settings.groq_extraction_model,
         reranking_model=settings.groq_reranking_model,
     )
-    return HighlightProviderRouter(primary=primary, fallback=fallback)
+
+
+def _openrouter_provider(
+    settings: Settings, *, today: date, supported_models: Mapping[str, date | None]
+) -> HighlightProvider:
+    """Build the OpenRouter adapter, refusing a deployment without its credential."""
+    if settings.openrouter_api_key is None:
+        raise RuntimeError("highlight analysis requires a configured OpenRouter API key")
+    for alias in (settings.openrouter_extraction_model, settings.openrouter_reranking_model):
+        assert_model_supported(alias, today=today, supported_models=supported_models)
+    return OpenRouterHighlightProvider(
+        api_key=settings.openrouter_api_key.get_secret_value(),
+        extraction_model=settings.openrouter_extraction_model,
+        reranking_model=settings.openrouter_reranking_model,
+        policy=CandidatePolicy(
+            min_duration_ms=settings.analysis_candidate_min_duration_ms,
+            max_duration_ms=settings.analysis_candidate_max_duration_ms,
+        ),
+    )
 
 
 def assert_model_supported(

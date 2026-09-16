@@ -43,6 +43,15 @@ def build_windows(
         start_index = _next_start(words, start_index, end_index, policy)
 
 
+def single_window(transcript: TranscriptResult) -> TranscriptWindow:
+    """Offer the whole transcript at once, for a provider whose context has room for it.
+
+    One window cannot duplicate a moment across boundaries, and costs one request instead
+    of one per window; it also gives up the coverage that windowing forces.
+    """
+    return _window(0, transcript.words, 0, len(transcript.words) - 1)
+
+
 def _window_end(
     words: tuple[TranscriptWord, ...], start_index: int, policy: WindowingPolicy
 ) -> int:
@@ -128,6 +137,7 @@ def _window(
         end_ms=included[-1].end_ms,
         word_ids=tuple(word.word_id for word in included),
         text=window_text(included),
+        words=included,
     )
 
 

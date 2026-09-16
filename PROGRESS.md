@@ -2994,6 +2994,220 @@ anyone hits.
 `Limit 8000, Requested 18372`. A full-length video's windows exceed the allowance, so a real
 source needs a paid tier regardless of anything above.
 
+## Candidate contract experiment — 2026-09-12
+
+The proposed short-proof replacement was measured, not installed in the production pipeline.
+`backend/evals/highlights/contract_probe.py` compares the existing full-quote contract, first/
+last-four-word proofs over the existing ID list, and labeled/timed segments with those proofs.
+Every accepted experimental span is resolved locally to canonical words and timestamps; the
+existing validator and deduplicator remain in use. Production files and the approved candidate
+contract are unchanged. Full method, limitations, and sanitized per-generation results are in
+`docs/experiments/2026-09-12-candidate-contract.md` and `candidate-contract-results.json` beside it.
+
+The original 510-word English transcript and the first 427-word window of a real Indonesian
+transcript were used. The 20B run was incomplete because its daily token allowance was nearly
+exhausted. A separate 120B comparison completed three generations of each arm per language:
+
+| Arm | English survivors per generation | Indonesian survivors per generation |
+| --- | --- | --- |
+| Full quote | provider refusal, 0, provider refusal | provider refusal, 0, provider refusal |
+| Short proof with word IDs | provider refusal, 0, 0 | 0, 0, 0 |
+| Timed segment labels with short proof | 5, 1, 1 | 3, provider refusal, provider refusal |
+
+Only two of six segment generations met the three-survivor requirement. Across the three
+arms, 53 candidates reached local validation and ten survived; seven generation attempts were
+refused by the provider's schema validator. The runs used a 4,096-token completion ceiling,
+not production's 8,000. One segment generation consumed that ceiling and returned only three
+proposals. Some accepted English cuts still depend on preceding context or end mid-thought
+while reporting no warnings. This disproves the earlier assumption that a smaller proof is
+already known to be sufficient: neither experimental contract is ready to replace Task 13's
+guard. Full-source Indonesian analysis and additional real English sources remain unmeasured.
+
+Seventeen probe controls pass. Final backend gates pass in a disposable PostgreSQL cluster:
+Ruff check, Ruff format check, strict mypy, and 2,811 tests passed with 20 skips at 92.80%
+coverage. No frontend changes, commit, push, or history rewrite were made.
+
+**Agent-caused local data-loss incident during verification.** The agent started the full
+suite before inspecting `clean_database`, whose defaults target the application's local
+database and truncate its tables. The run was stopped, but original local rows had already
+been lost; four transcript rows became zero. A pre-test export preserves the two distinct
+canonical transcripts, all four raw AssemblyAI artifacts were recovered from MinIO, and an
+inventory records 41 remaining objects (5,177,741,157 bytes). These are preserved privately;
+they are not a full database backup. No backup was found in the repository or temporary
+directories searched, WAL archiving was disabled, and original database relationships have
+**not** been restored. Subsequent gates used a disposable PostgreSQL cluster on port 55434
+and Redis DB 15. A second database in the application's cluster is not sufficient isolation
+because schema tests modify cluster-global roles. See the experiment report for the incident
+details. Do not run the default full suite against a database containing application data.
+
+## Sentence-selection experiment — 2026-09-13
+
+Follow-up to the contract experiment above, still in the probe only; production extraction,
+validation, and the Task 13 contract are unchanged. Three new arms move boundary construction
+out of generation. Sentences are built locally (terminal punctuation, speaker change, or a
+pause of at least 800 ms), and each start lists the ends that give a 20–90-second clip.
+`sentences` asks for start/end sentence labels plus full metadata in one call. `sentences_split`
+asks for labels and a reason only, then a second call writes metadata for the surviving spans
+after seeing their canonical transcript. `spans_split` offers each duration-valid pair as a
+single enum label. The excerpt is always rebuilt from stored words; every candidate still
+passes `validate_candidate` and production deduplication.
+
+Same two windows (English 510 words, Indonesian first 427 words), three generations per arm
+per language, temperature 0, low reasoning, 4,096/3,000 completion ceilings (the 8,000 TPM free
+tier counts the ceiling, so production's 8,000 cannot run there):
+
+| Model | Arm | Generations meeting 3 survivors | Accepted / proposed | Provider refusals |
+| --- | --- | --- | --- | --- |
+| 120B | sentences | 6 / 6 | 30 / 30 | 0 |
+| 120B | sentences_split | 6 / 6 | 23 / 30 | 0 |
+| 20B | sentences | 3 / 6 | 17 / 30 | 0 |
+| 20B | sentences_split | 4 / 6 | 23 / 30 | 0 |
+| 20B | spans_split | 3 / 6 | 15 / 15 in valid replies | 3 (all English) |
+
+Every local refusal in the sentence arms was `CANDIDATE_DURATION_OUT_OF_RANGE`: the model
+chose an end outside the listed range. No excerpt, unknown-label, or reversed-range refusal
+occurred. Pair enums remove that failure but Groq validates strict schemas after generation,
+so one bad label refuses the whole reply: all three English `spans_split` generations failed
+identically on the fifth candidate while the other four were valid. At temperature 0 the three
+generations are near-repeats (one to three distinct proposal sets per arm and language), so
+they are not independent samples and a schema-refusal retry would likely reproduce the same
+reply.
+
+Quality is not solved. Single-call metadata reported zero context warnings and a
+`context_safety` of 1.0 for all 29 120B survivors, including clips opening on "Tapi" or a
+lowercase "dan" continuing an earlier sentence; that self-report is uninformative. Split
+metadata gave specific warnings on 19 of 23 survivors but sometimes cited other clips in the
+same request. The local connector flag marked 0–3 survivors per generation.
+
+Conclusion for the owner: selecting from locally built sentence boundaries unblocks
+extraction mechanically on 120B and substantially on 20B, with no provider schema refusals
+when per-candidate checks stay local. Promising next steps, none implemented in production:
+list pairs in the prompt but keep the schema field a plain string so one bad pick is dropped
+locally rather than refusing the reply; use 120B for extraction or split selection; show each
+clip separately to the metadata call; add a lowercase-start flag for ASR sentence splits; and
+measure full-length sources and non-zero temperature before any contract change. Sanitized
+details are in `docs/experiments/2026-09-12-candidate-contract.md`; raw reports stay private.
+
+A later `pairs_split` arm lists the duration-valid pairs in the prompt but leaves the schema
+field a plain string, so an unlisted pick is refused locally instead of refusing the reply.
+The 20B run could not start: its daily token allowance was exhausted (200,000 limit,
+196,944 used). On 120B it met the minimum in 6 of 6 generations, accepting 30 of 30 with no
+local or provider refusals, using about 39,000 tokens. The five spans per reply did not
+overlap. All three English generations returned the identical span set and Indonesian
+returned three sets, so this is close to two independent samples, not six. Split metadata
+warned on 24 of 30 survivors; the connector flag marked 1–2 per generation. Whether 20B
+also stops choosing out-of-range ends with this field remains unmeasured.
+
+
+The probe can also call OpenRouter (`--provider openrouter`), optionally sending the schema as
+a forced tool call (`--tools`) with a completion-ceiling override (`--max-tokens`). Two free
+NVIDIA models were run with `pairs_split`, tool calling, and an 8,000-token ceiling:
+
+| Model | Generations meeting minimum | Accepted / proposed | Failed generations | Median seconds |
+| --- | --- | --- | --- | --- |
+| `nvidia/nemotron-3-super-120b-a12b:free` | 6 / 6 | 30 / 30 | 0 | 131 |
+| `nvidia/nemotron-3.5-lightning:free` | 4 / 6 | 20 / 20 | 2 (no tool call returned) | 434 |
+
+No local refusals occurred for either model. Unlike gpt-oss at temperature 0, each language
+produced three distinct span sets, so these are closer to independent samples. Some replies
+proposed overlapping spans, which production deduplication reduced (Lightning's second
+Indonesian generation went from five to four). Super left context warnings empty on 26 of 30
+survivors and often copied the opening sentence as its hook, so its self-reported context
+safety is no more informative than gpt-oss's. Earlier attempts failed for probe reasons, not
+model reasons: a 3,000-token ceiling truncated Lightning's metadata call before its tool call,
+and Super's JSON-schema mode degenerated into whitespace after a quotation mark in the
+transcript until it hit the ceiling. Tool calling avoided both.
+
+Free OpenRouter models allow 20 requests per minute and 50 per day without at least $10 of
+purchased credit (1,000 per day with it); each generation here costs two requests. Lightning's
+free endpoint offers a 1,000,000-token context but no JSON-schema mode; Super's free endpoint
+offers 262,144 tokens. Both free endpoints are served by NVIDIA under its trial terms, which
+must be reviewed before real customer transcripts are sent.
+
+## Provider comparison follow-up — 2026-09-16
+
+The probe gained a Gemini client (`--provider gemini`), which sends the same strict schema as
+`responseJsonSchema` with the key in a header so no transcript or credential reaches a URL.
+It could not be measured: every model returned HTTP 429 with `quota_limit_value: 0` in region
+`asia-southeast1`, including a schema-free "say ok" request, on `gemini-3.5-flash-lite`,
+`gemini-3.1-flash-lite`, `gemini-2.5-flash-lite`, `gemini-2.5-flash`, and `gemini-3.8-flash`.
+Listing models works, so the key is valid and the project simply has no generateContent quota.
+Google's documentation no longer publishes per-model free-tier request limits; they are visible
+only in AI Studio per project. Its free tier also states that submitted data is used to improve
+Google's products, which rules the free tier out for real transcripts regardless of quota.
+
+**Experiment inputs were lost and rebuilt.** `/private/tmp` was cleared, most likely by a
+reboot, taking the exported transcripts — the only copy left after the earlier truncation
+incident — every raw probe report, and the scratch tooling. The summaries in this file and in
+the experiment report survive; the raw generations do not. The two canonical transcripts were
+rebuilt from the four AssemblyAI artifacts still in MinIO through the production normalizer
+(English 510 words / 146,948 ms, `universal-3-pro`; Indonesian 1,727 words / 722,588 ms,
+`universal-2`) and now live at `~/clipah-private/transcripts.json`, outside both the repository
+and the temporary directory. Three English artifacts held the same transcript apart from one
+comma; one was kept. Docker volumes survived, so MinIO still holds 41 objects.
+
+**Full-length source, free tier, one pass.** `nvidia/nemotron-3-super-120b-a12b:free` was run
+over every window of the 722,588-ms Indonesian transcript with `pairs_split`, tool calling, and
+an 8,000-token ceiling: five windows of 427, 434, 400, 422, and 222 words, one generation each,
+two requests per window. All five windows met the three-survivor minimum, accepting 25 of 25
+proposals with no local or provider refusals. Deduplication removed one candidate inside the
+last window, leaving 24 for the video; pooling all windows removed none, and four adjacent
+pairs still overlap in time after pooled deduplication, which the reranker would have to
+resolve. Durations ranged from 20.2 to 46.9 seconds, and the connector flag marked 7 of 24.
+The pass cost 10 requests (of the 50 a day a credit-free OpenRouter account allows), 32,606
+prompt tokens, and 33,294 completion tokens, at about two minutes per window. This answers
+only mechanical acceptance across a whole source; no human has judged whether these 24 clips
+are worth publishing.
+
+**Whole transcript in one request.** The probe gained `--whole-transcript` (one window over
+every word) and `--target-count`. The same Indonesian source was analysed as a single
+16,000-ceiling request asking for 12 moments: 167 sentences, 2,507 duration-valid spans, about
+30,442 prompt tokens across two requests. Eleven of twelve proposals were accepted, one refused
+locally for duration, and none overlapped after deduplication, against four overlapping pairs
+from the five-window pass. It cost 2 requests instead of 10 and took 165 seconds instead of
+about ten minutes. The cost is coverage: eleven of twelve picks fall in sentences S0-S95 and
+the twelfth at S148 of 167, leaving roughly the final third of the video unrepresented, whereas
+windowing forces every part of the source to be considered. Six of eleven survivors opened on a
+connector. A single request therefore trades guaranteed coverage for fewer calls and no
+cross-window duplicates; neither shape has been judged for clip quality by a human.
+
+## First successful live analysis — 2026-09-16
+
+The pipeline produced ranked clips end to end for the first time. A 12-minute Indonesian
+source was imported, ingested, transcribed by AssemblyAI, and analysed by
+`nvidia/nemotron-3-super-120b-a12b:free` through OpenRouter with `CLIPAH_ANALYSIS_SINGLE_WINDOW`
+set, yielding eight ranked candidates, all exposed, between 20.3 and 64.3 seconds, scored 0.88
+down to 0.64. Analysis previously failed every attempt with `ANALYSIS_INSUFFICIENT_CANDIDATES`.
+Two of the eight still read as partial thoughts — one opens on "ini ada bagusnya" and ranked
+fourth — so the reranker does not yet penalise a connector opening, and no human has judged
+whether the eight are publishable.
+
+The owner approved amendments to `plan.md` first: Section 8 now allows a single window when
+the provider's context has room for one, replaces the model-supplied excerpt with locally
+built sentence spans plus a second metadata call, and names OpenRouter alongside Groq; Task 13
+and Task 14 checkboxes were reworded to match. Production gained `highlights/sentences.py`
+(sentence partitioning, duration-valid span pairs, and span resolution to authoritative word
+IDs), `highlights/openrouter_adapter.py` (a two-request flow over forced tool calls), a
+`TranscriptWindow` that carries its own words, `single_window()`, and the settings
+`CLIPAH_HIGHLIGHT_PROVIDER`, `CLIPAH_OPENROUTER_API_KEY`, the two OpenRouter model aliases, and
+`CLIPAH_ANALYSIS_SINGLE_WINDOW`. The excerpt cross-check is gone; what still binds a clip to
+the transcript is that a provider may only name an offered span, and every word ID, timestamp,
+and excerpt is resolved locally.
+
+**Three defects of one family: an address correct where it was written and wrong where it was
+used.** None could be caught by any test that did not run the containers together.
+
+| Defect | Symptom | Fix |
+| --- | --- | --- |
+| `frontend.Dockerfile` never declared the `CLIPAH_API_ORIGIN` build argument Compose passed it | Next.js baked the `127.0.0.1:8000` rewrite into the image, so every API call from the container failed and the browser saw `Internal Server Error` | The build stage declares the argument and exports it; a contract test fails if it stops consuming it |
+| The API container received no Google OIDC settings, and the frontend was published on 53000 while the registered redirect URI names 3000 | Sign-in answered `SERVICE_UNAVAILABLE` | Compose passes the three OIDC variables through and publishes the frontend on 3000; documentation naming 53000 was updated |
+| The API signed playback URLs with the in-network `http://minio:9000` | Preview and editing showed an empty player with no error anywhere | The API signs against `${CLIPAH_BROWSER_OBJECT_STORE_ENDPOINT:-http://localhost:59001}` while workers keep the in-network host; a contract test asserts the split |
+
+The frontend-proxy test was written before its fix; the signing test was written after, during
+live debugging, and is recorded that way rather than presented as test-first work. The
+containerized frontend had never reached the API in this repository — earlier live runs used a
+host `pnpm dev`, which is why the defect stayed hidden until the stack ran entirely in Compose.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an

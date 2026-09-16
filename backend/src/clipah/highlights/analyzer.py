@@ -23,6 +23,7 @@ from clipah.highlights.models import (
     DEFAULT_WINDOWING_POLICY,
     CandidatePolicy,
     ClipCandidateDraft,
+    TranscriptWindow,
     WindowingPolicy,
 )
 from clipah.highlights.provider import (
@@ -37,7 +38,7 @@ from clipah.highlights.rerank import (
     RankingPolicy,
     rank_candidates,
 )
-from clipah.highlights.windowing import build_windows
+from clipah.highlights.windowing import build_windows, single_window
 from clipah.transcripts.models import TranscriptResult
 
 INSUFFICIENT_CANDIDATES_CODE = "ANALYSIS_INSUFFICIENT_CANDIDATES"
@@ -52,6 +53,7 @@ class AnalysisPolicy:
     deduplication: DeduplicationPolicy = DEFAULT_DEDUPLICATION_POLICY
     ranking: RankingPolicy = DEFAULT_RANKING_POLICY
     target_per_window: int = 8
+    single_window: bool = False
     min_candidates: int = 3
 
 
@@ -98,7 +100,7 @@ class HighlightAnalyzer:
         failures: list[tuple[int, str]] = []
         drafts: list[ClipCandidateDraft] = []
         retryable = False
-        for window in build_windows(transcript, policy=self._policy.windowing):
+        for window in self._windows(transcript):
             try:
                 extraction = self._provider.extract(
                     window=window, target_count=self._policy.target_per_window
@@ -119,6 +121,12 @@ class HighlightAnalyzer:
             calls=tuple(calls),
             failed_windows=tuple(failures),
         )
+
+    def _windows(self, transcript: TranscriptResult) -> list[TranscriptWindow]:
+        """Offer the whole transcript at once, or the overlapping windows it divides into."""
+        if self._policy.single_window:
+            return [single_window(transcript)]
+        return build_windows(transcript, policy=self._policy.windowing)
 
     def _validated(
         self, proposals: Sequence[Mapping[str, Any]], *, transcript: TranscriptResult

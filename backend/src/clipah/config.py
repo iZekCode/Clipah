@@ -82,6 +82,10 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr | None = None
     groq_extraction_model: str = "openai/gpt-oss-20b"
     groq_reranking_model: str = "openai/gpt-oss-120b"
+    highlight_provider: Literal["groq", "openrouter"] = "groq"
+    openrouter_api_key: SecretStr | None = None
+    openrouter_extraction_model: str = "nvidia/nemotron-3-super-120b-a12b"
+    openrouter_reranking_model: str = "nvidia/nemotron-3-super-120b-a12b"
 
     session_secret: SecretStr | None = None
     session_cookie_name: str = "clipah_session"
@@ -101,6 +105,7 @@ class Settings(BaseSettings):
     analysis_window_overlap_ms: int = Field(default=20_000, ge=0)
     analysis_window_silence_gap_ms: int = Field(default=1_200, ge=0)
     analysis_window_min_words: int = Field(default=25, gt=0)
+    analysis_single_window: bool = False
     analysis_candidate_min_duration_ms: int = Field(default=20_000, gt=0)
     analysis_candidate_max_duration_ms: int = Field(default=90_000, gt=0)
     analysis_deduplication_temporal_iou: float = Field(default=0.65, ge=0, le=1)

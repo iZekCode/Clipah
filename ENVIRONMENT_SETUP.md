@@ -121,13 +121,22 @@ openssl rand -hex 32
 | Variable | Purpose | Where |
 | --- | --- | --- |
 | `CLIPAH_ASSEMBLYAI_API_KEY` | Transcription and speaker diarization | <https://www.assemblyai.com/dashboard/> |
-| `CLIPAH_GROQ_API_KEY` | Highlight extraction and reranking | <https://console.groq.com/keys> |
+| `CLIPAH_GROQ_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=groq` | <https://console.groq.com/keys> |
+| `CLIPAH_OPENROUTER_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=openrouter` | <https://openrouter.ai/keys> |
 
 Transcription model routing is decided by language, not by configuration: English, Spanish,
 German, French, Portuguese, and Italian use `universal-3-pro`; Indonesian and every other
 language outside that set use `universal-2`; an unspecified language tries U3 Pro and falls
 back to U2. Highlight extraction and reranking use `CLIPAH_GROQ_EXTRACTION_MODEL` and
 `CLIPAH_GROQ_RERANKING_MODEL`. Startup refuses a retired model ID.
+
+`CLIPAH_HIGHLIGHT_PROVIDER` chooses which adapter serves extraction and reranking. The
+OpenRouter adapter reads `CLIPAH_OPENROUTER_EXTRACTION_MODEL` and
+`CLIPAH_OPENROUTER_RERANKING_MODEL`, and lets a model choose clip boundaries only from
+sentence spans this deployment built, so it never supplies transcript text or a timestamp.
+`CLIPAH_ANALYSIS_SINGLE_WINDOW` offers the whole transcript in one request instead of
+overlapping windows; it removes cross-window duplicates and costs fewer requests, but a
+single request has been measured to under-cover the end of a long source.
 
 ### Stock B-roll (optional)
 
@@ -359,12 +368,17 @@ requires HTTPS origins.
 | `CLIPAH_GROQ_API_KEY` | — | Extraction and reranking. |
 | `CLIPAH_GROQ_EXTRACTION_MODEL` | `openai/gpt-oss-20b` | Refused if retired. |
 | `CLIPAH_GROQ_RERANKING_MODEL` | `openai/gpt-oss-120b` | Refused if retired. |
+| `CLIPAH_HIGHLIGHT_PROVIDER` | `groq` | `groq` or `openrouter`. |
+| `CLIPAH_OPENROUTER_API_KEY` | — | Required when the provider is `openrouter`. |
+| `CLIPAH_OPENROUTER_EXTRACTION_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
+| `CLIPAH_OPENROUTER_RERANKING_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
 | `CLIPAH_PROVIDER_SHUTDOWNS` | empty | Model retirement dates the configuration honours. |
 | `CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS` | `120000` | |
 | `CLIPAH_ANALYSIS_WINDOW_TARGET_MAX_MS` | `180000` | |
 | `CLIPAH_ANALYSIS_WINDOW_OVERLAP_MS` | `20000` | |
 | `CLIPAH_ANALYSIS_WINDOW_SILENCE_GAP_MS` | `1200` | Preferred cut point. |
 | `CLIPAH_ANALYSIS_WINDOW_MIN_WORDS` | `25` | Below this a transcript yields no windows. |
+| `CLIPAH_ANALYSIS_SINGLE_WINDOW` | `false` | Offer the whole transcript in one request. |
 | `CLIPAH_ANALYSIS_CANDIDATE_MIN_DURATION_MS` | `20000` | |
 | `CLIPAH_ANALYSIS_CANDIDATE_MAX_DURATION_MS` | `90000` | |
 | `CLIPAH_ANALYSIS_DEDUPLICATION_TEMPORAL_IOU` | `0.65` | |

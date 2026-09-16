@@ -563,7 +563,7 @@ class ObjectStore(Protocol):
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl: ...
 ```
 
-Production adapters are AssemblyAI, Groq, yt-dlp, Pexels, Pixabay, the configured generative-media provider, YouTube Data API, Instagram API with Instagram Login, TikTok Content Posting API, S3/R2, Postgres, Redis/Celery, and FFmpeg. Deterministic fake adapters are mandatory for unit tests. Provider-specific SDK/payload types stay inside adapters; provider-neutral domain models must not import Groq, AssemblyAI, Pexels, Pixabay, YouTube, Meta, TikTok, or generation-SDK types.
+Production adapters are AssemblyAI, Groq, OpenRouter, yt-dlp, Pexels, Pixabay, the configured generative-media provider, YouTube Data API, Instagram API with Instagram Login, TikTok Content Posting API, S3/R2, Postgres, Redis/Celery, and FFmpeg. Deterministic fake adapters are mandatory for unit tests. Provider-specific SDK/payload types stay inside adapters; provider-neutral domain models must not import Groq, AssemblyAI, Pexels, Pixabay, YouTube, Meta, TikTok, or generation-SDK types.
 
 `SecretLease` exposes only a job-scoped materialization context manager. It must create a `0600` file inside the validated job workspace, return its path to the importer, redact it from process output, and delete it on context exit. Callers cannot read the credential as a Python string.
 
@@ -611,14 +611,14 @@ Production adapters are AssemblyAI, Groq, yt-dlp, Pexels, Pixabay, the configure
 
 ## 8. Analysis and Ranking Specification
 
-1. Normalize the persisted transcript into punctuation-aware windows of 120-180 seconds with 20-second overlap.
+1. Offer the persisted transcript to extraction as a single window when the configured provider's context allows it; otherwise normalize it into punctuation-aware windows of 120-180 seconds with 20-second overlap. A single window removes cross-window duplicates and costs fewer requests, at the price of guaranteed coverage: a measured single-request pass placed eleven of twelve candidates in the first 57% of a 12-minute source.
 2. Exclude silence-only windows and windows below the configured word count.
 3. Route transcription explicitly: requested/detected Indonesian uses AssemblyAI Universal-2; only languages supported by Universal-3 Pro may select it. Preserve the selected provider/model/version in the transcript.
-4. Ask Groq `openai/gpt-oss-20b` for strict-schema candidates containing hook, payoff, reason, category, tags, start/end word IDs, transcript excerpt, context dependencies, context warnings, visual opportunities, and score breakdown.
+4. Partition the offered words locally into sentences at terminal punctuation, speaker changes, or pauses of at least 800 ms, and enumerate the start/end sentence pairs whose duration is valid. Ask the configured extraction model for candidates naming one such pair, then ask it for the remaining metadata — hook, payoff, reason, category, tags, context dependencies, context warnings, visual opportunities, and score breakdown — for the spans that survive. The model never supplies transcript text; the excerpt is built from authoritative words after its boundaries are accepted.
 5. Resolve word IDs to authoritative timestamps from the transcript. Reject model-supplied free-form timestamps.
 6. Require candidate duration between 20 and 90 seconds for the initial preset.
 7. Deduplicate candidates when temporal intersection-over-union is at least 0.65 or normalized excerpts have cosine similarity at least 0.90.
-8. Globally rerank the surviving candidates with the configured quality model, initially Groq `openai/gpt-oss-120b`, using narrative completeness, context safety, hook strength, payoff, clarity without external context, emotional/informational value, transcript confidence, platform fit, and visual opportunity.
+8. Globally rerank the surviving candidates with the configured quality model, initially Groq `openai/gpt-oss-120b`, or the configured OpenRouter model, using narrative completeness, context safety, hook strength, payoff, clarity without external context, emotional/informational value, transcript confidence, platform fit, and visual opportunity.
 9. Context safety must identify a cut-off question/payoff, missing negation, missing attribution, unsupported pronoun/reference, omitted caveat, material meaning change, or high-confidence claim that needs a source overlay. Warnings are visible and never silently discarded by reranking.
 10. Return the top 10 by default and keep up to 30 internal candidates for later reranking.
 11. Generate optional variants only from authoritative word boundaries: at most three hook strategies, the requested 20/30/45/60/90-second targets that preserve a complete thought, and TikTok/Reels/Shorts metadata. A variant that fails context safety is rejected.
@@ -1005,8 +1005,9 @@ Tasks 44-48. Exit when security, observability, retention, deployment, migration
 **Interfaces:**
 - Produces: `build_windows(transcript) -> list[TranscriptWindow]` and validated `ClipCandidateDraft` objects keyed by transcript word IDs.
 
-- [ ] Write window tests for 120-180-second targets, 20-second overlap, sentence/speaker-aware boundaries, short transcripts, silence gaps, and full word coverage without duplicate word IDs inside one window.
-- [ ] Write candidate tests rejecting unknown word IDs, reversed ranges, 19-second/91-second durations, excerpts inconsistent with authoritative words, invalid scores, and unknown categories.
+- [ ] Write window tests for the single-window mode and for 120-180-second targets, 20-second overlap, sentence/speaker-aware boundaries, short transcripts, silence gaps, and full word coverage without duplicate word IDs inside one window.
+- [ ] Write sentence-partition tests for terminal punctuation, speaker changes, 800 ms pauses, and the duration-valid span pairs each start offers.
+- [ ] Write candidate tests rejecting unknown word IDs, unknown span labels, reversed ranges, 19-second/91-second durations, invalid scores, and unknown categories.
 - [ ] Run focused tests; expect failure.
 - [ ] Implement pure windowing and Pydantic candidate schemas; keep provider calls out of this module.
 - [ ] Run focused/full tests; expect success.
@@ -1031,7 +1032,7 @@ Tasks 44-48. Exit when security, observability, retention, deployment, migration
 
 - [ ] Write deterministic tests for temporal IoU 0.65, excerpt similarity 0.90, score tie-breaking, top-10 selection, provider malformed output, context-window overflow, rate limiting, and retry.
 - [ ] Run focused tests; expect failure.
-- [ ] Implement a typed Groq adapter using strict JSON Schema with every field required and `additionalProperties: false`; use configured `openai/gpt-oss-20b` for window extraction and `openai/gpt-oss-120b` for global reranking.
+- [ ] Implement typed Groq and OpenRouter adapters using strict schemas with every field required; route extraction and reranking to configured model aliases, defaulting to `nvidia/nemotron-3-super-120b-a12b` on OpenRouter, and send the schema as a forced tool call where a provider offers no reliable JSON-schema mode.
 - [ ] Add a provider router and deterministic fallback adapter. Reject retired/unknown model aliases at startup, and keep strict-schema, retry, timeout, and usage normalization inside the adapter.
 - [ ] Resolve model word IDs to timestamps locally, deduplicate candidates, globally rerank, and persist up to 30 candidates while exposing 10 by default.
 - [ ] Record prompt version, provider/model, provider request ID, latency, usage, and score breakdown.

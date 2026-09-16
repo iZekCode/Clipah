@@ -113,13 +113,20 @@ services:
       CLIPAH_PROCESS_ROLE: api
       CLIPAH_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@postgres:5432/clipah_rebuild_foundation
       CLIPAH_REDIS_URL: redis://redis:6379/0
-      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      # The API only ever signs URLs a browser has to open, so this host must be one the
+      # browser can resolve: the in-network name yields a playback URL that cannot load.
+      CLIPAH_OBJECT_STORE_ENDPOINT: "${CLIPAH_BROWSER_OBJECT_STORE_ENDPOINT:-http://localhost:59001}"
       CLIPAH_OBJECT_STORE_BUCKET: clipah-local
       CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
       CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
-      CLIPAH_FRONTEND_ORIGIN: http://localhost:53000
+      CLIPAH_FRONTEND_ORIGIN: "${CLIPAH_FRONTEND_ORIGIN:-http://localhost:3000}"
       CLIPAH_SESSION_SECRET: local-session-secret-at-least-32-bytes
       CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
+      # Sign-in fails closed without these, so a local stack that omits them answers 503
+      # on the first authentication request rather than at startup.
+      CLIPAH_GOOGLE_OIDC_CLIENT_ID: "${CLIPAH_GOOGLE_OIDC_CLIENT_ID:-}"
+      CLIPAH_GOOGLE_OIDC_CLIENT_SECRET: "${CLIPAH_GOOGLE_OIDC_CLIENT_SECRET:-}"
+      CLIPAH_GOOGLE_OIDC_REDIRECT_URI: "${CLIPAH_GOOGLE_OIDC_REDIRECT_URI:-http://localhost:3000/api/v1/auth/google/callback}"
       CLIPAH_FORWARDED_ALLOW_IPS: "127.0.0.1"
     ports: ["127.0.0.1:58000:8000"]
     healthcheck:
@@ -136,8 +143,12 @@ services:
       dockerfile: infra/docker/frontend.Dockerfile
       args: {CLIPAH_API_ORIGIN: http://api:8000}
     <<: *app
-    environment: {HOSTNAME: 0.0.0.0, PORT: "3000"}
-    ports: ["127.0.0.1:53000:3000"]
+    # The cutover gate fails closed: without this flag every product route answers 404.
+    environment:
+      HOSTNAME: 0.0.0.0
+      PORT: "3000"
+      NEW_CLIPAH_ENABLED: "${NEW_CLIPAH_ENABLED:-true}"
+    ports: ["127.0.0.1:3000:3000"]
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
       interval: 10s
@@ -199,6 +210,14 @@ services:
       # was previously no way to do that, which made a local end-to-end run impossible.
       CLIPAH_ASSEMBLYAI_API_KEY: "${CLIPAH_ASSEMBLYAI_API_KEY:-fake-assemblyai}"
       CLIPAH_GROQ_API_KEY: "${CLIPAH_GROQ_API_KEY:-fake-groq}"
+      # Highlight extraction is provider-selectable. The default keeps the Groq adapter;
+      # an OpenRouter deployment lets the model choose only from sentence spans this
+      # deployment built, and may offer the whole transcript in one request.
+      CLIPAH_HIGHLIGHT_PROVIDER: "${CLIPAH_HIGHLIGHT_PROVIDER:-groq}"
+      CLIPAH_OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-fake-openrouter}"
+      CLIPAH_OPENROUTER_EXTRACTION_MODEL: "${CLIPAH_OPENROUTER_EXTRACTION_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
+      CLIPAH_OPENROUTER_RERANKING_MODEL: "${CLIPAH_OPENROUTER_RERANKING_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
+      CLIPAH_ANALYSIS_SINGLE_WINDOW: "${CLIPAH_ANALYSIS_SINGLE_WINDOW:-false}"
     depends_on: *dependencies
     healthcheck: *worker-health
     deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}

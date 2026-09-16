@@ -273,3 +273,39 @@ def test_fails_an_empty_transcript_without_calling_the_provider() -> None:
         _analyzer(provider).analyze(transcript=empty)
 
     assert provider.windows == []
+
+
+@pytest.mark.unit
+def test_single_window_policy_asks_the_provider_once_for_the_whole_transcript() -> None:
+    """One request must see every word, so no moment is split across two offers."""
+    offered = _offered_windows(AnalysisPolicy(single_window=True))
+    assert len(offered) == 1
+    assert offered[0].word_ids == tuple(word.word_id for word in TRANSCRIPT.words)
+
+
+@pytest.mark.unit
+def test_windowed_policy_still_offers_overlapping_windows() -> None:
+    """Chunking stays available for a provider whose context cannot hold a long source."""
+    assert len(_offered_windows(AnalysisPolicy())) > 1
+
+
+def _offered_windows(policy: AnalysisPolicy) -> list[Any]:
+    """Record every window one analysis offers its extraction provider."""
+    windows: list[Any] = []
+
+    class _Recorder:
+        """Remember each offer and answer with three valid candidates."""
+
+        def extract(self, *, window: Any, target_count: int) -> ExtractionResult:
+            """Record the offered window and propose candidates inside it."""
+            windows.append(window)
+            return ExtractionResult(
+                proposals=tuple(_proposal(index * 80) for index in range(3)), call=_call()
+            )
+
+        def rerank(self, *, candidates: Any, limit: int) -> RerankResult:
+            """Keep the local order, since ranking is not under test here."""
+            return RerankResult(order=tuple(range(len(candidates))), call=_call())
+
+    HighlightAnalyzer(provider=_Recorder(), policy=policy).analyze(transcript=TRANSCRIPT)
+    return windows

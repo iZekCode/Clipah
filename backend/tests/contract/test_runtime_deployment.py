@@ -357,3 +357,35 @@ def test_the_worker_process_dispatches_to_the_configured_broker() -> None:
 
     assert completed.returncode == 0, completed.stderr
     assert completed.stdout.strip() == DEPLOYMENT_ENVIRONMENT["CLIPAH_REDIS_URL"]
+
+
+def test_the_frontend_image_proxies_the_api_to_its_configured_origin() -> None:
+    """A containerized frontend must reach the API service, not its own loopback.
+
+    Next.js resolves rewrites while building, so an origin supplied only as a compose
+    build argument the Dockerfile never consumes leaves the image proxying to
+    127.0.0.1:8000 — which, inside the frontend container, is nothing at all.
+    """
+    dockerfile = (REPOSITORY_ROOT / "infra/docker/frontend.Dockerfile").read_text()
+    build_stage = dockerfile.split("AS runtime")[0]
+    assert "ARG CLIPAH_API_ORIGIN" in build_stage
+    assert "ENV CLIPAH_API_ORIGIN=${CLIPAH_API_ORIGIN}" in build_stage
+
+    frontend = _render_compose()["services"]["frontend"]
+    assert frontend["build"]["args"]["CLIPAH_API_ORIGIN"] == "http://api:8000"
+
+
+def test_the_api_signs_media_urls_against_a_browser_reachable_host() -> None:
+    """Only the API hands storage URLs to a browser, so its host must resolve there.
+
+    The workers keep the in-network address for their own transfers; signing with that
+    name produced playback URLs no browser could open, which looks like an empty player
+    rather than a failure.
+    """
+    services = _render_compose()["services"]
+    api_endpoint = services["api"]["environment"]["CLIPAH_OBJECT_STORE_ENDPOINT"]
+    worker_endpoint = services["worker-ingest-ai"]["environment"]["CLIPAH_OBJECT_STORE_ENDPOINT"]
+
+    assert "//minio:" not in api_endpoint
+    assert api_endpoint == "http://localhost:59001"
+    assert worker_endpoint.startswith(("http://minio:9000", "https://"))

@@ -271,3 +271,27 @@ def test_window_text_reproduces_authoritative_words_and_punctuation() -> None:
     windows = build_windows(_transcript(words), policy=policy)
 
     assert windows[0].text == "Hello, world!"
+
+
+@pytest.mark.unit
+def test_single_window_offers_the_whole_transcript_once():
+    """A provider with room for the whole transcript must see every word exactly once."""
+    from clipah.highlights.windowing import single_window
+
+    transcript = _transcript(_even_words(600))
+    window = single_window(transcript)
+    assert window.index == 0
+    assert window.word_ids == tuple(word.word_id for word in transcript.words)
+    assert window.words == transcript.words
+    assert (window.start_ms, window.end_ms) == (
+        transcript.words[0].start_ms,
+        transcript.words[-1].end_ms,
+    )
+
+
+@pytest.mark.unit
+def test_built_windows_carry_the_words_they_offer():
+    """Sentence spans are built from a window alone, so a window must carry its words."""
+    transcript = _transcript(_even_words(600))
+    for window in build_windows(transcript):
+        assert tuple(word.word_id for word in window.words) == window.word_ids

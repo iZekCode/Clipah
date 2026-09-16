@@ -3,7 +3,11 @@
 ARG NODE_IMAGE=node:22.14.0-bookworm-slim@sha256:1c18d9ab3af4585870b92e4dbc5cac5a0dc77dd13df1a5905cea89fc720eb05b
 
 FROM ${NODE_IMAGE} AS build
-ENV PNPM_HOME=/pnpm \
+# Next.js resolves rewrites while building, so the API origin has to be present here:
+# a build argument the image never reads leaves the bundle proxying to its own loopback.
+ARG CLIPAH_API_ORIGIN=http://api:8000
+ENV CLIPAH_API_ORIGIN=${CLIPAH_API_ORIGIN} \
+    PNPM_HOME=/pnpm \
     PATH=/pnpm:$PATH \
     NEXT_TELEMETRY_DISABLED=1
 RUN corepack enable && corepack prepare pnpm@11.25.0 --activate

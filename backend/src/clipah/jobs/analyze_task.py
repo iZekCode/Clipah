@@ -381,6 +381,7 @@ def production_analysis_policy(settings: Settings) -> AnalysisPolicy:
             keep=settings.analysis_candidates_kept,
             expose=settings.analysis_candidates_exposed,
         ),
+        single_window=settings.analysis_single_window,
     )
 
 

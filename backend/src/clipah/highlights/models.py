@@ -13,6 +13,8 @@ from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from clipah.transcripts.models import TranscriptWord
+
 
 @dataclass(frozen=True, slots=True)
 class WindowingPolicy:
@@ -54,6 +56,7 @@ class TranscriptWindow:
     end_ms: int
     word_ids: tuple[str, ...]
     text: str
+    words: tuple[TranscriptWord, ...]
 
 
 class ClipCategory(StrEnum):

@@ -1,0 +1,574 @@
+{
+  "reports": [
+    {
+      "version": "contract-probe/1",
+      "model": "openai/gpt-oss-20b",
+      "temperature": 0,
+      "reasoning_effort": "low",
+      "max_completion_tokens": 4096,
+      "runs": [
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "baseline",
+          "request_sha256": "abefa972f104722263436029ccf62a20a5666ce2870a60407c76e1dcc5559f78",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1212,
+            "prompt_tokens": 3717,
+            "total_tokens": 4929,
+            "completion_time": 1.2980670970000001,
+            "completion_tokens_details": {
+              "reasoning_tokens": 10
+            },
+            "prompt_time": 0.21023264,
+            "prompt_tokens_details": null,
+            "queue_time": 0.343678055,
+            "total_time": 1.508299737
+          },
+          "latency_seconds": 2.034
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "error_type": "RateLimitError",
+          "status_code": 429,
+          "latency_seconds": 0.102
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 2.703
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "segments",
+          "request_sha256": "c4813223694a5cf23de69cf93b8af7164943a381ea5388412f2d89b11f0e2c0c",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "PROBE_BOUNDARY_MISMATCH": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 2516,
+            "prompt_tokens": 3422,
+            "total_tokens": 5938,
+            "completion_time": 2.77314054,
+            "completion_tokens_details": {
+              "reasoning_tokens": 1250
+            },
+            "prompt_time": 0.205819533,
+            "prompt_tokens_details": null,
+            "queue_time": 0.347992873,
+            "total_time": 2.978960073
+          },
+          "latency_seconds": 3.463
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 2,
+          "variant": "baseline",
+          "request_sha256": "abefa972f104722263436029ccf62a20a5666ce2870a60407c76e1dcc5559f78",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 2.158
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 2,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "error_type": "RateLimitError",
+          "status_code": 429,
+          "latency_seconds": 180.495
+        }
+      ]
+    },
+    {
+      "version": "contract-probe/1",
+      "model": "openai/gpt-oss-120b",
+      "temperature": 0,
+      "reasoning_effort": "low",
+      "max_completion_tokens": 4096,
+      "runs": [
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "baseline",
+          "request_sha256": "abefa972f104722263436029ccf62a20a5666ce2870a60407c76e1dcc5559f78",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 4.789,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 3.357,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 1,
+          "variant": "segments",
+          "request_sha256": "c4813223694a5cf23de69cf93b8af7164943a381ea5388412f2d89b11f0e2c0c",
+          "proposed": 5,
+          "accepted": 5,
+          "refusals": {},
+          "survivors": 5,
+          "minimum_met": true,
+          "usage": {
+            "completion_tokens": 2232,
+            "prompt_tokens": 3422,
+            "total_tokens": 5654,
+            "completion_time": 4.6698147,
+            "completion_tokens_details": {
+              "reasoning_tokens": 1071
+            },
+            "prompt_time": 0.137497238,
+            "prompt_tokens_details": null,
+            "queue_time": 0.351156828,
+            "total_time": 4.807311938
+          },
+          "latency_seconds": 5.288
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 2,
+          "variant": "baseline",
+          "request_sha256": "abefa972f104722263436029ccf62a20a5666ce2870a60407c76e1dcc5559f78",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 2034,
+            "prompt_tokens": 3717,
+            "total_tokens": 5751,
+            "completion_time": 4.243857914,
+            "completion_tokens_details": {
+              "reasoning_tokens": 46
+            },
+            "prompt_time": 0.201923925,
+            "prompt_tokens_details": null,
+            "queue_time": 0.33905943,
+            "total_time": 4.445781839
+          },
+          "latency_seconds": 4.914
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 2,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 4,
+            "PROBE_BOUNDARY_MISMATCH": 1
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1381,
+            "prompt_tokens": 3796,
+            "total_tokens": 5177,
+            "completion_time": 2.872489214,
+            "completion_tokens_details": {
+              "reasoning_tokens": 145
+            },
+            "prompt_time": 0.170529105,
+            "prompt_tokens_details": null,
+            "queue_time": 0.351903771,
+            "total_time": 3.043018319
+          },
+          "latency_seconds": 3.517
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 2,
+          "variant": "segments",
+          "request_sha256": "c4813223694a5cf23de69cf93b8af7164943a381ea5388412f2d89b11f0e2c0c",
+          "proposed": 3,
+          "accepted": 1,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 2
+          },
+          "survivors": 1,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 4096,
+            "prompt_tokens": 3422,
+            "total_tokens": 7518,
+            "completion_time": 8.597398342,
+            "completion_tokens_details": {
+              "reasoning_tokens": 3319
+            },
+            "prompt_time": 0.20911421,
+            "prompt_tokens_details": null,
+            "queue_time": 0.340558755,
+            "total_time": 8.806512552000001
+          },
+          "latency_seconds": 9.265
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 3,
+          "variant": "baseline",
+          "request_sha256": "abefa972f104722263436029ccf62a20a5666ce2870a60407c76e1dcc5559f78",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 65.089,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 3,
+          "variant": "proof",
+          "request_sha256": "75c67783e48f7028713598354056d3c6c538d8234aa367acc4ddcae1ab5ef654",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1423,
+            "prompt_tokens": 3796,
+            "total_tokens": 5219,
+            "completion_time": 2.9996054599999997,
+            "completion_tokens_details": {
+              "reasoning_tokens": 161
+            },
+            "prompt_time": 0.159927277,
+            "prompt_tokens_details": null,
+            "queue_time": 0.398719778,
+            "total_time": 3.159532737
+          },
+          "latency_seconds": 3.688
+        },
+        {
+          "language": "en",
+          "transcript_sha256": "8b4b2303697ab5e9bc29b4221f6e4667573388f9b23ad57bc62c3adb861535cc",
+          "word_count": 510,
+          "window_index": 0,
+          "total_windows": 1,
+          "generation": 3,
+          "variant": "segments",
+          "request_sha256": "c4813223694a5cf23de69cf93b8af7164943a381ea5388412f2d89b11f0e2c0c",
+          "proposed": 5,
+          "accepted": 1,
+          "refusals": {
+            "PROBE_BOUNDARY_MISMATCH": 4
+          },
+          "survivors": 1,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1612,
+            "prompt_tokens": 3422,
+            "total_tokens": 5034,
+            "completion_time": 3.381280668,
+            "completion_tokens_details": {
+              "reasoning_tokens": 470
+            },
+            "prompt_time": 0.172967235,
+            "prompt_tokens_details": null,
+            "queue_time": 0.398246694,
+            "total_time": 3.5542479030000003
+          },
+          "latency_seconds": 4.075
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 1,
+          "variant": "baseline",
+          "request_sha256": "da8553301d9ffb6f6b753a6c6842c40f1a90fb30a4800309f155a6dca1e23f62",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 4.155,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 1,
+          "variant": "proof",
+          "request_sha256": "8713763603fa5eb90a6dceecc3edb4875f6b98e17123ab9a18cefa9f9029727f",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1371,
+            "prompt_tokens": 3463,
+            "total_tokens": 4834,
+            "completion_time": 2.858016915,
+            "completion_tokens_details": {
+              "reasoning_tokens": 71
+            },
+            "prompt_time": 0.160308129,
+            "prompt_tokens_details": null,
+            "queue_time": 0.399399257,
+            "total_time": 3.018325044
+          },
+          "latency_seconds": 3.534
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 1,
+          "variant": "segments",
+          "request_sha256": "b03cd4ed13485646797e1c26c2c839957cf772d29cf9a790e242fce8908cd89d",
+          "proposed": 5,
+          "accepted": 3,
+          "refusals": {
+            "PROBE_BOUNDARY_MISMATCH": 2
+          },
+          "survivors": 3,
+          "minimum_met": true,
+          "usage": {
+            "completion_tokens": 2423,
+            "prompt_tokens": 3691,
+            "total_tokens": 6114,
+            "completion_time": 5.105011998,
+            "completion_tokens_details": {
+              "reasoning_tokens": 1191
+            },
+            "prompt_time": 0.168998789,
+            "prompt_tokens_details": null,
+            "queue_time": 0.21640153,
+            "total_time": 5.274010787
+          },
+          "latency_seconds": 5.608
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 2,
+          "variant": "baseline",
+          "request_sha256": "da8553301d9ffb6f6b753a6c6842c40f1a90fb30a4800309f155a6dca1e23f62",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1685,
+            "prompt_tokens": 3384,
+            "total_tokens": 5069,
+            "completion_time": 3.556912787,
+            "completion_tokens_details": {
+              "reasoning_tokens": 139
+            },
+            "prompt_time": 0.178364181,
+            "prompt_tokens_details": null,
+            "queue_time": 0.218599495,
+            "total_time": 3.735276968
+          },
+          "latency_seconds": 64.19
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 2,
+          "variant": "proof",
+          "request_sha256": "8713763603fa5eb90a6dceecc3edb4875f6b98e17123ab9a18cefa9f9029727f",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1410,
+            "prompt_tokens": 3463,
+            "total_tokens": 4873,
+            "completion_time": 2.975697042,
+            "completion_tokens_details": {
+              "reasoning_tokens": 71
+            },
+            "prompt_time": 0.237620988,
+            "prompt_tokens_details": null,
+            "queue_time": 0.356086241,
+            "total_time": 3.21331803
+          },
+          "latency_seconds": 3.692
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 2,
+          "variant": "segments",
+          "request_sha256": "b03cd4ed13485646797e1c26c2c839957cf772d29cf9a790e242fce8908cd89d",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 5.951,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 3,
+          "variant": "baseline",
+          "request_sha256": "da8553301d9ffb6f6b753a6c6842c40f1a90fb30a4800309f155a6dca1e23f62",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 4.05,
+          "provider_code": "json_validate_failed"
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 3,
+          "variant": "proof",
+          "request_sha256": "8713763603fa5eb90a6dceecc3edb4875f6b98e17123ab9a18cefa9f9029727f",
+          "proposed": 5,
+          "accepted": 0,
+          "refusals": {
+            "CANDIDATE_DURATION_OUT_OF_RANGE": 5
+          },
+          "survivors": 0,
+          "minimum_met": false,
+          "usage": {
+            "completion_tokens": 1491,
+            "prompt_tokens": 3463,
+            "total_tokens": 4954,
+            "completion_time": 3.169320977,
+            "completion_tokens_details": {
+              "reasoning_tokens": 76
+            },
+            "prompt_time": 0.162813777,
+            "prompt_tokens_details": null,
+            "queue_time": 0.353865289,
+            "total_time": 3.332134754
+          },
+          "latency_seconds": 3.817
+        },
+        {
+          "language": "id",
+          "transcript_sha256": "f1f16f39f90371a853d257b52735a05dc13918f80f5b403462c0cd9dc06ee672",
+          "word_count": 427,
+          "window_index": 0,
+          "total_windows": 5,
+          "generation": 3,
+          "variant": "segments",
+          "request_sha256": "b03cd4ed13485646797e1c26c2c839957cf772d29cf9a790e242fce8908cd89d",
+          "error_type": "BadRequestError",
+          "status_code": 400,
+          "latency_seconds": 6.102,
+          "provider_code": "json_validate_failed"
+        }
+      ]
+    }
+  ]
+}

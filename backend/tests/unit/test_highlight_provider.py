@@ -40,12 +40,29 @@ from clipah.highlights.provider_router import (
 from clipah.jobs.analyze_task import production_analysis_dependencies, production_analysis_policy
 from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
+_WINDOW_WORDS = tuple(
+    TranscriptWord(
+        word_id=word_id,
+        text=text,
+        punctuation=punctuation,
+        start_ms=start_ms,
+        end_ms=start_ms + 500,
+        confidence=0.9,
+        speaker="A",
+    )
+    for word_id, text, punctuation, start_ms in (
+        ("w000001", "Growth", "", 0),
+        ("w000002", "stalled", ",", 500),
+    )
+)
+
 WINDOW = TranscriptWindow(
     index=0,
     start_ms=0,
     end_ms=120_000,
     word_ids=("w000001", "w000002"),
     text="Growth stalled, until we cut the form!",
+    words=_WINDOW_WORDS,
 )
 
 PROPOSAL: dict[str, Any] = {
@@ -372,6 +389,7 @@ def test_deterministic_fallback_proposes_candidates_without_a_provider() -> None
         end_ms=120_000,
         word_ids=tuple(word.word_id for word in words),
         text=" ".join(f"{word.text}{word.punctuation}" for word in words),
+        words=words,
     )
     transcript = TranscriptResult(
         provider="assemblyai",
@@ -593,6 +611,7 @@ def test_deterministic_fallback_keeps_the_final_partial_span() -> None:
         end_ms=words[-1].end_ms,
         word_ids=tuple(word.word_id for word in words),
         text=" ".join(word.text for word in words),
+        words=words,
     )
     transcript = TranscriptResult(
         provider="assemblyai",
@@ -635,6 +654,7 @@ def test_deterministic_fallback_stops_at_the_requested_candidate_count() -> None
         end_ms=words[-1].end_ms,
         word_ids=tuple(word.word_id for word in words),
         text=" ".join(word.text for word in words),
+        words=words,
     )
     transcript = TranscriptResult(
         provider="assemblyai",
@@ -779,3 +799,51 @@ def test_reports_an_exhausted_schema_validation_budget_as_retryable() -> None:
         provider.extract(window=WINDOW, target_count=5)
 
     assert raised.value.code == "HIGHLIGHT_PROVIDER_SCHEMA_REFUSED"
+
+
+@pytest.mark.unit
+def test_routes_extraction_to_the_configured_openrouter_provider() -> None:
+    """A deployment must be able to choose its highlight provider through configuration."""
+    from clipah.highlights.openrouter_adapter import OpenRouterHighlightProvider
+
+    router = highlight_provider_router(
+        _settings(
+            highlight_provider="openrouter",
+            openrouter_api_key=SecretStr("test-key"),
+            openrouter_extraction_model="nvidia/nemotron-3-super-120b-a12b",
+            openrouter_reranking_model="nvidia/nemotron-3-super-120b-a12b",
+        ),
+        today=date(2026, 9, 1),
+    )
+    assert isinstance(router._primary, OpenRouterHighlightProvider)
+
+
+@pytest.mark.unit
+def test_refuses_an_openrouter_deployment_without_its_key() -> None:
+    """Fail-closed configuration applies to every provider the router can select."""
+    with pytest.raises(RuntimeError):
+        highlight_provider_router(
+            _settings(highlight_provider="openrouter", openrouter_api_key=None),
+            today=date(2026, 9, 1),
+        )
+
+
+@pytest.mark.unit
+def test_rejects_an_unknown_openrouter_model_alias() -> None:
+    """An unknown alias must stop the worker at startup, whichever provider serves it."""
+    with pytest.raises(UnsupportedHighlightModelError):
+        highlight_provider_router(
+            _settings(
+                highlight_provider="openrouter",
+                openrouter_api_key=SecretStr("test-key"),
+                openrouter_extraction_model="nvidia/nemotron-9",
+            ),
+            today=date(2026, 9, 1),
+        )
+
+
+@pytest.mark.unit
+def test_single_window_analysis_is_a_deployment_setting() -> None:
+    """A provider with room for the whole transcript must not be asked window by window."""
+    assert production_analysis_policy(_settings()).single_window is False
+    assert production_analysis_policy(_settings(analysis_single_window=True)).single_window is True
