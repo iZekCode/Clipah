@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from datetime import UTC, datetime
+from io import BytesIO
 from types import SimpleNamespace
-from typing import Any
+from typing import Any, BinaryIO
 
 import pytest
 
-from clipah.assets.storage import StoredObject
+from clipah.assets.ingest import DownloadedSource, write_download
+from clipah.assets.storage import FakeObjectStore, StoredObject
+from clipah.jobs.transcribe_task import stored_audio_source
 from clipah.transcripts.assemblyai_adapter import AssemblyAITranscriber
 from clipah.transcripts.models import RawUtterance, RawWord
 from clipah.transcripts.provider import (
@@ -25,13 +31,14 @@ class RecordingSdkTranscriber:
         """Bind either one response or one transport failure."""
         self.response = response or _response()
         self.error = error
-        self.calls: list[tuple[str, Any, float | None]] = []
+        self.calls: list[tuple[Any, Any, float | None]] = []
+        self.received: list[bytes] = []
 
-    def transcribe(
-        self, audio_url: str, config: Any, *, poll_timeout: float | None = None
-    ) -> object:
+    def transcribe(self, data: Any, config: Any, *, poll_timeout: float | None = None) -> object:
         """Return the configured SDK result after retaining exact call configuration."""
-        self.calls.append((audio_url, config, poll_timeout))
+        self.calls.append((data, config, poll_timeout))
+        if not isinstance(data, str):
+            self.received.append(data.read())
         if self.error is not None:
             raise self.error
         return self.response
@@ -91,7 +98,7 @@ def _adapter(sdk: RecordingSdkTranscriber) -> AssemblyAITranscriber:
     """Create the real adapter with only its network operation replaced."""
     return AssemblyAITranscriber(
         api_key="test-api-key",
-        audio_url_resolver=lambda audio: f"https://private.test/{audio.key}",
+        audio_source=lambda _audio: _opened(b"wave-bytes"),
         sdk_transcriber=sdk,
     )
 
@@ -195,3 +202,81 @@ def test_provider_error_status_is_terminal_and_sanitized() -> None:
 
     assert raised.value.code == "TRANSCRIPTION_PROVIDER_REJECTED"
     assert "secret" not in str(raised.value)
+
+
+@contextmanager
+def _opened(body: bytes) -> Iterator[BinaryIO]:
+    """Hand the adapter one readable audio stream."""
+    yield BytesIO(body)
+
+
+@pytest.mark.unit
+def test_the_audio_bytes_are_sent_to_the_provider_rather_than_a_storage_url() -> None:
+    """A provider on the internet cannot reach private storage, so it receives the bytes."""
+    sdk = RecordingSdkTranscriber()
+
+    _adapter(sdk).transcribe(audio=_audio(), language="en")
+
+    assert sdk.received == [b"wave-bytes"]
+    assert not isinstance(sdk.calls[0][0], str)
+
+
+@pytest.mark.unit
+def test_audio_that_cannot_be_read_is_a_retryable_provider_failure() -> None:
+    """A storage hiccup while reading audio must retry, not fail the transcript for good."""
+
+    @contextmanager
+    def unreadable(_audio: StoredObject) -> Iterator[BinaryIO]:
+        raise OSError("private storage detail")
+        yield BytesIO()
+
+    adapter = AssemblyAITranscriber(
+        api_key="test-api-key", audio_source=unreadable, sdk_transcriber=RecordingSdkTranscriber()
+    )
+
+    with pytest.raises(TranscriptionProviderRetryableError) as raised:
+        adapter.transcribe(audio=_audio(), language="en")
+
+    assert raised.value.code == "TRANSCRIPTION_PROVIDER_UNAVAILABLE"
+
+
+class _BodyDownloader:
+    """Stream fixed bytes through the production bounded writer."""
+
+    def __init__(self, body: bytes) -> None:
+        """Bind the private object's body."""
+        self.body = body
+        self.urls: list[str] = []
+
+    def download(
+        self,
+        url: str,
+        destination: BinaryIO,
+        *,
+        expected_size: int,
+        max_bytes: int,
+        cancellation_check: Callable[[], None],
+    ) -> DownloadedSource:
+        """Record the in-network URL and write the body."""
+        self.urls.append(url)
+        return write_download(
+            (self.body,),
+            destination,
+            expected_size=expected_size,
+            max_bytes=max_bytes,
+            cancellation_check=cancellation_check,
+        )
+
+
+@pytest.mark.unit
+def test_stored_audio_is_read_from_private_storage_inside_the_worker() -> None:
+    """The signed URL stays inside the worker; only the bytes leave for the provider."""
+    audio = StoredObject(key="derived/audio", content_type="audio/wav", content_length=5)
+    store = FakeObjectStore(now=lambda: datetime(2026, 9, 1, tzinfo=UTC))
+    store.objects[audio.key] = audio
+    downloader = _BodyDownloader(b"hello")
+
+    with stored_audio_source(store, downloader)(audio) as stream:
+        assert stream.read() == b"hello"
+
+    assert downloader.urls == [f"fake://download/{audio.key}"]

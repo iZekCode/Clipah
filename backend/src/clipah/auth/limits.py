@@ -59,6 +59,7 @@ class RateLimitBucket(StrEnum):
     WRITE = "write"
     ANALYSIS = "analysis"
     SOCIAL_PUBLISH = "social_publish"
+    UPLOAD_PART = "upload_part"
 
 
 @dataclass(frozen=True, slots=True)

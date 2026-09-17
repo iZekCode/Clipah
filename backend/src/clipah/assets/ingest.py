@@ -7,6 +7,7 @@ import stat
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import timedelta
+from io import BytesIO
 from pathlib import Path
 from typing import BinaryIO, Protocol
 from uuid import UUID, uuid5
@@ -201,6 +202,23 @@ class AssetIngestor:
         self._downloader = downloader
         self._media = media or FFmpegRunner()
         self._mime_detector = mime_detector
+
+    def fingerprint(
+        self, *, storage_key: str, expected_size: int, cancellation_check: CancellationCheck
+    ) -> DownloadedSource:
+        """Measure one stored object's size and digest without keeping its bytes.
+
+        A direct upload arrives in parts with no whole-object digest, so its source Asset
+        cannot be recorded until the stored bytes have been read once.
+        """
+        signed = self._store.sign_download(key=storage_key, expires_in=SIGNED_DOWNLOAD_TTL)
+        return self._downloader.download(
+            signed.url,
+            _DiscardingWriter(),
+            expected_size=expected_size,
+            max_bytes=MAX_MEDIA_BYTES,
+            cancellation_check=cancellation_check,
+        )
 
     def ingest(
         self,
@@ -411,6 +429,14 @@ def write_download(
     if size_bytes != expected_size:
         raise MediaValidationError("ASSET_SOURCE_CHANGED")
     return DownloadedSource(size_bytes=size_bytes, sha256=digest.digest())
+
+
+class _DiscardingWriter(BytesIO):
+    """A destination that keeps nothing, for hashing a stream it never stores."""
+
+    def write(self, data: object) -> int:
+        """Accept one chunk and drop it."""
+        return len(data) if isinstance(data, bytes | bytearray | memoryview) else 0
 
 
 def _workspace_file(workspace: Path, name: str) -> Path:

@@ -190,3 +190,41 @@ def test_every_s3_operation_reports_an_unreachable_store_as_an_outage(
         operation(store)
 
     assert "secret" not in str(captured.value)
+
+
+class _RoleRecordingClient:
+    """Record which client served a request, so a signing split is observable."""
+
+    def __init__(self, name: str, calls: list[str]) -> None:
+        """Bind the client's role name and the shared call log."""
+        self.name = name
+        self.calls = calls
+
+    def create_multipart_upload(self, **_arguments: object) -> dict[str, str]:
+        """Record a server-side call and return an opaque upload identifier."""
+        self.calls.append(f"{self.name}:create")
+        return {"UploadId": "upload-1"}
+
+    def generate_presigned_url(self, operation: str, **_arguments: object) -> str:
+        """Record a signing call and return a URL naming this client's host."""
+        self.calls.append(f"{self.name}:sign:{operation}")
+        return f"http://{self.name}/signed"
+
+
+@pytest.mark.unit
+def test_signed_urls_use_the_public_client_while_storage_calls_stay_in_network() -> None:
+    """A URL is opened by a browser; a storage call is made by the process itself."""
+    calls: list[str] = []
+    store = S3ObjectStore(
+        bucket="private",
+        client=_RoleRecordingClient("internal", calls),
+        signing_client=_RoleRecordingClient("public", calls),
+        now=lambda: datetime(2026, 9, 1, tzinfo=UTC),
+    )
+
+    store.create_multipart_upload(key="source/original", content_type="video/mp4")
+    part = store.sign_upload_part(upload_id="upload-1", key="source/original", part_number=1)
+    download = store.sign_download(key="source/original", expires_in=timedelta(minutes=5))
+
+    assert calls == ["internal:create", "public:sign:upload_part", "public:sign:get_object"]
+    assert part.url == download.url == "http://public/signed"

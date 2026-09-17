@@ -16,6 +16,7 @@ from clipah.highlights.openrouter_adapter import (
     EXTRACTION_PROMPT_VERSION,
     PROVIDER,
     OpenRouterHighlightProvider,
+    refusal_status,
 )
 from clipah.highlights.provider import (
     EXTRACT_OPERATION,
@@ -139,8 +140,12 @@ def _provider(client: _Recorder, **overrides: Any) -> OpenRouterHighlightProvide
 
 
 @pytest.mark.unit
-def test_extraction_offers_only_spans_the_transcript_authorizes() -> None:
-    """The selection request must list exactly the duration-valid pairs and nothing else."""
+def test_extraction_states_the_duration_rule_instead_of_listing_every_pair() -> None:
+    """Listing every valid pair grows quadratically: a 41-minute source needed 871k tokens.
+
+    The prompt carries the timed sentences and the duration bounds; the local span check,
+    not the prompt, is what refuses a pair outside them.
+    """
     client = _Recorder(
         _reply({"candidates": [{"span": "S0-S7", "reason": "one complete moment"}]}),
         _reply({"candidates": [_metadata(0)]}),
@@ -148,9 +153,11 @@ def test_extraction_offers_only_spans_the_transcript_authorizes() -> None:
     _provider(client).extract(window=WINDOW, target_count=1)
     selection = client.requests[0]
     offered = json.loads(selection["messages"][1]["content"])
-    expected = {f"{span.label}-{end}" for span in sentence_spans(WINDOW) for end in span.valid_ends}
-    assert set(offered["allowed_spans"]) == expected
-    assert "S0-S3" not in offered["allowed_spans"]
+    assert "allowed_spans" not in offered
+    assert [sentence["id"] for sentence in offered["sentences"]] == [
+        span.label for span in sentence_spans(WINDOW)
+    ]
+    assert offered["clip_seconds"] == {"min": 20, "max": 90}
     assert offered["target_count"] == 1
     properties = selection["tools"][0]["function"]["parameters"]["properties"]["candidates"][
         "items"
@@ -241,6 +248,17 @@ def test_extraction_records_both_requests_as_one_usage_record() -> None:
 
 
 @pytest.mark.unit
+def test_usage_is_attributed_to_the_provider_actually_serving_the_request() -> None:
+    """A Gemini deployment's usage must not be recorded as OpenRouter spend."""
+    client = _Recorder(
+        _reply({"candidates": [{"span": "S0-S7", "reason": "one"}]}),
+        _reply({"candidates": [_metadata(0)]}),
+    )
+    call = _provider(client, provider="gemini").extract(window=WINDOW, target_count=1).call
+    assert call.provider == "gemini"
+
+
+@pytest.mark.unit
 def test_reranking_returns_positions_only() -> None:
     """The quality model may reorder candidates but never rewrite one."""
     client = _Recorder(_reply({"order": [2, 0, 1]}))
@@ -264,6 +282,26 @@ def test_transient_failures_are_retried_then_reported_as_retryable(status, code)
         _provider(client).extract(window=WINDOW, target_count=1)
     assert caught.value.code == code
     assert len(client.requests) == 3
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    "http_status,body,expected",
+    [
+        # OpenRouter reports an upstream failure inside a 200 response; its own code decides.
+        (200, {"error": {"code": 502, "message": "Provider returned error"}}, 502),
+        (200, {"error": {"code": 429, "message": "Rate limit exceeded"}}, 429),
+        # Without a usable code, a failure inside a 200 is treated as upstream trouble.
+        (200, {"error": {"message": "something"}}, 502),
+        (400, {"error": {"code": "bad", "message": "no"}}, 400),
+        (413, {}, 413),
+    ],
+)
+def test_a_refusal_is_classified_by_the_error_code_the_provider_sent(
+    http_status: int, body: dict[str, Any], expected: int
+) -> None:
+    """A transient upstream error must not be mistaken for a permanent refusal."""
+    assert refusal_status(http_status, body) == expected
 
 
 @pytest.mark.unit

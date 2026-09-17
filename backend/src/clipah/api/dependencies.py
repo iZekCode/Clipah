@@ -178,6 +178,9 @@ def rate_limiter_for(request: Request) -> RateLimiter | None:
     return limiter
 
 
+UPLOAD_PART_SIGNING_ROUTE = "sign_part_route"
+
+
 def _enforce_request_rate_limit(request: Request, *, user_id: UUID) -> None:
     """Spend one per-User request slot, sized by whether this request changes state.
 
@@ -188,14 +191,11 @@ def _enforce_request_rate_limit(request: Request, *, user_id: UUID) -> None:
     limiter = rate_limiter_for(request)
     if limiter is None:
         return
-    settings = settings_for(request)
-    writing = request.method in UNSAFE_METHODS
+    bucket, limit = _request_allowance(request)
     decision = limiter.check(
         subject=f"user:{user_id}",
-        bucket=RateLimitBucket.WRITE if writing else RateLimitBucket.READ,
-        limit=(
-            settings.write_requests_per_minute if writing else settings.read_requests_per_minute
-        ),
+        bucket=bucket,
+        limit=limit,
         window=REQUEST_RATE_WINDOW,
     )
     if not decision.allowed:
@@ -204,6 +204,21 @@ def _enforce_request_rate_limit(request: Request, *, user_id: UUID) -> None:
             code="RATE_LIMITED",
             retry_after_seconds=decision.retry_after_seconds(),
         )
+
+
+def _request_allowance(request: Request) -> tuple[RateLimitBucket, int]:
+    """Name the allowance one request spends.
+
+    Signing upload parts is the browser pacing a single upload, not a member making dozens
+    of changes; a large file needs more signatures than a minute of writes allows.
+    """
+    settings = settings_for(request)
+    route = request.scope.get("route")
+    if getattr(route, "name", None) == UPLOAD_PART_SIGNING_ROUTE:
+        return RateLimitBucket.UPLOAD_PART, settings.upload_part_signatures_per_minute
+    if request.method in UNSAFE_METHODS:
+        return RateLimitBucket.WRITE, settings.write_requests_per_minute
+    return RateLimitBucket.READ, settings.read_requests_per_minute
 
 
 CurrentUserDependency = Annotated[CurrentUser, Depends(require_authenticated_user)]

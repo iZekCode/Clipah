@@ -376,16 +376,17 @@ def test_the_frontend_image_proxies_the_api_to_its_configured_origin() -> None:
 
 
 def test_the_api_signs_media_urls_against_a_browser_reachable_host() -> None:
-    """Only the API hands storage URLs to a browser, so its host must resolve there.
+    """The API signs URLs for a browser but calls storage itself from inside the network.
 
-    The workers keep the in-network address for their own transfers; signing with that
-    name produced playback URLs no browser could open, which looks like an empty player
-    rather than a failure.
+    Signing with the in-network name produced playback URLs no browser could open, which
+    looks like an empty player rather than a failure. Calling storage with the browser's
+    host fails the other way: inside the API container `localhost` is the API itself, so
+    starting an upload answered 503.
     """
     services = _render_compose()["services"]
-    api_endpoint = services["api"]["environment"]["CLIPAH_OBJECT_STORE_ENDPOINT"]
+    api = services["api"]["environment"]
     worker_endpoint = services["worker-ingest-ai"]["environment"]["CLIPAH_OBJECT_STORE_ENDPOINT"]
 
-    assert "//minio:" not in api_endpoint
-    assert api_endpoint == "http://localhost:59001"
+    assert api["CLIPAH_OBJECT_STORE_ENDPOINT"] == "http://minio:9000"
+    assert api["CLIPAH_OBJECT_STORE_PUBLIC_ENDPOINT"] == "http://localhost:59001"
     assert worker_endpoint.startswith(("http://minio:9000", "https://"))

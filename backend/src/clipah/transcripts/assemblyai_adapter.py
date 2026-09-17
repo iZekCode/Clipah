@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
+from contextlib import AbstractContextManager
 from enum import Enum
-from typing import Any, Protocol, cast
+from typing import Any, BinaryIO, Protocol, cast
 
 import assemblyai as aai
 
@@ -21,14 +22,16 @@ UNIVERSAL_2 = "universal-2"
 UNIVERSAL_3_PRO_LANGUAGES = frozenset({"en", "es", "de", "fr", "pt", "it"})
 PROVIDER_TIMEOUT_SECONDS = 300.0
 
-AudioUrlResolver = Callable[[StoredObject], str]
+# Opens the audio for one request: a local path or public URL the SDK reads itself, or a
+# stream whose bytes the SDK uploads. The stream is closed once the provider has the audio.
+AudioSource = Callable[[StoredObject], AbstractContextManager[str | BinaryIO]]
 
 
 class _SdkTranscriber(Protocol):
     """Structural subset of the SDK transcriber isolated inside this adapter."""
 
     def transcribe(
-        self, audio_url: str, config: Any, *, poll_timeout: float | None = None
+        self, data: str | BinaryIO, config: Any, *, poll_timeout: float | None = None
     ) -> object:
         """Submit and await one pre-recorded transcription."""
 
@@ -59,11 +62,11 @@ class AssemblyAITranscriber:
         self,
         *,
         api_key: str,
-        audio_url_resolver: AudioUrlResolver,
+        audio_source: AudioSource,
         sdk_transcriber: _SdkTranscriber | None = None,
     ) -> None:
-        """Bind a private-audio capability resolver without mutating SDK globals."""
-        self._audio_url_resolver = audio_url_resolver
+        """Bind how private audio reaches the provider, without mutating SDK globals."""
+        self._audio_source = audio_source
         self._transcriber = sdk_transcriber or cast(
             _SdkTranscriber, aai.Transcriber(api_key=api_key)
         )
@@ -72,14 +75,14 @@ class AssemblyAITranscriber:
         """Perform one provider request and discard every provider-specific object afterward."""
         if audio.duration_ms is None or audio.duration_ms <= 0:
             raise TranscriptionProviderTerminalError("TRANSCRIPT_DURATION_INVALID")
-        audio_url = self._audio_url_resolver(audio)
         config = _config_for(language)
         try:
-            response = self._transcriber.transcribe(
-                audio_url,
-                config,
-                poll_timeout=PROVIDER_TIMEOUT_SECONDS,
-            )
+            with self._audio_source(audio) as data:
+                response = self._transcriber.transcribe(
+                    data,
+                    config,
+                    poll_timeout=PROVIDER_TIMEOUT_SECONDS,
+                )
         except Exception:
             raise TranscriptionProviderRetryableError(
                 "TRANSCRIPTION_PROVIDER_UNAVAILABLE"

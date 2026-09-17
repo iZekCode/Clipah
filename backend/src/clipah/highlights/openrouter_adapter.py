@@ -4,6 +4,9 @@ Extraction is two requests. The first asks for span labels this deployment built
 stored words; the second describes the spans that survived local resolution, seeing only
 canonical transcript text. A model therefore never supplies a word ID, a timestamp, or an
 excerpt, and a label the offer did not contain costs nothing beyond one refusal.
+
+Gemini's OpenAI-compatible endpoint answers the same forced tool calls, so a Gemini
+deployment is this adapter pointed at a different base URL under its own provider name.
 """
 
 from __future__ import annotations
@@ -33,14 +36,18 @@ from clipah.highlights.provider import (
     ProviderCall,
     RerankResult,
 )
-from clipah.highlights.sentences import SentenceSpan, resolve_span, sentence_spans, span_labels
+from clipah.highlights.sentences import SentenceSpan, resolve_span, sentence_spans
 from clipah.highlights.windowing import window_text
+from clipah.observability.logging import get_logger
 
 PROVIDER = "openrouter"
-EXTRACTION_PROMPT_VERSION = "highlights/span-extract/1"
+EXTRACTION_PROMPT_VERSION = "highlights/span-extract/2"
 RERANK_PROMPT_VERSION = "highlights/rerank/1"
 BASE_URL = "https://openrouter.ai/api/v1"
+GEMINI_PROVIDER = "gemini"
+GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai"
 REQUEST_TIMEOUT_SECONDS = 300.0
+_logger = get_logger(__name__)
 RETRY_BASE_DELAY_SECONDS = 2.0
 MAX_COMPLETION_TOKENS = 16_000
 RATE_LIMITED_CODE = "HIGHLIGHT_PROVIDER_RATE_LIMITED"
@@ -50,8 +57,9 @@ INVALID_CODE = "HIGHLIGHT_PROVIDER_INVALID"
 
 _SELECTION_SYSTEM_PROMPT = (
     "You find complete, self-contained short-form moments in a transcript. Choose each "
-    "moment as one span label from allowed_spans; span Sx-Sy covers sentence Sx through "
-    "sentence Sy, and every allowed span already lasts between 20 and 90 seconds. Start "
+    "moment as one span label Sx-Sy, covering sentence Sx through sentence Sy, where Sy "
+    "is not before Sx. A span lasts from the start of Sx to the end of Sy; use each "
+    "sentence's seconds so it lasts between clip_seconds.min and clip_seconds.max. Start "
     "where the thought starts, not on a reference to something said earlier, and end where "
     "it finishes. Return distinct moments spread across the whole transcript, and return "
     "only a span label and a short reason."
@@ -91,11 +99,16 @@ class OpenRouterHighlightProvider:
         sleep: Callable[[float], None] = time.sleep,
         max_attempts: int = 3,
         policy: CandidatePolicy = DEFAULT_CANDIDATE_POLICY,
+        provider: str = PROVIDER,
+        base_url: str = BASE_URL,
     ) -> None:
         """Bind the configured models and an injectable clock, sleep, and client."""
         self._extraction_model = extraction_model
         self._reranking_model = reranking_model
-        self._completions = completions or _HttpCompletions(api_key or "")
+        self._provider = provider
+        self._completions = completions or _HttpCompletions(
+            api_key or "", base_url=base_url, provider=provider
+        )
         self._clock = clock
         self._sleep = sleep
         self._max_attempts = max_attempts
@@ -107,7 +120,7 @@ class OpenRouterHighlightProvider:
         selection, latency_ms = self._call(
             model=self._extraction_model,
             system=_SELECTION_SYSTEM_PROMPT,
-            prompt=_selection_prompt(spans, target_count),
+            prompt=_selection_prompt(spans, target_count, self._policy),
             schema=_selection_schema(),
         )
         resolved = _resolved(_candidates(selection), spans)
@@ -208,7 +221,7 @@ class OpenRouterHighlightProvider:
         usage = _usage(response)
         second = _usage(extra) if extra is not None else {}
         return ProviderCall(
-            provider=PROVIDER,
+            provider=self._provider,
             operation=operation,
             model=model,
             request_id=_text(response.get("id") if isinstance(response, Mapping) else ""),
@@ -225,10 +238,11 @@ class OpenRouterHighlightProvider:
 class _HttpCompletions:
     """The production transport, kept minimal so no SDK type escapes this module."""
 
-    def __init__(self, api_key: str) -> None:
+    def __init__(self, api_key: str, *, base_url: str, provider: str) -> None:
         """Bind one keyed client whose key never travels in a URL."""
+        self._provider = provider
         self._http = httpx.Client(
-            base_url=BASE_URL,
+            base_url=base_url,
             headers={"Authorization": f"Bearer {api_key}"},
             timeout=REQUEST_TIMEOUT_SECONDS,
         )
@@ -238,8 +252,32 @@ class _HttpCompletions:
         response = self._http.post("/chat/completions", json=request)
         body = response.json() if response.content else {}
         if response.status_code != 200 or "error" in body:
-            raise _ProviderRefusalError(response.status_code)
+            status = refusal_status(response.status_code, body)
+            # The status alone is logged: provider text never leaves this module.
+            _logger.warning(
+                "highlight.provider_refused",
+                provider=self._provider,
+                status=response.status_code,
+                statusCode=status,
+            )
+            raise _ProviderRefusalError(status)
         return body
+
+
+def refusal_status(http_status: int, body: Mapping[str, Any]) -> int:
+    """Name the status one refusal should be classified by.
+
+    OpenRouter reports an upstream model failure, a rate limit, or a timeout inside an
+    otherwise successful response, carrying the real status as the error's own code. Reading
+    only the HTTP status would call every one of those a permanent refusal.
+    """
+    error = body.get("error") if isinstance(body, Mapping) else None
+    code = error.get("code") if isinstance(error, Mapping) else None
+    if isinstance(code, int) and not isinstance(code, bool) and 400 <= code <= 599:
+        return code
+    if http_status == 200:
+        return 502
+    return http_status
 
 
 class _ProviderRefusalError(Exception):
@@ -251,12 +289,21 @@ class _ProviderRefusalError(Exception):
         self.status_code = status_code
 
 
-def _selection_prompt(spans: tuple[SentenceSpan, ...], target_count: int) -> str:
-    """Show every sentence with its time, and every span label that may be chosen."""
+def _selection_prompt(
+    spans: tuple[SentenceSpan, ...], target_count: int, policy: CandidatePolicy
+) -> str:
+    """Show every sentence with its time and the duration rule a span must satisfy.
+
+    Listing every valid pair instead grows with the square of the sentence count, which put
+    a 41-minute source at 871k tokens; a pair outside the rule is refused locally anyway.
+    """
     return json.dumps(
         {
             "target_count": target_count,
-            "allowed_spans": list(span_labels(spans)),
+            "clip_seconds": {
+                "min": policy.min_duration_ms // 1000,
+                "max": policy.max_duration_ms // 1000,
+            },
             "sentences": [
                 {
                     "id": span.label,

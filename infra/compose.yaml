@@ -113,9 +113,11 @@ services:
       CLIPAH_PROCESS_ROLE: api
       CLIPAH_DATABASE_URL: postgresql+psycopg://clipah_api_runtime:clipah_api_runtime_local@postgres:5432/clipah_rebuild_foundation
       CLIPAH_REDIS_URL: redis://redis:6379/0
-      # The API only ever signs URLs a browser has to open, so this host must be one the
-      # browser can resolve: the in-network name yields a playback URL that cannot load.
-      CLIPAH_OBJECT_STORE_ENDPOINT: "${CLIPAH_BROWSER_OBJECT_STORE_ENDPOINT:-http://localhost:59001}"
+      # The API calls storage itself over the network, but signs URLs a browser opens, so
+      # signatures use a host the browser can resolve: the in-network name yields a
+      # playback URL that cannot load, and `localhost` inside this container is the API.
+      CLIPAH_OBJECT_STORE_ENDPOINT: http://minio:9000
+      CLIPAH_OBJECT_STORE_PUBLIC_ENDPOINT: "${CLIPAH_BROWSER_OBJECT_STORE_ENDPOINT:-http://localhost:59001}"
       CLIPAH_OBJECT_STORE_BUCKET: clipah-local
       CLIPAH_OBJECT_STORE_ACCESS_KEY_ID: clipah_local
       CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
@@ -217,7 +219,17 @@ services:
       CLIPAH_OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-fake-openrouter}"
       CLIPAH_OPENROUTER_EXTRACTION_MODEL: "${CLIPAH_OPENROUTER_EXTRACTION_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
       CLIPAH_OPENROUTER_RERANKING_MODEL: "${CLIPAH_OPENROUTER_RERANKING_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
+      CLIPAH_GEMINI_API_KEY: "${GEMINI_API_KEY:-fake-gemini}"
+      CLIPAH_GEMINI_EXTRACTION_MODEL: "${CLIPAH_GEMINI_EXTRACTION_MODEL:-gemini-3.8-flash}"
+      CLIPAH_GEMINI_RERANKING_MODEL: "${CLIPAH_GEMINI_RERANKING_MODEL:-gemini-3.8-flash}"
+      # A JSON array, tried in order when the model before it is rate limited or unavailable.
+      CLIPAH_GEMINI_FALLBACK_MODELS: '${CLIPAH_GEMINI_FALLBACK_MODELS:-["gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash"]}'
       CLIPAH_ANALYSIS_SINGLE_WINDOW: "${CLIPAH_ANALYSIS_SINGLE_WINDOW:-false}"
+      # Window shape is tunable for providers whose sweet spot is larger than the default
+      # two-to-three-minute windows, such as a long-context OpenRouter model.
+      CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS: "${CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS:-120000}"
+      CLIPAH_ANALYSIS_WINDOW_TARGET_MAX_MS: "${CLIPAH_ANALYSIS_WINDOW_TARGET_MAX_MS:-180000}"
+      CLIPAH_ANALYSIS_WINDOW_OVERLAP_MS: "${CLIPAH_ANALYSIS_WINDOW_OVERLAP_MS:-20000}"
     depends_on: *dependencies
     healthcheck: *worker-health
     deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}

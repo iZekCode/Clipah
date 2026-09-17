@@ -73,10 +73,27 @@ def create_job(
     return snapshot_of(job)
 
 
-def start_job(session: Session, *, workspace_id: UUID, job_id: UUID, now: datetime) -> JobSnapshot:
-    """Claim one queued or retrying job for a worker and count the attempt it is spending."""
+def start_job(
+    session: Session,
+    *,
+    workspace_id: UUID,
+    job_id: UUID,
+    now: datetime,
+    resume_abandoned: bool = False,
+) -> JobSnapshot:
+    """Claim one queued or retrying job for a worker and count the attempt it is spending.
+
+    A job is left `running` when the worker holding it dies. Late acknowledgement makes the
+    broker redeliver it, and the worker that receives that delivery passes
+    `resume_abandoned`: the lost attempt is recorded as a retry and a new one begins, so the
+    job continues instead of being stranded. Stages are idempotent, which is what makes
+    running one again safe. Every other caller still cannot start a running job twice.
+    """
     repository = JobRepository(session)
     job = repository.lock(workspace_id=workspace_id, job_id=job_id)
+    if resume_abandoned and job.status is JobStatus.RUNNING:
+        job.status = JobStatus.RETRYING
+        repository.append_event(job, event_type=JobEventType.RETRYING)
     assert_transition(job.status, JobStatus.RUNNING)
     job.status = JobStatus.RUNNING
     job.attempt += 1

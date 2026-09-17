@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+from contextlib import nullcontext
 from datetime import UTC, datetime
 from uuid import UUID, uuid4, uuid5
 
@@ -221,7 +222,7 @@ def test_assemblyai_provider_contract_smoke() -> None:
 
     result = AssemblyAITranscriber(
         api_key=api_key,
-        audio_url_resolver=lambda stored: stored.key,
+        audio_source=lambda stored: nullcontext(stored.key),
     ).transcribe(audio=audio, language=None)
 
     assert result.provider == "assemblyai"

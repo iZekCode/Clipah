@@ -10,6 +10,7 @@ from fastapi import APIRouter, Depends, Path, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from clipah.api.dependencies import (
+    UPLOAD_PART_SIGNING_ROUTE,
     CurrentWorkspace,
     DatabaseSession,
     auth_components_for,
@@ -108,6 +109,7 @@ def create(
 @router.post(
     "/projects/{project_id}/uploads/{upload_id}/parts/{part_number}",
     dependencies=[Depends(require_csrf)],
+    name=UPLOAD_PART_SIGNING_ROUTE,
 )
 def sign_part_route(
     request: Request,

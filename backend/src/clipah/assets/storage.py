@@ -206,6 +206,20 @@ def observed_s3_store(
     )
 
 
+def _s3_client(endpoint_url: str | None, access_key_id: str | None, secret: str | None) -> Any:
+    """Build one path-style S3 client for an endpoint."""
+    import boto3
+    from botocore.config import Config
+
+    return boto3.client(
+        "s3",
+        endpoint_url=endpoint_url,
+        aws_access_key_id=access_key_id,
+        aws_secret_access_key=secret,
+        config=Config(s3={"addressing_style": "path"}),
+    )
+
+
 @contextmanager
 def _observed(operation: str) -> Iterator[None]:
     """Record one storage operation's duration and how it ended."""
@@ -232,25 +246,26 @@ class S3ObjectStore:
         *,
         bucket: str,
         endpoint_url: str | None = None,
+        public_endpoint_url: str | None = None,
         access_key_id: str | None = None,
         secret_access_key: str | None = None,
         client: Any | None = None,
+        signing_client: Any | None = None,
         now: Callable[[], datetime] | None = None,
     ) -> None:
-        """Bind one bucket and optional S3-compatible endpoint to this adapter."""
-        if client is None:
-            import boto3
-            from botocore.config import Config
+        """Bind one bucket and optional S3-compatible endpoint to this adapter.
 
-            client = boto3.client(
-                "s3",
-                endpoint_url=endpoint_url,
-                aws_access_key_id=access_key_id,
-                aws_secret_access_key=secret_access_key,
-                config=Config(s3={"addressing_style": "path"}),
-            )
+        A signature binds the host it was issued for, so a URL a browser opens must be
+        signed against a host the browser can reach. `public_endpoint_url` names that
+        host when it differs from the one this process uses for its own storage calls.
+        """
+        if client is None:
+            client = _s3_client(endpoint_url, access_key_id, secret_access_key)
+        if signing_client is None and public_endpoint_url is not None:
+            signing_client = _s3_client(public_endpoint_url, access_key_id, secret_access_key)
         self._bucket = bucket
         self._client = client
+        self._signing_client = signing_client or client
         self._now = now or _utc_now
 
     def create_multipart_upload(self, *, key: str, content_type: str) -> MultipartUpload:
@@ -307,7 +322,7 @@ class S3ObjectStore:
         """Generate a five-minute presigned URL for one S3 upload part."""
         expires_in = timedelta(minutes=5)
         try:
-            url = self._client.generate_presigned_url(
+            url = self._signing_client.generate_presigned_url(
                 "upload_part",
                 Params={
                     "Bucket": self._bucket,
@@ -390,7 +405,7 @@ class S3ObjectStore:
     def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
         """Generate a presigned GET URL for the caller-selected bounded lifetime."""
         try:
-            url = self._client.generate_presigned_url(
+            url = self._signing_client.generate_presigned_url(
                 "get_object",
                 Params={"Bucket": self._bucket, "Key": key},
                 ExpiresIn=int(expires_in.total_seconds()),

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from datetime import UTC, datetime
 from functools import lru_cache
 from pathlib import Path
-from uuid import uuid5
+from uuid import UUID, uuid5
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -35,7 +35,13 @@ from clipah.jobs.models import (
 )
 from clipah.jobs.use_cases import update_job_progress
 from clipah.jobs.workspace import job_workspace
-from clipah.models import Asset, AssetKind, AssetSourceType
+from clipah.models import (
+    Asset,
+    AssetKind,
+    AssetSourceType,
+    MultipartUpload,
+    MultipartUploadStatus,
+)
 from clipah.runtime.readiness import validate_media_runtime
 
 IngestorFactory = Callable[[Settings], AssetIngestor]
@@ -54,7 +60,7 @@ class IngestStageRunner:
         """Process one source and expose only stable retryable or terminal Job codes."""
         try:
             context.raise_if_cancelled()
-            source = self._load_source(context)
+            source = self._load_source(context) or self._adopt_upload(context)
             if self._already_complete(context, source):
                 return
             with job_workspace(context.job_id) as workspace:
@@ -84,8 +90,11 @@ class IngestStageRunner:
         except IngestIntegrityError:
             raise TerminalJobError(INGEST_INTEGRITY_CODE) from None
 
-    def _load_source(self, context: JobContext) -> SourceAsset:
-        """Detach the single source Asset selected by the Job's tenant and Project."""
+    def _load_source(self, context: JobContext) -> SourceAsset | None:
+        """Detach the single source Asset selected by the Job's tenant and Project.
+
+        No source at all is not yet a failure: a direct upload has not become one.
+        """
         with _transaction(context) as session:
             sources = session.scalars(
                 select(Asset)
@@ -97,19 +106,62 @@ class IngestStageRunner:
                 .order_by(Asset.created_at, Asset.id)
                 .limit(2)
             ).all()
+            if not sources:
+                return None
             if len(sources) != 1:
                 raise TerminalJobError(SOURCE_NOT_FOUND_CODE)
-            source = sources[0]
-            return SourceAsset(
-                asset_id=source.id,
-                workspace_id=source.workspace_id,
-                project_id=source.project_id,
-                source_type=source.source_type,
-                storage_key=source.storage_key,
-                content_type=source.content_type,
-                size_bytes=source.size_bytes,
-                sha256=source.sha256,
+            return _detached(sources[0])
+
+    def _adopt_upload(self, context: JobContext) -> SourceAsset:
+        """Record the Project's newest completed upload as its source Asset.
+
+        The upload is identified by the Asset it becomes, so a redelivery that finds the
+        Asset already recorded never measures the bytes a second time. Measuring happens
+        outside any transaction because it reads the whole object.
+        """
+        with _transaction(context) as session:
+            upload = session.scalar(
+                select(MultipartUpload)
+                .where(
+                    MultipartUpload.workspace_id == context.workspace_id,
+                    MultipartUpload.project_id == context.project_id,
+                    MultipartUpload.status == MultipartUploadStatus.COMPLETED,
+                    MultipartUpload.completed_size_bytes.is_not(None),
+                )
+                .order_by(MultipartUpload.created_at.desc(), MultipartUpload.id.desc())
+                .limit(1)
             )
+            if upload is None or upload.completed_size_bytes is None:
+                raise TerminalJobError(SOURCE_NOT_FOUND_CODE)
+            upload_id: UUID = upload.id
+            storage_key = upload.storage_key
+            content_type = upload.content_type
+            size_bytes = upload.completed_size_bytes
+        measured = self._ingestor_factory(context.settings).fingerprint(
+            storage_key=storage_key,
+            expected_size=size_bytes,
+            cancellation_check=context.raise_if_cancelled,
+        )
+        with _transaction(context) as session:
+            if session.get(Asset, upload_id) is None:
+                session.add(
+                    Asset(
+                        id=upload_id,
+                        workspace_id=context.workspace_id,
+                        project_id=context.project_id,
+                        kind=AssetKind.SOURCE,
+                        source_type=AssetSourceType.USER_UPLOAD,
+                        storage_key=storage_key,
+                        content_type=content_type,
+                        size_bytes=measured.size_bytes,
+                        sha256=measured.sha256,
+                    )
+                )
+                session.flush()
+        adopted = self._load_source(context)
+        if adopted is None or adopted.asset_id != upload_id or adopted.sha256 != measured.sha256:
+            raise IngestIntegrityError("adopted upload does not match its measured bytes")
+        return adopted
 
     def _already_complete(self, context: JobContext, source: SourceAsset) -> bool:
         """Reuse a complete deterministic Asset set without repeating external media work."""
@@ -204,6 +256,20 @@ class IngestStageRunner:
                 if artifact.asset_id not in existing:
                     session.add(_asset_row(context, artifact))
             session.flush()
+
+
+def _detached(source: Asset) -> SourceAsset:
+    """Copy the immutable source fields a transaction-free stage may use."""
+    return SourceAsset(
+        asset_id=source.id,
+        workspace_id=source.workspace_id,
+        project_id=source.project_id,
+        source_type=source.source_type,
+        storage_key=source.storage_key,
+        content_type=source.content_type,
+        size_bytes=source.size_bytes,
+        sha256=source.sha256,
+    )
 
 
 def _verify_source(existing: Asset, observed: IngestArtifact) -> None:

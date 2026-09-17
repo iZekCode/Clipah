@@ -9,6 +9,7 @@ the product runs, not a second implementation of it.
 from __future__ import annotations
 
 import time
+from contextlib import nullcontext
 from pathlib import Path
 
 from clipah.assets.storage import StoredObject
@@ -43,7 +44,9 @@ class AssemblyAIEvaluationTranscriber:
         self._audio_directory = audio_directory
         self._transcriber = AssemblyAITranscriber(
             api_key=api_key,
-            audio_url_resolver=lambda audio: str(self._audio_directory / Path(audio.key).name),
+            audio_source=lambda audio: nullcontext(
+                str(self._audio_directory / Path(audio.key).name)
+            ),
         )
 
     def observe(self, case: TranscriptionCase) -> TranscriptionObservation:

@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     redis_url: str | None = None
 
     object_store_endpoint: str | None = None
+    object_store_public_endpoint: str | None = None
     object_store_bucket: str | None = None
     object_store_access_key_id: SecretStr | None = None
     object_store_secret_access_key: SecretStr | None = None
@@ -82,10 +83,20 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr | None = None
     groq_extraction_model: str = "openai/gpt-oss-20b"
     groq_reranking_model: str = "openai/gpt-oss-120b"
-    highlight_provider: Literal["groq", "openrouter"] = "groq"
+    highlight_provider: Literal["groq", "openrouter", "gemini"] = "groq"
     openrouter_api_key: SecretStr | None = None
     openrouter_extraction_model: str = "nvidia/nemotron-3-super-120b-a12b"
     openrouter_reranking_model: str = "nvidia/nemotron-3-super-120b-a12b"
+    gemini_api_key: SecretStr | None = None
+    gemini_extraction_model: str = "gemini-3.8-flash"
+    gemini_reranking_model: str = "gemini-3.8-flash"
+    # Tried in order, each for both extraction and reranking, when the model before it is
+    # rate limited or unavailable. A refusal never moves down the chain.
+    gemini_fallback_models: tuple[str, ...] = (
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+    )
 
     session_secret: SecretStr | None = None
     session_cookie_name: str = "clipah_session"
@@ -97,6 +108,9 @@ class Settings(BaseSettings):
 
     read_requests_per_minute: int = 60
     write_requests_per_minute: int = 20
+    # A 2 GiB upload is at most 256 parts at the 8 MiB minimum; signing them is not a write
+    # a member chose to make, so it holds its own allowance sized for the largest upload.
+    upload_part_signatures_per_minute: int = 300
     analyses_per_hour: int = 3
     concurrent_jobs_per_workspace: int = 5
 

@@ -16,6 +16,7 @@ from redis import Redis
 from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
+from clipah.assets.storage import FakeObjectStore
 from clipah.auth.limits import RateLimitBucket, RateLimitExceededError, RedisRateLimiter
 from clipah.db import session_scope
 from clipah.jobs.admission import (
@@ -616,6 +617,49 @@ def test_write_requests_hold_a_separate_smaller_allowance(
     assert first.status_code == 201
     assert_error(second, status_code=429, code="RATE_LIMITED")
     assert still_reads.status_code == 200
+
+
+@pytest.mark.integration
+def test_signing_upload_parts_holds_its_own_allowance_apart_from_writes(
+    engine: Engine, redis_connection: Redis
+) -> None:
+    """A 466 MB upload needs 59 part signatures; counting them as writes broke every large upload.
+
+    Each signature is refused only by its own allowance, which is sized for the largest
+    upload, so a flood of signatures is still bounded.
+    """
+    clock = Clock(NOW)
+    provider = StubGoogleProvider(clock)
+    app, flow, _ = build_app(
+        clock,
+        provider,
+        object_store=FakeObjectStore(now=clock),
+        rate_limiter=RedisRateLimiter(redis_connection, now=clock),
+        write_requests_per_minute=1,
+        upload_part_signatures_per_minute=3,
+    )
+    browser = Browser(app)
+    sign_in(browser, flow)
+    workspace_id = UUID(browser.get("/api/v1/workspaces").json()["workspaces"][0]["id"])
+    project = _create_project(browser, workspace_id, key="parts")
+    assert project.status_code == 201
+    parts_url = (
+        f"/api/v1/projects/{project.json()['id']}/uploads/{uuid4()}/parts/{{number}}"
+        f"?workspace_id={workspace_id}"
+    )
+
+    signatures = [
+        browser.request("POST", parts_url.format(number=number)) for number in range(1, 5)
+    ]
+
+    # The upload does not exist, so an admitted request answers 404 after the limiter ran.
+    assert [response.status_code for response in signatures[:3]] == [404] * 3
+    assert_error(signatures[3], status_code=429, code="RATE_LIMITED")
+    assert_error(
+        _create_project(browser, workspace_id, key="parts-two"),
+        status_code=429,
+        code="RATE_LIMITED",
+    )
 
 
 @pytest.mark.integration

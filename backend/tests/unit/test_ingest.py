@@ -493,3 +493,36 @@ def test_ingest_refuses_a_missing_completed_derivative(tmp_path: Path) -> None:
         )
 
     assert store.object_bodies == {}
+
+
+@pytest.mark.unit
+def test_fingerprint_hashes_a_stored_object_without_keeping_its_bytes() -> None:
+    """An upload has no recorded digest, so ingest must measure one before trusting it."""
+    source = _source()
+    downloader = ChunkDownloader()
+    ingestor = AssetIngestor(store=_store(source), downloader=downloader)
+
+    observed = ingestor.fingerprint(
+        storage_key=source.storage_key,
+        expected_size=len(SOURCE_BODY),
+        cancellation_check=lambda: None,
+    )
+
+    assert observed == DownloadedSource(
+        size_bytes=len(SOURCE_BODY), sha256=hashlib.sha256(SOURCE_BODY).digest()
+    )
+    assert downloader.urls == [f"fake://download/{source.storage_key}"]
+
+
+@pytest.mark.unit
+def test_fingerprint_refuses_an_object_whose_size_differs_from_the_upload() -> None:
+    """Bytes that do not match the completed upload must never become a source Asset."""
+    source = _source()
+    ingestor = AssetIngestor(store=_store(source), downloader=ChunkDownloader())
+
+    with pytest.raises(MediaValidationError, match=r"^ASSET_SOURCE_CHANGED$"):
+        ingestor.fingerprint(
+            storage_key=source.storage_key,
+            expected_size=len(SOURCE_BODY) + 1,
+            cancellation_check=lambda: None,
+        )

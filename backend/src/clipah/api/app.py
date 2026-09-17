@@ -328,6 +328,7 @@ def _configured_object_store(settings: Settings) -> ObjectStore | None:
         S3ObjectStore(
             bucket=settings.object_store_bucket,
             endpoint_url=settings.object_store_endpoint,
+            public_endpoint_url=settings.object_store_public_endpoint,
             access_key_id=settings.object_store_access_key_id.get_secret_value(),
             secret_access_key=settings.object_store_secret_access_key.get_secret_value(),
         )

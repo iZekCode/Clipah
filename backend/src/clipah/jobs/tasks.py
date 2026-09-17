@@ -92,7 +92,11 @@ def run_job(self: Task, job_id: str, workspace_id: str, user_id: str) -> str:
         DatabaseWorkspaceAuthorizer(session).require(
             user_id=user, workspace_id=workspace, action=WorkspaceAction.PROJECT_WRITE
         )
-        snapshot = start_job(session, workspace_id=workspace, job_id=job, now=_now())
+        # Only a broker delivery reaches here, so a job already running was abandoned by a
+        # worker that died before acknowledging it.
+        snapshot = start_job(
+            session, workspace_id=workspace, job_id=job, now=_now(), resume_abandoned=True
+        )
     _announce(notifier, workspace_id=workspace, job_id=job)
 
     context = JobContext(

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 from collections.abc import Callable
 from dataclasses import replace
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from uuid import UUID, uuid4, uuid5
 
@@ -14,6 +14,7 @@ from sqlalchemy import Engine, func, select
 from sqlalchemy.orm import Session
 
 from clipah.assets.ingest import (
+    DownloadedSource,
     IngestArtifact,
     IngestResult,
     SourceAsset,
@@ -31,6 +32,8 @@ from clipah.models import (
     Job,
     JobKind,
     JobStatus,
+    MultipartUpload,
+    MultipartUploadStatus,
     Project,
     ProjectStatus,
     SourceKind,
@@ -46,6 +49,16 @@ class StaticIngestor:
     def __init__(self) -> None:
         """Start before any Job workspace has been observed."""
         self.workspaces: list[Path] = []
+        self.fingerprinted: list[str] = []
+        self.sources: list[SourceAsset] = []
+
+    def fingerprint(
+        self, *, storage_key: str, expected_size: int, cancellation_check: Callable[[], None]
+    ) -> DownloadedSource:
+        """Report the digest of the fixed source bytes, as a real download would."""
+        cancellation_check()
+        self.fingerprinted.append(storage_key)
+        return DownloadedSource(size_bytes=expected_size, sha256=SOURCE_DIGEST)
 
     def ingest(
         self,
@@ -60,6 +73,7 @@ class StaticIngestor:
         assert workspace.is_dir()
         assert workspace.stat().st_mode & 0o777 == 0o700
         self.workspaces.append(workspace)
+        self.sources.append(source)
         progress("proxy", 0.5)
         source_result = IngestArtifact(
             asset_id=source.asset_id,
@@ -268,6 +282,93 @@ def test_worker_rejects_a_derivative_outside_the_deterministic_tenant_prefix(
             )
             == 1
         )
+
+
+@pytest.mark.integration
+def test_a_completed_upload_becomes_the_source_asset_that_ingest_processes(
+    engine: Engine, clean_database: None
+) -> None:
+    """Direct upload is the default way media arrives; without adoption it can never ingest."""
+    del clean_database
+    context, upload_id = _seed_upload_ingest(engine, suffix="upload-adopt")
+    ingestor = StaticIngestor()
+    runner = IngestStageRunner(ingestor_factory=lambda _: ingestor)
+
+    runner(context)
+    runner(context)
+
+    with Session(engine) as session:
+        source = session.get(Asset, upload_id)
+        upload = session.get(MultipartUpload, upload_id)
+        assert source is not None
+        assert upload is not None
+        assert source.kind is AssetKind.SOURCE
+        assert source.source_type is AssetSourceType.USER_UPLOAD
+        assert source.storage_key == upload.storage_key
+        assert source.size_bytes == upload.completed_size_bytes
+        assert source.sha256 == SOURCE_DIGEST
+        assert source.duration_ms == 42_000
+        assert (
+            session.scalar(
+                select(func.count())
+                .select_from(Asset)
+                .where(Asset.workspace_id == context.workspace_id)
+            )
+            == 4
+        )
+    # The digest is measured once; a redelivery trusts the Asset it already recorded.
+    assert ingestor.fingerprinted == [upload.storage_key]
+    assert [source.asset_id for source in ingestor.sources] == [upload_id]
+
+
+@pytest.mark.integration
+def test_an_upload_that_never_completed_is_not_a_source(
+    engine: Engine, clean_database: None
+) -> None:
+    """Partial bytes must not be ingested as though the member had finished sending them."""
+    del clean_database
+    context, _ = _seed_upload_ingest(
+        engine, suffix="upload-pending", status=MultipartUploadStatus.UPLOADING
+    )
+    ingestor = StaticIngestor()
+
+    with pytest.raises(TerminalJobError, match=r"^ASSET_SOURCE_NOT_FOUND$"):
+        IngestStageRunner(ingestor_factory=lambda _: ingestor)(context)
+
+    assert ingestor.fingerprinted == []
+
+
+def _seed_upload_ingest(
+    engine: Engine,
+    *,
+    suffix: str,
+    status: MultipartUploadStatus = MultipartUploadStatus.COMPLETED,
+) -> tuple[JobContext, UUID]:
+    """Create one running INGEST Job whose Project holds an upload and no source Asset."""
+    context, source_id = _seed_ingest(engine, suffix=suffix)
+    upload_id = uuid4()
+    now = datetime.now(tz=UTC)
+    with engine.begin() as connection:
+        connection.execute(Asset.__table__.delete().where(Asset.id == source_id))
+        connection.execute(
+            MultipartUpload.__table__.insert().values(
+                id=upload_id,
+                workspace_id=context.workspace_id,
+                project_id=context.project_id,
+                storage_upload_id=f"provider-{suffix}",
+                storage_key=(
+                    f"workspaces/{context.workspace_id}/projects/{context.project_id}/"
+                    f"source/{upload_id}"
+                ),
+                client_filename="talk.mp4",
+                content_type="video/mp4",
+                declared_size_bytes=6,
+                completed_size_bytes=6 if status is MultipartUploadStatus.COMPLETED else None,
+                status=status,
+                expires_at=now + timedelta(days=1),
+            )
+        )
+    return context, upload_id
 
 
 def _seed_ingest(engine: Engine, *, suffix: str) -> tuple[JobContext, UUID]:

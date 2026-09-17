@@ -123,6 +123,7 @@ openssl rand -hex 32
 | `CLIPAH_ASSEMBLYAI_API_KEY` | Transcription and speaker diarization | <https://www.assemblyai.com/dashboard/> |
 | `CLIPAH_GROQ_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=groq` | <https://console.groq.com/keys> |
 | `CLIPAH_OPENROUTER_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=openrouter` | <https://openrouter.ai/keys> |
+| `CLIPAH_GEMINI_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=gemini` | <https://aistudio.google.com/apikey> |
 
 Transcription model routing is decided by language, not by configuration: English, Spanish,
 German, French, Portuguese, and Italian use `universal-3-pro`; Indonesian and every other
@@ -134,6 +135,9 @@ back to U2. Highlight extraction and reranking use `CLIPAH_GROQ_EXTRACTION_MODEL
 OpenRouter adapter reads `CLIPAH_OPENROUTER_EXTRACTION_MODEL` and
 `CLIPAH_OPENROUTER_RERANKING_MODEL`, and lets a model choose clip boundaries only from
 sentence spans this deployment built, so it never supplies transcript text or a timestamp.
+`gemini` runs the same adapter against Gemini's OpenAI-compatible endpoint and reads
+`CLIPAH_GEMINI_EXTRACTION_MODEL` and `CLIPAH_GEMINI_RERANKING_MODEL`. Gemini's free tier
+uses submitted data to improve Google's products, so real transcripts need a billed project.
 `CLIPAH_ANALYSIS_SINGLE_WINDOW` offers the whole transcript in one request instead of
 overlapping windows; it removes cross-window duplicates and costs fewer requests, but a
 single request has been measured to under-cover the end of a long source.
@@ -331,6 +335,7 @@ requires HTTPS origins.
 | `CLIPAH_MIGRATION_DATABASE_URL` | — | The migration owner, used by Alembic only. |
 | `CLIPAH_REDIS_URL` | — | Rate limits, job-event wakeups, and the Celery broker. |
 | `CLIPAH_OBJECT_STORE_ENDPOINT` | — | S3-compatible endpoint. |
+| `CLIPAH_OBJECT_STORE_PUBLIC_ENDPOINT` | — | Host the API signs browser-facing URLs against, when it differs from the endpoint the API itself calls. |
 | `CLIPAH_OBJECT_STORE_BUCKET` | — | |
 | `CLIPAH_OBJECT_STORE_ACCESS_KEY_ID` | — | |
 | `CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY` | — | |
@@ -351,6 +356,7 @@ requires HTTPS origins.
 | --- | --- | --- |
 | `CLIPAH_READ_REQUESTS_PER_MINUTE` | `60` | Per User. |
 | `CLIPAH_WRITE_REQUESTS_PER_MINUTE` | `20` | Per User. |
+| `CLIPAH_UPLOAD_PART_SIGNATURES_PER_MINUTE` | `300` | Per-User allowance for signing upload parts, counted apart from writes; a 2 GiB upload needs at most 256. |
 | `CLIPAH_ANALYSES_PER_HOUR` | `3` | Per User. |
 | `CLIPAH_CONCURRENT_JOBS_PER_WORKSPACE` | `5` | Enforced under an advisory lock. |
 | `CLIPAH_MONTHLY_ANALYSES` | `30` | Per Workspace. |
@@ -368,10 +374,14 @@ requires HTTPS origins.
 | `CLIPAH_GROQ_API_KEY` | — | Extraction and reranking. |
 | `CLIPAH_GROQ_EXTRACTION_MODEL` | `openai/gpt-oss-20b` | Refused if retired. |
 | `CLIPAH_GROQ_RERANKING_MODEL` | `openai/gpt-oss-120b` | Refused if retired. |
-| `CLIPAH_HIGHLIGHT_PROVIDER` | `groq` | `groq` or `openrouter`. |
+| `CLIPAH_HIGHLIGHT_PROVIDER` | `groq` | `groq`, `openrouter`, or `gemini`. |
 | `CLIPAH_OPENROUTER_API_KEY` | — | Required when the provider is `openrouter`. |
 | `CLIPAH_OPENROUTER_EXTRACTION_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
 | `CLIPAH_OPENROUTER_RERANKING_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
+| `CLIPAH_GEMINI_API_KEY` | — | Required when the provider is `gemini`. |
+| `CLIPAH_GEMINI_EXTRACTION_MODEL` | `gemini-3.8-flash` | Refused if unknown. |
+| `CLIPAH_GEMINI_RERANKING_MODEL` | `gemini-3.8-flash` | Refused if unknown. |
+| `CLIPAH_GEMINI_FALLBACK_MODELS` | `["gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash"]` | JSON array tried in order when the model before it is rate limited or unavailable; a refusal never falls through. Each is refused at startup if unknown. |
 | `CLIPAH_PROVIDER_SHUTDOWNS` | empty | Model retirement dates the configuration honours. |
 | `CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS` | `120000` | |
 | `CLIPAH_ANALYSIS_WINDOW_TARGET_MAX_MS` | `180000` | |

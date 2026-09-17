@@ -4,18 +4,21 @@ from __future__ import annotations
 
 import hashlib
 import json
+import tempfile
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import timedelta
 from io import BytesIO
-from typing import Any, cast
+from typing import Any, BinaryIO, cast
 from uuid import UUID, uuid5
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from clipah.assets.ingest import HttpxSourceDownloader, SourceDownloader
+from clipah.assets.probe import MAX_MEDIA_BYTES
 from clipah.assets.storage import (
     ObjectStore,
     ObjectStoreUnavailableError,
@@ -27,7 +30,7 @@ from clipah.db import RuntimeRole, session_scope
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.models import Asset, AssetKind, Transcript
 from clipah.observability.usage import ProviderCallRecord, record_provider_usage
-from clipah.transcripts.assemblyai_adapter import AssemblyAITranscriber
+from clipah.transcripts.assemblyai_adapter import AssemblyAITranscriber, AudioSource
 from clipah.transcripts.models import JsonValue, TranscriptResult
 from clipah.transcripts.provider import (
     Transcriber,
@@ -344,14 +347,33 @@ def production_transcription_dependencies(settings: Settings) -> TranscriptionDe
     )
     transcriber = AssemblyAITranscriber(
         api_key=settings.assemblyai_api_key.get_secret_value(),
-        audio_url_resolver=lambda audio: (
-            store.sign_download(
-                key=audio.key,
-                expires_in=timedelta(minutes=5),
-            ).url
-        ),
+        audio_source=stored_audio_source(store, HttpxSourceDownloader()),
     )
     return TranscriptionDependencies(transcriber=transcriber, store=store)
+
+
+def stored_audio_source(store: ObjectStore, downloader: SourceDownloader) -> AudioSource:
+    """Read private audio inside the worker so only its bytes reach the provider.
+
+    Handing the provider a signed storage URL requires storage reachable from the internet,
+    which a local stack never has and a production bucket should not need.
+    """
+
+    @contextmanager
+    def opened(audio: StoredObject) -> Iterator[str | BinaryIO]:
+        signed = store.sign_download(key=audio.key, expires_in=timedelta(minutes=5))
+        with tempfile.TemporaryFile() as buffer:
+            downloader.download(
+                signed.url,
+                buffer,
+                expected_size=audio.content_length,
+                max_bytes=MAX_MEDIA_BYTES,
+                cancellation_check=lambda: None,
+            )
+            buffer.seek(0)
+            yield buffer
+
+    return opened
 
 
 transcribe_stage_runner = TranscribeStageRunner(

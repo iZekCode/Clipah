@@ -3208,6 +3208,66 @@ live debugging, and is recorded that way rather than presented as test-first wor
 containerized frontend had never reached the API in this repository — earlier live runs used a
 host `pnpm dev`, which is why the defect stayed hidden until the stack ran entirely in Compose.
 
+## Direct upload end to end, and Gemini analysis — 2026-09-17
+
+The first direct upload to reach ranked clips. A 466 MB, 41-minute Indonesian podcast was
+uploaded through the browser, ingested, transcribed by AssemblyAI (`universal-2`, 5,732 words),
+and analysed as one window by Gemini, yielding eight ranked candidates between 0:18 and 28:07,
+43 to 73 seconds long. Every stage before analysis had a defect that only a live run through
+the Compose stack could expose; each is fixed below. Project names in this section are the
+owner's local test projects.
+
+**Defects found and fixed, in the order the run hit them.**
+
+| Defect | Symptom | Fix |
+| --- | --- | --- |
+| The API's own storage calls used the browser's host (`localhost:59001`), which inside the API container is the API itself | Starting an upload answered 503; uploads in Compose had not worked since the 2026-09-16 signing fix | `CLIPAH_OBJECT_STORE_PUBLIC_ENDPOINT`: `S3ObjectStore` signs with a second client bound to the public host, because a signature binds its host, while its own calls stay on `minio:9000` |
+| Every upload part signature spent a write request, and writes allow 20 a minute | Any upload above about 160 MB failed with 429 part-way through | Part signing spends its own `UPLOAD_PART` allowance (`CLIPAH_UPLOAD_PART_SIGNATURES_PER_MINUTE`, 300), sized for the 256 parts of a 2 GiB upload |
+| Completing an upload queued ingest but nothing ever created a source Asset; only the YouTube import worker does | Ingest failed `ASSET_SOURCE_NOT_FOUND` on every upload | With no source Asset, ingest adopts the Project's newest completed upload: it streams the object once to measure size and SHA-256 (`AssetIngestor.fingerprint`), requires the size to match the upload, and records a `user_upload` source Asset whose ID is the upload's, so a redelivery never measures twice |
+| AssemblyAI was handed a signed `http://minio:9000` URL | Transcription failed `TRANSCRIPTION_PROVIDER_REJECTED` ("could not connect to the host") | The worker reads the audio in-network into a temporary file and the SDK uploads the bytes; `AssemblyAITranscriber` takes an `audio_source` context manager instead of a URL resolver, so no storage capability leaves the worker |
+| The whole-window selection prompt listed every duration-valid sentence pair, which grows with the square of the sentence count | 69,339 labels, 871,225 tokens by Gemini's own count; three 429s and a silent fallback to the offline provider | The prompt states `clip_seconds` bounds over the timed sentences instead (58,820 tokens); `resolve_span` still refuses any pair outside them. Prompt version `highlights/span-extract/2` |
+
+The first three were found on public YouTube import's failure: Google answered the source
+check with a `google.com/sorry` redirect for this network, which the importer reports as
+`SOURCE_UNSUPPORTED`. Nothing was changed there; direct upload was used instead.
+
+**Gemini as a highlight provider.** `CLIPAH_HIGHLIGHT_PROVIDER=gemini` reuses the span-offer
+adapter against Gemini's OpenAI-compatible endpoint, which answers the same forced tool calls,
+and records usage under provider `gemini`. The model is a chain:
+`gemini-3.8-flash`, then `CLIPAH_GEMINI_FALLBACK_MODELS` (3.7, 3.6, 3.5 Flash). Only a
+retryable failure moves a request down the chain; every model but the last is asked once; and
+the chain, built per analysis, remembers how far it has moved, so reranking never waits out a
+model extraction already abandoned. Every alias is checked at startup. On one dry run over the
+same transcript this took the analysis from 431 seconds to 126 while 3.8, 3.7, and 3.6 Flash
+all answered 503 for high demand. In the real run 3.5 Flash served both calls in 109 seconds:
+52,786 input and 2,866 output tokens to select and describe, 3,638 and 30 to rerank.
+
+Measured quality, not yet judged by a human: 3.5 Flash-Lite accepted 5 of 8 proposals and
+invented sentence labels past the end of the transcript; 3.5 Flash accepted 8 of 8 across two
+selections. Hooks were written titles rather than copied openers. Coverage still stops short:
+nothing after 28:07 of 41 minutes. Seven of eight candidates carry a context warning and scores
+span only 0.83-0.90.
+
+**Also in this change.** Two fixes from the preceding live debugging that were not yet recorded:
+a job left `running` by a worker that died is resumed on redelivery (`start_job(...,
+resume_abandoned=True)` records the lost attempt as a retry) instead of being refused forever;
+and OpenRouter failures carried inside a 200 response are classified by the error's own code
+(`refusal_status`), so an upstream 429 or 502 is retried rather than treated as terminal. The
+analysis worker also receives the three window-shape settings through Compose.
+
+**Test database isolation.** The integration suite truncates the database the local app uses.
+This session ran it against a separate database, `clipah_agent_isolated_test`, on the same
+server, and deselected
+`test_upgrade_rejects_a_missing_externally_provisioned_runtime_role`, which fails for the
+environmental reason recorded under the Creator Studio redesign.
+
+Final verification: Ruff check, Ruff format check, strict mypy, and 2906 backend tests passed
+with 20 environment-gated skips at 92.86% coverage; `scripts/check-contracts-clean.sh` reports
+the generated contracts up to date. Every change made in this session was written test-first
+against a watched failure, except the switch of the default model to 3.8 Flash, which is a
+setting. The abandoned-job and OpenRouter-status fixes predate this session and arrived with
+their tests; whether those were written first is not recorded.
+
 ## Deferrals
 
 Work deliberately left for the task that owns it, recorded so it is not mistaken for an
@@ -3219,7 +3279,13 @@ oversight.
 | Unicode normalization in the excerpt comparison. It ignores case, spacing, and ASCII punctuation but not unicode variants, so a model returning a non-breaking hyphen fails a match that should pass. Real but not what blocks the pipeline | whichever task revisits candidate validation |
 | Classifying a rejected provider credential as terminal. An invalid AssemblyAI key is reported as `TRANSCRIPTION_PROVIDER_UNAVAILABLE` and retried five times; a refused credential is not a transient outage and burning the retry budget delays the real answer | whichever task revisits transcription failure mapping |
 | Logging a suppressed broker dispatch failure. The route suppresses the exception by design so a committed Job survives an outage, but with no log line a misconfigured broker looks exactly like a working import until someone reads the database | whichever task revisits job dispatch |
-| Documenting that a live transcription run needs object storage the provider can reach. `ENVIRONMENT_SETUP.md` says nothing about it, and it is the first wall anyone hits locally | whichever task revisits the environment guide |
+| ~~Documenting that a live transcription run needs object storage the provider can reach~~ — no longer true: the worker uploads audio bytes to AssemblyAI | done 2026-09-17 |
+| Making an offline fallback visible. When every Gemini model fails, analysis succeeds with deterministic, non-AI candidates, and only `provider_usage` shows it | the repository owner |
+| Keeping a selection whose metadata call failed. The chain restarts extraction on the next model, discarding spans a model already chose; this cost about 40 seconds in the dry run | whichever task revisits the provider chain |
+| Covering a long source in single-window mode. The request asks for the per-window target (8) whatever the length, and picks cluster early: nothing after 28:07 of 41 minutes | whichever task revisits candidate counts |
+| Retrying a failed pipeline stage. There is no retry route, and each stage's idempotency key is bound to its predecessor, so a terminal failure needs a new Project and a new upload | whichever task revisits job recovery |
+| Explaining a 17-minute wait between upload completion and the ingest Job starting on 2026-09-17; the worker was idle when inspected | the repository owner |
+| Mapping a Google bot-check redirect on public YouTube import to its own retryable code instead of `SOURCE_UNSUPPORTED` | whichever task revisits source import |
 | Running the k6 scenarios. `tests/load/k6.js` is written, syntax-checked, and asserts its three thresholds, but k6 is not installed on this machine, so no number in it has been observed | the repository owner, or a CI runner with k6 installed |
 | Probing the object store in `/health/ready`. Readiness covers the database and the broker, so a storage outage shows up as refused work rather than an unready API; this is recorded in `docs/operations/recovery.md` rather than silently assumed | whichever task revisits the health contract |
 | ~~Serving the API as a process, and the object-store configuration a browser run needs (`CLIPAH_OBJECT_STORE_ENDPOINT`, `_BUCKET`, `_ACCESS_KEY_ID`, `_SECRET_ACCESS_KEY`, and a provisioned bucket)~~ — landed in Task 46's pinned API image and Compose MinIO fixture | done in Task 46 |

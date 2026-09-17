@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import date
 from typing import Any
 
@@ -25,6 +26,7 @@ from clipah.highlights.provider import (
     EXTRACT_OPERATION,
     RERANK_OPERATION,
     DeterministicHighlightProvider,
+    ExtractionResult,
     FakeHighlightProvider,
     HighlightProviderRetryableError,
     HighlightProviderTerminalError,
@@ -33,6 +35,7 @@ from clipah.highlights.provider import (
 )
 from clipah.highlights.provider_router import (
     SUPPORTED_HIGHLIGHT_MODELS,
+    HighlightProviderChain,
     HighlightProviderRouter,
     UnsupportedHighlightModelError,
     highlight_provider_router,
@@ -837,6 +840,170 @@ def test_rejects_an_unknown_openrouter_model_alias() -> None:
                 highlight_provider="openrouter",
                 openrouter_api_key=SecretStr("test-key"),
                 openrouter_extraction_model="nvidia/nemotron-9",
+            ),
+            today=date(2026, 9, 1),
+        )
+
+
+@pytest.mark.unit
+def test_routes_extraction_to_gemini_through_its_openai_compatible_endpoint() -> None:
+    """Gemini speaks the same forced tool calls, so it reuses the span-offer adapter."""
+    from clipah.highlights.openrouter_adapter import (
+        GEMINI_BASE_URL,
+        GEMINI_PROVIDER,
+        OpenRouterHighlightProvider,
+    )
+
+    router = highlight_provider_router(
+        _settings(
+            highlight_provider="gemini",
+            gemini_api_key=SecretStr("test-key"),
+            gemini_extraction_model="gemini-3.8-flash",
+            gemini_reranking_model="gemini-3.8-flash",
+            gemini_fallback_models=("gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"),
+        ),
+        today=date(2026, 9, 1),
+    )
+    chain = router._primary
+    assert isinstance(chain, HighlightProviderChain)
+    links = chain._providers
+    assert all(isinstance(link, OpenRouterHighlightProvider) for link in links)
+    assert [link._extraction_model for link in links] == [  # type: ignore[attr-defined]
+        "gemini-3.8-flash",
+        "gemini-3.7-flash",
+        "gemini-3.6-flash",
+        "gemini-3.5-flash",
+    ]
+    first = links[0]
+    assert first._provider == GEMINI_PROVIDER  # type: ignore[attr-defined]
+    transport = first._completions  # type: ignore[attr-defined]
+    assert str(transport._http.base_url).rstrip("/") == GEMINI_BASE_URL
+
+
+def _extraction(model: str) -> ExtractionResult:
+    """One successful extraction attributed to the model that served it."""
+    return ExtractionResult(
+        proposals=(), call=replace(_FALLBACK_CALL, operation=EXTRACT_OPERATION, model=model)
+    )
+
+
+@pytest.mark.unit
+def test_a_chain_moves_to_the_next_model_only_when_one_is_unavailable() -> None:
+    """An overloaded model must hand the request on, and the record must name who answered."""
+    busy = FakeHighlightProvider(
+        results=[HighlightProviderRetryableError("HIGHLIGHT_PROVIDER_UNAVAILABLE")],
+        rerank_result=HighlightProviderRetryableError("HIGHLIGHT_PROVIDER_RATE_LIMITED"),
+    )
+    ready = FakeHighlightProvider(
+        results=[_extraction("gemini-3.6-flash")],
+        rerank_result=RerankResult(order=(0,), call=replace(_FALLBACK_CALL, model="gemini-3.6")),
+    )
+    unused = FakeHighlightProvider()
+    chain = HighlightProviderChain((busy, ready, unused))
+
+    assert chain.extract(window=WINDOW, target_count=5).call.model == "gemini-3.6-flash"
+    assert chain.rerank(candidates=[_draft("a")], limit=1).order == (0,)
+    assert unused.windows == []
+
+
+@pytest.mark.unit
+def test_a_chain_skips_a_model_that_already_failed_during_this_analysis() -> None:
+    """Reranking must not wait out an overloaded model that extraction just gave up on."""
+    busy = FakeHighlightProvider(
+        results=[HighlightProviderRetryableError("HIGHLIGHT_PROVIDER_UNAVAILABLE")],
+        rerank_result=RerankResult(order=(0,), call=_FALLBACK_CALL),
+    )
+    ready = FakeHighlightProvider(
+        results=[_extraction("gemini-3.7-flash")],
+        rerank_result=RerankResult(order=(0,), call=replace(_FALLBACK_CALL, model="3.7")),
+    )
+    chain = HighlightProviderChain((busy, ready))
+
+    chain.extract(window=WINDOW, target_count=5)
+    assert chain.rerank(candidates=[_draft("a")], limit=1).call.model == "3.7"
+
+    assert busy.rerank_calls == []
+
+
+@pytest.mark.unit
+def test_every_model_but_the_last_is_asked_once_before_the_chain_moves_on() -> None:
+    """Retrying an overloaded model wastes minutes when another model may answer now."""
+    router = highlight_provider_router(
+        _settings(
+            highlight_provider="gemini",
+            gemini_api_key=SecretStr("test-key"),
+            gemini_fallback_models=("gemini-3.7-flash", "gemini-3.6-flash", "gemini-3.5-flash"),
+        ),
+        today=date(2026, 9, 1),
+    )
+    chain = router._primary
+    assert isinstance(chain, HighlightProviderChain)
+    assert [link._max_attempts for link in chain._providers] == [1, 1, 1, 3]  # type: ignore[attr-defined]
+
+
+@pytest.mark.unit
+def test_a_chain_does_not_retry_a_refusal_on_another_model() -> None:
+    """A request the provider rejects outright is not a capacity problem."""
+    rejecting = FakeHighlightProvider(
+        results=[HighlightProviderTerminalError("HIGHLIGHT_PROVIDER_REJECTED")]
+    )
+    unused = FakeHighlightProvider()
+
+    with pytest.raises(HighlightProviderTerminalError):
+        HighlightProviderChain((rejecting, unused)).extract(window=WINDOW, target_count=5)
+
+    assert unused.windows == []
+
+
+@pytest.mark.unit
+def test_a_chain_whose_every_model_is_unavailable_reports_it_as_retryable() -> None:
+    """Only after the last model fails may the offline fallback or a job retry take over."""
+    chain = HighlightProviderChain(
+        tuple(
+            FakeHighlightProvider(
+                results=[HighlightProviderRetryableError("HIGHLIGHT_PROVIDER_UNAVAILABLE")]
+            )
+            for _ in range(3)
+        )
+    )
+
+    with pytest.raises(HighlightProviderRetryableError):
+        chain.extract(window=WINDOW, target_count=5)
+
+
+@pytest.mark.unit
+def test_rejects_an_unknown_gemini_fallback_model_alias() -> None:
+    """A typo deep in the chain must stop the worker at startup, not during an outage."""
+    with pytest.raises(UnsupportedHighlightModelError):
+        highlight_provider_router(
+            _settings(
+                highlight_provider="gemini",
+                gemini_api_key=SecretStr("test-key"),
+                gemini_fallback_models=("gemini-3.7-flash", "gemini-0-imaginary"),
+            ),
+            today=date(2026, 9, 1),
+        )
+
+
+@pytest.mark.unit
+def test_refuses_a_gemini_deployment_without_its_key() -> None:
+    """Fail-closed configuration applies to Gemini as it does to every other provider."""
+    with pytest.raises(RuntimeError):
+        highlight_provider_router(
+            _settings(highlight_provider="gemini", gemini_api_key=None),
+            today=date(2026, 9, 1),
+        )
+
+
+@pytest.mark.unit
+def test_rejects_an_unknown_gemini_model_alias() -> None:
+    """An unknown Gemini alias must stop the worker at startup."""
+    with pytest.raises(UnsupportedHighlightModelError):
+        highlight_provider_router(
+            _settings(
+                highlight_provider="gemini",
+                gemini_api_key=SecretStr("test-key"),
+                gemini_extraction_model="gemini-0-imaginary",
             ),
             today=date(2026, 9, 1),
         )

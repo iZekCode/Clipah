@@ -253,6 +253,52 @@ def test_a_recoverable_failure_returns_the_job_to_retrying(engine: Engine, clock
 
 
 @pytest.mark.integration
+def test_a_job_abandoned_by_a_lost_worker_resumes_when_redelivered(
+    engine: Engine, clock: Clock
+) -> None:
+    """Late acknowledgement redelivers a lost worker's job; refusing it would strand it forever."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="abandoned")
+    job_id = _queued_job(workspace_id, user_id, project_id, clock, key="abandoned")
+    with _worker_session(workspace_id, user_id) as session:
+        start_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+
+    with _worker_session(workspace_id, user_id) as session:
+        resumed = start_job(
+            session,
+            workspace_id=workspace_id,
+            job_id=job_id,
+            now=clock(),
+            resume_abandoned=True,
+        )
+        assert resumed.status is JobStatus.RUNNING
+        assert resumed.attempt == 2
+
+    assert _event_types(workspace_id, user_id, job_id) == [
+        JobEventType.CREATED,
+        JobEventType.STARTED,
+        JobEventType.RETRYING,
+        JobEventType.STARTED,
+    ]
+
+
+@pytest.mark.integration
+def test_a_running_job_is_not_started_twice_unless_its_delivery_was_abandoned(
+    engine: Engine, clock: Clock
+) -> None:
+    """Every other caller still gets the refusal that keeps one job to one owner."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="twice")
+    job_id = _queued_job(workspace_id, user_id, project_id, clock, key="twice")
+    with _worker_session(workspace_id, user_id) as session:
+        start_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+
+    with (
+        _worker_session(workspace_id, user_id) as session,
+        pytest.raises(InvalidJobTransitionError),
+    ):
+        start_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+
+
+@pytest.mark.integration
 def test_an_unrecoverable_failure_is_terminal(engine: Engine, clock: Clock) -> None:
     """A permanent failure must stop consuming attempts and stay honest about it."""
     user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="failed")
