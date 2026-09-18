@@ -6,6 +6,7 @@ import { ReviewMode } from '@/features/review/ReviewMode'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { candidate, currentUser, project, workspace } from './support/fixtures'
 
 const PROJECT_ID = project().id
@@ -88,7 +89,7 @@ function reviewApi() {
 }
 
 function renderReview() {
-  renderWithApi(
+  return renderWithApi(
     <WorkspaceProvider>
       <ReviewMode projectId={PROJECT_ID} />
     </WorkspaceProvider>,
@@ -106,9 +107,10 @@ beforeEach(() => {
 describe('review mode', () => {
   test('opens on the best-ranked moment with its hook, warnings, and transcript in context', async () => {
     reviewApi()
-    renderReview()
+    const { container } = renderReview()
 
     const detail = await screen.findByRole('region', { name: 'Moment' })
+    await expectAccessible(container)
     expect(within(detail).getByRole('heading', { level: 1 })).toHaveTextContent(FIRST.hook)
     expect(within(detail).getByRole('group', { name: /context warnings/i })).toHaveTextContent(
       'Opens mid-thought.',

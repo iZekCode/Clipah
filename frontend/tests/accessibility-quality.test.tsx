@@ -1,10 +1,11 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { axe } from 'vitest-axe'
 import { describe, expect, test, vi } from 'vitest'
 
 import { AccessibilityPanel } from '@/features/editor/AccessibilityPanel'
 import type { AccessibilityWarningResponse } from '@/lib/api/generated/model'
+
+import { expectAccessible } from './support/axe'
 
 const WARNING: AccessibilityWarningResponse = {
   code: 'caption_reading_speed',
@@ -22,9 +23,7 @@ describe('accessibility quality panel', () => {
     const onSelect = vi.fn()
     const { container } = render(<AccessibilityPanel warnings={[WARNING]} onSelect={onSelect} />)
 
-    expect(
-      (await axe(container, { rules: { 'color-contrast': { enabled: false } } })).violations,
-    ).toHaveLength(0)
+    await expectAccessible(container)
     await userEvent.click(screen.getByRole('button', { name: WARNING.action }))
     expect(onSelect).toHaveBeenCalledWith({ itemId: 'caption-1', timeMs: 1_200 })
   })

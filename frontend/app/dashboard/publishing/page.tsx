@@ -2,6 +2,7 @@ import { Plus } from 'lucide-react'
 import Link from 'next/link'
 
 import { PageHeader } from '@/components/page-header'
+import { Button } from '@/components/ui/button'
 import { NewPublication } from '@/features/publishing/NewPublication'
 import { PublicationHistory } from '@/features/publishing/PublicationHistory'
 
@@ -39,15 +40,14 @@ export default async function PublishingPage({
     <section className="space-y-2">
       <PageHeader
         title="Publishing"
-        description="Every destination keeps its own state, so a batch never hides a failure behind a success."
+        description="Schedule clips to your connected accounts."
         actions={
-          <Link
-            href="/dashboard/publishing/new"
-            className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            <Plus aria-hidden="true" className="size-4" />
-            New publication
-          </Link>
+          <Button asChild>
+            <Link href="/dashboard/publishing/new">
+              <Plus aria-hidden="true" strokeWidth={1.75} />
+              New publication
+            </Link>
+          </Button>
         }
       />
       <PublicationHistory />

@@ -17,6 +17,17 @@ describe('notify', () => {
     expect(screen.getByRole('button', { name: 'Download' })).toBeInTheDocument()
   })
 
+  test('a repeated id replaces the toast, and a second action is offered', async () => {
+    render(<Toaster />)
+    act(() => {
+      notify.success('Export ready', { id: 'export-ready-1', secondaryAction: { label: 'Publish', onClick: () => undefined } })
+      notify.success('Export ready', { id: 'export-ready-1', secondaryAction: { label: 'Publish', onClick: () => undefined } })
+    })
+
+    expect(await screen.findAllByText('Export ready')).toHaveLength(1)
+    expect(screen.getByRole('button', { name: 'Publish' })).toBeInTheDocument()
+  })
+
   test('says what failed in the backend’s words and keeps the reference for support', async () => {
     render(<Toaster />)
     const error = new ApiError({

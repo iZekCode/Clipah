@@ -1019,6 +1019,8 @@ function LoadedEditor({
         open={exporting}
         onOpenChange={setExporting}
         editId={edit.id}
+        projectId={edit.projectId}
+        sourceRange={composition.sourceRange}
         workspaceId={workspaceId}
         defaultPreset={presetForCanvas(composition.canvas.width, composition.canvas.height)}
         mayExport={canExport}

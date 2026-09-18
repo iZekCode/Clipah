@@ -1,22 +1,24 @@
 'use client'
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query'
-import { Film, ImageIcon, Music } from 'lucide-react'
+import { ImageIcon } from 'lucide-react'
 import Link from 'next/link'
 import { useId, useState } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
+import { DesignedFrame, Poster } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -32,6 +34,7 @@ import {
   assetCollectionApiV1AssetsGet,
   previewAssetApiV1AssetsAssetIdPreviewUrlGet,
 } from '@/lib/api/generated/studio/studio'
+import { formatClock } from '@/lib/media/time'
 
 const PAGE_SIZE = 24
 
@@ -154,7 +157,7 @@ export function AssetBrowser() {
           }
         />
       ) : (
-        <ul aria-label="Assets" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul aria-label="Assets" className="grid grid-cols-2 gap-4 md:grid-cols-3 xl:grid-cols-4">
           {listed.map((asset) => (
             <li key={asset.id}>
               <AssetCard asset={asset} onPreview={() => setPreviewing(asset)} />
@@ -165,14 +168,14 @@ export function AssetBrowser() {
 
       {assets.hasNextPage ? (
         <div className="flex justify-center">
-          <button
+          <Button
             type="button"
+            variant="secondary"
             onClick={() => void assets.fetchNextPage()}
             disabled={assets.isFetchingNextPage}
-            className="h-10 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-secondary disabled:opacity-50"
           >
             {assets.isFetchingNextPage ? 'Loading…' : 'Load more'}
-          </button>
+          </Button>
         </div>
       ) : null}
 
@@ -184,72 +187,58 @@ export function AssetBrowser() {
 }
 
 function AssetCard({ asset, onPreview }: { asset: LibraryAssetResponse; onPreview: () => void }) {
-  const Icon = asset.contentType.startsWith('image/')
-    ? ImageIcon
-    : asset.contentType.startsWith('audio/')
-      ? Music
-      : Film
+  const kindLabel = KIND_LABELS[asset.kind] ?? asset.kind
+  const durationMs = asset.durationMs ?? undefined
   return (
-    <article className="surface flex h-full flex-col overflow-hidden">
+    <article className="flex h-full flex-col gap-2">
       <button
         type="button"
         onClick={onPreview}
-        aria-label={`Preview ${KIND_LABELS[asset.kind] ?? asset.kind} from ${asset.projectName}`}
-        className="flex aspect-video items-center justify-center bg-gradient-to-br from-accent to-secondary text-accent-foreground hover:opacity-90"
+        aria-label={`Preview ${kindLabel} from ${asset.projectName}`}
+        className="relative block aspect-video overflow-hidden rounded-md border border-border transition-colors duration-fast ease-signal hover:border-line-strong"
       >
-        <Icon aria-hidden="true" className="size-8 opacity-70" />
+        {asset.kind === 'source' ? (
+          <Poster projectId={asset.projectId} durationMs={durationMs} />
+        ) : (
+          // Storyboards exist only for source videos, so other kinds show a designed frame.
+          <DesignedFrame durationMs={durationMs} />
+        )}
       </button>
-      <div className="flex flex-1 flex-col gap-2 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge tone="accent">{KIND_LABELS[asset.kind] ?? asset.kind}</StatusBadge>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <StatusBadge tone="neutral">{kindLabel}</StatusBadge>
           <StatusBadge tone={asset.sourceType === 'generated' ? 'attention' : 'neutral'}>
             {SOURCE_LABELS[asset.sourceType] ?? asset.sourceType}
           </StatusBadge>
         </div>
         <Link
           href={`/dashboard/projects/${asset.projectId}`}
-          className="truncate text-sm font-semibold hover:underline"
+          className="truncate text-small font-semibold hover:underline"
         >
           {asset.projectName}
         </Link>
-        <dl className="grid grid-cols-2 gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-          <dt>Size</dt>
-          <dd>{formatBytes(asset.sizeBytes)}</dd>
-          {asset.durationMs === null ? null : (
-            <>
-              <dt>Length</dt>
-              <dd>{formatLength(asset.durationMs)}</dd>
-            </>
-          )}
-          {asset.width === null || asset.height === null ? null : (
-            <>
-              <dt>Resolution</dt>
-              <dd>
-                {asset.width}×{asset.height}
-              </dd>
-            </>
-          )}
-          <dt>Added</dt>
-          <dd>{new Date(asset.createdAt).toLocaleDateString()}</dd>
-        </dl>
-        {asset.provenance === null ? null : (
-          <div className="mt-auto rounded-lg bg-secondary/60 p-2.5 text-xs">
-            <p className="font-medium">{asset.provenance.attributionText}</p>
-            <p className="text-muted-foreground">
-              {asset.provenance.provider} ·{' '}
-              <a
-                href={asset.provenance.licenseUrl}
-                target="_blank"
-                rel="noreferrer noopener"
-                className="underline"
-              >
-                {asset.provenance.licenseName}
-              </a>
-            </p>
-          </div>
-        )}
+        <p className="tabular font-mono text-caption text-muted-foreground">
+          {asset.durationMs === null ? '' : `${formatClock(asset.durationMs)} · `}
+          {formatBytes(asset.sizeBytes)}
+        </p>
+        {asset.provenance === null ? null : <Provenance provenance={asset.provenance} />}
       </div>
     </article>
+  )
+}
+
+/** Where a file came from and the licence it is used under, as the backend recorded it. */
+function Provenance({ provenance }: { provenance: NonNullable<LibraryAssetResponse['provenance']> }) {
+  return (
+    <div className="text-caption">
+      <p className="font-medium">{provenance.attributionText}</p>
+      <p className="text-muted-foreground">
+        {provenance.provider} ·{' '}
+        <a href={provenance.licenseUrl} target="_blank" rel="noreferrer noopener" className="underline">
+          {provenance.licenseName}
+        </a>
+      </p>
+    </div>
   )
 }
 
@@ -267,30 +256,53 @@ function AssetPreview({ asset, onClose }: { asset: LibraryAssetResponse; onClose
   const title = `${KIND_LABELS[asset.kind] ?? asset.kind} from ${asset.projectName}`
 
   return (
-    <Dialog open onOpenChange={(open) => (open ? undefined : onClose())}>
-      <DialogContent className="sm:max-w-3xl">
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription>This preview link works for five minutes.</DialogDescription>
-        </DialogHeader>
+    <Sheet open onOpenChange={(open) => (open ? undefined : onClose())}>
+      <SheetContent side="right" className="w-full space-y-5 overflow-y-auto sm:max-w-xl">
+        <SheetHeader>
+          <SheetTitle>{title}</SheetTitle>
+          <SheetDescription>This preview link works for five minutes.</SheetDescription>
+        </SheetHeader>
         {signed.isError ? (
           <ErrorNotice error={signed.error} onRetry={() => void signed.refetch()} />
         ) : signed.data === undefined ? (
           <LoadingState label="Opening preview…" />
         ) : signed.data.contentType.startsWith('image/') ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={signed.data.url} alt={title} className="max-h-[70vh] w-full rounded-lg object-contain" />
+          <img src={signed.data.url} alt={title} className="max-h-[60vh] w-full rounded-md bg-stage object-contain" />
         ) : (
           <video
             src={signed.data.url}
             controls
             preload="metadata"
             onError={() => void signed.refetch()}
-            className="max-h-[70vh] w-full rounded-lg bg-black"
+            className="max-h-[60vh] w-full rounded-md bg-stage"
           />
         )}
-      </DialogContent>
-    </Dialog>
+        <dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-1 font-mono text-caption">
+          <dt className="text-subtle-foreground">Type</dt>
+          <dd>{asset.contentType}</dd>
+          {asset.width === null || asset.height === null ? null : (
+            <>
+              <dt className="text-subtle-foreground">Size</dt>
+              <dd>
+                {asset.width} × {asset.height}
+              </dd>
+            </>
+          )}
+          <dt className="text-subtle-foreground">File</dt>
+          <dd>{formatBytes(asset.sizeBytes)}</dd>
+          {asset.durationMs === null ? null : (
+            <>
+              <dt className="text-subtle-foreground">Length</dt>
+              <dd>{formatClock(asset.durationMs)}</dd>
+            </>
+          )}
+          <dt className="text-subtle-foreground">Added</dt>
+          <dd>{new Date(asset.createdAt).toLocaleDateString()}</dd>
+        </dl>
+        {asset.provenance === null ? null : <Provenance provenance={asset.provenance} />}
+      </SheetContent>
+    </Sheet>
   )
 }
 
@@ -298,14 +310,4 @@ function formatBytes(bytes: number): string {
   if (bytes >= 1024 ** 3) return `${(bytes / 1024 ** 3).toFixed(1)} GB`
   if (bytes >= 1024 ** 2) return `${(bytes / 1024 ** 2).toFixed(1)} MB`
   return `${Math.max(1, Math.round(bytes / 1024))} KB`
-}
-
-function formatLength(durationMs: number): string {
-  const total = Math.round(durationMs / 1000)
-  const hours = Math.floor(total / 3600)
-  const minutes = Math.floor((total % 3600) / 60)
-  const seconds = total % 60
-  return hours > 0
-    ? `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-    : `${minutes}:${String(seconds).padStart(2, '0')}`
 }

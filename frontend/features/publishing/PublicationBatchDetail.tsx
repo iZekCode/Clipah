@@ -231,5 +231,5 @@ function retryRefusal(error: unknown, provider: string): string {
   if (error instanceof ApiError) {
     return error.message
   }
-  return 'Something went wrong. Please try again.'
+  return 'Something went wrong. Try again.'
 }

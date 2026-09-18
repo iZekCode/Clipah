@@ -16,6 +16,7 @@ import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type { CapabilitiesResponse, SocialAccountResponse } from '@/lib/api/generated/model'
 
 import { renderWithApi, stubApi, type Handler, type StubbedApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { capabilities, currentUser, publication, socialAccount, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
@@ -128,8 +129,8 @@ function stub(
 }
 
 /** Render the composer for one approved revision and its exact rendered artifact. */
-function open(): void {
-  renderWithApi(
+function open() {
+  return renderWithApi(
     <WorkspaceProvider>
       <PublicationComposer
         editId={EDIT_ID}
@@ -172,9 +173,11 @@ describe('publishing gates', () => {
       user: currentUser({ capabilities: gates({ tiktokPublishing: false }) }),
     })
 
-    open()
+    const { container } = open()
 
     expect(await screen.findByRole('checkbox', { name: /Rin on YouTube/ })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Destinations' })).toBeInTheDocument()
+    await expectAccessible(container)
     expect(screen.getByRole('checkbox', { name: /Rin on Instagram/ })).toBeInTheDocument()
     expect(screen.queryByRole('checkbox', { name: /Rin on TikTok/ })).not.toBeInTheDocument()
   })

@@ -85,7 +85,7 @@ export function ClipBrowser() {
     <section className="space-y-6">
       <PageHeader
         title="Clips"
-        description="Every moment from your projects — suggested, being edited, or ready to share."
+        description="Every moment from your projects, from suggestion to finished file."
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">

@@ -17,13 +17,18 @@ import { DashboardShell } from '@/components/dashboard-shell'
 import { ErrorNotice } from '@/components/error-notice'
 import { ApiError, apiFetch, CSRF_HEADER } from '@/lib/api/client'
 
+import { expectAccessible } from './support/axe'
+
 const HTML_LOOKING_TEXT = '<img src=x onerror="alert(1)">'
 
 describe('landing page', () => {
-  it('names the product and offers a way to sign in', () => {
-    render(<LandingPage />)
+  it('names the product and offers a way to sign in', async () => {
+    const { container } = render(<LandingPage />)
 
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent(/clipah/i)
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Long video in. Clips worth posting out.')
+    await expectAccessible(container)
+    expect(screen.getByRole('link', { name: 'Get started' })).toHaveAttribute('href', '/signin')
+    expect(screen.getByRole('link', { name: /see an example/i })).toHaveAttribute('href', '/demo')
     expect(screen.getByRole('link', { name: /sign in/i })).toHaveAttribute('href', '/signin')
   })
 })

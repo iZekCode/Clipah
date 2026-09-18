@@ -90,3 +90,35 @@ function zoneOffsetMs(utcMs: number, timeZone: string): number {
     utcMs
   )
 }
+
+/** Which day a scheduled instant falls on, as the member's chosen zone counts days. */
+export function scheduleBucket(
+  scheduledFor: string,
+  now: Date,
+  timeZone: string,
+): 'today' | 'tomorrow' | 'later' {
+  const target = calendarDay(new Date(scheduledFor), timeZone)
+  const today = calendarDay(now, timeZone)
+  if (target === today) return 'today'
+  if (target === nextCalendarDay(today)) return 'tomorrow'
+  return 'later'
+}
+
+/** `YYYY-MM-DD` of an instant in a zone (`en-CA` formats dates in that order). */
+function calendarDay(instant: Date, timeZone: string): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(instant)
+}
+
+/**
+ * The day after a `YYYY-MM-DD` date, counted on the calendar rather than in hours, because
+ * adding 24 hours lands on the wrong day on the night the clocks change.
+ */
+function nextCalendarDay(day: string): string {
+  const [year = 0, month = 1, date = 1] = day.split('-').map(Number)
+  return new Date(Date.UTC(year, month - 1, date + 1)).toISOString().slice(0, 10)
+}

@@ -29,6 +29,8 @@ RUN groupadd --gid 10001 clipah \
 WORKDIR /app
 COPY --from=build --chown=clipah:clipah /app/frontend/.next/standalone ./
 COPY --from=build --chown=clipah:clipah /app/frontend/.next/static ./frontend/.next/static
+# The standalone server serves /public from beside server.js but does not copy it there.
+COPY --from=build --chown=clipah:clipah /app/frontend/public ./frontend/public
 USER 10001:10001
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \

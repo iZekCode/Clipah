@@ -2032,6 +2032,64 @@ version details; Settings for workspace, members, connections, sessions, and usa
 landing, sign-in, demo, and invitation pages. Phones get import, review, download, and publishing,
 and an editor preview that points to a larger screen for editing.
 
+## 14. Post-Rebuild Extension — Signal Studio Redesign
+
+Recorded from `redesign-plan-v2.md` and `docs/superpowers/plans/2026-09-17-signal-*.md`. It
+replaces the Guided Creator Studio's light, violet look with "Signal". The page is a dark
+graphite studio with one acid-lime accent, condensed display type (Archivo), and mono figures
+(JetBrains Mono). Surfaces lead with the media itself.
+
+**Backend additions.**
+
+- Migration `0023_preview_media` adds `storyboard` to `asset_kind` and `preview_media` to
+  `job_kind`. Both are additive.
+- A `PREVIEW_MEDIA` job, admitted after ingest beside transcription and never moving Project
+  status, produces two artifacts:
+  - storyboard v1: a frame every 2 s, long side 160 px, sheets of 10 × 10 tiles;
+  - waveform v1: 20 peaks per second.
+  A failed preview job leaves transcription and analysis untouched.
+- Reads, each answering a foreign Project exactly like a missing one:
+  - `GET /projects/{id}/storyboard` and `/waveform`, as five-minute signed URLs;
+  - `GET /projects/{id}/transcript`.
+- `GET /clips` gains `order=recent`, and every clip carries `editUpdatedAt`.
+- `studio/backfill_preview_media.py` admits preview work for existing Projects through ordinary
+  Job admission.
+- The per-user read limit default is 300 a minute.
+
+**Frontend.**
+
+- New route: `/dashboard/projects/{id}/review`, a keyboard-driven review mode (J/K, E, Escape,
+  ?).
+- Posters draw storyboard frames and scrub on hover.
+- The Project page leads with its moments.
+- The editor is a studio:
+  - a tool rail, a dark stage with a transport, and a contextual inspector;
+  - a timeline with filmstrips, waveforms, and caption phrases;
+  - timecode inputs;
+  - caption fonts vendored and installed in the media image, so the preview and the export
+    draw the same faces.
+- Export raises queued and ready toasts.
+- Publishing reads as a timeline by calendar day, and the composer is three columns.
+- Library screens draw looks, frames, and brand specimens.
+- Settings has a side navigation.
+- The public pages show the product itself.
+- Two tests guard the result: the design rules (no gradients, no violet, no theme switcher, no
+  exemptions) and the copy rules (no internal architecture, apologies, or millisecond labels).
+  An axe check runs on every rebuilt screen.
+
+**Refinements recorded in the plan entries.**
+
+- Framing is Centred / Custom rather than Fill / Fit, because the renderer has no fit mode.
+- The phone editor is a preview.
+- The brand kit colour field stays one comma-separated input.
+- The frontend image copies `public/`.
+
+The known limits carried by design:
+
+- non-source assets show designed frames;
+- queue entries have no poster;
+- brand kits show only their current version.
+
 ## Execution Guidance
 
 - Execute tasks in numerical order. Tasks within one phase may be parallelized only when their listed interfaces are already merged.

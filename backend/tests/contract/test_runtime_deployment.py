@@ -379,6 +379,17 @@ def test_the_frontend_image_proxies_the_api_to_its_configured_origin() -> None:
     assert frontend["build"]["args"]["CLIPAH_API_ORIGIN"] == "http://api:8000"
 
 
+def test_the_frontend_image_serves_its_public_files() -> None:
+    """The standalone server serves `public/` but the build does not copy it beside it.
+
+    Without the copy every public page shows broken product stills, while the page
+    itself still answers 200, so nothing else notices.
+    """
+    dockerfile = (REPOSITORY_ROOT / "infra/docker/frontend.Dockerfile").read_text()
+    runtime_stage = dockerfile.split("AS runtime")[1]
+    assert "/app/frontend/public ./frontend/public" in runtime_stage
+
+
 def test_the_api_signs_media_urls_against_a_browser_reachable_host() -> None:
     """The API signs URLs for a browser but calls storage itself from inside the network.
 

@@ -96,3 +96,6 @@ playwright-report/
 
 # Cutover and evaluation observations
 reports/
+
+# Playwright storage states hold signed-in sessions and must never be committed.
+.auth/

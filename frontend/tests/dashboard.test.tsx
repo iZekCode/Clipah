@@ -6,6 +6,7 @@ import { WorkspaceOverview } from '@/features/workspaces/workspace-overview'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { currentUser, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
@@ -91,7 +92,7 @@ function signedIn(summaryBody = summary(), clips: unknown[] = []) {
 }
 
 function renderHome() {
-  renderWithApi(
+  return renderWithApi(
     <WorkspaceProvider>
       <WorkspaceOverview />
     </WorkspaceProvider>,
@@ -108,9 +109,10 @@ describe('Home', () => {
         editId: '66666666-6666-4666-8666-666666666662',
       }),
     ])
-    renderHome()
+    const { container } = renderHome()
 
     const hero = await screen.findByRole('region', { name: 'Continue editing' })
+    await expectAccessible(container)
     expect(within(hero).getByText('The surprising opening')).toBeInTheDocument()
     expect(within(hero).getByText(/revision 3/i)).toBeInTheDocument()
     expect(within(hero).getByRole('link', { name: 'Continue editing' })).toHaveAttribute(
@@ -231,13 +233,16 @@ describe('Home', () => {
 })
 
 describe('the public demo', () => {
-  test('shows sanitized bundled work without calling a private endpoint', () => {
+  test('shows sanitized bundled work without calling a private endpoint', async () => {
     const api = stubApi({})
 
-    renderWithApi(<DemoPage />)
+    const { container } = renderWithApi(<DemoPage />)
 
     expect(screen.getByRole('heading', { name: /demo/i, level: 1 })).toBeInTheDocument()
+    expect(screen.getByText('Example content — not a real project')).toBeInTheDocument()
+    await expectAccessible(container)
     expect(screen.getAllByRole('listitem').length).toBeGreaterThan(0)
+    expect(container.querySelector('[class*="gradient"]')).toBeNull()
     expect(api.calls).toHaveLength(0)
   })
 })

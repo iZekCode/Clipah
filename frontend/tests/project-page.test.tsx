@@ -6,6 +6,7 @@ import { ProjectDetail } from '@/features/projects/project-detail'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { FakeEventSource } from './support/events'
 import { candidate, currentUser, project, workspace } from './support/fixtures'
 
@@ -99,7 +100,7 @@ function readyApi() {
 }
 
 function renderProject() {
-  renderWithApi(
+  return renderWithApi(
     <WorkspaceProvider>
       <ProjectDetail projectId={PROJECT_ID} />
     </WorkspaceProvider>,
@@ -122,13 +123,14 @@ describe('the Project page', () => {
 
   test('a ready project is its moments beside the source and transcript', async () => {
     readyApi()
-    renderProject()
+    const { container } = renderProject()
 
     expect(await screen.findByRole('link', { name: 'Review moments' })).toHaveAttribute(
       'href',
       `/dashboard/projects/${PROJECT_ID}/review`,
     )
     expect(await screen.findByRole('list', { name: /ranked clips/i })).toBeInTheDocument()
+    await expectAccessible(container)
     const transcript = await screen.findByRole('list', { name: 'Transcript' })
     expect(within(transcript).getAllByRole('listitem').map((line) => line.textContent)).toEqual([
       expect.stringContaining('Opening.'),

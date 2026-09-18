@@ -7,7 +7,7 @@
  * every piece of that copy came from a transcript somebody else spoke, so all of it is
  * rendered as React children.
  */
-import { screen, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
@@ -23,6 +23,7 @@ import type {
 } from '@/lib/api/generated/model'
 
 import { renderWithApi, stubApi, type StubbedApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { candidate, currentUser, edit, workspace } from './support/fixtures'
 
 const WORKSPACE_ID = workspace().id
@@ -166,13 +167,15 @@ function stubBrand(overrides: Record<string, unknown> = {}): StubbedApi {
 describe('the brand a Workspace publishes', () => {
   test('each kit is listed with the version its rules are published at', async () => {
     stubBrand()
-    renderWithApi(
+    const { container } = renderWithApi(
       <WorkspaceProvider>
         <BrandKitEditor />
       </WorkspaceProvider>,
     )
 
     const item = await screen.findByRole('listitem')
+    await screen.findByRole('list', { name: 'Brand kits' })
+    await expectAccessible(container)
     expect(within(item).getByText('Kanal Utama')).toBeVisible()
     expect(within(item).getByText(/version 1/i)).toBeVisible()
   })
@@ -263,13 +266,15 @@ describe('the brand a Workspace publishes', () => {
 describe('the looks a Workspace reuses', () => {
   test('each look is listed at the version it is currently published at', async () => {
     stubBrand()
-    renderWithApi(
+    const { container } = renderWithApi(
       <WorkspaceProvider>
         <TemplateLibrary />
       </WorkspaceProvider>,
     )
 
     const item = await screen.findByRole('listitem')
+    await screen.findByRole('list', { name: 'Looks' })
+    await expectAccessible(container)
     expect(within(item).getByText('Sorotan')).toBeVisible()
     expect(within(item).getByText(/version 2/i)).toBeVisible()
     expect(within(item).getByText(/karaoke/i)).toBeVisible()
@@ -290,6 +295,27 @@ describe('the looks a Workspace reuses', () => {
     expect(await screen.findByText(/still renders for the clips that use it/i)).toBeVisible()
   })
 
+  test('a look is published from its own dialog with the name the member typed', async () => {
+    const api = stubBrand({
+      'POST /api/v1/templates': { status: 201, body: template({ name: 'Tebal' }) },
+    })
+    renderWithApi(
+      <WorkspaceProvider>
+        <TemplateLibrary />
+      </WorkspaceProvider>,
+    )
+    await screen.findByRole('listitem')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Publish a look' }))
+    const dialog = screen.getByRole('dialog', { name: 'Publish a look' })
+    await userEvent.type(within(dialog).getByLabelText('Look name'), 'Tebal')
+    await userEvent.click(within(dialog).getByRole('button', { name: 'Publish look' }))
+
+    await waitFor(() => expect(api.calls.some((request) => request.method === 'POST')).toBe(true))
+    const call = api.calls.find((request) => request.method === 'POST')
+    expect((call?.body as { name: string }).name).toBe('Tebal')
+  })
+
   test('archived looks are out of the way until a member asks for them', async () => {
     const api = stubBrand()
     renderWithApi(
@@ -299,7 +325,7 @@ describe('the looks a Workspace reuses', () => {
     )
     await screen.findByRole('listitem')
 
-    await userEvent.click(screen.getByRole('checkbox', { name: /show archived/i }))
+    await userEvent.click(screen.getByRole('switch', { name: /show archived/i }))
 
     const read = api.calls.filter((request) => request.path === '/api/v1/templates')
     expect(read.at(-1)?.params.get('include_archived')).toBe('true')

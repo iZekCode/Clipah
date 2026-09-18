@@ -12,6 +12,7 @@ import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
 import { DashboardShell } from '@/components/dashboard-shell'
 
 import { renderWithApi, stubApi, errorBody } from './support/api'
+import { expectAccessible } from './support/axe'
 import { currentUser, project, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
@@ -187,13 +188,14 @@ describe('the project list', () => {
       },
     })
 
-    renderWithApi(
+    const { container } = renderWithApi(
       <WorkspaceProvider>
         <ProjectsPanel />
       </WorkspaceProvider>,
     )
 
     const list = await screen.findByRole('list', { name: 'Projects' })
+    await expectAccessible(container)
     expect(within(list).getAllByTestId('poster')).toHaveLength(2)
     await waitFor(() =>
       expect(

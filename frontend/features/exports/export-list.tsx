@@ -3,17 +3,21 @@
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { Download, FileVideo, Send } from 'lucide-react'
 import Link from 'next/link'
+import { useEffect, useRef } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
+import { Poster } from '@/components/media/poster'
 import { StatusBadge, type StatusTone } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
 import { useSession } from '@/features/auth/session'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import type { ExportPageResponse, ExportResponse, RenderDownloadResponse } from '@/lib/api/generated/model'
 import { downloadApiV1RendersRenderIdDownloadUrlGet } from '@/lib/api/generated/renders/renders'
 import { exportCollectionApiV1ExportsGet } from '@/lib/api/generated/studio/studio'
+import { notify } from '@/lib/notify'
 
 /** What each export preset is called by a creator choosing where a clip will go. */
 export const PRESET_LABELS: Record<string, { name: string; ratio: string; use: string }> = {
@@ -42,11 +46,13 @@ export function exportsQueryKey(workspaceId: string, scope: { editId?: string; p
  * Read one Edit's or one Project's exports, and keep reading while any is still encoding.
  *
  * Exports are durable rows, so a refresh or a return visit shows exactly what the backend
- * holds; polling stops the moment nothing is left in progress.
+ * holds; polling stops the moment nothing is left in progress. An export that finishes
+ * while it is being watched raises one toast with Download, and Publish when allowed.
  */
 export function useExports(scope: { editId?: string; projectId?: string }) {
   const { active } = useWorkspaceScope()
-  return useQuery<ExportPageResponse, ApiError>({
+  const session = useSession()
+  const query = useQuery<ExportPageResponse, ApiError>({
     queryKey: exportsQueryKey(active.id, scope),
     queryFn: ({ signal }) =>
       exportCollectionApiV1ExportsGet(
@@ -62,6 +68,48 @@ export function useExports(scope: { editId?: string; projectId?: string }) {
     refetchInterval: (query) =>
       (query.state.data?.exports ?? []).some((entry) => IN_PROGRESS.has(entry.status)) ? 4_000 : false,
   })
+
+  // Only a change seen while watching is news; exports already finished on arrival are not.
+  const watched = useRef<Map<string, string>>(new Map())
+  const mayPublish = session.data?.capabilities.socialPublishing === true
+  useEffect(() => {
+    for (const entry of query.data?.exports ?? []) {
+      const before = watched.current.get(entry.id)
+      watched.current.set(entry.id, entry.status)
+      if (
+        before === undefined ||
+        !IN_PROGRESS.has(before) ||
+        entry.status !== 'ready' ||
+        entry.renderId === null
+      ) {
+        continue
+      }
+      const renderId = entry.renderId
+      notify.success('Export ready', {
+        id: `export-ready-${entry.id}`,
+        description: `${PRESET_LABELS[entry.preset]?.name ?? entry.preset} · Revision ${entry.revision}`,
+        action: {
+          label: 'Download',
+          onClick: () => {
+            downloadApiV1RendersRenderIdDownloadUrlGet(renderId, { workspace_id: active.id }).then(
+              (signed) => window.location.assign(signed.url),
+              (error: unknown) => notify.failure(error),
+            )
+          },
+        },
+        ...(mayPublish
+          ? {
+              secondaryAction: {
+                label: 'Publish',
+                onClick: () => window.location.assign(publishHref(entry, renderId)),
+              },
+            }
+          : {}),
+      })
+    }
+  }, [active.id, mayPublish, query.data])
+
+  return query
 }
 
 /** The exports of one Edit or one Project, each with what can be done with it now. */
@@ -90,7 +138,7 @@ export function ExportList({
     )
   }
   return (
-    <ul aria-label="Exports" className="surface divide-y">
+    <ul aria-label="Exports" className="divide-y divide-border rounded-lg border">
       {exports.data.exports.map((entry) => (
         <ExportRow key={entry.id} entry={entry} showProject={showProject} />
       ))}
@@ -105,22 +153,22 @@ export function ExportRow({ entry, showProject }: { entry: ExportResponse; showP
 
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-3">
-      <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-        <FileVideo aria-hidden="true" className="size-4" />
+      <span className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-sm">
+        <Poster projectId={entry.projectId} />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-medium">
+        <p className="text-small font-medium">
           {preset === undefined ? entry.preset : `${preset.name} ${preset.ratio}`}
           <span className="font-normal text-muted-foreground"> · Revision {entry.revision}</span>
         </p>
-        <p className="truncate text-xs text-muted-foreground">
+        <p className="truncate font-mono text-caption text-muted-foreground">
           {showProject ? `${entry.projectName} · ` : ''}
           {formatInstant(entry.createdAt)}
           {entry.durationMs === null ? '' : ` · ${formatSeconds(entry.durationMs)}`}
           {entry.sizeBytes === null ? '' : ` · ${formatBytes(entry.sizeBytes)}`}
         </p>
         {entry.status === 'failed' ? (
-          <p className="text-xs text-destructive">
+          <p className="text-caption text-destructive">
             This export could not be finished{entry.errorCode === null ? '.' : ` (${entry.errorCode}).`}{' '}
             Export again from the editor.
           </p>
@@ -148,23 +196,23 @@ export function ReadyActions({ entry, renderId }: { entry: ExportResponse; rende
 
   return (
     <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
-      <button
+      <Button
         type="button"
+        variant="secondary"
+        size="sm"
         onClick={() => download.mutate()}
         disabled={download.isPending}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary disabled:opacity-50"
       >
-        <Download aria-hidden="true" className="size-4" />
+        <Download aria-hidden="true" strokeWidth={1.75} />
         {download.isPending ? 'Preparing…' : 'Download'}
-      </button>
+      </Button>
       {publishing ? (
-        <Link
-          href={publishHref(entry, renderId)}
-          className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-        >
-          <Send aria-hidden="true" className="size-4" />
-          Publish
-        </Link>
+        <Button asChild size="sm">
+          <Link href={publishHref(entry, renderId)}>
+            <Send aria-hidden="true" strokeWidth={1.75} />
+            Publish
+          </Link>
+        </Button>
       ) : null}
       {download.isError ? <ErrorNotice error={download.error} /> : null}
     </div>

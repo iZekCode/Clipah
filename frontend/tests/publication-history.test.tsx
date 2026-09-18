@@ -15,6 +15,7 @@ import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type { PublicationResponse, SocialAccountResponse } from '@/lib/api/generated/model'
 
 import { renderWithApi, stubApi, type Handler, type StubbedApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { capabilities, currentUser, publication, socialAccount, workspace } from './support/fixtures'
 
 const ME = 'GET /api/v1/me'
@@ -103,8 +104,8 @@ function stub(
 }
 
 /** Render the Workspace-wide history view. */
-function openHistory(): void {
-  renderWithApi(
+function openHistory() {
+  return renderWithApi(
     <WorkspaceProvider>
       <PublicationHistory />
     </WorkspaceProvider>,
@@ -126,7 +127,8 @@ describe('history', () => {
 
     openHistory()
 
-    const rows = await screen.findAllByRole('listitem')
+    // Scheduled rows sit inside a day heading, so count the rows rather than the day groups.
+    const rows = (await screen.findAllByRole('listitem')).filter((item) => item.querySelector('ul') === null)
     expect(rows).toHaveLength(3)
     expect(screen.getByRole('list', { name: 'Published' })).toHaveTextContent(/Rin on YouTube.*Published/s)
     expect(screen.getByRole('list', { name: 'Needs attention' })).toHaveTextContent(
@@ -147,9 +149,10 @@ describe('history', () => {
   test('a scheduled destination is shown in the timezone the member chose for it', async () => {
     stub(mixedBatch())
 
-    openHistory()
+    const { container } = openHistory()
 
     const row = await screen.findByRole('list', { name: 'Scheduled' })
+    await expectAccessible(container)
     expect(row).toHaveTextContent('12 September 2026')
     expect(row).toHaveTextContent('09:00')
     expect(row).toHaveTextContent('Asia/Jakarta')
@@ -165,6 +168,22 @@ describe('history', () => {
     const day = await screen.findByRole('group', { name: /12 September 2026/ })
     expect(within(day).getByText(/Rin on TikTok/)).toBeInTheDocument()
     expect(screen.queryByRole('group', { name: /10 September 2026/ })).not.toBeInTheDocument()
+  })
+
+  test('scheduled work is grouped into today, tomorrow, and later', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-09-11T10:00:00+07:00'))
+    stub([
+      publication({ id: '99999999-9999-4999-8999-99999999a001', scheduledFor: '2026-09-11T13:00:00+00:00' }),
+      publication({ id: '99999999-9999-4999-8999-99999999a002', scheduledFor: '2026-09-12T02:00:00+00:00' }),
+    ])
+    openHistory()
+
+    const scheduled = await screen.findByRole('region', { name: 'Scheduled' })
+    expect(within(scheduled).getByRole('list', { name: 'Today' })).toBeInTheDocument()
+    expect(within(scheduled).getByRole('list', { name: 'Tomorrow' })).toBeInTheDocument()
+    expect(within(scheduled).queryByRole('list', { name: 'Later' })).not.toBeInTheDocument()
+    vi.useRealTimers()
   })
 
   test('an empty workspace says so instead of showing an empty table', async () => {

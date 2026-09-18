@@ -25,6 +25,7 @@ import { ApiError } from '@/lib/api/client'
 import type { ClipSummaryResponse, CompositionV1, ExportResponse } from '@/lib/api/generated/model'
 
 import { errorBody, renderWithApi, stubApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { FakeEventSource } from './support/events'
 import {
   capabilities,
@@ -181,6 +182,8 @@ describe('exporting from the editor', () => {
           open
           onOpenChange={() => undefined}
           editId={EDIT_ID}
+          projectId={PROJECT_ID}
+          sourceRange={{ inMs: 1_000, outMs: 31_000 }}
           workspaceId={workspace().id}
           defaultPreset="1080x1920"
           mayExport
@@ -215,6 +218,8 @@ describe('exporting from the editor', () => {
     const request = api.calls.find((call) => call.method === 'POST')
     expect(request?.body).toEqual({ preset: '1080x1080', expectedRevision: 2 })
     expect(request?.headers.get('Idempotency-Key')).toBe(`render:${EDIT_ID}:r2:1080x1080`)
+    // Every format is shown as the clip itself, cropped to that shape.
+    expect(screen.getAllByTestId('poster')).toHaveLength(4)
   })
 
   test('exports nothing when the latest changes could not be saved', async () => {
@@ -412,13 +417,14 @@ describe('the asset library', () => {
       },
     })
 
-    renderWithApi(
+    const { container } = renderWithApi(
       <WorkspaceProvider>
         <AssetBrowser />
       </WorkspaceProvider>,
     )
 
     const list = await screen.findByRole('list', { name: 'Assets' })
+    await expectAccessible(container)
     expect(list).toHaveTextContent('Video by A. Photographer')
     expect(within(list).getByRole('link', { name: 'Pexels License' })).toHaveAttribute(
       'href',
@@ -434,6 +440,8 @@ describe('the asset library', () => {
 
     await user.click(await screen.findByRole('button', { name: /preview b-roll from episode 12/i }))
     await waitFor(() => expect(api.calls.some((call) => call.path.endsWith('/preview-url'))).toBe(true))
+    const sheet = screen.getByRole('dialog', { name: /b-roll from episode 12/i })
+    expect(within(sheet).getByText('video/mp4')).toBeInTheDocument()
   })
 })
 
@@ -463,13 +471,16 @@ describe('settings', () => {
       'DELETE /api/v1/me/sessions': { body: { revokedCount: 1 } },
     })
 
-    renderWithApi(
+    const { container } = renderWithApi(
       <WorkspaceProvider>
         <GeneralSettings />
       </WorkspaceProvider>,
     )
 
     expect(await screen.findByRole('group', { name: 'Analyses' })).toHaveTextContent('4 of 30')
+    await screen.findByRole('list', { name: 'Sessions' })
+    await expectAccessible(container)
+    expect(screen.getByRole('meter', { name: 'Analyses' })).toHaveAttribute('aria-valuenow', '4')
     const sessions = await screen.findByRole('list', { name: 'Sessions' })
     expect(within(sessions).getByText('This device')).toBeInTheDocument()
 

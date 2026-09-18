@@ -16,7 +16,7 @@ export default async function SearchPage({
     <section className="space-y-2">
       <PageHeader
         title="Search"
-        description="Find a project, a moment in a transcript, a clip, or the copy written for it. Transcript results open the video at that moment."
+        description="Find anything by what was said. Transcript results open the video at that moment."
       />
       <LibrarySearch
         key={`${q ?? ''}|${type ?? ''}`}

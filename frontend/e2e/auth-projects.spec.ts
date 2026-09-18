@@ -101,14 +101,25 @@ test('a member creates, renames, deletes, and recovers a Project', async ({ page
   await page.getByRole('button', { name: /actions for episode 12/i }).click()
   await page.getByRole('button', { name: /rename episode 12/i }).click()
   await page.getByRole('textbox', { name: /project name/i }).fill('Episode 12 final')
+  // The new name shows before the backend answers; deleting before it has answered would
+  // race the rename, so wait for the answer.
+  const renamed = page.waitForResponse(
+    (response) => response.request().method() === 'PATCH' && response.url().includes('/api/v1/projects/'),
+  )
   await page.getByRole('button', { name: /^save$/i }).click()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toBeVisible()
+  expect((await renamed).ok()).toBe(true)
 
   await page.getByRole('button', { name: /actions for episode 12 final/i }).click()
   await page.getByRole('button', { name: /delete episode 12 final/i }).click()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toHaveCount(0)
 
+  // Reloading before the restore has answered would cancel it, so wait for the answer.
+  const restored = page.waitForResponse(
+    (response) => response.url().includes('/restore') && response.request().method() === 'POST',
+  )
   await page.getByRole('button', { name: /restore episode 12 final/i }).click()
+  expect((await restored).ok()).toBe(true)
   await page.reload()
   await expect(page.getByRole('link', { name: 'Episode 12 final' })).toBeVisible()
 })

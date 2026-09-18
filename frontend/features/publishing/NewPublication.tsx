@@ -8,7 +8,9 @@ import { useState } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
+import { Poster } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
+import { Button } from '@/components/ui/button'
 import { useSession } from '@/features/auth/session'
 import { PRESET_LABELS, formatInstant } from '@/features/exports/export-list'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
@@ -16,6 +18,7 @@ import type { ApiError } from '@/lib/api/client'
 import type { ExportPageResponse, ExportResponse, RenderDownloadResponse } from '@/lib/api/generated/model'
 import { downloadApiV1RendersRenderIdDownloadUrlGet } from '@/lib/api/generated/renders/renders'
 import { exportCollectionApiV1ExportsGet } from '@/lib/api/generated/studio/studio'
+import { formatClock } from '@/lib/media/time'
 
 import { PublicationComposer } from './PublicationComposer'
 
@@ -53,7 +56,7 @@ export function NewPublication({ preselected }: { preselected: ChosenArtifact | 
       ) : chosen === null ? (
         <ExportPicker onChoose={setChosen} />
       ) : (
-        <div className="space-y-6">
+        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)_minmax(0,1.2fr)]">
           <ChosenExport artifact={chosen} onChange={() => setChosen(null)} />
           <PublicationComposer
             editId={chosen.editId}
@@ -92,30 +95,31 @@ function ExportPicker({ onChoose }: { onChoose: (artifact: ChosenArtifact) => vo
         title="No finished exports yet"
         description="Open a clip in the editor and choose Export. Finished exports appear here to publish."
         action={
-          <Link href="/dashboard/clips" className="text-sm font-medium text-primary hover:underline">
-            Go to clips
-          </Link>
+          <Button asChild variant="secondary">
+            <Link href="/dashboard/clips">Go to clips</Link>
+          </Button>
         }
       />
     )
   }
   return (
     <fieldset className="space-y-3">
-      <legend className="text-sm font-semibold">1. Choose an export</legend>
-      <ul aria-label="Finished exports" className="surface divide-y">
+      <legend className="text-title">1. Choose an export</legend>
+      <ul aria-label="Finished exports" className="divide-y divide-border rounded-lg border">
         {ready.map((entry) => (
           <li key={entry.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-            <span className="flex size-10 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <FileVideo aria-hidden="true" className="size-4" />
+            <span className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-sm">
+              <Poster projectId={entry.projectId} />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{entry.projectName}</p>
-              <p className="text-xs text-muted-foreground">
+              <p className="truncate text-small font-medium">{entry.projectName}</p>
+              <p className="font-mono text-caption text-muted-foreground">
                 {presetName(entry)} · Revision {entry.revision} · {formatInstant(entry.createdAt)}
               </p>
             </div>
-            <button
+            <Button
               type="button"
+              size="sm"
               onClick={() =>
                 onChoose({
                   editId: entry.editId,
@@ -124,10 +128,9 @@ function ExportPicker({ onChoose }: { onChoose: (artifact: ChosenArtifact) => vo
                   durationMs: entry.durationMs ?? 0,
                 })
               }
-              className="h-9 rounded-lg bg-primary px-3 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               Use this export
-            </button>
+            </Button>
           </li>
         ))}
       </ul>
@@ -152,8 +155,8 @@ function ChosenExport({ artifact, onChange }: { artifact: ChosenArtifact; onChan
   })
 
   return (
-    <section aria-label="Export to publish" className="surface flex flex-col gap-4 p-5 sm:flex-row">
-      <div className="aspect-[9/16] w-full max-w-[180px] overflow-hidden rounded-lg bg-foreground/90">
+    <section aria-label="Export to publish" className="space-y-4">
+      <div className="relative mx-auto aspect-[9/16] w-full max-w-[260px] overflow-hidden rounded-[28px] border-[6px] border-secondary bg-stage">
         {preview.data === undefined ? null : (
           <video
             src={preview.data.url}
@@ -164,19 +167,17 @@ function ChosenExport({ artifact, onChange }: { artifact: ChosenArtifact; onChan
           />
         )}
       </div>
-      <div className="flex-1 space-y-2">
-        <p className="text-xs font-semibold uppercase tracking-wide text-primary">Publishing this export</p>
-        <p className="text-sm">
-          Revision {artifact.revision} · {Math.round(artifact.durationMs / 1000)} seconds
+      <div className="space-y-2 text-center">
+        <p className="text-caption font-medium uppercase tracking-wide text-subtle-foreground">
+          Publishing this export
+        </p>
+        <p className="tabular font-mono text-caption text-muted-foreground">
+          Revision {artifact.revision} · {formatClock(artifact.durationMs)}
         </p>
         {preview.isError ? <ErrorNotice error={preview.error} /> : null}
-        <button
-          type="button"
-          onClick={onChange}
-          className="text-sm font-medium text-primary hover:underline"
-        >
+        <Button type="button" variant="ghost" size="sm" onClick={onChange}>
           Choose a different export
-        </button>
+        </Button>
       </div>
     </section>
   )

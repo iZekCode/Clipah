@@ -10,6 +10,7 @@ import { Section } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { Select } from '@/components/ui/select'
+import { cn } from '@/lib/utils'
 import { WORKSPACES_QUERY_KEY, useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import {
@@ -26,7 +27,7 @@ import type {
 } from '@/lib/api/generated/model'
 import { updateApiV1WorkspacesWorkspaceIdPatch } from '@/lib/api/generated/workspaces/workspaces'
 
-import { SettingsHeader } from './SettingsNav'
+import { SettingsLayout } from './SettingsNav'
 
 const USAGE_LABELS: Record<QuotaResource, string> = {
   analyses: 'Analyses',
@@ -48,12 +49,11 @@ const ROLE_LABELS: Record<string, string> = {
 /** The General section of Settings: this Workspace, its monthly usage, and your sessions. */
 export function GeneralSettings() {
   return (
-    <div className="space-y-8">
-      <SettingsHeader description="Manage this workspace, see what it has used this month, and control where you are signed in." />
+    <SettingsLayout description="Manage this workspace, see what it has used this month, and control where you are signed in.">
       <WorkspaceDetails />
       <UsageDetails />
       <SessionDetails />
-    </div>
+    </SettingsLayout>
   )
 }
 
@@ -63,23 +63,23 @@ function WorkspaceDetails() {
   const steward = active.role === 'owner' || active.role === 'admin'
   return (
     <Section title="Workspace" description="Owners and admins can rename the workspace and decide who may publish.">
-      <div className="surface space-y-4 p-5">
-        <dl className="grid gap-3 text-sm sm:grid-cols-3">
+      <div className="space-y-4 rounded-lg border p-5">
+        <dl className="grid gap-3 text-small sm:grid-cols-3">
           <div>
-            <dt className="text-xs text-muted-foreground">Type</dt>
+            <dt className="text-caption text-muted-foreground">Type</dt>
             <dd className="font-medium">{active.kind === 'personal' ? 'Personal' : 'Team'}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Your role</dt>
+            <dt className="text-caption text-muted-foreground">Your role</dt>
             <dd className="font-medium">{ROLE_LABELS[active.role] ?? active.role}</dd>
           </div>
           <div>
-            <dt className="text-xs text-muted-foreground">Created</dt>
-            <dd className="font-medium">{new Date(active.createdAt).toLocaleDateString()}</dd>
+            <dt className="text-caption text-muted-foreground">Created</dt>
+            <dd className="font-mono">{new Date(active.createdAt).toLocaleDateString()}</dd>
           </div>
         </dl>
         {steward ? <WorkspaceForm key={active.id} workspace={active} /> : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             {active.name} · publishing is allowed for{' '}
             {active.publishingRolePolicy === 'owner_admin' ? 'owners and admins' : 'owners, admins, and editors'}.
           </p>
@@ -130,7 +130,7 @@ function WorkspaceForm({ workspace }: { workspace: WorkspaceResponse }) {
           {save.isPending ? 'Saving…' : 'Save changes'}
         </Button>
         {save.isSuccess && unchanged ? (
-          <p role="status" className="text-sm text-success">Saved.</p>
+          <p role="status" className="text-small text-success">Saved.</p>
         ) : null}
       </div>
       {save.isError ? (
@@ -152,32 +152,45 @@ function UsageDetails() {
   })
 
   return (
-    <Section title="Usage this month" description="Metered work counts against these monthly allowances.">
+    <Section id="usage" title="Usage this month" description="Metered work counts against these monthly allowances.">
       {summary.isPending ? (
         <LoadingState label="Loading usage…" />
       ) : summary.isError ? (
         <ErrorNotice error={summary.error} onRetry={() => void summary.refetch()} />
       ) : (
         <ul aria-label="Usage" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {summary.data.usage.map((entry) => {
-            const share = entry.limit === 0 ? 1 : Math.min(1, entry.consumed / entry.limit)
-            return (
-              <li key={entry.resource} role="group" aria-label={USAGE_LABELS[entry.resource]} className="surface space-y-2 p-4">
+          {summary.data.usage.map((entry) => (
+            <li key={entry.resource}>
+              <div role="group" aria-label={USAGE_LABELS[entry.resource]} className="space-y-2 rounded-lg border bg-card p-4">
                 <div className="flex items-baseline justify-between gap-2">
-                  <p className="text-sm font-medium">{USAGE_LABELS[entry.resource]}</p>
-                  <p className="text-sm tabular-nums">
+                  <span className="text-small font-medium">{USAGE_LABELS[entry.resource]}</span>
+                  <span className="tabular font-mono text-caption text-muted-foreground">
                     {formatConsumed(entry.consumed)} of {entry.limit}
-                  </p>
+                  </span>
                 </div>
-                <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+                <div
+                  role="meter"
+                  aria-label={USAGE_LABELS[entry.resource]}
+                  aria-valuemin={0}
+                  aria-valuemax={entry.limit}
+                  aria-valuenow={entry.consumed}
+                  className="h-1.5 overflow-hidden rounded-full bg-secondary"
+                >
                   <div
-                    className={`h-full rounded-full ${share >= 0.9 ? 'bg-warning' : 'bg-primary'}`}
-                    style={{ width: `${Math.round(share * 100)}%` }}
+                    className={cn(
+                      'h-full',
+                      entry.consumed >= entry.limit
+                        ? 'bg-destructive'
+                        : entry.consumed / entry.limit >= 0.8
+                          ? 'bg-warning'
+                          : 'bg-foreground',
+                    )}
+                    style={{ width: `${Math.min(100, (entry.consumed / Math.max(1, entry.limit)) * 100)}%` }}
                   />
                 </div>
-              </li>
-            )
-          })}
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </Section>
@@ -212,6 +225,7 @@ function SessionDetails() {
 
   return (
     <Section
+      id="sessions"
       title="Where you are signed in"
       description="Sign out a device you no longer use. This does not affect the device you are using now."
       actions={
@@ -227,12 +241,12 @@ function SessionDetails() {
       ) : sessions.isError ? (
         <ErrorNotice error={sessions.error} onRetry={() => void sessions.refetch()} />
       ) : (
-        <ul aria-label="Sessions" className="surface divide-y">
+        <ul aria-label="Sessions" className="divide-y divide-border rounded-lg border">
           {sessions.data.map((row) => (
             <li key={row.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{row.userAgent ?? 'Unknown device'}</p>
-                <p className="text-xs text-muted-foreground">
+                <p className="truncate text-small font-medium">{row.userAgent ?? 'Unknown device'}</p>
+                <p className="font-mono text-caption text-muted-foreground">
                   Signed in {new Date(row.createdAt).toLocaleDateString()} · last active{' '}
                   {new Date(row.lastSeenAt).toLocaleString()}
                 </p>

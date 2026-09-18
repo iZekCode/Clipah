@@ -4,6 +4,7 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Radio } from '@/components/ui/radio'
 import { Select } from '@/components/ui/select'
@@ -26,6 +27,7 @@ import type {
   SocialCapabilitiesResponse,
 } from '@/lib/api/generated/model'
 
+import { AccountAvatar } from './AccountAvatar'
 import { DestinationPanel } from './DestinationPanel'
 import { tiktokChoices } from './creator-capabilities'
 import {
@@ -223,15 +225,17 @@ export function PublicationComposer({
       : `Publish ${chosen.length} ${chosen.length === 1 ? 'destination' : 'destinations'} now`
 
   return (
-    <section aria-labelledby="composer-heading" className="space-y-6">
-      <h2 id="composer-heading" className="text-base font-semibold">
+    // On wide screens the two halves become the second and third columns of the page grid.
+    <section aria-labelledby="composer-heading" className="space-y-6 xl:contents">
+      <div className="min-w-0 space-y-6">
+      <h2 id="composer-heading" className="text-title">
         Publish this clip
       </h2>
       {accounts.isError ? <ErrorNotice error={accounts.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
 
-      <fieldset className="surface space-y-3 p-5">
-        <legend className="px-1 text-sm font-semibold">Destinations</legend>
+      <fieldset className="space-y-3 rounded-lg border p-4">
+        <legend className="px-1 text-title">Destinations</legend>
         {connectable.length === 0 ? (
           <p>
             No account is connected for a provider this deployment publishes to.{' '}
@@ -245,18 +249,19 @@ export function PublicationComposer({
           const unhealthy = healthProblem(account)
           return (
             <div key={account.id} className="space-y-1">
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-3 text-small">
                 <Checkbox
                   checked={selected.includes(account.id)}
                   disabled={unhealthy !== null}
                   onChange={() => toggle(account)}
                 />
+                <AccountAvatar account={account} />
                 <span>
                   {account.displayName} · {providerLabel(account.provider)}
                 </span>
               </label>
               {unhealthy === null ? null : (
-                <p className="pl-6 text-xs text-muted-foreground">
+                <p className="pl-6 text-caption text-muted-foreground">
                   {unhealthy}{' '}
                   <a className="underline" href={CONNECTIONS_HREF}>
                     Reconnect this account
@@ -268,12 +273,15 @@ export function PublicationComposer({
           )
         })}
         {tooManyDestinations ? (
-          <p className="text-sm">
+          <p className="text-small">
             Publishing to more than one destination at a time is not enabled for this
             workspace yet. Choose one destination.
           </p>
         ) : null}
       </fieldset>
+      </div>
+
+      <div className="min-w-0 space-y-6">
 
       {chosen.map((account) => (
         <DestinationPanel
@@ -293,8 +301,8 @@ export function PublicationComposer({
         />
       ))}
 
-      <fieldset className="surface space-y-3 p-5">
-        <legend className="px-1 text-sm font-semibold">When to publish</legend>
+      <fieldset className="space-y-3 rounded-lg border p-4">
+        <legend className="px-1 text-title">When to publish</legend>
         <label className="flex items-center gap-2 text-sm">
           <Radio
             name="publish-timing"
@@ -340,17 +348,16 @@ export function PublicationComposer({
         ) : null}
       </fieldset>
 
-      <button
+      <Button
         type="button"
-        className="h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
         disabled={!ready}
         onClick={() => setConfirming(new Date().toISOString())}
       >
         Review and publish
-      </button>
+      </Button>
 
       {result === null ? null : (
-        <div role="status" className="surface space-y-1 p-4 text-sm">
+        <div role="status" className="space-y-1 rounded-lg border p-4 text-small">
           <p>What each destination is doing now:</p>
           <ul>
             {result.publications.map((item) => {
@@ -367,30 +374,32 @@ export function PublicationComposer({
       )}
 
       {discarding === null ? null : (
-        <div role="alertdialog" aria-label="Discard this destination" className="surface space-y-3 border-warning/40 p-4">
+        <div role="alertdialog" aria-label="Discard this destination" className="space-y-3 rounded-lg border border-warning bg-card p-4 text-small">
           <p>Removing this destination will discard what you wrote for it. Continue?</p>
-          <button type="button" onClick={() => discard(discarding)}>
-            Discard and remove
-          </button>
-          <button type="button" onClick={() => setDiscarding(null)}>
-            Keep this destination
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="destructive" size="sm" onClick={() => discard(discarding)}>
+              Discard and remove
+            </Button>
+            <Button type="button" variant="secondary" size="sm" onClick={() => setDiscarding(null)}>
+              Keep this destination
+            </Button>
+          </div>
         </div>
       )}
 
       {confirming !== null ? (
-        <div role="dialog" aria-label="Confirm publication" className="surface space-y-3 border-primary/40 p-5 shadow-md">
-          <p className="text-sm font-medium">
+        <div role="dialog" aria-label="Confirm publication" className="space-y-3 rounded-lg border border-primary bg-card p-5 text-small">
+          <p className="font-medium">
             Revision {revision}, rendered artifact{' '}
             {renderDigest === null ? renderArtifactId : `${renderDigest.slice(0, 12)}…`},{' '}
             {Math.round(durationMs / 1000)} seconds.
           </p>
-          <p className="text-sm">
+          <p>
             {timing === 'schedule' && scheduledFor !== null
               ? `Requested time: ${formatInstant(scheduledFor, timezone)}.`
               : 'Requested time: Publish now.'}
           </p>
-          <ul className="space-y-2 text-sm">
+          <ul className="space-y-2">
             {chosen.map((account) => (
               <li key={account.id}>
                 <p className="font-medium">
@@ -408,29 +417,27 @@ export function PublicationComposer({
               </li>
             ))}
           </ul>
-          <p className="text-sm">
+          <p>
             Publishing sends this video to the accounts above. It cannot be undone from
             Clipah once a provider has published it.
           </p>
-          <button
-            type="button"
-            className="mr-2 h-10 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-            disabled={sending}
-            onClick={() => {
-              void publish()
-            }}
-          >
-            {approvalLabel}
-          </button>
-          <button
-            type="button"
-            className="h-10 rounded-lg border bg-card px-4 text-sm font-medium hover:bg-secondary"
-            onClick={() => setConfirming(null)}
-          >
-            Go back
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              type="button"
+              disabled={sending}
+              onClick={() => {
+                void publish()
+              }}
+            >
+              {approvalLabel}
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => setConfirming(null)}>
+              Go back
+            </Button>
+          </div>
         </div>
       ) : null}
+      </div>
     </section>
   )
 }

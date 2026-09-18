@@ -1,14 +1,21 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { useCallback, useState } from 'react'
-
 import { Palette } from 'lucide-react'
+import { useCallback, useState } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
 import { PageHeader } from '@/components/page-header'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import {
+  CAPTION_FONT_FAMILIES,
+  captionFontStack,
+  type CaptionFontFamily,
+} from '@/features/editor/caption-fonts'
+import { formatInstant } from '@/features/exports/export-list'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -18,7 +25,13 @@ import {
   listCollectionApiV1BrandKitsGet,
   updateApiV1BrandKitsBrandKitIdPatch,
 } from '@/lib/api/generated/brand-kits/brand-kits'
-import type { BrandKitListResponse, BrandKitResponse } from '@/lib/api/generated/model'
+import { previewAssetApiV1AssetsAssetIdPreviewUrlGet } from '@/lib/api/generated/studio/studio'
+import type {
+  BrandKitListResponse,
+  BrandKitResponse,
+  MediaPreviewResponse,
+} from '@/lib/api/generated/model'
+import { cn } from '@/lib/utils'
 
 /** A colour is written the one way the backend accepts, and the browser can say so first. */
 const HEX = /^#[0-9A-Fa-f]{6}$/
@@ -147,7 +160,7 @@ export function BrandKitEditor() {
       {kits.isError ? <ErrorNotice error={kits.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
       {published === null ? null : (
-        <p role="status" className="rounded-lg bg-success-soft px-3 py-2 text-sm font-medium text-success">
+        <p role="status" className="rounded-md bg-success-soft px-3 py-2 text-small font-medium text-success">
           Published version {published}.
         </p>
       )}
@@ -161,80 +174,99 @@ export function BrandKitEditor() {
           description="A brand kit keeps every clip in your colours and type, and flags claims you never make."
         />
       ) : (
-        <ul aria-label="Brand kits" className="grid gap-4 sm:grid-cols-2">
-          {found.map((kit) => (
-            <li key={kit.id} className={`surface p-4 ${editing?.id === kit.id ? 'ring-2 ring-primary' : ''}`}>
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-medium">{kit.name}</span>
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">Version {kit.version}</span>
-              </div>
-              <div role="group" aria-label={`Palette of ${kit.name}`} className="mt-3 flex flex-wrap gap-1.5">
-                {kit.definition.colors.map((colour) => (
-                  <span
-                    key={`${colour.hex}-${colour.name}`}
-                    title={colour.name}
-                    className="size-7 rounded-md border shadow-inner"
-                    style={{ backgroundColor: colour.hex }}
-                  >
-                    <span className="sr-only">{colour.hex}</span>
+        <ul aria-label="Brand kits" className="grid gap-4 lg:grid-cols-2">
+          {found.map((kit) => {
+            const family = kit.definition.fonts[0]?.family ?? 'Inter'
+            return (
+              <li
+                key={kit.id}
+                className={cn(
+                  'space-y-4 rounded-lg border bg-card p-4',
+                  editing?.id === kit.id ? 'border-primary' : 'border-border',
+                )}
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                  <span className="text-title">{kit.name}</span>
+                  <span className="font-mono text-caption text-muted-foreground">
+                    Version {kit.version}
                   </span>
-                ))}
-              </div>
-              <p className="mt-2 text-xs text-muted-foreground" style={{ fontFamily: `${kit.definition.fonts[0]?.family ?? 'Inter'}, ui-sans-serif` }}>
-                {kit.definition.fonts[0]?.family ?? 'Inter'}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {kit.definition.colors.length} colours · type {kit.definition.captionRules.minFontSize}
-                –{kit.definition.captionRules.maxFontSize} ·{' '}
-                {kit.definition.visualExclusions.length} exclusions
-              </p>
-              {kit.archivedAt === null ? null : (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  Archived. Clips judged by its versions still render.
-                </p>
-              )}
-              {mayWrite && kit.archivedAt === null ? (
-                <div className="mt-2 flex gap-2">
-                  <button
-                    type="button"
-                    className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
-                    onClick={() => load(kit)}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
-                    onClick={() => void archive(kit)}
-                  >
-                    Archive
-                  </button>
                 </div>
-              ) : null}
-            </li>
-          ))}
+                {kit.updatedAt === null ? null : (
+                  <p className="-mt-3 font-mono text-caption text-subtle-foreground">
+                    Updated {formatInstant(kit.updatedAt)}
+                  </p>
+                )}
+                <div className="grid gap-4 sm:grid-cols-[auto_minmax(0,1fr)]">
+                  <KitLogo logoAssetId={kit.definition.logoAssetId} />
+                  <div className="min-w-0 space-y-1">
+                    <p
+                      className="text-h2 leading-none"
+                      style={isCaptionFont(family) ? { fontFamily: captionFontStack(family) } : undefined}
+                    >
+                      Aa Bb 123
+                    </p>
+                    <p className="font-mono text-caption text-muted-foreground">{family}</p>
+                  </div>
+                </div>
+                <div role="group" aria-label={`Palette of ${kit.name}`} className="flex flex-wrap gap-3">
+                  {kit.definition.colors.map((colour) => (
+                    <span key={`${colour.hex}-${colour.name}`} title={colour.name} className="space-y-1">
+                      <span
+                        aria-hidden="true"
+                        className="block size-10 rounded-sm border border-input"
+                        style={{ backgroundColor: colour.hex }}
+                      />
+                      <span className="block font-mono text-[11px] text-muted-foreground">
+                        {colour.hex}
+                      </span>
+                    </span>
+                  ))}
+                </div>
+                <p className="font-mono text-caption text-muted-foreground">
+                  {kit.definition.colors.length} colours · type {kit.definition.captionRules.minFontSize}
+                  –{kit.definition.captionRules.maxFontSize} ·{' '}
+                  {kit.definition.visualExclusions.length} exclusions
+                </p>
+                {kit.archivedAt === null ? null : (
+                  <p className="text-caption text-muted-foreground">
+                    Archived. Clips judged by its versions still render.
+                  </p>
+                )}
+                {mayWrite && kit.archivedAt === null ? (
+                  <div className="flex gap-2">
+                    <Button type="button" variant="secondary" size="sm" onClick={() => load(kit)}>
+                      Edit
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => void archive(kit)}>
+                      Archive
+                    </Button>
+                  </div>
+                ) : null}
+              </li>
+            )
+          })}
         </ul>
       )}
 
       {mayWrite ? (
         <form
-          className="surface space-y-4 p-5"
+          className="space-y-4 rounded-lg border p-5"
           onSubmit={(event) => {
             event.preventDefault()
             void publish()
           }}
         >
           <div className="space-y-1">
-            <h2 className="text-base font-semibold">
+            <h2 className="text-title">
               {editing === null ? 'Publish a brand kit' : `Publish a new version of ${editing.name}`}
             </h2>
             {editing === null ? null : (
-              <p className="text-sm text-muted-foreground">
+              <p className="text-small text-muted-foreground">
                 Currently at version {editing.version}. Saving publishes version {editing.version + 1};
                 clips judged by earlier versions keep them.{' '}
                 <button
                   type="button"
-                  className="font-medium text-primary hover:underline"
+                  className="font-semibold text-primary hover:underline"
                   onClick={() => {
                     setEditing(null)
                     setDraft(EMPTY)
@@ -251,6 +283,17 @@ export function BrandKitEditor() {
             value={draft.colours}
             onChange={(value) => change('colours', value)}
           />
+          <div aria-hidden="true" className="flex flex-wrap gap-2">
+            {split(draft.colours)
+              .filter((colour) => HEX.test(colour))
+              .map((colour, index) => (
+                <span
+                  key={`${colour}-${index}`}
+                  className="size-6 rounded-sm border border-input"
+                  style={{ backgroundColor: colour }}
+                />
+              ))}
+          </div>
           <Field
             label="Font family"
             value={draft.fontFamily}
@@ -294,20 +337,43 @@ export function BrandKitEditor() {
             onChange={(value) => change('forbidden', value)}
           />
           {invalid === null ? null : (
-            <p role="alert" className="text-sm text-destructive">
+            <p role="alert" className="text-small text-destructive">
               {invalid}
             </p>
           )}
-          <button
-            type="submit"
-            disabled={working}
-            className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90 disabled:opacity-50"
-          >
+          <Button type="submit" disabled={working}>
             {editing === null ? 'Publish brand kit' : 'Publish new version'}
-          </button>
+          </Button>
         </form>
       ) : null}
     </section>
+  )
+}
+
+function isCaptionFont(family: string): family is CaptionFontFamily {
+  return (CAPTION_FONT_FAMILIES as readonly string[]).includes(family)
+}
+
+/** The kit's logo on graphite, fetched through a short-lived link, or an empty slot. */
+function KitLogo({ logoAssetId }: { logoAssetId: string | null }) {
+  const { active } = useWorkspaceScope()
+  const logo = useQuery<MediaPreviewResponse, ApiError>({
+    queryKey: ['/api/v1/assets/preview-url', active.id, logoAssetId],
+    queryFn: ({ signal }) =>
+      previewAssetApiV1AssetsAssetIdPreviewUrlGet(logoAssetId ?? '', { workspace_id: active.id }, { signal }),
+    enabled: logoAssetId !== null,
+    retry: false,
+  })
+  return (
+    <div className="flex h-16 w-28 items-center justify-center rounded-sm bg-stage p-2">
+      {logo.data === undefined ? (
+        <span className="text-caption text-subtle-foreground">No logo</span>
+      ) : (
+        // Signed object-store URLs are not known to the Next image optimizer.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={logo.data.url} alt="Logo" className="h-12 w-auto object-contain" />
+      )}
+    </div>
   )
 }
 
@@ -322,13 +388,9 @@ function Field({
   onChange: (value: string) => void
 }) {
   return (
-    <label className="block space-y-1 text-sm">
-      <span className="text-muted-foreground">{label}</span>
-      <input
-        className="h-10 w-full rounded-lg border border-input bg-card px-3"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-      />
+    <label className="block space-y-1">
+      <span className="text-caption text-muted-foreground">{label}</span>
+      <Input value={value} onChange={(event) => onChange(event.target.value)} />
     </label>
   )
 }

@@ -66,15 +66,18 @@ export function Section({
   actions,
   children,
   labelledBy,
+  id,
 }: {
   title: ReactNode
   description?: ReactNode
   actions?: ReactNode
   children: ReactNode
   labelledBy?: string
+  /** An anchor another page can link to. */
+  id?: string
 }) {
   return (
-    <section aria-labelledby={labelledBy} className="space-y-3">
+    <section id={id} aria-labelledby={labelledBy} className="scroll-mt-20 space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="space-y-0.5">
           <h2 id={labelledBy} className="text-title">

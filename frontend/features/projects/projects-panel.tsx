@@ -127,17 +127,21 @@ function ProjectsList() {
           action={mayWrite ? <NewProjectButton /> : undefined}
         />
       ) : (
-        <ul aria-label="Projects" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {listed.map((project) => (
-            <ProjectCard
-              key={project.id}
-              project={project}
-              mayWrite={mayWrite}
-              onRename={() => setRenaming(project)}
-              onDeleted={() => setDeleted((pending) => [...pending, project])}
-            />
-          ))}
-        </ul>
+        // Each card titles itself with an h3, so the list needs the level above it.
+        <>
+          <h2 className="sr-only">Your projects</h2>
+          <ul aria-label="Projects" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+            {listed.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                mayWrite={mayWrite}
+                onRename={() => setRenaming(project)}
+                onDeleted={() => setDeleted((pending) => [...pending, project])}
+              />
+            ))}
+          </ul>
+        </>
       )}
 
       {projects.hasNextPage ? (

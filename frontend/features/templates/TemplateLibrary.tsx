@@ -1,16 +1,25 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
+import { LayoutTemplate, Plus } from 'lucide-react'
 import { useCallback, useState } from 'react'
-
-import { LayoutTemplate } from 'lucide-react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
 import { PageHeader } from '@/components/page-header'
-import { Checkbox } from '@/components/ui/checkbox'
+import { Button } from '@/components/ui/button'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
+import { Switch } from '@/components/ui/switch'
+import { LookSample } from '@/features/editor/LookSample'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -27,7 +36,7 @@ const CAPTION_MODES = ['karaoke', 'block', 'off'] as const
 /**
  * The looks a Workspace reuses, and the version each one is published at.
  *
- * A look is applied by value: opening a clip with one writes its type into the composition
+ * A look is applied by value: opening a clip with one copies its type into the composition
  * and records the version it came from. That is why archiving is offered rather than
  * deletion — the clips that already carry a version keep rendering exactly as they did.
  */
@@ -39,6 +48,7 @@ export function TemplateLibrary() {
   const [name, setName] = useState('')
   const [captionMode, setCaptionMode] = useState<(typeof CAPTION_MODES)[number]>('karaoke')
   const [archived, setArchived] = useState<string | null>(null)
+  const [composing, setComposing] = useState(false)
   const [failure, setFailure] = useState<ApiError | null>(null)
 
   const templates = useQuery<TemplateListResponse, ApiError>({
@@ -59,6 +69,7 @@ export function TemplateLibrary() {
         { workspace_id: workspaceId },
       )
       setName('')
+      setComposing(false)
       await templates.refetch()
     } catch (error) {
       setFailure(error as ApiError)
@@ -82,27 +93,38 @@ export function TemplateLibrary() {
   const found = templates.data?.templates ?? []
 
   return (
-    <section className="space-y-4">
+    <section className="space-y-6">
       <PageHeader
         title="Templates"
-        description="Reusable looks for captions and drawn text. Applying one writes its type into a clip and records the version it came from."
+        description="Caption looks you can reuse on any clip."
+        actions={
+          mayWrite ? (
+            <Button type="button" onClick={() => setComposing(true)}>
+              <Plus aria-hidden="true" strokeWidth={1.75} />
+              Publish a look
+            </Button>
+          ) : undefined
+        }
       />
 
       {templates.isError ? <ErrorNotice error={templates.error} /> : null}
       {failure === null ? null : <ErrorNotice error={failure} />}
       {archived === null ? null : (
-        <p className="text-sm text-muted-foreground">
+        <p role="status" className="text-small text-muted-foreground">
           {archived} is archived. It still renders for the clips that use it.
         </p>
       )}
 
-      <label className="flex items-center gap-2 text-sm">
-        <Checkbox
+      <div className="flex items-center gap-3">
+        <Switch
+          id="show-archived-looks"
           checked={includeArchived}
-          onChange={(event) => setIncludeArchived(event.target.checked)}
+          onCheckedChange={setIncludeArchived}
         />
-        <span>Show archived looks</span>
-      </label>
+        <label htmlFor="show-archived-looks" className="text-small text-muted-foreground">
+          Show archived looks
+        </label>
+      </div>
 
       {templates.isPending ? (
         <LoadingState label="Reading this Workspace’s looks…" variant="cards" />
@@ -110,121 +132,88 @@ export function TemplateLibrary() {
         <EmptyState
           icon={LayoutTemplate}
           title="No look has been published yet."
-          description="Publish a look below to reuse the same caption style across clips."
+          description="Publish a look to reuse the same caption style across clips."
         />
       ) : (
-        <ul aria-label="Looks" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul aria-label="Looks" className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
           {found.map((template) => (
-            <li key={template.id} className="surface overflow-hidden p-0">
-              <LookPreview template={template} />
-              <div className="p-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-medium">{template.name}</span>
-                <span className="rounded-full bg-secondary px-2 py-0.5 text-xs font-medium text-muted-foreground">Version {template.version}</span>
+            <li key={template.id} className="flex flex-col gap-2 rounded-lg border bg-card p-2">
+              <LookSample
+                captionStyle={template.definition.captionStyle}
+                captionMode={template.definition.captionMode}
+              />
+              <div className="flex items-baseline justify-between gap-2 px-1">
+                <span className="truncate text-small font-semibold">{template.name}</span>
+                <span className="shrink-0 font-mono text-caption text-muted-foreground">
+                  Version {template.version}
+                </span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {template.definition.captionMode} captions ·{' '}
-                {template.definition.captionStyle.fontFamily}{' '}
-                {template.definition.captionStyle.fontSize}
+              <p className="px-1 font-mono text-caption text-muted-foreground">
+                {template.definition.captionMode} · {template.definition.captionStyle.fontFamily}
               </p>
               {template.archivedAt === null ? null : (
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className="px-1 text-caption text-muted-foreground">
                   Archived. It still renders for the clips that use it.
                 </p>
               )}
               {mayWrite && template.archivedAt === null ? (
-                <button
+                <Button
                   type="button"
-                  className="mt-2 rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
+                  variant="ghost"
+                  size="sm"
+                  className="self-start"
                   onClick={() => void archive(template)}
                 >
                   Archive
-                </button>
+                </Button>
               ) : null}
-              </div>
             </li>
           ))}
         </ul>
       )}
 
       {mayWrite ? (
-        <form
-          className="surface max-w-xl space-y-4 p-5"
-          onSubmit={(event) => {
-            event.preventDefault()
-            void publish()
-          }}
-        >
-          <h2 className="text-base font-semibold">Publish a look</h2>
-          <label className="block space-y-1 text-sm">
-            <span className="text-muted-foreground">Look name</span>
-            <input
-              className="h-10 w-full rounded-lg border border-input bg-card px-3"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-            />
-          </label>
-          <label className="block space-y-1 text-sm">
-            <span className="text-muted-foreground">Captions</span>
-            <Select
-              wrapperClassName="w-full"
-              value={captionMode}
-              onChange={(event) =>
-                setCaptionMode(event.target.value as (typeof CAPTION_MODES)[number])
-              }
+        <Dialog open={composing} onOpenChange={setComposing}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Publish a look</DialogTitle>
+              <DialogDescription>Name the look and choose how its captions read.</DialogDescription>
+            </DialogHeader>
+            <form
+              className="space-y-4"
+              onSubmit={(event) => {
+                event.preventDefault()
+                void publish()
+              }}
             >
-              {CAPTION_MODES.map((mode) => (
-                <option key={mode} value={mode}>
-                  {mode}
-                </option>
-              ))}
-            </Select>
-          </label>
-          <button type="submit" className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
-            Publish look
-          </button>
-        </form>
+              <label className="block space-y-1">
+                <span className="text-caption text-muted-foreground">Look name</span>
+                <Input value={name} onChange={(event) => setName(event.target.value)} />
+              </label>
+              <label className="block space-y-1">
+                <span className="text-caption text-muted-foreground">Captions</span>
+                <Select
+                  wrapperClassName="w-full"
+                  value={captionMode}
+                  onChange={(event) =>
+                    setCaptionMode(event.target.value as (typeof CAPTION_MODES)[number])
+                  }
+                >
+                  {CAPTION_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {mode}
+                    </option>
+                  ))}
+                </Select>
+              </label>
+              <div className="flex justify-end">
+                <Button type="submit">Publish look</Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </section>
-  )
-}
-
-/**
- * A small vertical frame showing how the look's captions read over footage.
- *
- * It uses the look's own font, colour, weight, background, and highlight, so the preview
- * is the definition rather than an illustration of it.
- */
-function LookPreview({ template }: { template: TemplateResponse }) {
-  const style = template.definition.captionStyle
-  const karaoke = template.definition.captionMode === 'karaoke'
-  const hidden = template.definition.captionMode === 'off'
-  return (
-    <div
-      aria-hidden="true"
-      className="flex aspect-[16/10] items-end justify-center bg-gradient-to-br from-slate-700 via-slate-800 to-violet-900 p-4"
-    >
-      {hidden ? (
-        <span className="mb-6 rounded bg-black/30 px-2 py-1 text-xs text-white/70">No captions</span>
-      ) : (
-        <span
-          className="mb-4 max-w-full rounded px-2 py-1 text-center leading-tight"
-          style={{
-            fontFamily: `${style.fontFamily}, ui-sans-serif, system-ui`,
-            fontWeight: style.weight,
-            fontStyle: style.italic ? 'italic' : 'normal',
-            color: style.color,
-            fontSize: `${Math.max(14, Math.min(24, style.fontSize / 3))}px`,
-            backgroundColor: style.backgroundEnabled ? style.backgroundColor : 'transparent',
-            textShadow: style.backgroundEnabled ? 'none' : '0 1px 3px rgba(0,0,0,0.6)',
-          }}
-        >
-          This is how{' '}
-          <span style={{ color: karaoke ? (style.highlightColor ?? style.color) : style.color }}>captions</span>{' '}
-          look
-        </span>
-      )}
-    </div>
   )
 }
 

@@ -1,8 +1,10 @@
 'use client'
 
-import { formatTimecode } from '@/lib/time/timecode'
-import { interpolatedAt } from './store'
+import { TimecodeInput } from '@/components/ui/timecode-input'
 import type { CompositionV1 } from '@/lib/api/generated/model'
+import { formatTimecode } from '@/lib/time/timecode'
+
+import { interpolatedAt } from './store'
 
 type TrackItem = CompositionV1['tracks'][number]['items'][number]
 type Transform = TrackItem['transform']
@@ -61,22 +63,14 @@ export function KeyframeEditor({
                     ? 'no framing'
                     : `${Math.round(keyframe.transform.x * 100)}% across`}
                 </span>
-                <label className="ml-auto flex items-center gap-1">
-                  At (ms)
-                  <input
-                    type="number"
-                    aria-label={`Time of the keyframe at ${formatTimecode(keyframe.atMs)}`}
-                    step={100}
-                    defaultValue={keyframe.atMs}
-                    onBlur={(event) => {
-                      const value = Number(event.currentTarget.value)
-                      if (Number.isFinite(value) && value !== keyframe.atMs) {
-                        onMove(keyframe.atMs, value)
-                      }
-                    }}
-                    className="w-24 h-8 rounded-md border border-input bg-secondary px-2 font-mono text-small text-foreground"
-                  />
-                </label>
+                <TimecodeInput
+                  label="At"
+                  accessibleName={`Time of the keyframe at ${formatTimecode(keyframe.atMs)}`}
+                  valueMs={keyframe.atMs}
+                  maxMs={item.sourceOutMs - item.sourceInMs}
+                  onCommit={(toMs) => onMove(keyframe.atMs, toMs)}
+                  className="ml-auto w-28"
+                />
                 <button
                   type="button"
                   aria-label={`Remove the keyframe at ${formatTimecode(keyframe.atMs)}`}

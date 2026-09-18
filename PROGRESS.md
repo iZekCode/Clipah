@@ -3951,3 +3951,148 @@ Owner commit message: `feat: add moments-first project page and review mode`.
 - Screenshots in `docs/design/signal/editor/`, with no sideways scroll at 390, 820, or 1440.
 
 Owner commit message: `feat: rebuild the editor as a studio`.
+
+### Signal Studio redesign — Plan 6, surfaces and verification (2026-09-19)
+
+**What landed.**
+
+- **Export.**
+  - Format cards in the Export dialog show the clip itself, cropped to each shape (`Poster`
+    over the clip's source range).
+  - `notify` gains `id` (a repeated id replaces the toast) and `secondaryAction` (sonner's
+    `cancel` button).
+  - `useExports` raises "Export ready" once for each export that turns ready while it is being
+    watched, with Download and, when the member may publish, Publish. An export already
+    finished when the list opens raises nothing.
+  - The dialog raises "Export queued" after a render is accepted.
+  - Export rows lead with a poster, and their actions are `Button`s.
+- **Publishing.**
+  - `scheduleBucket` sorts scheduled work into today, tomorrow, and later by calendar day in
+    each destination's own zone. Tomorrow is counted on the calendar, so it stays right on the
+    night the clocks change.
+  - The queue reads Needs attention, Scheduled (split into Today, Tomorrow, and Later), In
+    progress, Published, and Cancelled.
+  - Rows lead with the account's avatar, or its provider's initial when it has none
+    (`AccountAvatar`). The View switch is a `SegmentedControl`.
+  - The composer is three columns from `xl` up: the chosen export in a phone frame, then
+    Destinations, then everything else (`xl:contents` on the composer's section).
+  - Publishing rules, labels, button text, and the order of API calls are unchanged.
+- **Library.**
+  - `LookSample` (moved out of `LookCard`) draws a caption look on a graphite 9:16 frame, and
+    Templates uses it for every look.
+  - "Publish a look" is now a dialog, and "Show archived looks" is a `Switch`.
+  - The Assets grid shows real storyboard frames for source videos and a designed frame for
+    other kinds. Preview opens in a right-hand sheet with the file's details in mono and its
+    provenance.
+  - Brand kit cards show the version, when the kit was last updated, a logo slot, a font
+    specimen drawn in the caption face when the kit names one, and 40 px swatches with their
+    hex values.
+- **Settings.** `SettingsLayout` replaces `SettingsHeader`. It adds a side navigation (General,
+  Members, Connections, Sessions, Usage) that becomes a horizontal strip on phones. The Usage and
+  Sessions sections have anchors, and each usage entry is a `role="meter"` bar that turns warning
+  at 80% and destructive at the limit.
+- **Public pages.**
+  - `PublicFrame` uses the wordmark.
+  - The landing page is "Long video in. Clips worth posting out." with product stills
+    (`MarketingFrame`).
+  - Sign-in and invitation acceptance are split layouts with a still on the left. Sign-in uses a
+    Google-branded button (white, the full-colour G).
+  - The demo page is laid out like review mode, with no gradients and no API call.
+  - `e2e/marketing-capture.spec.ts` is an opt-in recorder for the owner's account.
+    `.auth/` is ignored.
+- **Copy.** `tests/copy-rules.test.ts` bans internal-architecture sentences, millisecond
+  labels, "successfully", "Please", the old fallback error, and "No preview yet", across
+  `app/`, `components/`, and `features/`. It found and fixed:
+  - the keyframe time field, now a `TimecodeInput`;
+  - two "Please try again" fallbacks;
+  - the sign-in gate sentence.
+  The Templates, Clips, Search, and Publishing descriptions follow the copy guide.
+- **Design rules.** `PENDING_REDESIGN` is empty, and the test now asserts it stays empty.
+- **Accessibility.** `tests/support/axe.ts` (`expectAccessible`) runs in the suites for Home,
+  Demo, Projects, the Project page, review mode, the editor, the publishing queue, the composer,
+  Settings, Assets, Looks, Brand kits, the landing page, and the accessibility panel. Violations
+  it found were fixed in the components:
+  - heading order under the Projects and Ranked clips cards (a screen-reader-only `h2`);
+  - `role="group"` on usage list items;
+  - the demo's definition list.
+
+**Deliberate refinements and deviations.**
+
+- **Brand kit colours.** The colour field stays one comma-separated `#RRGGBB` input, with a live
+  row of swatches under it, rather than one `SwatchPicker` per colour. The existing
+  validation tests and the any-number-of-colours contract rely on it.
+- **Publishing and look labels.** The chosen export in the composer shows revision and length but
+  no preset, because the preselected-export link does not carry one. Looks and kits say
+  `Version N` in mono rather than `vN`, to keep the version readable as a word.
+- **Marketing imagery.**
+  - The real-account loop was not recorded: it needs the owner's signed-in storage state,
+    which the agent does not create.
+  - The landing, sign-in, and invitation pages therefore use stills from
+    `docs/design/signal/after/` (review, editor, publishing at 1440 px), captured from a seeded
+    member whose clip has no rendered media, so the stage is empty.
+  - `MarketingFrame` plays a video only when one is passed; none is.
+- **The copy guard's millisecond rule** matches a label (`\s(ms)` not followed by `=>`), because
+  the plain pattern also matched arrow-function parameters and `round(ms)`.
+- **Frontend image.** `infra/docker/frontend.Dockerfile` now copies `public/` into the
+  standalone runtime. It had never been needed before this plan, and without it every public
+  still returned 404 while the page itself answered 200. A deployment contract test
+  (`test_the_frontend_image_serves_its_public_files`) guards it.
+- **Settings at 390 px.** The layout grid needed an explicit `minmax(0,1fr)` column and a
+  `min-w-0` nav, or the sections strip scrolled the page sideways.
+- **`e2e/auth-projects.spec.ts` lifecycle test.** It failed about one run in six in both engines:
+  the rename is shown before the backend answers, and deleting while the rename was in flight
+  lost the new name. The test now waits for the rename and restore responses, and passed 30/30.
+  The product race (rename then quick delete) predates this plan and is flagged for its own
+  change.
+
+**Known limits carried by design.**
+
+- Asset tiles other than source videos show designed frames, because storyboards exist only for
+  sources.
+- Publishing queue entries have no poster, because publications carry no clip link.
+- Brand kits show only their current version, because the read carries no history.
+
+**Verification.**
+
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (595 passed, 55 files), `pnpm build`.
+- Backend, on the disposable database: ruff, format, strict mypy (234 files), and pytest
+  (2,960 passed, 20 skipped, 92.89% coverage). The new deployment contract test was added
+  afterwards and its file passes (16).
+- Screenshots: `docs/design/signal/after/`, 57 files (19 routes × 390, 820, 1440), with no
+  sideways scroll, from the production build.
+- Home LCP on the production build at 1440 px: 20 ms (`CLIPAH_MEASURE_LCP=1`). This is a warm
+  local measurement taken after the capture run's 57 loads, not a cold-network figure.
+- Largest storyboard sheet in MinIO: 247 KiB (under 300 KB).
+- Browser suite, collaboration off (Chromium and WebKit, fixture-backed seeding): 89 passed,
+  18 skipped (two are the opt-in marketing capture), 7 failed. Six are the recorded baseline
+  (`auth-projects:170` and `team-review` need collaboration on, and `clip-variants:41`). The
+  seventh was the lifecycle race above, fixed in the test.
+- With `CLIPAH_COLLABORATION_ENABLED=true` (a Compose override, API only), `team-review` and
+  `auth-projects` pass: 14 passed.
+- Acceptance, where checkable with a seeded member:
+  - no gradient on the public pages;
+  - `document.fonts` lists Archivo and JetBrains Mono;
+  - public stills load from the production image;
+  - review mode and the editor keyboard paths are covered by the browser suite.
+- Not verified, because each needs the owner's real Project or account:
+  - the full core journey on real media;
+  - hover scrub on real frames;
+  - the Anton export comparison;
+  - the product loop recording;
+  - the 20-loads-a-minute check on the owner's account.
+
+Owner commit message: `feat: finish the signal studio redesign`.
+
+### Post-rebuild extension — Signal Studio redesign (closing entry)
+
+The six plan entries above (foundation, preview media, media surfaces, project page and review
+mode, editor, and surfaces and verification) complete `redesign-plan-v2.md`. The known limits
+carried by design:
+
+- Asset tiles other than sources show designed frames, because storyboards exist only for
+  sources.
+- Publishing queue entries have no poster, because publications carry no clip link.
+- Brand kits show only their current version, because the read carries no history.
+
+If the owner prefers one commit for the whole redesign, the spec's message is
+`feat: signal studio redesign`.

@@ -82,6 +82,23 @@ test('every route renders without sideways scrolling at each review width', asyn
       expect(overflow, `${name} at ${width}px scrolls sideways`).toBeLessThanOrEqual(0)
     }
   }
+
+  // Opt-in: Home's largest contentful paint, which only means something on a production build.
+  if (process.env.CLIPAH_MEASURE_LCP === '1') {
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await page.goto('/dashboard')
+    const lcp = await page.evaluate(
+      () =>
+        new Promise<number>((resolve) => {
+          new PerformanceObserver((list) => resolve(list.getEntries().at(-1)?.startTime ?? 0)).observe({
+            type: 'largest-contentful-paint',
+            buffered: true,
+          })
+        }),
+    )
+    console.log(`Home largest contentful paint: ${Math.round(lcp)} ms`)
+    expect(lcp).toBeLessThan(2_500)
+  }
 })
 
 /** How long the API's sliding read window lasts, plus a margin. */

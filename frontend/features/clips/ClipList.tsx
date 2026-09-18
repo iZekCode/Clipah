@@ -141,16 +141,20 @@ export function ClipList({
       {shown.length === 0 ? (
         <EmptyState compact title="No clips match those filters" description="Try another category or a longer maximum length." />
       ) : (
-        <ul aria-label="Ranked clips" className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
-          {shown.map((clip) => (
-            <MomentCard
-              key={clip.id}
-              candidate={clip}
-              selected={clip.id === selectedId}
-              onSelect={onSelect === undefined ? undefined : () => onSelect(clip)}
-            />
-          ))}
-        </ul>
+        // Each card titles itself with an h3, so the list needs the level above it.
+        <>
+          <h2 className="sr-only">Ranked clips</h2>
+          <ul aria-label="Ranked clips" className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
+            {shown.map((clip) => (
+              <MomentCard
+                key={clip.id}
+                candidate={clip}
+                selected={clip.id === selectedId}
+                onSelect={onSelect === undefined ? undefined : () => onSelect(clip)}
+              />
+            ))}
+          </ul>
+        </>
       )}
     </section>
   )

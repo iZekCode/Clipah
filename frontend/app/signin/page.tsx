@@ -1,29 +1,31 @@
 import Link from 'next/link'
 
+import { GoogleSignIn } from '@/components/google-sign-in'
+import { MarketingFrame } from '@/components/marketing-frame'
 import { PublicFrame } from '@/components/public-frame'
 
-/** The one way in: the backend starts the Google flow and sets the Session cookie. */
+/** The one way in: the product on the left, Google sign-in on the right. */
 export default function SignInPage() {
   return (
     <PublicFrame signInLink={false}>
-      <main className="flex flex-1 items-center justify-center px-6 py-12">
-        <div className="surface w-full max-w-md space-y-6 p-8 shadow-md">
-          <div className="space-y-2 text-center">
-            <h1 className="text-2xl font-semibold tracking-tight">Sign in to Clipah</h1>
-            <p className="text-sm text-muted-foreground">
-              New here? Signing in creates your own workspace, ready for your first video.
+      <main className="mx-auto grid w-full max-w-studio flex-1 items-center gap-12 px-4 py-12 sm:px-6 lg:min-h-[calc(100vh-8rem)] lg:grid-cols-[3fr_2fr]">
+        <MarketingFrame
+          still="/marketing/edit.png"
+          alt="The Clipah editor"
+          className="hidden lg:block"
+        />
+        <div className="mx-auto w-full max-w-sm space-y-6">
+          <div className="space-y-2">
+            <h1 className="font-display text-h1">Sign in to Clipah</h1>
+            <p className="text-small text-muted-foreground">
+              New here? Signing in creates your studio, ready for your first video.
             </p>
           </div>
-          <a
-            href="/api/v1/auth/google/start"
-            className="flex h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            Continue with Google
-          </a>
-          <p className="text-center text-sm text-muted-foreground">
+          <GoogleSignIn />
+          <p className="text-small text-muted-foreground">
             Not ready yet?{' '}
-            <Link href="/demo" className="font-medium text-primary hover:underline">
-              See a demo first
+            <Link href="/demo" className="font-semibold text-foreground hover:text-primary">
+              See an example
             </Link>
           </p>
         </div>

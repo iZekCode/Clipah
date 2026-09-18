@@ -36,6 +36,7 @@ import type { CompositionV1 } from '@/lib/api/generated/model'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 
 import { renderWithApi, stubApi, type StubbedApi } from './support/api'
+import { expectAccessible } from './support/axe'
 import { candidate, composition, currentUser, edit, workspace } from './support/fixtures'
 
 const push = vi.fn()
@@ -541,13 +542,16 @@ describe('editor screen', () => {
   })
 
   /** Render the editor and wait for the Edit and its proxy to arrive. */
-  async function openEditor(): Promise<void> {
-    renderWithApi(<EditorScreen editId={EDIT_ID} />)
+  async function openEditor(): Promise<HTMLElement> {
+    const { container } = renderWithApi(<EditorScreen editId={EDIT_ID} />)
     await screen.findByRole('region', { name: /timeline/i })
+    return container
   }
 
   test('the editor plays the proxy and never the source media', async () => {
-    await openEditor()
+    const container = await openEditor()
+    await screen.findByRole('region', { name: 'Stage' })
+    await expectAccessible(container)
 
     const video = await screen.findByTestId('editor-video')
     expect(video).toHaveAttribute('src', expect.stringContaining('proxy.mp4'))
