@@ -16,15 +16,15 @@ export function AccessibilityPanel({
   onSelect: (selection: AccessibilitySelection) => void
 }) {
   return (
-    <section aria-labelledby="accessibility-quality-heading" className="space-y-2 rounded-lg border p-3">
+    <section aria-labelledby="accessibility-quality-heading" className="space-y-2">
       <div className="flex items-center justify-between gap-2">
         <h2 id="accessibility-quality-heading" className="text-sm font-semibold">
           Accessibility quality
         </h2>
-        <span className="text-xs text-muted-foreground">{warnings.length} warnings</span>
+        <span className="text-caption text-muted-foreground">{warnings.length} warnings</span>
       </div>
       {warnings.length === 0 ? (
-        <p role="status" className="text-sm text-muted-foreground">
+        <p role="status" className="text-small text-muted-foreground">
           No accessibility warnings for this revision.
         </p>
       ) : (
@@ -37,11 +37,11 @@ export function AccessibilityPanel({
                 onClick={() =>
                   onSelect({ itemId: warning.itemId ?? null, timeMs: warning.startMs ?? null })
                 }
-                className="w-full rounded border border-amber-500/40 bg-amber-500/10 p-2 text-left text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
+                className="w-full rounded-md bg-warning-soft p-2 text-left text-small text-warning focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring motion-reduce:transition-none"
               >
                 <span className="block font-medium">{warning.action}</span>
                 {warning.measured == null || warning.threshold == null ? null : (
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-caption text-muted-foreground">
                     Measured {warning.measured}; threshold {warning.threshold}
                   </span>
                 )}

@@ -561,16 +561,23 @@ describe('editor screen', () => {
     expect(within(timeline).getAllByRole('button', { name: /^select scene/i })).toHaveLength(1)
 
     const captions = screen.getByRole('region', { name: /captions/i })
-    expect(within(captions).getAllByRole('textbox', { name: /word at/i })).toHaveLength(4)
+    expect(within(captions).getAllByRole('button', { name: /word at/i })).toHaveLength(4)
   })
 
   test('trimming through the inspector saves one new revision', async () => {
     const user = userEvent.setup()
     await openEditor()
 
-    const end = screen.getByLabelText(/clip ends at/i)
+    await user.click(
+      within(screen.getByRole('region', { name: /^timeline$/i })).getByRole('button', {
+        name: 'Select scene-1',
+      }),
+    )
+    const end = within(screen.getByRole('region', { name: 'Inspector' })).getByRole('textbox', {
+      name: 'End',
+    })
     await user.clear(end)
-    await user.type(end, '21000')
+    await user.type(end, '0:21.00')
     await user.click(screen.getByRole('button', { name: /^save$/i }))
 
     await waitFor(() => {
@@ -610,14 +617,19 @@ describe('editor screen', () => {
     const user = userEvent.setup()
     await openEditor()
 
-    const word = screen.getByDisplayValue('cara')
+    await user.dblClick(screen.getByRole('button', { name: 'Word at 0:01.00' }))
+    const word = screen.getByRole('textbox', { name: 'Word at 0:01.00' })
     await user.clear(word)
-    await user.type(word, 'karya')
-    expect(await screen.findByDisplayValue('karya')).toBeVisible()
+    await user.type(word, 'karya{Enter}')
+    expect(await screen.findByRole('button', { name: 'Word at 0:01.00' })).toHaveTextContent(
+      'karya',
+    )
 
     await user.click(screen.getByRole('button', { name: /undo/i }))
 
-    expect(await screen.findByDisplayValue('cara')).toBeVisible()
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: 'Word at 0:01.00' })).toHaveTextContent('cara'),
+    )
   })
 
   test('keyboard shortcuts drive the editor but leave text fields alone', async () => {
@@ -636,12 +648,12 @@ describe('editor screen', () => {
 
     const timeline = screen.getByRole('region', { name: /timeline/i })
     fireEvent.change(screen.getByLabelText(/scrub the clip/i), { target: { value: '12000' } })
-    const word = screen.getByDisplayValue('cara')
-    await user.click(word)
+    await user.dblClick(screen.getByRole('button', { name: 'Word at 0:01.00' }))
+    const word = screen.getByRole('textbox', { name: 'Word at 0:01.00' })
     await user.clear(word)
     await user.type(word, 'sesi')
 
-    expect(screen.getByDisplayValue('sesi')).toBeVisible()
+    expect(word).toHaveValue('sesi')
     expect(within(timeline).getAllByRole('button', { name: /^select scene/i })).toHaveLength(1)
     expect(screen.getByRole('button', { name: /^16:9$/ })).toHaveAttribute('aria-pressed', 'false')
   })
@@ -698,7 +710,16 @@ describe('editor screen', () => {
     await waitFor(() => {
       expect(screen.queryByRole('alert')).toBeNull()
     })
-    expect(screen.getByLabelText(/clip ends at/i)).toHaveValue(19_000)
+    await user.click(
+      within(screen.getByRole('region', { name: /^timeline$/i })).getByRole('button', {
+        name: 'Select scene-1',
+      }),
+    )
+    expect(
+      within(screen.getByRole('region', { name: 'Inspector' })).getByRole('textbox', {
+        name: 'End',
+      }),
+    ).toHaveValue('0:19.00')
   })
 
   test('opening the editor from a clip creates one Edit and goes to it', async () => {

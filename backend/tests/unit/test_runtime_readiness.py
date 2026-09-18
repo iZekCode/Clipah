@@ -40,6 +40,10 @@ def valid_outputs() -> dict[tuple[str, ...], str]:
             "Filters:\n ... subtitles V->V\n ... drawtext V->V\n ... zoompan V->V\n"
         ),
         ("fc-match", "--format", "%{family}\n", "Noto Sans"): "Noto Sans\n",
+        ("fc-list", "--format", "%{family}\n"): (
+            "Noto Sans\nInter,Inter Medium\nMontserrat\nPoppins\nRoboto\n"
+            "Open Sans\nBebas Neue\nAnton\nNunito\n"
+        ),
     }
 
 
@@ -121,3 +125,13 @@ def test_api_composition_root_serves_liveness_without_external_work() -> None:
 
     assert status_code == 200
     assert body == {"status": "ok", "version": "0.1.0"}
+
+
+@pytest.mark.unit
+def test_media_readiness_refuses_an_image_missing_a_caption_font() -> None:
+    """A caption drawn in a fallback face exports differently from its preview."""
+    outputs = valid_outputs()
+    outputs[("fc-list", "--format", "%{family}\n")] = "Noto Sans\nInter\n"
+
+    with pytest.raises(RuntimeReadinessError):
+        MediaCapabilityVerifier(runner=RecordingRunner(outputs)).verify()

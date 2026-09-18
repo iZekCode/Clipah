@@ -1,23 +1,43 @@
 'use client'
 
+import {
+  ArrowLeftToLine,
+  ArrowRightToLine,
+  AudioLines,
+  ChevronLeft,
+  ChevronRight,
+  Copy,
+  Flag,
+  Magnet,
+  Maximize2,
+  Minus,
+  Music,
+  Plus,
+  Scissors,
+  Trash2,
+  WrapText,
+} from 'lucide-react'
 import { useState } from 'react'
 
-import { Checkbox } from '@/components/ui/checkbox'
+import { IconButton } from '@/components/ui/icon-button'
+import { Slider } from '@/components/ui/slider'
 
 import type { SoundTrackKind } from './store'
+import { ZOOM_LEVELS } from './Timeline'
 
 /**
  * The controls that act on the timeline as a whole, or on whatever is selected on it.
  *
- * Every one of them is a button or a checkbox rather than a gesture, because a member
- * working from the keyboard has to be able to reach the same operations a member with a
- * pointer reaches by dragging. The gestures are additions to these, never replacements.
+ * Every operation is a named icon button rather than only a gesture, because a member
+ * working from the keyboard has to reach the same operations a member with a pointer
+ * reaches by dragging. Snap and ripple are pressed toggles.
  */
 export function TimelineToolbar({
   snapping,
   ripple,
   hasSelection,
   markerCount,
+  zoom,
   onSnapping,
   onRipple,
   onSplit,
@@ -29,11 +49,14 @@ export function TimelineToolbar({
   onPreviousMarker,
   onNextMarker,
   onAddTrack,
+  onZoom,
+  onFit,
 }: {
   snapping: boolean
   ripple: boolean
   hasSelection: boolean
   markerCount: number
+  zoom: number
   onSnapping: (snapping: boolean) => void
   onRipple: (ripple: boolean) => void
   onSplit: () => void
@@ -45,120 +68,148 @@ export function TimelineToolbar({
   onPreviousMarker: () => void
   onNextMarker: () => void
   onAddTrack: (kind: SoundTrackKind) => void
+  onZoom: (zoom: number) => void
+  onFit: () => void
 }) {
   const [label, setLabel] = useState('')
+  const zoomIndex = Math.max(0, ZOOM_LEVELS.indexOf(zoom as (typeof ZOOM_LEVELS)[number]))
+  const divider = <span aria-hidden="true" className="mx-1 h-5 w-px bg-border" />
 
   return (
-    <section aria-label="Editing tools" className="flex flex-wrap items-center gap-2 rounded-lg border p-3 text-xs">
-      <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={onSplit}
-          disabled={!hasSelection}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Split
-        </button>
-        <button
-          type="button"
-          onClick={onSplitAwayLeft}
-          disabled={!hasSelection}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Split away the left
-        </button>
-        <button
-          type="button"
-          onClick={onSplitAwayRight}
-          disabled={!hasSelection}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Split away the right
-        </button>
-        <button
-          type="button"
-          onClick={onDuplicate}
-          disabled={!hasSelection}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Duplicate
-        </button>
-        <button
-          type="button"
-          onClick={onDelete}
-          disabled={!hasSelection}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Delete
-        </button>
-      </div>
-
-      <label className="flex items-center gap-1">
-        <Checkbox
-          aria-label="Snap to edges"
-          checked={snapping}
-          onChange={(event) => onSnapping(event.currentTarget.checked)}
+    <div
+      role="toolbar"
+      aria-label="Timeline tools"
+      className="flex shrink-0 flex-wrap items-center gap-0.5 border-b px-2 py-1"
+    >
+      <IconButton
+        label="Split"
+        shortcut="S"
+        icon={<Scissors strokeWidth={1.75} />}
+        size="sm"
+        disabled={!hasSelection}
+        onClick={onSplit}
+      />
+      <IconButton
+        label="Split away the left"
+        icon={<ArrowLeftToLine strokeWidth={1.75} />}
+        size="sm"
+        disabled={!hasSelection}
+        onClick={onSplitAwayLeft}
+      />
+      <IconButton
+        label="Split away the right"
+        icon={<ArrowRightToLine strokeWidth={1.75} />}
+        size="sm"
+        disabled={!hasSelection}
+        onClick={onSplitAwayRight}
+      />
+      <IconButton
+        label="Duplicate"
+        icon={<Copy strokeWidth={1.75} />}
+        size="sm"
+        disabled={!hasSelection}
+        onClick={onDuplicate}
+      />
+      <IconButton
+        label="Delete"
+        shortcut="Del"
+        icon={<Trash2 strokeWidth={1.75} />}
+        size="sm"
+        disabled={!hasSelection}
+        onClick={onDelete}
+      />
+      {divider}
+      <IconButton
+        label="Snap to edges"
+        aria-pressed={snapping}
+        icon={<Magnet strokeWidth={1.75} />}
+        size="sm"
+        onClick={() => onSnapping(!snapping)}
+      />
+      <IconButton
+        label="Ripple edits"
+        aria-pressed={ripple}
+        icon={<WrapText strokeWidth={1.75} />}
+        size="sm"
+        onClick={() => onRipple(!ripple)}
+      />
+      {divider}
+      <input
+        type="text"
+        aria-label="Marker label"
+        value={label}
+        onChange={(event) => setLabel(event.currentTarget.value)}
+        placeholder="Marker"
+        className="h-8 w-28 rounded-md border border-input bg-secondary px-2 text-caption"
+      />
+      <IconButton
+        label="Add marker"
+        shortcut="M"
+        icon={<Flag strokeWidth={1.75} />}
+        size="sm"
+        onClick={() => {
+          onAddMarker(label.trim() === '' ? 'Marker' : label)
+          setLabel('')
+        }}
+      />
+      <IconButton
+        label="Previous marker"
+        icon={<ChevronLeft strokeWidth={1.75} />}
+        size="sm"
+        disabled={markerCount === 0}
+        onClick={onPreviousMarker}
+      />
+      <IconButton
+        label="Next marker"
+        icon={<ChevronRight strokeWidth={1.75} />}
+        size="sm"
+        disabled={markerCount === 0}
+        onClick={onNextMarker}
+      />
+      {divider}
+      <IconButton
+        label="Add a music lane"
+        icon={<Music strokeWidth={1.75} />}
+        size="sm"
+        onClick={() => onAddTrack('music')}
+      />
+      <IconButton
+        label="Add an audio lane"
+        icon={<AudioLines strokeWidth={1.75} />}
+        size="sm"
+        onClick={() => onAddTrack('extractedAudio')}
+      />
+      <div className="ml-auto flex items-center gap-1">
+        <IconButton
+          label="Zoom out"
+          shortcut="−"
+          icon={<Minus strokeWidth={1.75} />}
+          size="sm"
+          onClick={() => onZoom(ZOOM_LEVELS[Math.max(0, zoomIndex - 1)] ?? zoom)}
         />
-        Snap
-      </label>
-      <label className="flex items-center gap-1">
-        <Checkbox
-          aria-label="Ripple edits"
-          checked={ripple}
-          onChange={(event) => onRipple(event.currentTarget.checked)}
+        <Slider
+          aria-label="Zoom"
+          min={0}
+          max={ZOOM_LEVELS.length - 1}
+          step={1}
+          value={zoomIndex}
+          onChange={(event) => onZoom(ZOOM_LEVELS[Number(event.currentTarget.value)] ?? zoom)}
+          className="w-24"
         />
-        Ripple
-      </label>
-
-      <div className="flex items-center gap-1">
-        <input
-          type="text"
-          aria-label="Marker label"
-          value={label}
-          onChange={(event) => setLabel(event.currentTarget.value)}
-          placeholder="Marker label"
-          className="w-32 rounded-lg border bg-card px-2.5 py-1"
+        <IconButton
+          label="Zoom in"
+          shortcut="+"
+          icon={<Plus strokeWidth={1.75} />}
+          size="sm"
+          onClick={() => onZoom(ZOOM_LEVELS[Math.min(ZOOM_LEVELS.length - 1, zoomIndex + 1)] ?? zoom)}
         />
-        <button
-          type="button"
-          onClick={() => {
-            onAddMarker(label.trim() === '' ? 'Marker' : label)
-            setLabel('')
-          }}
-          className="rounded-lg border bg-card px-2.5 py-1"
-        >
-          Add marker
-        </button>
-        <button
-          type="button"
-          onClick={onPreviousMarker}
-          disabled={markerCount === 0}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Previous marker
-        </button>
-        <button
-          type="button"
-          onClick={onNextMarker}
-          disabled={markerCount === 0}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
-        >
-          Next marker
-        </button>
+        <IconButton
+          label="Fit the clip"
+          icon={<Maximize2 strokeWidth={1.75} />}
+          size="sm"
+          onClick={onFit}
+        />
       </div>
-
-      <div className="flex items-center gap-1">
-        <button type="button" onClick={() => onAddTrack('music')} className="rounded-lg border bg-card px-2.5 py-1">
-          Add a music lane
-        </button>
-        <button
-          type="button"
-          onClick={() => onAddTrack('extractedAudio')}
-          className="rounded-lg border bg-card px-2.5 py-1"
-        >
-          Add an audio lane
-        </button>
-      </div>
-    </section>
+    </div>
   )
 }

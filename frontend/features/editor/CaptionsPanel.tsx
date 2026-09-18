@@ -1,244 +1,147 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 
-import { timecode } from './Player'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Select } from '@/components/ui/select'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import type { CompositionV1 } from '@/lib/api/generated/model'
+import { formatTimecode } from '@/lib/time/timecode'
+import { cn } from '@/lib/utils'
 
-/** The weights every shipped font face carries. */
-const WEIGHTS = [300, 400, 500, 600, 700, 800, 900] as const
+import { activeWordAt } from './store'
 
-/** The fonts a composition may name, offered in the order the Brand Kit will replace. */
-const FONTS: Array<CompositionV1['captions']['style']['fontFamily']> = [
-  'Inter',
-  'Montserrat',
-  'Poppins',
-  'Roboto',
-  'Open Sans',
-  'Bebas Neue',
-  'Anton',
-  'Nunito',
-]
+type CaptionWord = CompositionV1['captions']['words'][number]
 
 /**
- * Caption words and the type they are drawn in.
+ * Captions as the words they are.
  *
- * A word's text is editable and its timing is not: transcription produced those
- * timestamps, and karaoke highlighting is only honest while they still describe when the
- * word was said. Retiming a word is an explicit operation the advanced editor owns.
+ * The word under the playhead is lit, clicking a word jumps to it, and double-clicking (or
+ * Enter) edits its text in place. Timing never changes here: transcription measured it, and
+ * retiming is the Timing view's explicit job.
  */
 export function CaptionsPanel({
   captions,
+  playheadMs,
+  selectedWordId,
   onText,
-  onStyle,
+  onSeek,
+  onSelectWord,
+  timing,
 }: {
   captions: CompositionV1['captions']
+  playheadMs: number
+  selectedWordId: string | null
   onText: (wordId: string, text: string) => void
-  onStyle: (patch: Partial<CompositionV1['captions']['style']>) => void
+  onSeek: (ms: number) => void
+  onSelectWord: (wordId: string) => void
+  timing: ReactNode
 }) {
-  // What a member has typed but not yet finished. A word is committed when they leave
-  // the field, so a half-typed word never becomes a Revision and an empty one never
-  // becomes a caption.
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
-  // A half-typed measurement is not a measurement, so these two are committed when a
-  // member leaves the field rather than on every keystroke.
-  const [numbers, setNumbers] = useState<{ letterSpacing?: string; lineHeight?: string }>({})
+  const [view, setView] = useState<'words' | 'timing'>('words')
+  const [editing, setEditing] = useState<string | null>(null)
+  const [draft, setDraft] = useState('')
+  // Enter and Escape finish an edit themselves; the blur that can follow when the field
+  // unmounts must not commit a second time or undo an Escape.
+  const settled = useRef(false)
+  const active = activeWordAt(captions.words, playheadMs)
 
-  /** Send one measurement, then let the composition own the field again. */
-  function commitNumber(field: 'letterSpacing' | 'lineHeight'): void {
-    const draft = numbers[field]
-    setNumbers((current) => ({ ...current, [field]: undefined }))
-    const value = Number(draft)
-    if (draft !== undefined && draft !== '' && Number.isFinite(value)) {
-      onStyle({ [field]: value })
-    }
+  function start(word: CaptionWord): void {
+    settled.current = false
+    setEditing(word.id)
+    setDraft(word.text)
   }
 
-  /** Commit one word, or put back the text that is still in the composition. */
-  function commit(wordId: string): void {
-    const draft = drafts[wordId]
-    if (draft !== undefined) {
-      onText(wordId, draft)
-    }
-    setDrafts((current) =>
-      Object.fromEntries(Object.entries(current).filter(([key]) => key !== wordId)),
-    )
+  function commit(word: CaptionWord): void {
+    if (settled.current) return
+    settled.current = true
+    setEditing(null)
+    const text = draft.trim()
+    if (text !== '' && text !== word.text) onText(word.id, text)
+  }
+
+  function cancel(): void {
+    settled.current = true
+    setEditing(null)
   }
 
   return (
-    <section aria-label="Captions" className="surface flex flex-col gap-3 p-4">
-      <h2 className="text-sm font-medium">Captions</h2>
-
-      <div className="flex flex-wrap items-center gap-3 text-xs">
-        <label className="flex items-center gap-1">
-          Font
-          <Select
-            aria-label="Caption font"
-            value={captions.style.fontFamily}
-            onChange={(event) =>
-              onStyle({
-                fontFamily: event.currentTarget
-                  .value as CompositionV1['captions']['style']['fontFamily'],
-              })
-            }
-            controlSize="sm"
-          >
-            {FONTS.map((font) => (
-              <option key={font} value={font}>
-                {font}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex items-center gap-1">
-          Size
-          <input
-            type="number"
-            aria-label="Caption size"
-            min={12}
-            max={200}
-            value={captions.style.fontSize}
-            onChange={(event) => onStyle({ fontSize: Number(event.currentTarget.value) })}
-            className="w-20 rounded border px-1 py-0.5"
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          Colour
-          <input
-            type="text"
-            aria-label="Caption colour"
-            value={captions.style.color}
-            onChange={(event) => onStyle({ color: event.currentTarget.value })}
-            className="w-24 rounded border px-1 py-0.5"
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          Alignment
-          <Select
-            aria-label="Caption alignment"
-            value={captions.style.align}
-            onChange={(event) =>
-              onStyle({
-                align: event.currentTarget.value as CompositionV1['captions']['style']['align'],
-              })
-            }
-            controlSize="sm"
-          >
-            <option value="left">Left</option>
-            <option value="center">Centre</option>
-            <option value="right">Right</option>
-          </Select>
-        </label>
-        <label className="flex items-center gap-1">
-          <Checkbox
-            aria-label="Caption background"
-            checked={captions.style.backgroundEnabled}
-            onChange={(event) => onStyle({ backgroundEnabled: event.currentTarget.checked })}
-          />
-          Background
-        </label>
-        <label className="flex items-center gap-1">
-          Weight
-          <Select
-            aria-label="Caption weight"
-            value={captions.style.weight}
-            onChange={(event) => onStyle({ weight: Number(event.currentTarget.value) })}
-            controlSize="sm"
-          >
-            {WEIGHTS.map((weight) => (
-              <option key={weight} value={weight}>
-                {weight}
-              </option>
-            ))}
-          </Select>
-        </label>
-        <label className="flex items-center gap-1">
-          <Checkbox
-            aria-label="Caption italic"
-            checked={captions.style.italic}
-            onChange={(event) => onStyle({ italic: event.currentTarget.checked })}
-          />
-          Italic
-        </label>
-        <label className="flex items-center gap-1">
-          Decoration
-          <Select
-            aria-label="Caption decoration"
-            value={captions.style.decoration}
-            onChange={(event) =>
-              onStyle({
-                decoration: event.currentTarget
-                  .value as CompositionV1['captions']['style']['decoration'],
-              })
-            }
-            controlSize="sm"
-          >
-            <option value="none">None</option>
-            <option value="underline">Underline</option>
-            <option value="strikethrough">Strikethrough</option>
-          </Select>
-        </label>
-        <label className="flex items-center gap-1">
-          Letter spacing
-          <input
-            type="number"
-            aria-label="Caption letter spacing"
-            min={-10}
-            max={40}
-            step={0.5}
-            value={numbers.letterSpacing ?? captions.style.letterSpacing}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              setNumbers((current) => ({ ...current, letterSpacing: value }))
-            }}
-            onBlur={() => commitNumber('letterSpacing')}
-            className="w-20 rounded border px-1 py-0.5"
-          />
-        </label>
-        <label className="flex items-center gap-1">
-          Line height
-          <input
-            type="number"
-            aria-label="Caption line height"
-            min={0.5}
-            max={3}
-            step={0.1}
-            value={numbers.lineHeight ?? captions.style.lineHeight}
-            onChange={(event) => {
-              const value = event.currentTarget.value
-              setNumbers((current) => ({ ...current, lineHeight: value }))
-            }}
-            onBlur={() => commitNumber('lineHeight')}
-            className="w-20 rounded border px-1 py-0.5"
-          />
-        </label>
+    <section aria-label="Captions" className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h2 className="text-title">Captions</h2>
+        <SegmentedControl
+          label="Captions view"
+          size="sm"
+          value={view}
+          options={[
+            { value: 'words', label: 'Words' },
+            { value: 'timing', label: 'Timing' },
+          ]}
+          onChange={setView}
+        />
       </div>
-
-      <ol className="flex flex-col gap-1">
-        {captions.words.map((word) => (
-          <li key={word.id} className="flex items-center gap-2 text-xs">
-            <span className="w-16 font-mono text-muted-foreground">{timecode(word.startMs)}</span>
-            <input
-              type="text"
-              aria-label={`Word at ${timecode(word.startMs)}`}
-              value={drafts[word.id] ?? word.text}
-              onChange={(event) => {
-                const text = event.currentTarget.value
-                setDrafts((current) => ({ ...current, [word.id]: text }))
-              }}
-              onBlur={() => commit(word.id)}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  commit(word.id)
-                }
-              }}
-              className="flex-1 rounded-lg border bg-card px-2.5 py-1"
-            />
-          </li>
-        ))}
-      </ol>
+      {view === 'timing' ? (
+        timing
+      ) : (
+        <p className="flex flex-wrap gap-x-1 gap-y-1.5 text-body leading-relaxed">
+          {captions.words.map((word) => {
+            const name = `Word at ${formatTimecode(word.startMs)}`
+            if (editing === word.id) {
+              return (
+                <input
+                  key={word.id}
+                  type="text"
+                  aria-label={name}
+                  // Editing begins because the member asked for it on this very word.
+                  autoFocus
+                  value={draft}
+                  size={Math.max(2, draft.length)}
+                  onChange={(event) => setDraft(event.currentTarget.value)}
+                  onBlur={() => commit(word)}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter') {
+                      event.preventDefault()
+                      commit(word)
+                    } else if (event.key === 'Escape') {
+                      event.preventDefault()
+                      cancel()
+                    }
+                  }}
+                  className="rounded-sm border border-primary bg-secondary px-1 text-body text-foreground"
+                />
+              )
+            }
+            return (
+              <button
+                key={word.id}
+                type="button"
+                aria-label={name}
+                aria-current={active?.id === word.id ? 'true' : undefined}
+                aria-pressed={selectedWordId === word.id}
+                onClick={() => {
+                  onSeek(word.startMs)
+                  onSelectWord(word.id)
+                }}
+                onDoubleClick={() => start(word)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === 'F2') {
+                    event.preventDefault()
+                    start(word)
+                  }
+                }}
+                className={cn(
+                  'rounded-sm px-0.5 transition-colors duration-fast ease-signal',
+                  active?.id === word.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-foreground hover:bg-secondary',
+                  selectedWordId === word.id &&
+                    active?.id !== word.id &&
+                    'outline outline-1 outline-primary',
+                )}
+              >
+                {word.text}
+              </button>
+            )
+          })}
+        </p>
+      )}
     </section>
   )
 }

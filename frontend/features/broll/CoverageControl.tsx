@@ -51,7 +51,7 @@ export function CoverageControl({
         type="button"
         disabled={busy}
         onClick={onSuggest}
-        className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium hover:bg-secondary font-medium"
+        className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
       >
         {busy ? 'Looking for B-roll…' : 'Suggest B-roll'}
       </button>

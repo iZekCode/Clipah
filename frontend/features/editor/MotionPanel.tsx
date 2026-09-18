@@ -58,8 +58,8 @@ export function MotionPanel({
   }
 
   return (
-    <section aria-label="Motion" className="surface flex flex-col gap-2 p-4 text-xs">
-      <h2 className="text-sm font-medium">Motion</h2>
+    <section aria-label="Motion" className="space-y-3 text-small">
+      <h2 className="text-title">Motion</h2>
 
       <ul className="flex flex-col gap-1">
         {targets.map((target) => (

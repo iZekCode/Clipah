@@ -1,8 +1,8 @@
 'use client'
 
+import { formatTimecode } from '@/lib/time/timecode'
 import { useState } from 'react'
 
-import { timecode } from './Player'
 import { MIN_ITEM_MS } from './store'
 import { Slider } from '@/components/ui/slider'
 import type { CompositionV1, ProxyPlaybackResponse } from '@/lib/api/generated/model'
@@ -39,11 +39,11 @@ export function SourceMonitor({
   const usable = markInMs !== null && markOutMs !== null && markOutMs - markInMs >= MIN_ITEM_MS
 
   return (
-    <section aria-label="Source monitor" className="surface flex flex-col gap-2 p-4">
-      <h2 className="text-sm font-medium">Source monitor</h2>
+    <section aria-label="Source monitor" className="space-y-3">
+      <h2 className="text-title">Source monitor</h2>
 
       {source === null ? (
-        <p role="status" className="text-xs text-muted-foreground">
+        <p role="status" className="text-caption text-muted-foreground">
           Loading the source…
         </p>
       ) : (
@@ -52,7 +52,7 @@ export function SourceMonitor({
           src={source.url}
           preload="metadata"
           controls
-          className="w-full rounded bg-black"
+          className="w-full rounded-sm bg-stage"
         />
       )}
 
@@ -67,17 +67,17 @@ export function SourceMonitor({
           onChange={(event) => setPositionMs(Number(event.currentTarget.value))}
           className="flex-1"
         />
-        <span className="font-mono">{timecode(positionMs)}</span>
+        <span className="font-mono">{formatTimecode(positionMs)}</span>
       </label>
 
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <button type="button" onClick={() => onMarkIn(positionMs)} className="rounded-lg border bg-card px-2.5 py-1">
+        <button type="button" onClick={() => onMarkIn(positionMs)} className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40">
           Mark in
         </button>
         <button
           type="button"
           onClick={() => onMarkOut(positionMs)}
-          className="rounded-lg border bg-card px-2.5 py-1"
+          className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
         >
           Mark out
         </button>
@@ -85,7 +85,7 @@ export function SourceMonitor({
           type="button"
           onClick={onClear}
           disabled={markInMs === null && markOutMs === null}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
         >
           Clear marks
         </button>
@@ -93,13 +93,13 @@ export function SourceMonitor({
           type="button"
           onClick={onAdd}
           disabled={!usable}
-          className="rounded-lg border bg-card px-2.5 py-1 disabled:opacity-50"
+          className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
         >
           Add to timeline
         </button>
         <span className="text-muted-foreground">
-          {markInMs === null ? 'No mark in' : `In ${timecode(markInMs)}`} ·{' '}
-          {markOutMs === null ? 'no mark out' : `out ${timecode(markOutMs)}`}
+          {markInMs === null ? 'No mark in' : `In ${formatTimecode(markInMs)}`} ·{' '}
+          {markOutMs === null ? 'no mark out' : `out ${formatTimecode(markOutMs)}`}
         </span>
       </div>
     </section>

@@ -110,7 +110,7 @@ export function ExportDialog({
         {mayExport ? (
           <div className="space-y-4">
             <fieldset>
-              <legend id={groupId} className="mb-2 text-sm font-medium">
+              <legend id={groupId} className="mb-2 text-small font-medium">
                 Format
               </legend>
               <div role="radiogroup" aria-labelledby={groupId} className="grid gap-2 sm:grid-cols-2">
@@ -131,7 +131,7 @@ export function ExportDialog({
                         className="mt-1"
                       />
                       <span>
-                        <span className="block text-sm font-medium">
+                        <span className="block text-small font-medium">
                           {label?.name} {label?.ratio}
                         </span>
                         <span className="block text-xs text-muted-foreground">{label?.use}</span>
@@ -142,7 +142,7 @@ export function ExportDialog({
               </div>
             </fieldset>
             {problem === null ? null : (
-              <p role="alert" className="rounded-lg bg-warning-soft p-3 text-sm text-warning">
+              <p role="alert" className="rounded-md bg-warning-soft p-3 text-small text-warning">
                 {problem}
               </p>
             )}
@@ -155,7 +155,7 @@ export function ExportDialog({
             </div>
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-small text-muted-foreground">
             Your role can download finished exports but cannot start a new one.
           </p>
         )}

@@ -339,11 +339,11 @@ describe('the styling panels', () => {
       (document: CompositionV1) => document.captions.style.lineHeight,
       1.6,
     ],
-  ])('the captions panel sets %s', async (label, typed, read, expected) => {
+  ])('the style panel sets %s', async (label, typed, read, expected) => {
     const user = userEvent.setup()
     await openEditor()
 
-    const panel = screen.getByRole('region', { name: /captions/i })
+    const panel = screen.getByRole('region', { name: /caption style/i })
     const field = within(panel).getByLabelText(new RegExp(label, 'i'))
     await user.clear(field)
     await user.type(field, typed)
@@ -352,14 +352,23 @@ describe('the styling panels', () => {
     expect(read(await saved((document) => read(document) === expected))).toBe(expected)
   })
 
-  test('the captions panel sets weight, italic, and the decoration a renderer can draw', async () => {
+  test('the style panel sets weight, italic, and the decoration a renderer can draw', async () => {
     const user = userEvent.setup()
     await openEditor()
 
-    const panel = screen.getByRole('region', { name: /captions/i })
-    await user.selectOptions(within(panel).getByLabelText(/caption weight/i), '800')
-    await user.click(within(panel).getByLabelText(/caption italic/i))
-    await user.selectOptions(within(panel).getByLabelText(/caption decoration/i), 'underline')
+    const panel = screen.getByRole('region', { name: /caption style/i })
+    await user.click(
+      within(within(panel).getByRole('group', { name: 'Caption weight' })).getByRole('button', {
+        name: '800',
+      }),
+    )
+    await user.click(within(panel).getByRole('switch', { name: /caption italic/i }))
+    await user.click(
+      within(within(panel).getByRole('group', { name: 'Caption decoration' })).getByRole(
+        'button',
+        { name: 'Underline' },
+      ),
+    )
 
     const document = await saved((saving) => saving.captions.style.decoration === 'underline')
     expect(document.captions.style.weight).toBe(800)
@@ -384,13 +393,15 @@ describe('the styling panels', () => {
     const user = userEvent.setup()
     await openEditor()
 
+    const captions = screen.getByRole('region', { name: 'Captions' })
+    await user.click(within(captions).getByRole('button', { name: 'Timing' }))
     const panel = screen.getByRole('region', { name: /karaoke/i })
     fireEvent.change(screen.getByLabelText(/scrub the clip/i), { target: { value: '1200' } })
     expect(within(panel).getByRole('status')).toHaveTextContent('cara')
 
     const start = within(panel).getByLabelText(/start of w000002/i)
     await user.clear(start)
-    await user.type(start, '1500')
+    await user.type(start, '0:01.50')
     await user.tab()
 
     const document = await saved((saving) => saving.captions.words[1]?.startMs === 1_500)
@@ -423,9 +434,12 @@ describe('the styling panels', () => {
     const text = screen.getByRole('region', { name: /^text$/i })
     await user.type(within(text).getByLabelText(/new text/i), 'Brief')
     await user.click(within(text).getByRole('button', { name: /add text/i }))
-    const start = within(text).getByLabelText(/start of text-1/i)
-    fireEvent.change(within(text).getByLabelText(/end of text-1/i), { target: { value: '700' } })
-    fireEvent.change(start, { target: { value: '0' } })
+    const end = within(text).getByRole('textbox', { name: /end of text-1/i })
+    fireEvent.change(end, { target: { value: '0:00.70' } })
+    fireEvent.blur(end)
+    const start = within(text).getByRole('textbox', { name: /start of text-1/i })
+    fireEvent.change(start, { target: { value: '0:00.00' } })
+    fireEvent.blur(start)
 
     const motion = screen.getByRole('region', { name: /motion/i })
     await user.selectOptions(within(motion).getByLabelText(/movement of text-1/i), 'fade')

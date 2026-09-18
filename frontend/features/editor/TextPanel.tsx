@@ -2,7 +2,11 @@
 
 import { useState } from 'react'
 
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { NumberScrub } from '@/components/ui/number-scrub'
 import { Select } from '@/components/ui/select'
+import { TimecodeInput } from '@/components/ui/timecode-input'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 type Overlay = CompositionV1['overlays'][number]
@@ -17,6 +21,15 @@ const PLACEMENTS: Array<TextOverlay['placement']> = [
   'pictureInPicture',
   'cover',
 ]
+
+/** What each placement is called in the picker. */
+const PLACEMENT_LABELS: Record<string, string> = {
+  top: 'Top',
+  center: 'Centre',
+  lowerThird: 'Lower third',
+  pictureInPicture: 'Picture in picture',
+  cover: 'Cover',
+}
 
 /**
  * Type a member wrote, rather than words the transcript produced.
@@ -49,107 +62,89 @@ export function TextPanel({
   const written = overlays.filter((overlay): overlay is TextOverlay => overlay.type === 'text')
 
   return (
-    <section aria-label="Text" className="surface flex flex-col gap-2 p-4">
-      <h2 className="text-sm font-medium">Text</h2>
+    <section aria-label="Text" className="space-y-3">
+      <h2 className="text-title">Text</h2>
 
-      <div className="flex items-center gap-2 text-xs">
-        <input
+      <div className="flex items-center gap-2">
+        <Input
           type="text"
           aria-label="New text"
           value={draft}
           onChange={(event) => setDraft(event.currentTarget.value)}
           placeholder="Say something on screen"
-          className="flex-1 rounded-lg border bg-card px-2.5 py-1"
+          className="flex-1"
         />
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => {
             onAdd(draft)
             setDraft('')
           }}
-          className="rounded-lg border bg-card px-2.5 py-1"
         >
           Add text
-        </button>
+        </Button>
       </div>
 
-      <ol className="flex flex-col gap-2">
+      <ol className="divide-y divide-border">
         {written.map((overlay) => (
-          <li key={overlay.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
-            <input
+          <li key={overlay.id} className="space-y-2 py-3">
+            <Input
               type="text"
               aria-label={`Text of ${overlay.id}`}
               value={overlay.text}
               onChange={(event) => onUpdate(overlay.id, { text: event.currentTarget.value })}
-              className="rounded-lg border bg-card px-2.5 py-1"
             />
-            <div className="flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1">
-                From
-                <input
-                  type="number"
-                  aria-label={`Start of ${overlay.id}`}
-                  step={100}
-                  value={overlay.timelineStartMs}
-                  onChange={(event) =>
-                    onMove(overlay.id, Number(event.currentTarget.value), overlay.timelineEndMs)
-                  }
-                  className="w-24 rounded-lg border bg-card px-2.5 py-1"
-                />
-              </label>
-              <label className="flex items-center gap-1">
-                To
-                <input
-                  type="number"
-                  aria-label={`End of ${overlay.id}`}
-                  step={100}
-                  value={overlay.timelineEndMs}
-                  onChange={(event) =>
-                    onMove(overlay.id, overlay.timelineStartMs, Number(event.currentTarget.value))
-                  }
-                  className="w-24 rounded-lg border bg-card px-2.5 py-1"
-                />
-              </label>
-              <label className="flex items-center gap-1">
-                Size
-                <input
-                  type="number"
-                  aria-label={`Size of ${overlay.id}`}
-                  min={12}
-                  max={200}
-                  value={overlay.style.fontSize}
-                  onChange={(event) =>
-                    onUpdate(overlay.id, { style: { fontSize: Number(event.currentTarget.value) } })
-                  }
-                  className="w-20 rounded-lg border bg-card px-2.5 py-1"
-                />
-              </label>
-              <label className="flex items-center gap-1">
-                Where
-                <Select
-                  aria-label={`Placement of ${overlay.id}`}
-                  value={overlay.placement}
-                  onChange={(event) =>
-                    onUpdate(overlay.id, {
-                      placement: event.currentTarget.value as TextOverlay['placement'],
-                    })
-                  }
-                  controlSize="sm"
-                >
-                  {PLACEMENTS.map((placement) => (
-                    <option key={placement} value={placement}>
-                      {placement}
-                    </option>
-                  ))}
-                </Select>
-              </label>
-              <button
-                type="button"
+            <div className="grid grid-cols-2 gap-2">
+              <TimecodeInput
+                label="From"
+                accessibleName={`Start of ${overlay.id}`}
+                valueMs={overlay.timelineStartMs}
+                onCommit={(ms) => onMove(overlay.id, ms, overlay.timelineEndMs)}
+              />
+              <TimecodeInput
+                label="To"
+                accessibleName={`End of ${overlay.id}`}
+                valueMs={overlay.timelineEndMs}
+                onCommit={(ms) => onMove(overlay.id, overlay.timelineStartMs, ms)}
+              />
+            </div>
+            <NumberScrub
+              label="Size"
+              accessibleName={`Size of ${overlay.id}`}
+              value={overlay.style.fontSize}
+              min={12}
+              max={200}
+              step={1}
+              unit="px"
+              onCommit={(fontSize) => onUpdate(overlay.id, { style: { fontSize } })}
+            />
+            <div className="flex items-center gap-2">
+              <span className="w-24 shrink-0 text-caption text-muted-foreground">Where</span>
+              <Select
+                aria-label={`Placement of ${overlay.id}`}
+                value={overlay.placement}
+                onChange={(event) =>
+                  onUpdate(overlay.id, {
+                    placement: event.currentTarget.value as TextOverlay['placement'],
+                  })
+                }
+                controlSize="sm"
+              >
+                {PLACEMENTS.map((placement) => (
+                  <option key={placement} value={placement}>
+                    {PLACEMENT_LABELS[placement] ?? placement}
+                  </option>
+                ))}
+              </Select>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto"
                 onClick={() => onRemove(overlay.id)}
-                className="ml-auto rounded-lg border bg-card px-2.5 py-1"
               >
                 Remove {overlay.id}
-              </button>
+              </Button>
             </div>
           </li>
         ))}

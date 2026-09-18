@@ -43,7 +43,7 @@ export function BrollProvenanceList({
 
   if (suggestions.isPending) {
     return (
-      <p role="status" className="text-sm text-muted-foreground">
+      <p role="status" className="text-small text-muted-foreground">
         Reading this clip&apos;s B-roll…
       </p>
     )
@@ -56,7 +56,7 @@ export function BrollProvenanceList({
     (suggestion) => IN_THE_CLIP.has(suggestion.status) && suggestion.provenance != null,
   )
   if (used.length === 0) {
-    return <p className="text-sm text-muted-foreground">No B-roll in this clip.</p>
+    return <p className="text-small text-muted-foreground">No B-roll in this clip.</p>
   }
 
   return (
@@ -70,7 +70,7 @@ export function BrollProvenanceList({
           <p className="font-medium">{suggestion.visualIntent.subject}</p>
           <p className="text-muted-foreground">On this clip since it was accepted.</p>
           {suggestion.provenance?.generated === true ? (
-            <p className="w-fit rounded bg-muted px-2 py-0.5 font-medium">AI-generated</p>
+            <p className="w-fit rounded-sm border border-line-strong px-1.5 py-0.5 font-mono text-caption">AI-generated</p>
           ) : null}
           <ProvenancePopover provenance={suggestion.provenance} />
         </article>

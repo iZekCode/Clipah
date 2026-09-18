@@ -6,10 +6,12 @@ import {
   AudioLines,
   Captions,
   ClipboardCheck,
+  Crop,
   Film,
-  LayoutGrid,
+  Keyboard,
   Palette,
   Redo2,
+  SlidersHorizontal,
   Type,
   Undo2,
   Upload,
@@ -27,8 +29,14 @@ import {
 
 import { BrollPanel, type DecisionRequest } from '@/features/broll/BrollPanel'
 import { ErrorNotice } from '@/components/error-notice'
+import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { RequireSession } from '@/features/auth/require-session'
 import { useSession } from '@/features/auth/session'
+import { useStoryboard } from '@/features/media/use-storyboard'
+import { useWaveform } from '@/features/media/use-waveform'
 import { ReviewPanel } from '@/features/reviews/ReviewPanel'
 import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -43,34 +51,43 @@ import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback
 import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
 import type {
   AccessibilityResponse,
+  CompositionV1,
   EditResponse,
   ProjectResponse,
   ProxyPlaybackResponse,
   RevisionHistoryResponse,
 } from '@/lib/api/generated/model'
+import { cn } from '@/lib/utils'
 
 import { AssetsPanel } from './AssetsPanel'
 import { ExportDialog, presetForCanvas } from './ExportDialog'
 import { AccessibilityPanel } from './AccessibilityPanel'
 import { AudioPanel } from './AudioPanel'
+import { CAPTION_FONT_VARIABLES } from './caption-fonts'
 import { CaptionsPanel } from './CaptionsPanel'
 import { KaraokePanel } from './KaraokePanel'
+import { CropOverlay } from './CropOverlay'
 import { KeyframeEditor } from './KeyframeEditor'
+import { LayoutPanel } from './LayoutPanel'
 import { MotionPanel } from './MotionPanel'
-import { Inspector } from './Inspector'
+import { Inspector, type InspectorTarget } from './Inspector'
 import { Player } from './Player'
 import { SceneList } from './SceneList'
+import { ShortcutSheet } from './ShortcutSheet'
 import { SourceMonitor } from './SourceMonitor'
-import { TemplatesPanel } from './TemplatesPanel'
+import { StylePanel } from './StylePanel'
 import { TextPanel } from './TextPanel'
-import { Timeline, ZOOM_LEVELS } from './Timeline'
+import { Timeline, ZOOM_LEVELS, fitZoom } from './Timeline'
 import { TimelineToolbar } from './TimelineToolbar'
+import { TransportBar } from './TransportBar'
 import { Autosave, type SaveStatus } from './autosave'
 import type { PreviewEngine } from './engine'
 import {
+  ASPECT_CANVAS,
   MIN_ITEM_MS,
   canRedo,
   canUndo,
+  currentAspect,
   editorReducer,
   initialEditorState,
   isDirty,
@@ -78,19 +95,21 @@ import {
   type Aspect,
   type EditorAction,
 } from './store'
+import { useEditorKeys } from './use-editor-keys'
 
 /** The editing tools, in the order a creator usually reaches for them. */
 const TOOLS = [
   { id: 'captions', label: 'Captions', icon: Captions },
-  { id: 'layout', label: 'Layout', icon: LayoutGrid },
+  { id: 'style', label: 'Style', icon: Palette },
+  { id: 'layout', label: 'Layout', icon: Crop },
   { id: 'media', label: 'Media', icon: Film },
   { id: 'audio', label: 'Audio', icon: AudioLines },
   { id: 'text', label: 'Text', icon: Type },
-  { id: 'style', label: 'Style', icon: Palette },
   { id: 'review', label: 'Review', icon: ClipboardCheck },
 ] as const
 
 type ToolId = (typeof TOOLS)[number]['id']
+type ItemCrop = NonNullable<CompositionV1['tracks'][number]['items'][number]['crop']>
 
 /** What the editor says about work that has not reached the backend yet. */
 const SAVE_LABELS: Record<SaveStatus, string> = {
@@ -351,6 +370,12 @@ function LoadedEditor({
       null,
     [composition, state.selectedItemId],
   )
+  // The Layout tool frames the selected video item, or the clip's first one.
+  const framed = useMemo(() => {
+    const video = composition.tracks.filter((track) => track.type === 'video')
+    const items = video.flatMap((track) => track.items)
+    return items.find((item) => item.id === state.selectedItemId) ?? items[0] ?? null
+  }, [composition.tracks, state.selectedItemId])
   const sourceAspect = useMemo(() => {
     if (proxy?.width == null || proxy.height == null || proxy.height === 0) {
       return composition.canvas.width / composition.canvas.height
@@ -375,7 +400,20 @@ function LoadedEditor({
     [composition.bookmarks, state.playheadMs],
   )
 
-  useShortcuts({
+  const [loop, setLoop] = useState(false)
+  const [helpOpen, setHelpOpen] = useState(false)
+  const [laneHeight, setLaneHeight] = useState(240)
+  const [propertiesOpen, setPropertiesOpen] = useState(false)
+  const lanes = useRef<HTMLElement>(null)
+  const [focus, setFocus] = useState<InspectorTarget>(null)
+  const [previewCrop, setPreviewCrop] = useState<ItemCrop | null>(null)
+  // A selected timeline item wins; otherwise the word or overlay chosen last.
+  const target: InspectorTarget =
+    state.selectedItemId !== null ? { kind: 'item', id: state.selectedItemId } : focus
+  const storyboard = useStoryboard(edit.projectId, { enabled: true })
+  const waveform = useWaveform(edit.projectId, { enabled: true })
+
+  useEditorKeys({
     onPlayPause: () => onPlaying(!playing),
     onUndo: () => dispatch({ type: 'undo' }),
     onRedo: () => dispatch({ type: 'redo' }),
@@ -391,6 +429,17 @@ function LoadedEditor({
     onZoomOut: () =>
       onZoom(ZOOM_LEVELS[Math.max(ZOOM_LEVELS.indexOf(zoom as never) - 1, 0)] ?? zoom),
     onSave: save,
+    onStep: (deltaMs) =>
+      dispatch({
+        type: 'seek',
+        ms: Math.min(
+          composition.durationMs,
+          Math.max(0, Math.round(state.playheadMs + deltaMs)),
+        ),
+      }),
+    onAddMarker: () =>
+      dispatch({ type: 'addBookmark', label: `Marker ${composition.bookmarks.length + 1}` }),
+    onHelp: () => setHelpOpen(true),
   })
 
   const [tool, setTool] = useState<ToolId>('captions')
@@ -403,82 +452,115 @@ function LoadedEditor({
   })
   const saveLabel = dirty && status === 'saved' ? SAVE_LABELS.idle : SAVE_LABELS[status]
 
+  const inspector = (
+    <Inspector
+      composition={composition}
+      target={target}
+      playheadMs={state.playheadMs}
+      onTrim={(sourceInMs, sourceOutMs) =>
+        selected === null
+          ? undefined
+          : dispatch({ type: 'trim', itemId: selected.id, sourceInMs, sourceOutMs })
+      }
+      onCrop={(crop) =>
+        selected === null ? undefined : dispatch({ type: 'crop', itemId: selected.id, crop })
+      }
+      onSplit={() =>
+        selected === null
+          ? undefined
+          : dispatch({ type: 'split', itemId: selected.id, atMs: state.playheadMs })
+      }
+      onDelete={() =>
+        selected === null ? undefined : dispatch({ type: 'deleteItem', itemId: selected.id })
+      }
+      onRetimeWord={(wordId, startMs, endMs) =>
+        dispatch({ type: 'retimeWord', wordId, startMs, endMs })
+      }
+      onWordText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
+      onMoveOverlay={(overlayId, startMs, endMs) =>
+        dispatch({ type: 'moveOverlay', overlayId, startMs, endMs })
+      }
+    />
+  )
+
   return (
-    <main className="flex min-h-screen flex-col bg-background md:h-screen">
-      <header className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b bg-card px-4 py-2.5">
+    <main
+      className={cn('flex min-h-screen flex-col bg-background md:h-screen', CAPTION_FONT_VARIABLES)}
+    >
+      <header className="flex h-12 shrink-0 items-center gap-3 border-b bg-card px-3">
         <Link
           href={`/dashboard/projects/${edit.projectId}`}
-          className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
+          className="inline-flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1.5 text-small font-medium text-muted-foreground hover:bg-secondary hover:text-foreground"
         >
-          <ArrowLeft aria-hidden="true" className="size-4" />
-          <span className="max-w-40 truncate">{project.data?.name ?? 'Back to project'}</span>
+          <ArrowLeft aria-hidden="true" strokeWidth={1.75} className="size-4 shrink-0" />
+          <span className="max-w-48 truncate">{project.data?.name ?? 'Back to project'}</span>
         </Link>
         <div className="min-w-0">
-          <h1 className="text-sm font-semibold">Editing clip</h1>
-          <p className="text-xs text-muted-foreground">Revision {autosave.expectedRevision}</p>
+          <h1 className="sr-only truncate text-small font-semibold sm:not-sr-only">Editing clip</h1>
+          <p className="hidden font-mono text-caption text-subtle-foreground sm:block">
+            Revision {autosave.expectedRevision}
+          </p>
         </div>
         <p
           role="status"
-          className={`rounded-full px-2.5 py-0.5 text-xs font-medium ${
+          className={cn(
+            'hidden text-caption font-medium sm:block',
             status === 'conflict' || status === 'offline'
-              ? 'bg-warning-soft text-warning'
-              : status === 'saving' || (dirty && status === 'saved')
-                ? 'bg-info-soft text-info'
-                : 'bg-success-soft text-success'
-          }`}
+              ? 'text-warning'
+              : 'text-muted-foreground',
+          )}
         >
           {saveLabel}
         </p>
-        <div className="ml-auto flex items-center gap-1.5">
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'undo' })}
+        <div className="ml-auto flex items-center gap-1">
+          <IconButton
+            label="Undo"
+            shortcut="⌘Z"
+            icon={<Undo2 strokeWidth={1.75} />}
+            className="hidden md:inline-flex"
             disabled={!canUndo(state)}
-            aria-label="Undo"
-            title="Undo (⌘Z)"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
-          >
-            <Undo2 aria-hidden="true" className="size-4" />
-            <span className="hidden sm:inline">Undo</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => dispatch({ type: 'redo' })}
+            onClick={() => dispatch({ type: 'undo' })}
+          />
+          <IconButton
+            label="Redo"
+            shortcut="⇧⌘Z"
+            icon={<Redo2 strokeWidth={1.75} />}
+            className="hidden md:inline-flex"
             disabled={!canRedo(state)}
-            aria-label="Redo"
-            title="Redo (⇧⌘Z)"
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg px-2.5 text-sm font-medium hover:bg-secondary disabled:opacity-40"
-          >
-            <Redo2 aria-hidden="true" className="size-4" />
-            <span className="hidden sm:inline">Redo</span>
-          </button>
-          <button
-            type="button"
-            onClick={save}
-            title="Save (⌘S)"
-            className="inline-flex h-9 items-center rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary"
-          >
+            onClick={() => dispatch({ type: 'redo' })}
+          />
+          <IconButton
+            label="Editor shortcuts"
+            shortcut="?"
+            icon={<Keyboard strokeWidth={1.75} />}
+            className="hidden md:inline-flex"
+            onClick={() => setHelpOpen(true)}
+          />
+          <IconButton
+            label="Properties"
+            icon={<SlidersHorizontal strokeWidth={1.75} />}
+            className="lg:hidden"
+            aria-expanded={propertiesOpen}
+            onClick={() => setPropertiesOpen(true)}
+          />
+          <Button variant="ghost" size="sm" onClick={save}>
             Save
-          </button>
-          <button
-            type="button"
-            onClick={() => setExporting(true)}
-            className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-primary px-3.5 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90"
-          >
-            <Upload aria-hidden="true" className="size-4" />
-            Export
-          </button>
+          </Button>
+          <Button size="sm" onClick={() => setExporting(true)}>
+            <Upload aria-hidden="true" strokeWidth={1.75} /> Export
+          </Button>
         </div>
       </header>
 
       {conflict === null ? null : (
-        <div role="alert" className="border-b border-warning/30 bg-warning-soft px-4 py-3">
-          <p className="text-sm font-medium text-warning">
+        <div role="alert" className="border-b border-warning/40 bg-warning-soft px-4 py-3">
+          <p className="text-small font-medium text-warning">
             This clip changed since you opened it. Choose which version to keep.
           </p>
           <div className="mt-2 flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 if (conflict.revision !== null) {
                   autosave.resume(conflict.revision)
@@ -486,12 +568,12 @@ function LoadedEditor({
                 onConflict(null)
                 void autosave.flush()
               }}
-              className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium"
             >
               Keep my version
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => {
                 void onReload().then((refreshed) => {
                   if (refreshed !== null) {
@@ -501,10 +583,9 @@ function LoadedEditor({
                   onConflict(null)
                 })
               }}
-              className="rounded-lg border bg-card px-3 py-1.5 text-xs font-medium"
             >
               Take the newer version
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -515,7 +596,7 @@ function LoadedEditor({
         </div>
       ) : null}
 
-      <p className="mx-4 mt-3 rounded-lg bg-info-soft p-3 text-sm text-info md:hidden">
+      <p className="mx-4 mt-3 rounded-md border border-line-strong bg-card p-3 text-small text-muted-foreground md:hidden">
         This is a preview. Captions, timing, and layout are edited on a larger screen — open
         this clip on a tablet or computer to continue. Export and download work here.
       </p>
@@ -523,9 +604,14 @@ function LoadedEditor({
       <div className="flex min-h-0 flex-1 flex-col md:flex-row">
         <nav
           aria-label="Editing tools"
-          className="hidden shrink-0 border-r bg-card md:flex md:w-20 md:flex-col md:items-stretch md:gap-1 md:p-2"
+          className="hidden w-14 shrink-0 border-r bg-card md:flex md:flex-col md:items-center md:gap-1 md:py-2"
         >
-          <div role="tablist" aria-orientation="vertical" aria-label="Editing tools" className="flex flex-col gap-1">
+          <div
+            role="tablist"
+            aria-orientation="vertical"
+            aria-label="Editing tools"
+            className="flex flex-col gap-1"
+          >
             {TOOLS.map((entry) => {
               const Icon = entry.icon
               return (
@@ -537,13 +623,14 @@ function LoadedEditor({
                   aria-selected={tool === entry.id}
                   aria-controls={`editor-panel-${entry.id}`}
                   onClick={() => setTool(entry.id)}
-                  className={`flex flex-col items-center gap-1 rounded-lg px-1 py-2 text-[11px] font-medium transition-colors ${
+                  className={cn(
+                    'flex w-12 flex-col items-center gap-0.5 rounded-md py-2 text-[11px] font-medium transition-colors duration-fast ease-signal',
                     tool === entry.id
-                      ? 'bg-accent text-accent-foreground'
-                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                  }`}
+                      ? 'bg-secondary text-primary'
+                      : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
+                  )}
                 >
-                  <Icon aria-hidden="true" className="size-5" />
+                  <Icon aria-hidden="true" strokeWidth={1.75} className="size-5" />
                   {entry.label}
                 </button>
               )
@@ -558,46 +645,75 @@ function LoadedEditor({
         */}
         <aside
           aria-label="Tool panel"
-          className="hidden shrink-0 overflow-y-auto border-r bg-card md:block md:w-72 xl:w-96"
+          className="hidden w-80 shrink-0 overflow-y-auto border-r bg-card md:block"
         >
           <ToolPanel id="captions" active={tool}>
             <CaptionsPanel
               captions={composition.captions}
-              onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
-              onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
-            />
-            <KaraokePanel
-              captions={composition.captions}
               playheadMs={state.playheadMs}
-              onRetime={(wordId, startMs, endMs) =>
-                dispatch({ type: 'retimeWord', wordId, startMs, endMs })
+              selectedWordId={focus?.kind === 'word' ? focus.id : null}
+              onText={(wordId, text) => dispatch({ type: 'captionText', wordId, text })}
+              onSeek={(ms) => dispatch({ type: 'seek', ms })}
+              onSelectWord={(wordId) => {
+                dispatch({ type: 'select', itemId: null })
+                setFocus({ kind: 'word', id: wordId })
+              }}
+              timing={
+                <KaraokePanel
+                  captions={composition.captions}
+                  playheadMs={state.playheadMs}
+                  onRetime={(wordId, startMs, endMs) =>
+                    dispatch({ type: 'retimeWord', wordId, startMs, endMs })
+                  }
+                  onMode={(mode) => dispatch({ type: 'captionMode', mode })}
+                />
               }
-              onMode={(mode) => dispatch({ type: 'captionMode', mode })}
+            />
+          </ToolPanel>
+          <ToolPanel id="style" active={tool}>
+            <StylePanel
+              composition={composition}
+              onStyle={(patch) => dispatch({ type: 'captionStyle', patch })}
+              onApplyTemplate={(template) => dispatch({ type: 'applyTemplate', template })}
+              motion={
+                <>
+                  <KeyframeEditor
+                    item={selected}
+                    playheadMs={state.playheadMs}
+                    onAdd={(atMs, transform) =>
+                      selected === null
+                        ? undefined
+                        : dispatch({ type: 'addKeyframe', targetId: selected.id, atMs, transform })
+                    }
+                    onMove={(atMs, toMs) =>
+                      selected === null
+                        ? undefined
+                        : dispatch({ type: 'moveKeyframe', targetId: selected.id, atMs, toMs })
+                    }
+                    onRemove={(atMs) =>
+                      selected === null
+                        ? undefined
+                        : dispatch({ type: 'removeKeyframe', targetId: selected.id, atMs })
+                    }
+                  />
+                  <MotionPanel
+                    composition={composition}
+                    onMotion={(targetId, preset) =>
+                      dispatch({ type: 'setMotion', targetId, preset })
+                    }
+                  />
+                </>
+              }
             />
           </ToolPanel>
           <ToolPanel id="layout" active={tool}>
-            <KeyframeEditor
-              item={selected}
-              playheadMs={state.playheadMs}
-              onAdd={(atMs, transform) =>
-                selected === null
-                  ? undefined
-                  : dispatch({ type: 'addKeyframe', targetId: selected.id, atMs, transform })
+            <LayoutPanel
+              item={framed}
+              sourceAspect={sourceAspect}
+              canvasAspect={composition.canvas.width / composition.canvas.height}
+              onCrop={(crop) =>
+                framed === null ? undefined : dispatch({ type: 'crop', itemId: framed.id, crop })
               }
-              onMove={(atMs, toMs) =>
-                selected === null
-                  ? undefined
-                  : dispatch({ type: 'moveKeyframe', targetId: selected.id, atMs, toMs })
-              }
-              onRemove={(atMs) =>
-                selected === null
-                  ? undefined
-                  : dispatch({ type: 'removeKeyframe', targetId: selected.id, atMs })
-              }
-            />
-            <MotionPanel
-              composition={composition}
-              onMotion={(targetId, preset) => dispatch({ type: 'setMotion', targetId, preset })}
             />
           </ToolPanel>
           <ToolPanel id="media" active={tool}>
@@ -666,12 +782,6 @@ function LoadedEditor({
               onRemove={(overlayId) => dispatch({ type: 'deleteOverlay', overlayId })}
             />
           </ToolPanel>
-          <ToolPanel id="style" active={tool}>
-            <TemplatesPanel
-              composition={composition}
-              onApply={(template) => dispatch({ type: 'applyTemplate', template })}
-            />
-          </ToolPanel>
           <ToolPanel id="review" active={tool}>
             <SceneList
               composition={composition}
@@ -705,125 +815,205 @@ function LoadedEditor({
           </ToolPanel>
         </aside>
 
-        <section aria-label="Stage" className="flex min-w-0 flex-1 flex-col overflow-y-auto bg-secondary/40">
-          <div className="flex flex-1 items-center justify-center p-4 lg:p-6">
+        <section
+          aria-label="Stage"
+          className="flex min-w-0 flex-1 flex-col gap-3 bg-stage p-3 lg:p-4"
+        >
+          <div className="flex items-center justify-center">
+            <SegmentedControl
+              label="Canvas shape"
+              size="sm"
+              value={currentAspect(composition)}
+              options={(Object.keys(ASPECT_CANVAS) as Aspect[]).map((aspect) => ({
+                value: aspect,
+                label: aspect,
+              }))}
+              onChange={(aspect) => dispatch({ type: 'aspect', aspect, sourceAspect })}
+            />
+          </div>
+          <div className="flex min-h-0 flex-1 items-center justify-center">
             {proxy === null ? (
-              <p role="status" className="text-xs text-muted-foreground">
+              <p role="status" className="text-caption text-muted-foreground">
                 Loading the preview…
               </p>
             ) : (
-              <div className="w-full max-w-3xl">
-                <Player
-                  composition={composition}
-                  source={proxy}
-                  playheadMs={state.playheadMs}
-                  playing={playing}
-                  engine={engine}
-                  onSeek={(ms) => dispatch({ type: 'seek', ms })}
-                  onPlayingChange={onPlaying}
-                />
-              </div>
+              <Player
+                composition={composition}
+                source={proxy}
+                playheadMs={state.playheadMs}
+                playing={playing}
+                loop={loop}
+                engine={engine}
+                showFullFrame={tool === 'layout' && framed?.crop != null}
+                overlay={
+                  tool === 'layout' && framed !== null && framed.crop !== null ? (
+                    <CropOverlay
+                      crop={previewCrop ?? framed.crop}
+                      onPreview={setPreviewCrop}
+                      onCommit={(crop) => {
+                        setPreviewCrop(null)
+                        dispatch({ type: 'crop', itemId: framed.id, crop })
+                      }}
+                    />
+                  ) : null
+                }
+                onSeek={(ms) => dispatch({ type: 'seek', ms })}
+                onPlayingChange={onPlaying}
+              />
             )}
           </div>
+          <TransportBar
+            playing={playing}
+            playheadMs={state.playheadMs}
+            durationMs={composition.durationMs}
+            loop={loop}
+            onPlayingChange={onPlaying}
+            onSeek={(ms) => dispatch({ type: 'seek', ms })}
+            onLoop={setLoop}
+          />
         </section>
 
         <aside
           aria-label="Properties"
-          className="hidden shrink-0 overflow-y-auto border-l bg-card p-3 md:block md:w-56 lg:w-72"
+          className="hidden w-72 shrink-0 overflow-y-auto border-l bg-card p-3 lg:block"
         >
-          <Inspector
-            composition={composition}
-            item={selected}
-            playheadMs={state.playheadMs}
-            onTrim={(sourceInMs, sourceOutMs) =>
-              selected === null
-                ? undefined
-                : dispatch({ type: 'trim', itemId: selected.id, sourceInMs, sourceOutMs })
-            }
-            onCrop={(crop) =>
-              selected === null ? undefined : dispatch({ type: 'crop', itemId: selected.id, crop })
-            }
-            onAspect={(aspect: Aspect) => dispatch({ type: 'aspect', aspect, sourceAspect })}
-            onSplit={() =>
-              selected === null
-                ? undefined
-                : dispatch({ type: 'split', itemId: selected.id, atMs: state.playheadMs })
-            }
-            onDelete={() =>
-              selected === null ? undefined : dispatch({ type: 'deleteItem', itemId: selected.id })
-            }
-          />
+          {inspector}
         </aside>
       </div>
 
       <section
+        ref={lanes}
         aria-label="Editing lanes"
-        className="hidden max-h-[40vh] shrink-0 flex-col gap-2 overflow-y-auto border-t bg-card p-3 md:flex"
+        className="hidden shrink-0 flex-col border-t bg-card md:flex"
+        style={{ height: laneHeight }}
       >
-        <TimelineToolbar
-          snapping={snapping}
-          ripple={ripple}
-          hasSelection={state.selectedItemId !== null}
-          markerCount={composition.bookmarks.length}
-          onSnapping={setSnapping}
-          onRipple={setRipple}
-          onSplit={() =>
-            state.selectedItemId === null
-              ? undefined
-              : dispatch({ type: 'split', itemId: state.selectedItemId, atMs: state.playheadMs })
-          }
-          onSplitAwayLeft={() =>
-            state.selectedItemId === null
-              ? undefined
-              : dispatch({
-                  type: 'splitSide',
-                  itemId: state.selectedItemId,
-                  atMs: state.playheadMs,
-                  keep: 'right',
-                })
-          }
-          onSplitAwayRight={() =>
-            state.selectedItemId === null
-              ? undefined
-              : dispatch({
-                  type: 'splitSide',
-                  itemId: state.selectedItemId,
-                  atMs: state.playheadMs,
-                  keep: 'left',
-                })
-          }
-          onDuplicate={() =>
-            state.selectedItemId === null
-              ? undefined
-              : dispatch({ type: 'duplicateItem', itemId: state.selectedItemId })
-          }
-          onDelete={() =>
-            state.selectedItemId === null
-              ? undefined
-              : dispatch({ type: 'deleteItem', itemId: state.selectedItemId, ripple })
-          }
-          onAddMarker={(label) => dispatch({ type: 'addBookmark', label })}
-          onPreviousMarker={() => toMarker(-1)}
-          onNextMarker={() => toMarker(1)}
-          onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+        <div
+          role="separator"
+          aria-label="Resize the timeline"
+          aria-orientation="horizontal"
+          aria-valuemin={160}
+          aria-valuemax={520}
+          aria-valuenow={laneHeight}
+          tabIndex={0}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowUp') {
+              event.preventDefault()
+              setLaneHeight((height) => Math.min(520, height + 24))
+            }
+            if (event.key === 'ArrowDown') {
+              event.preventDefault()
+              setLaneHeight((height) => Math.max(160, height - 24))
+            }
+          }}
+          onPointerDown={(event) => {
+            const startY = event.clientY
+            const startHeight = laneHeight
+            const move = (moveEvent: PointerEvent) =>
+              setLaneHeight(Math.min(520, Math.max(160, startHeight + startY - moveEvent.clientY)))
+            const up = () => {
+              window.removeEventListener('pointermove', move)
+              window.removeEventListener('pointerup', up)
+            }
+            window.addEventListener('pointermove', move)
+            window.addEventListener('pointerup', up)
+          }}
+          className="h-1.5 shrink-0 cursor-row-resize bg-border hover:bg-line-strong focus-visible:bg-primary"
         />
-        <Timeline
-          composition={composition}
-          selectedItemId={state.selectedItemId}
-          selectedTrackId={state.selectedTrackId}
-          playheadMs={state.playheadMs}
-          zoom={zoom}
-          snapping={snapping}
-          lockedTrackIds={state.lockedTrackIds}
-          onSelect={(itemId) => dispatch({ type: 'select', itemId })}
-          onSelectTrack={(trackId) => dispatch({ type: 'selectTrack', trackId })}
-          onSeek={(ms) => dispatch({ type: 'seek', ms })}
-          onZoom={onZoom}
-          onMove={(itemId, toMs) => dispatch({ type: 'moveItem', itemId, toMs })}
-          onResize={(itemId, edge, toMs) => dispatch({ type: 'resizeItem', itemId, edge, toMs })}
-          onRemoveMarker={(bookmarkId) => dispatch({ type: 'removeBookmark', bookmarkId })}
-        />
+        <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto p-3">
+          <TimelineToolbar
+            snapping={snapping}
+            ripple={ripple}
+            hasSelection={state.selectedItemId !== null}
+            markerCount={composition.bookmarks.length}
+            zoom={zoom}
+            onZoom={onZoom}
+            onFit={() =>
+              onZoom(fitZoom((lanes.current?.clientWidth ?? 1_200) - 112, composition.durationMs))
+            }
+            onSnapping={setSnapping}
+            onRipple={setRipple}
+            onSplit={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'split', itemId: state.selectedItemId, atMs: state.playheadMs })
+            }
+            onSplitAwayLeft={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({
+                    type: 'splitSide',
+                    itemId: state.selectedItemId,
+                    atMs: state.playheadMs,
+                    keep: 'right',
+                  })
+            }
+            onSplitAwayRight={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({
+                    type: 'splitSide',
+                    itemId: state.selectedItemId,
+                    atMs: state.playheadMs,
+                    keep: 'left',
+                  })
+            }
+            onDuplicate={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'duplicateItem', itemId: state.selectedItemId })
+            }
+            onDelete={() =>
+              state.selectedItemId === null
+                ? undefined
+                : dispatch({ type: 'deleteItem', itemId: state.selectedItemId, ripple })
+            }
+            onAddMarker={(label) => dispatch({ type: 'addBookmark', label })}
+            onPreviousMarker={() => toMarker(-1)}
+            onNextMarker={() => toMarker(1)}
+            onAddTrack={(trackType) => dispatch({ type: 'addTrack', trackType })}
+          />
+          <Timeline
+            composition={composition}
+            selectedItemId={state.selectedItemId}
+            selectedTrackId={state.selectedTrackId}
+            playheadMs={state.playheadMs}
+            zoom={zoom}
+            snapping={snapping}
+            lockedTrackIds={state.lockedTrackIds}
+            storyboard={storyboard.data ?? null}
+            peaks={waveform.peaks}
+            peaksPerSecond={waveform.peaksPerSecond}
+            sourceAssetId={composition.sourceAssetId}
+            onSelect={(itemId) => {
+              setFocus(null)
+              dispatch({ type: 'select', itemId })
+            }}
+            onSelectOverlay={(overlayId) => {
+              setFocus({ kind: 'overlay', id: overlayId })
+              dispatch({ type: 'select', itemId: null })
+            }}
+            onSelectTrack={(trackId) => dispatch({ type: 'selectTrack', trackId })}
+            onSeek={(ms) => dispatch({ type: 'seek', ms })}
+            onMove={(itemId, toMs) => dispatch({ type: 'moveItem', itemId, toMs })}
+            onResize={(itemId, edge, toMs) => dispatch({ type: 'resizeItem', itemId, edge, toMs })}
+            onRemoveMarker={(bookmarkId) => dispatch({ type: 'removeBookmark', bookmarkId })}
+          />
+        </div>
       </section>
+
+      <Sheet open={propertiesOpen} onOpenChange={setPropertiesOpen}>
+        <SheetContent
+          side="right"
+          className="w-full overflow-y-auto sm:max-w-sm lg:hidden"
+          aria-describedby={undefined}
+        >
+          <SheetHeader>
+            <SheetTitle>Properties</SheetTitle>
+          </SheetHeader>
+          <div className="mt-4">{propertiesOpen ? inspector : null}</div>
+        </SheetContent>
+      </Sheet>
+      <ShortcutSheet open={helpOpen} onOpenChange={setHelpOpen} />
 
       <ExportDialog
         open={exporting}
@@ -927,88 +1117,4 @@ function compositionChangeFor(request: DecisionRequest): EditorAction | null {
     return { type: 'removeSuggestion', suggestionId: request.suggestion.id }
   }
   return null
-}
-
-/**
- * The editor's keyboard shortcuts.
- *
- * They are deliberately inert while a member is typing: a caption is text, and an editor
- * that treats `z` inside a caption as an undo is an editor that eats words.
- */
-function useShortcuts(handlers: {
-  onPlayPause: () => void
-  onUndo: () => void
-  onRedo: () => void
-  onSplit: () => void
-  onDelete: () => void
-  onZoomIn: () => void
-  onZoomOut: () => void
-  onSave: () => void
-}): void {
-  const current = useRef(handlers)
-  current.current = handlers
-
-  useEffect(() => {
-    function onKeyDown(event: KeyboardEvent): void {
-      if (isTextEntry(event.target)) {
-        return
-      }
-      const modified = event.metaKey || event.ctrlKey
-      if (modified && event.key.toLowerCase() === 'z') {
-        event.preventDefault()
-        if (event.shiftKey) {
-          current.current.onRedo()
-        } else {
-          current.current.onUndo()
-        }
-        return
-      }
-      if (modified && event.key.toLowerCase() === 's') {
-        event.preventDefault()
-        current.current.onSave()
-        return
-      }
-      if (modified) {
-        return
-      }
-      if (event.key === ' ') {
-        event.preventDefault()
-        current.current.onPlayPause()
-        return
-      }
-      if (event.key.toLowerCase() === 's') {
-        current.current.onSplit()
-        return
-      }
-      if (event.key === 'Delete' || event.key === 'Backspace') {
-        current.current.onDelete()
-        return
-      }
-      if (event.key === '+' || event.key === '=') {
-        current.current.onZoomIn()
-        return
-      }
-      if (event.key === '-') {
-        current.current.onZoomOut()
-      }
-    }
-
-    window.addEventListener('keydown', onKeyDown)
-    return () => {
-      window.removeEventListener('keydown', onKeyDown)
-    }
-  }, [])
-}
-
-/** Whether the event landed somewhere a member is writing. */
-function isTextEntry(target: EventTarget | null): boolean {
-  if (!(target instanceof HTMLElement)) {
-    return false
-  }
-  return (
-    target.isContentEditable ||
-    target instanceof HTMLInputElement ||
-    target instanceof HTMLTextAreaElement ||
-    target instanceof HTMLSelectElement
-  )
 }

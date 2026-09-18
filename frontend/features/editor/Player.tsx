@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useMemo, useRef, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode, type SyntheticEvent } from 'react'
 
+import { captionFontStack } from './caption-fonts'
 import { htmlVideoPreviewEngine, type PreviewEngine, type PreviewSource } from './engine'
 import { timelineItems } from './store'
 import type { CompositionV1 } from '@/lib/api/generated/model'
@@ -18,6 +19,9 @@ export function Player({
   source,
   playheadMs,
   playing,
+  loop = false,
+  showFullFrame = false,
+  overlay,
   onSeek,
   onPlayingChange,
   engine: injected,
@@ -26,6 +30,12 @@ export function Player({
   source: PreviewSource
   playheadMs: number
   playing: boolean
+  /** Go round again from the start instead of stopping at the end of the clip. */
+  loop?: boolean
+  /** Draw the whole source frame, uncropped, so a crop can be adjusted over it. */
+  showFullFrame?: boolean
+  /** Drawn over the frame, inside the canvas box. */
+  overlay?: ReactNode
   onSeek: (ms: number) => void
   onPlayingChange: (playing: boolean) => void
   engine?: PreviewEngine
@@ -56,8 +66,13 @@ export function Player({
   const activeWord = composition.captions.words.find(
     (word) => playheadMs >= word.startMs && playheadMs < word.endMs,
   )
-  const aspect = `${composition.canvas.width} / ${composition.canvas.height}`
+  const sourceKnown = source.width !== null && source.height !== null && source.height > 0
+  const aspect =
+    showFullFrame && sourceKnown
+      ? `${source.width} / ${source.height}`
+      : `${composition.canvas.width} / ${composition.canvas.height}`
   const crop = placed[0]?.item.crop ?? null
+  const captionStyle = composition.captions.style
 
   /** Follow the media element, so the playhead reflects what is actually playing. */
   function follow(event: SyntheticEvent<HTMLVideoElement>) {
@@ -67,23 +82,29 @@ export function Player({
       onPlayingChange(false)
       return
     }
-    onSeek(clipMs)
     if (clipMs >= composition.durationMs) {
+      if (loop) {
+        onSeek(0)
+        return
+      }
+      onSeek(clipMs)
       onPlayingChange(false)
+      return
     }
+    onSeek(clipMs)
   }
 
   return (
-    <section aria-label="Preview" className="flex flex-col gap-2">
+    <section aria-label="Preview" className="flex w-full flex-col gap-2">
       <div
         data-testid="editor-canvas"
         style={{
           aspectRatio: aspect,
           background: composition.canvas.background,
           // Fit the frame to the height the studio leaves free, whatever its shape.
-          maxWidth: `min(100%, calc((100vh - 24rem) * ${aspect}))`,
+          maxWidth: `min(100%, calc((100vh - 26rem) * ${aspect}))`,
         }}
-        className="relative mx-auto w-full overflow-hidden rounded-lg shadow-md"
+        className="relative mx-auto w-full overflow-hidden [container-type:inline-size]"
       >
         <video
           ref={video}
@@ -92,39 +113,49 @@ export function Player({
           preload="metadata"
           playsInline
           onTimeUpdate={follow}
-          style={crop === null ? undefined : cropStyle(crop)}
-          className="h-full w-full object-cover"
+          style={crop === null || showFullFrame ? undefined : cropStyle(crop)}
+          className={showFullFrame ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
         />
-        {composition.captions.mode === 'off' || activeWord === undefined ? null : (
+        {/* Captions sit on the canvas, not on the source frame a crop is chosen from. */}
+        {showFullFrame || composition.captions.mode === 'off' || activeWord === undefined ? null : (
           <p
             data-testid="editor-caption"
-            style={{
-              color: composition.captions.style.color,
-              fontFamily: composition.captions.style.fontFamily,
-              fontWeight: composition.captions.style.weight,
-              textAlign: composition.captions.style.align,
-            }}
-            className="absolute inset-x-0 bottom-6 px-4 text-center text-sm"
+            // Caption sizes are canvas pixels; `cqw` scales them to the frame's drawn width.
+            style={{ fontSize: `calc(${captionStyle.fontSize} / ${composition.canvas.width} * 100cqw)` }}
+            className="absolute inset-x-0 bottom-6 px-4"
           >
-            {activeWord.text}
+            <span
+              style={{
+                color: captionStyle.color,
+                fontFamily: captionFontStack(captionStyle.fontFamily),
+                fontWeight: captionStyle.weight,
+                fontStyle: captionStyle.italic ? 'italic' : 'normal',
+                letterSpacing: `calc(${captionStyle.letterSpacing} / ${composition.canvas.width} * 100cqw)`,
+                lineHeight: captionStyle.lineHeight,
+                textDecoration: DECORATIONS[captionStyle.decoration],
+                textAlign: captionStyle.align,
+                backgroundColor: captionStyle.backgroundEnabled
+                  ? captionStyle.backgroundColor
+                  : undefined,
+              }}
+              className="block px-[0.2em]"
+            >
+              {activeWord.text}
+            </span>
           </p>
         )}
-      </div>
-      <div className="flex items-center justify-center gap-3">
-        <button
-          type="button"
-          onClick={() => onPlayingChange(!playing)}
-          className="rounded-lg border bg-card px-3 py-1.5 text-sm font-medium hover:bg-secondary"
-        >
-          {playing ? 'Pause' : 'Play'}
-        </button>
-        <output aria-label="Playhead" className="font-mono text-xs text-muted-foreground">
-          {timecode(playheadMs)} / {timecode(composition.durationMs)}
-        </output>
+        {overlay}
       </div>
     </section>
   )
 }
+
+/** The CSS decoration that draws each composition text decoration. */
+const DECORATIONS = {
+  none: 'none',
+  underline: 'underline',
+  strikethrough: 'line-through',
+} as const
 
 /** Where in the source media one moment of the clip lives. */
 function sourceMsAt(placed: ReturnType<typeof timelineItems>, clipMs: number): number {
@@ -158,12 +189,4 @@ function cropStyle(crop: NonNullable<CompositionV1['tracks'][number]['items'][nu
 function percentage(offset: number, size: number): number {
   const remaining = 1 - size
   return remaining <= 0 ? 50 : (offset / remaining) * 100
-}
-
-/** Render one duration the way a timecode field shows it. */
-export function timecode(ms: number): string {
-  const total = Math.max(0, Math.round(ms / 100) / 10)
-  const minutes = Math.floor(total / 60)
-  const seconds = (total % 60).toFixed(1).padStart(4, '0')
-  return `${minutes}:${seconds}`
 }

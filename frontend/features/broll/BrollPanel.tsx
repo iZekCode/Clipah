@@ -194,10 +194,10 @@ export function BrollPanel({
   const unreadable = suggestions.isError && suggestions.error.status !== 404
 
   return (
-    <section aria-label="B-roll" className="surface flex flex-col gap-3 p-4">
+    <section aria-label="B-roll" className="space-y-3">
       <header>
-        <h2 className="text-sm font-semibold">B-roll</h2>
-        <p className="text-xs text-muted-foreground">
+        <h2 className="text-title">B-roll</h2>
+        <p className="text-caption text-muted-foreground">
           Suggested cutaways. Nothing is added to your clip until you accept it.
         </p>
       </header>
@@ -213,7 +213,7 @@ export function BrollPanel({
       />
 
       {refusal === null ? null : (
-        <p role="status" className="rounded-lg border border-input bg-card p-2 text-xs">
+        <p role="status" className="py-2 text-small">
           {refusal}
         </p>
       )}
@@ -221,13 +221,13 @@ export function BrollPanel({
       {unreadable ? <ErrorNotice error={suggestions.error} /> : null}
 
       {suggestions.isPending ? (
-        <p role="status" className="text-xs text-muted-foreground">
+        <p role="status" className="text-caption text-muted-foreground">
           Reading this clip&apos;s suggestions…
         </p>
       ) : null}
 
       {!suggestions.isPending && !unreadable && found.length === 0 ? (
-        <p className="text-xs text-muted-foreground">
+        <p className="text-caption text-muted-foreground">
           No B-roll suggestions yet. Ask for some when this moment would be clearer with a picture.
         </p>
       ) : null}

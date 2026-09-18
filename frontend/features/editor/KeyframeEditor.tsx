@@ -1,6 +1,6 @@
 'use client'
 
-import { timecode } from './Player'
+import { formatTimecode } from '@/lib/time/timecode'
 import { interpolatedAt } from './store'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
@@ -33,8 +33,8 @@ export function KeyframeEditor({
     item === null ? null : (interpolatedAt(item.keyframes, relativeMs).transform ?? item.transform)
 
   return (
-    <section aria-label="Keyframes" className="surface flex flex-col gap-2 p-4 text-xs">
-      <h2 className="text-sm font-medium">Keyframes</h2>
+    <section aria-label="Keyframes" className="space-y-3 text-small">
+      <h2 className="text-title">Keyframes</h2>
 
       {item === null || current === null ? (
         <p className="text-muted-foreground">Select an item on the timeline to animate it.</p>
@@ -47,15 +47,15 @@ export function KeyframeEditor({
           <button
             type="button"
             onClick={() => onAdd(relativeMs, current)}
-            className="self-start rounded-lg border bg-card px-2.5 py-1"
+            className="self-start inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
           >
             Add a keyframe here
           </button>
 
           <ol className="flex flex-col gap-1">
             {item.keyframes.map((keyframe) => (
-              <li key={keyframe.atMs} className="flex items-center gap-2 rounded-lg border border-input bg-card p-2">
-                <span className="font-mono">{timecode(keyframe.atMs)}</span>
+              <li key={keyframe.atMs} className="flex items-center gap-2 py-2">
+                <span className="font-mono">{formatTimecode(keyframe.atMs)}</span>
                 <span className="text-muted-foreground">
                   {keyframe.transform === null
                     ? 'no framing'
@@ -65,7 +65,7 @@ export function KeyframeEditor({
                   At (ms)
                   <input
                     type="number"
-                    aria-label={`Time of the keyframe at ${timecode(keyframe.atMs)}`}
+                    aria-label={`Time of the keyframe at ${formatTimecode(keyframe.atMs)}`}
                     step={100}
                     defaultValue={keyframe.atMs}
                     onBlur={(event) => {
@@ -74,14 +74,14 @@ export function KeyframeEditor({
                         onMove(keyframe.atMs, value)
                       }
                     }}
-                    className="w-24 rounded-lg border bg-card px-2.5 py-1"
+                    className="w-24 h-8 rounded-md border border-input bg-secondary px-2 font-mono text-small text-foreground"
                   />
                 </label>
                 <button
                   type="button"
-                  aria-label={`Remove the keyframe at ${timecode(keyframe.atMs)}`}
+                  aria-label={`Remove the keyframe at ${formatTimecode(keyframe.atMs)}`}
                   onClick={() => onRemove(keyframe.atMs)}
-                  className="rounded-lg border bg-card px-2.5 py-1"
+                  className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
                 >
                   Remove
                 </button>

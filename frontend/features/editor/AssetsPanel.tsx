@@ -34,25 +34,25 @@ export function AssetsPanel({
   })
 
   return (
-    <section aria-label="Assets" className="surface flex flex-col gap-2 p-4">
-      <h2 className="text-sm font-medium">Assets</h2>
-      <p className="text-xs text-muted-foreground">
+    <section aria-label="Assets" className="space-y-3">
+      <h2 className="text-title">Assets</h2>
+      <p className="text-caption text-muted-foreground">
         Media this project owns. Upload more from the project page.
       </p>
 
       {assets.isError && assets.error.status !== 404 ? <ErrorNotice error={assets.error} /> : null}
       {assets.isError && assets.error.status === 404 ? (
-        <p className="text-xs text-muted-foreground">This project has no media to place yet.</p>
+        <p className="text-caption text-muted-foreground">This project has no media to place yet.</p>
       ) : null}
       {assets.isPending ? (
-        <p role="status" className="text-xs text-muted-foreground">
+        <p role="status" className="text-caption text-muted-foreground">
           Loading this project&apos;s media…
         </p>
       ) : null}
 
       <ul className="flex flex-col gap-2">
         {(assets.data?.assets ?? []).map((asset) => (
-          <li key={asset.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
+          <li key={asset.id} className="flex flex-col gap-1.5 py-2 text-small">
             <span className="font-mono">{asset.contentType}</span>
             <span className="text-muted-foreground">
               {asset.durationMs === null ? 'Still image' : `${Math.round(asset.durationMs / 1000)}s`}
@@ -61,13 +61,13 @@ export function AssetsPanel({
                 : ` · ${asset.width}×${asset.height}`}
             </span>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => onAdd(asset)} className="rounded-lg border bg-card px-2.5 py-1">
+              <button type="button" onClick={() => onAdd(asset)} className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40">
                 Add to a sound lane
               </button>
               <button
                 type="button"
                 onClick={() => onExtract(asset)}
-                className="rounded-lg border bg-card px-2.5 py-1"
+                className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
               >
                 Extract audio
               </button>
@@ -77,7 +77,7 @@ export function AssetsPanel({
       </ul>
 
       {assets.isSuccess && assets.data.assets.length === 0 ? (
-        <p className="text-xs text-muted-foreground">This project has no media to place yet.</p>
+        <p className="text-caption text-muted-foreground">This project has no media to place yet.</p>
       ) : null}
     </section>
   )

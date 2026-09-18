@@ -75,6 +75,10 @@ RUN apt-get -o Acquire::Check-Valid-Until=false update \
       fonts-noto-core \
       libmagic1t64=1:5.46-5 \
     && rm -rf /var/lib/apt/lists/*
+# The editor previews captions in these exact files, so the renderer must draw the same ones.
+COPY frontend/features/editor/fonts/ /usr/local/share/fonts/clipah/
+RUN rm -f /usr/local/share/fonts/clipah/*.txt /usr/local/share/fonts/clipah/*.md \
+    && fc-cache --force /usr/local/share/fonts/clipah
 RUN python -m clipah.runtime.readiness media
 
 FROM media-root AS media-worker

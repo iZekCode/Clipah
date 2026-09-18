@@ -1,8 +1,8 @@
 'use client'
 
+import { formatTimecode } from '@/lib/time/timecode'
 import { useState } from 'react'
 
-import { timecode } from './Player'
 import { scenes } from './store'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
@@ -27,24 +27,24 @@ export function SceneList({
   const list = scenes(composition)
 
   return (
-    <section aria-label="Scenes" className="surface flex flex-col gap-2 p-4">
-      <h2 className="text-sm font-medium">Scenes</h2>
+    <section aria-label="Scenes" className="space-y-3">
+      <h2 className="text-title">Scenes</h2>
       {list.length === 0 ? (
-        <p className="text-xs text-muted-foreground">This clip has no transcript words yet.</p>
+        <p className="text-caption text-muted-foreground">This clip has no transcript words yet.</p>
       ) : null}
       <ol className="flex flex-col gap-2">
         {list.map((scene) => (
-          <li key={scene.id} className="flex flex-col gap-1 rounded-lg border border-input bg-card p-2 text-xs">
+          <li key={scene.id} className="flex flex-col gap-1.5 py-2 text-small">
             <div className="flex items-center gap-2">
               <span className="font-mono text-muted-foreground">
-                {timecode(scene.startMs)}–{timecode(scene.endMs)}
+                {formatTimecode(scene.startMs)}–{formatTimecode(scene.endMs)}
               </span>
               <span>{scene.speaker ?? 'Unknown speaker'}</span>
               <span className="text-muted-foreground">{scene.wordCount} words</span>
               <button
                 type="button"
                 onClick={() => onSeek(scene.startMs)}
-                className="ml-auto rounded-lg border bg-card px-2.5 py-1"
+                className="ml-auto inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
               >
                 Go to
               </button>
@@ -52,7 +52,7 @@ export function SceneList({
             <div className="flex items-center gap-2">
               <input
                 type="text"
-                aria-label={`Label the scene at ${timecode(scene.startMs)}`}
+                aria-label={`Label the scene at ${formatTimecode(scene.startMs)}`}
                 value={drafts[scene.id] ?? scene.label ?? ''}
                 onChange={(event) => {
                   const value = event.currentTarget.value
@@ -68,7 +68,7 @@ export function SceneList({
                     onLabel(scene.startMs, label)
                   }
                 }}
-                className="rounded-lg border bg-card px-2.5 py-1"
+                className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
               >
                 Label
               </button>

@@ -3835,3 +3835,119 @@ what moved.
   an empty stage.
 
 Owner commit message: `feat: add moments-first project page and review mode`.
+
+### Signal Studio redesign — Plan 5, editor (2026-09-18)
+
+**What landed.**
+
+- **Inputs.**
+  - `lib/time/timecode.ts`: `formatTimecode` (`m:ss.cc`), `parseTimecode` (accepts
+    `m:ss.cc`, `m:ss`, `s.cc`, and `s`), and `formatRuler` (`m:ss`). Stored values stay
+    milliseconds.
+  - `TimecodeInput` commits on Enter or blur, nudges by 10 ms (1 s with Shift), and explains an
+    unreadable or out-of-range time without changing the value.
+  - `NumberScrub` can be typed, nudged, or dragged by its label, and a drag commits once on
+    release.
+  - `SwatchPicker` offers brand colours, then recent ones (six, kept in `localStorage`), then a
+    validated custom hex. The value is always shown as text.
+  - The popover skin is restyled.
+- **Caption font parity.**
+  - The eight `FontFamily` faces are vendored under `frontend/features/editor/fonts/` from
+    google/fonts at `1edf95b4328bc5997ca93d2c0c7205272ec7347f`, with OFL texts and SHA-256s in `SOURCES.md`.
+  - The editor loads them with `next/font/local` (`caption-fonts.ts`), and the preview draws
+    captions with them at canvas-relative size and spacing (`cqw`), plus italic, decoration,
+    line height, and background.
+  - The media image copies the same files into `/usr/local/share/fonts/clipah/` and rebuilds the
+    font cache. Media readiness now refuses an image missing any caption family, and a deployment
+    contract test checks every family is vendored and installed.
+- **Studio layout.**
+  - A 48 px header: back link, title and revision, save state, undo, redo, shortcuts, save, and
+    export.
+  - A 56 px tool rail in the order Captions, Style, Layout, Media, Audio, Text, Review.
+  - A 320 px tool panel. Panels stay mounted across tool switches.
+  - A dark stage with the Canvas shape control, the preview, and a transport: jump, frame step
+    (1/30 s), play, the playhead as `m:ss.cc`, and loop.
+  - A 288 px Properties column, which becomes a sheet below `lg`.
+  - A resizable timeline dock (a keyboard- and pointer-operable separator, 160–520 px).
+- **Keyboard.** `use-editor-keys.ts` keeps every existing shortcut and adds ←/→ (one frame),
+  ⇧←/⇧→ (one second), `M` (marker), and `?` (the shortcut sheet). Keys stay inert in text
+  fields, while a dialog is open, and after a focused control handled the key.
+- **Timeline.**
+  - A sticky lane-label column, and a ruler that is the scrub control (styled range, lime
+    playhead thumb, `aria-valuetext` as a timecode).
+  - Markers are flags on the ruler, and ticks are spaced by zoom.
+  - Video items show storyboard filmstrips, and items from the source show its waveform.
+  - A captions lane shows phrases (`caption-phrases.ts`), and the overlays lane selects an
+    overlay.
+  - The toolbar is a `toolbar` of named icon buttons with Snap and Ripple as pressed toggles,
+    the marker label, zoom slider, and "Fit the clip" (`fitZoom`).
+- **Inspector.** It is contextual (`InspectorTarget`): canvas facts when nothing is selected,
+  item trims as timecodes with duration, split, delete, and crop state, a caption word's text and
+  timing bounded by its neighbours, or an overlay's window.
+- **Captions tool.** A transcript-style editor: the spoken word is lit, click seeks and selects,
+  and double-click, Enter, or F2 edits in place (Escape abandons; an empty word is never
+  committed). A Words/Timing switch shows the Karaoke panel, whose word times are now
+  `TimecodeInput`s and whose caption mode is a segmented control.
+- **Style tool.** Templates are look cards drawn in their own faces, and fonts are a radio group
+  with each name in its face. Size, letter spacing, and line height use `NumberScrub`. Weight,
+  alignment, and decoration are segmented controls, italic and background are switches, and the
+  three colours are `SwatchPicker`s fed by the clip's brand kit version. The keyframe editor and
+  motion panel moved here from Layout. `TemplatesPanel.tsx` is deleted.
+- **Layout tool.** A Framing control and a crop drawn over the whole source frame on the stage,
+  moved and resized by pointer or keyboard, kept inside the frame and at the canvas shape. A drag
+  previews and commits once.
+- **Remaining panels.** Text, Audio, Assets, Source monitor, Scenes, Motion, Keyframes,
+  Accessibility, Export, the B-roll panels, and Review are restyled to Signal. Text overlay
+  windows are `TimecodeInput`s and size is a `NumberScrub`. Every panel time reads
+  `m:ss.cc`, and the Player's old `timecode` helper is gone.
+
+**Deliberate refinements and deviations.**
+
+- No caption position control: the composition has no vertical-position field.
+- Letter spacing and line height use `NumberScrub` rather than sliders, so exact values stay
+  typeable.
+- The frame step is 1/30 s, because the proxy's rate is not exposed.
+- The inspector's aspect buttons were removed in Task 4 rather than Task 6, because two sets of
+  `16:9` buttons would have broken existing tests.
+- Framing is named **Centred** / **Custom**, not the plan's Fill / Fit. With no crop the renderer
+  scales the source to cover the canvas and keeps its middle, so "Fit" would have promised a
+  whole-frame export the renderer does not make; Custom starts from that same window.
+- Captions are hidden while the stage shows the full source frame for cropping.
+- `NumberScrub` commits the dragged value from a ref, because the state value was stale on
+  release.
+- "Fit the clip" subtracts the label column's width.
+- On phones the editor header hides undo, redo, the shortcut button, and the save state (the h1
+  stays for screen readers), and the transport hides jump-to-start and jump-to-end. Otherwise
+  the page scrolled sideways at 390 px; the phone editor is a preview.
+
+**Tests that changed shape, and why.**
+
+- The inspector trims are `textbox` "End" (`0:21.00`) after selecting `scene-1`, in both Vitest
+  and `e2e/editor-basic.spec.ts`.
+- Caption words are buttons named `Word at m:ss.cc`, edited by double-click.
+- The karaoke retime opens the Timing view and types `0:01.50`.
+- The caption style tests use the "Caption style" region, segmented buttons, and the italic
+  switch.
+- Ripple is a pressed `button`.
+- The overlay-timing test types timecodes.
+- The B-roll lane label reads `0:05.00`.
+- The brand-campaign look test renders `WhyThisMoment` (Plan 4).
+
+**Verification.**
+
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (580 passed), and `pnpm build`.
+- Backend, on the disposable database: ruff, format, strict mypy, and pytest (2,960 passed,
+  20 skipped, 92.89% coverage).
+- Media image: `worker-render` rebuilt, readiness prints `ready`, and `fc-list` lists all eight
+  families.
+- Render parity: an ASS caption in `Anton` rendered by the image's FFmpeg logs `fontselect:
+  (Anton, 400, 0) -> /usr/local/share/fonts/clipah/Anton-Regular.ttf`, and the frame shows Anton
+  glyphs. The owner-project export comparison in the plan was not run, because the agent does not
+  sign in as the owner. It remains the final visual check.
+- Fontconfig prints "No writable cache directories" when run as the worker user. The cache is
+  built at image time and fonts resolve, so this is noise, not a failure.
+- Browser suite (chromium and webkit): 90 passed, 16 skipped, and the recorded baseline 6 failed.
+  After the phone-width fixes the editor specs pass again (20 passed).
+- Screenshots in `docs/design/signal/editor/`, with no sideways scroll at 390, 820, or 1440.
+
+Owner commit message: `feat: rebuild the editor as a studio`.

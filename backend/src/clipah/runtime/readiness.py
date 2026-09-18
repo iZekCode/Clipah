@@ -8,6 +8,7 @@ from functools import lru_cache
 from typing import Protocol
 
 from clipah.assets.ffmpeg import MediaProcessError, SubprocessExecutor
+from clipah.editor.models import FontFamily
 
 EXPECTED_MEDIA_VERSION = "7.1.5"
 MAX_READINESS_OUTPUT_BYTES = 256 * 1024
@@ -15,6 +16,8 @@ READINESS_TIMEOUT_SECONDS = 20.0
 REQUIRED_ENCODERS = frozenset({"libx264", "aac"})
 REQUIRED_FILTERS = frozenset({"subtitles", "drawtext", "zoompan"})
 PINNED_FONT_FAMILY = "Noto Sans"
+# Every caption family a composition may name; the editor previews these same files.
+CAPTION_FONT_FAMILIES = frozenset(family.value for family in FontFamily)
 
 
 class RuntimeReadinessError(Exception):
@@ -63,6 +66,7 @@ class MediaCapabilityVerifier:
             encoders = self._runner.run(("ffmpeg", "-hide_banner", "-encoders"))
             filters = self._runner.run(("ffmpeg", "-hide_banner", "-filters"))
             fonts = self._runner.run(("fc-match", "--format", "%{family}\n", PINNED_FONT_FAMILY))
+            caption_fonts = self._runner.run(("fc-list", "--format", "%{family}\n"))
         except (KeyError, MediaProcessError, OSError, UnicodeError) as error:
             raise RuntimeReadinessError("media runtime unavailable") from error
 
@@ -71,12 +75,16 @@ class MediaCapabilityVerifier:
         observed_encoders = _listed_names(encoders)
         observed_filters = _listed_names(filters)
         observed_fonts = {family.strip() for family in fonts.split(",")}
+        installed = {
+            name.strip() for line in caption_fonts.splitlines() for name in line.split(",")
+        }
         if (
             not ffmpeg_version.startswith(expected_ffmpeg)
             or not ffprobe_version.startswith(expected_ffprobe)
             or not observed_encoders >= REQUIRED_ENCODERS
             or not observed_filters >= REQUIRED_FILTERS
             or PINNED_FONT_FAMILY not in observed_fonts
+            or not installed >= CAPTION_FONT_FAMILIES
         ):
             raise RuntimeReadinessError("media runtime unavailable")
 

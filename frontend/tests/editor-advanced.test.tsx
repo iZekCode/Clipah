@@ -858,7 +858,7 @@ describe('the editor screen at full width', () => {
       ],
     })
 
-    await user.click(screen.getByRole('checkbox', { name: /ripple/i }))
+    await user.click(screen.getByRole('button', { name: /ripple/i }))
     await user.click(screen.getByRole('button', { name: 'Select bed-1' }))
     await user.click(screen.getByRole('button', { name: /^delete$/i }))
 

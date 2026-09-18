@@ -33,6 +33,18 @@ export const ASPECT_CANVAS: Record<Aspect, { width: number; height: number }> = 
   '4:5': { width: 1080, height: 1350 },
 }
 
+/** Which preset, if any, the canvas currently matches. */
+export function currentAspect(composition: CompositionV1): Aspect | null {
+  for (const [preset, canvas] of Object.entries(ASPECT_CANVAS) as Array<
+    [Aspect, { width: number; height: number }]
+  >) {
+    if (canvas.width === composition.canvas.width && canvas.height === composition.canvas.height) {
+      return preset
+    }
+  }
+  return null
+}
+
 /** The shortest item the editor will leave on the timeline. */
 export const MIN_ITEM_MS = 500
 

@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
-
-import { timecode } from './Player'
-import { activeWordAt } from './store'
-import { Select } from '@/components/ui/select'
+import { SegmentedControl } from '@/components/ui/segmented-control'
+import { TimecodeInput } from '@/components/ui/timecode-input'
 import type { CompositionV1 } from '@/lib/api/generated/model'
+import { cn } from '@/lib/utils'
+
+import { activeWordAt } from './store'
 
 type CaptionMode = CompositionV1['captions']['mode']
 
@@ -13,9 +13,9 @@ type CaptionMode = CompositionV1['captions']['mode']
  * Caption word timing, and the word karaoke is painting right now.
  *
  * Transcription produced these timestamps, so nothing here changes on its own: a word
- * moves only when a member types a new number and leaves the field. Every retime is
- * bounded by the words on either side, because two words claiming one instant would give
- * karaoke two active words at once — and the backend would refuse the save.
+ * moves only when a member types a new time and leaves the field. Every retime is bounded
+ * by the words on either side, because two words claiming one instant would give karaoke
+ * two active words at once — and the backend would refuse the save.
  */
 export function KaraokePanel({
   captions,
@@ -28,92 +28,54 @@ export function KaraokePanel({
   onRetime: (wordId: string, startMs: number, endMs: number) => void
   onMode: (mode: CaptionMode) => void
 }) {
-  // A half-typed number is not a timing yet, so a word is committed when a member leaves
-  // the field rather than on every keystroke.
-  const [drafts, setDrafts] = useState<Record<string, string>>({})
   const active = activeWordAt(captions.words, playheadMs)
 
-  /** Commit one edge of one word, and let the document own the field again. */
-  function commit(wordId: string, edge: 'start' | 'end'): void {
-    const word = captions.words.find((candidate) => candidate.id === wordId)
-    const draft = drafts[`${wordId}-${edge}`]
-    setDrafts((current) =>
-      Object.fromEntries(Object.entries(current).filter(([key]) => key !== `${wordId}-${edge}`)),
-    )
-    if (word === undefined || draft === undefined || draft === '') {
-      return
-    }
-    const value = Number(draft)
-    if (!Number.isFinite(value)) {
-      return
-    }
-    onRetime(
-      wordId,
-      edge === 'start' ? value : word.startMs,
-      edge === 'end' ? value : word.endMs,
-    )
-  }
-
   return (
-    <section aria-label="Karaoke" className="surface flex flex-col gap-2 p-4 text-xs">
-      <div className="flex items-center gap-2">
-        <h2 className="text-sm font-medium">Karaoke</h2>
-        <label className="ml-auto flex items-center gap-1">
-          Captions
-          <Select
-            aria-label="Caption mode"
-            value={captions.mode}
-            onChange={(event) => onMode(event.currentTarget.value as CaptionMode)}
-            controlSize="sm"
-          >
-            <option value="off">Off</option>
-            <option value="block">Block</option>
-            <option value="karaoke">Karaoke</option>
-          </Select>
-        </label>
+    <section aria-label="Karaoke" className="space-y-3">
+      <div className="flex items-center justify-between gap-2">
+        <h3 className="text-small font-semibold">Karaoke</h3>
+        <SegmentedControl<CaptionMode>
+          label="Caption mode"
+          size="sm"
+          value={captions.mode}
+          options={[
+            { value: 'off', label: 'Off' },
+            { value: 'block', label: 'Block' },
+            { value: 'karaoke', label: 'Karaoke' },
+          ]}
+          onChange={onMode}
+        />
       </div>
 
-      <p role="status" className="text-muted-foreground">
+      <p role="status" className="text-caption text-muted-foreground">
         {active === null ? 'No word is being said here.' : `Now saying: ${active.text}`}
       </p>
 
-      <ol className="flex flex-col gap-1">
+      <ol className="divide-y divide-border">
         {captions.words.map((word) => (
-          <li key={word.id} className="flex items-center gap-2">
-            <span className={`w-20 truncate ${active?.id === word.id ? 'font-semibold' : ''}`}>
+          <li key={word.id} className="grid grid-cols-[minmax(0,1fr)_6rem_6rem] items-center gap-2 py-1.5">
+            <span
+              className={cn(
+                'truncate text-small',
+                active?.id === word.id ? 'font-semibold text-foreground' : 'text-muted-foreground',
+              )}
+            >
               {word.text}
             </span>
-            <label className="flex items-center gap-1">
-              From
-              <input
-                type="number"
-                aria-label={`Start of ${word.id}`}
-                step={50}
-                value={drafts[`${word.id}-start`] ?? word.startMs}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDrafts((current) => ({ ...current, [`${word.id}-start`]: value }))
-                }}
-                onBlur={() => commit(word.id, 'start')}
-                className="w-24 rounded-lg border bg-card px-2.5 py-1"
-              />
-            </label>
-            <label className="flex items-center gap-1">
-              To
-              <input
-                type="number"
-                aria-label={`End of ${word.id}`}
-                step={50}
-                value={drafts[`${word.id}-end`] ?? word.endMs}
-                onChange={(event) => {
-                  const value = event.currentTarget.value
-                  setDrafts((current) => ({ ...current, [`${word.id}-end`]: value }))
-                }}
-                onBlur={() => commit(word.id, 'end')}
-                className="w-24 rounded-lg border bg-card px-2.5 py-1"
-              />
-            </label>
-            <span className="text-muted-foreground">{timecode(word.startMs)}</span>
+            <TimecodeInput
+              label="From"
+              hideLabel
+              accessibleName={`Start of ${word.id}`}
+              valueMs={word.startMs}
+              onCommit={(ms) => onRetime(word.id, ms, word.endMs)}
+            />
+            <TimecodeInput
+              label="To"
+              hideLabel
+              accessibleName={`End of ${word.id}`}
+              valueMs={word.endMs}
+              onCommit={(ms) => onRetime(word.id, word.startMs, ms)}
+            />
           </li>
         ))}
       </ol>

@@ -70,6 +70,35 @@
 }
 
 @layer components {
+  /* The timeline ruler is a native range: the track is invisible, the thumb is the playhead. */
+  .timeline-scrub {
+    appearance: none;
+    background: transparent;
+    cursor: pointer;
+  }
+  .timeline-scrub::-webkit-slider-runnable-track {
+    height: 100%;
+    background: transparent;
+  }
+  .timeline-scrub::-webkit-slider-thumb {
+    appearance: none;
+    width: 11px;
+    height: 32px;
+    border-radius: 2px;
+    background: rgb(var(--primary));
+    clip-path: polygon(0 0, 100% 0, 100% 40%, 50% 60%, 0 40%);
+  }
+  .timeline-scrub::-moz-range-track {
+    background: transparent;
+  }
+  .timeline-scrub::-moz-range-thumb {
+    width: 11px;
+    height: 32px;
+    border: 0;
+    border-radius: 2px;
+    background: rgb(var(--primary));
+  }
+
   /* Condensed display type: page titles, scores, counts, and caption-style overlays. */
   .font-display {
     font-stretch: 75%;

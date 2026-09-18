@@ -96,14 +96,22 @@ test('a member trims a real clip and the Revision survives a reload', async ({ p
       response.url().includes(`/api/v1/edits/${editId}`) &&
       response.status() === 200,
   )
-  const endsAt = inspector.getByRole('spinbutton', { name: /clip ends at/i })
-  await endsAt.fill('20000')
+  await page
+    .getByRole('region', { name: /^timeline$/i })
+    .getByRole('button', { name: 'Select scene-1' })
+    .click()
+  const endsAt = inspector.getByRole('textbox', { name: 'End' })
+  await endsAt.fill('0:20.00')
   await endsAt.blur()
   await saved
 
   await page.reload()
 
   // The editor reopens on the Revision the backend kept, not on the seeded one.
+  await page
+    .getByRole('region', { name: /^timeline$/i })
+    .getByRole('button', { name: 'Select scene-1' })
+    .click()
   const reopened = page.getByRole('region', { name: /inspector/i })
-  await expect(reopened.getByRole('spinbutton', { name: /clip ends at/i })).toHaveValue('20000')
+  await expect(reopened.getByRole('textbox', { name: 'End' })).toHaveValue('0:20.00')
 })

@@ -2,163 +2,271 @@
 
 import { useState } from 'react'
 
-import { ASPECT_CANVAS, type Aspect } from './store'
+import { Button } from '@/components/ui/button'
+import { TimecodeInput } from '@/components/ui/timecode-input'
 import type { CompositionV1 } from '@/lib/api/generated/model'
+import { formatTimecode } from '@/lib/time/timecode'
+
+import { MIN_ITEM_MS, MIN_WORD_MS } from './store'
 
 type TrackItem = CompositionV1['tracks'][number]['items'][number]
 
+/** What the inspector is describing: a timeline item, a caption word, an overlay, or nothing. */
+export type InspectorTarget =
+  | { kind: 'item'; id: string }
+  | { kind: 'word'; id: string }
+  | { kind: 'overlay'; id: string }
+  | null
+
+/** The shortest an overlay may be, so its end always follows its start. */
+const MIN_OVERLAY_MS = 100
+
 /**
- * The inspector: the numbers behind the selected item, and the state of the document.
+ * The exact values behind whatever is selected, as fields a keyboard and a screen reader
+ * can use.
  *
- * Trim and crop are typed here as well as dragged on the timeline, because a member who
- * knows the exact frame they want should not have to find it with a mouse, and because a
- * numeric field is the control a keyboard and a screen reader can both use.
+ * Times are typed as timecodes rather than dragged, because a member who knows the exact
+ * frame they want should not have to find it with a mouse.
  */
 export function Inspector({
   composition,
-  item,
+  target,
+  playheadMs,
   onTrim,
   onCrop,
-  onAspect,
   onSplit,
   onDelete,
-  playheadMs,
+  onRetimeWord,
+  onWordText,
+  onMoveOverlay,
 }: {
   composition: CompositionV1
-  item: TrackItem | null
+  target: InspectorTarget
+  playheadMs: number
   onTrim: (sourceInMs: number, sourceOutMs: number) => void
   onCrop: (crop: TrackItem['crop']) => void
-  onAspect: (aspect: Aspect) => void
   onSplit: () => void
   onDelete: () => void
-  playheadMs: number
+  onRetimeWord: (wordId: string, startMs: number, endMs: number) => void
+  onWordText: (wordId: string, text: string) => void
+  onMoveOverlay: (overlayId: string, startMs: number, endMs: number) => void
 }) {
-  const aspect = currentAspect(composition)
-  // Trim fields are committed when a member leaves them. Committing every keystroke
-  // would clamp a half-typed number back into the field and fight whoever is typing.
-  const [bounds, setBounds] = useState<{ inMs?: string; outMs?: string }>({})
-
-  /** Send whatever is in the two trim fields, then let the document own them again. */
-  function commitBounds(): void {
-    if (item === null) {
-      return
-    }
-    const sourceInMs = bounds.inMs === undefined ? item.sourceInMs : Number(bounds.inMs)
-    const sourceOutMs = bounds.outMs === undefined ? item.sourceOutMs : Number(bounds.outMs)
-    setBounds({})
-    if (Number.isFinite(sourceInMs) && Number.isFinite(sourceOutMs)) {
-      onTrim(sourceInMs, sourceOutMs)
-    }
-  }
-
   return (
-    <section aria-label="Inspector" className="flex flex-col gap-4">
-      <div className="space-y-1">
-        <h2 className="text-sm font-semibold">Inspector</h2>
-        <p className="text-xs text-muted-foreground">Canvas shape</p>
-      </div>
-
-      <div className="flex flex-wrap gap-2">
-        {(Object.keys(ASPECT_CANVAS) as Aspect[]).map((preset) => (
-          <button
-            key={preset}
-            type="button"
-            aria-pressed={preset === aspect}
-            onClick={() => onAspect(preset)}
-            className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium ${
-              preset === aspect ? 'border-primary bg-accent text-accent-foreground' : 'hover:bg-secondary'
-            }`}
-          >
-            {preset}
-          </button>
-        ))}
-      </div>
-
-      {item === null ? (
-        <p className="text-xs text-muted-foreground">Select an item on the timeline to edit it.</p>
+    <section aria-label="Inspector" className="space-y-4">
+      <h2 className="text-caption font-medium uppercase tracking-wide text-subtle-foreground">
+        Inspector
+      </h2>
+      {target === null ? (
+        <CanvasFacts composition={composition} />
+      ) : target.kind === 'item' ? (
+        <ItemFields
+          composition={composition}
+          itemId={target.id}
+          playheadMs={playheadMs}
+          onTrim={onTrim}
+          onCrop={onCrop}
+          onSplit={onSplit}
+          onDelete={onDelete}
+        />
+      ) : target.kind === 'word' ? (
+        <WordFields
+          composition={composition}
+          wordId={target.id}
+          onRetimeWord={onRetimeWord}
+          onWordText={onWordText}
+        />
       ) : (
-        <div className="flex flex-col gap-2 text-xs">
-          <label className="flex items-center justify-between gap-2">
-            Clip starts at (ms)
-            <input
-              type="number"
-              aria-label="Clip starts at"
-              value={bounds.inMs ?? item.sourceInMs}
-              step={100}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                setBounds((current) => ({ ...current, inMs: value }))
-              }}
-              onBlur={commitBounds}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  commitBounds()
-                }
-              }}
-              className="h-8 w-28 rounded-lg border border-input bg-card px-2"
-            />
-          </label>
-          <label className="flex items-center justify-between gap-2">
-            Clip ends at (ms)
-            <input
-              type="number"
-              aria-label="Clip ends at"
-              value={bounds.outMs ?? item.sourceOutMs}
-              step={100}
-              onChange={(event) => {
-                const value = event.currentTarget.value
-                setBounds((current) => ({ ...current, outMs: value }))
-              }}
-              onBlur={commitBounds}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  commitBounds()
-                }
-              }}
-              className="h-8 w-28 rounded-lg border border-input bg-card px-2"
-            />
-          </label>
-          <div className="flex flex-wrap items-center gap-2">
-            <button type="button" onClick={onSplit} className="rounded-lg border px-2.5 py-1.5 hover:bg-secondary">
-              Split at playhead
-            </button>
-            <button type="button" onClick={onDelete} className="rounded-lg border px-2.5 py-1.5 hover:bg-secondary">
-              Delete item
-            </button>
-            <span className="text-muted-foreground">Playhead {playheadMs} ms</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onCrop(null)}
-              disabled={item.crop === null}
-              className="rounded-lg border px-2.5 py-1.5 hover:bg-secondary disabled:opacity-50"
-            >
-              Clear crop
-            </button>
-            <span className="text-muted-foreground">
-              {item.crop === null
-                ? 'Full frame'
-                : `Cropped to ${Math.round(item.crop.width * 100)}% × ${Math.round(
-                    item.crop.height * 100,
-                  )}%`}
-            </span>
-          </div>
-        </div>
+        <OverlayFields
+          composition={composition}
+          overlayId={target.id}
+          onMoveOverlay={onMoveOverlay}
+        />
       )}
-
     </section>
   )
 }
 
-/** Which preset, if any, the canvas currently matches. */
-function currentAspect(composition: CompositionV1): Aspect | null {
-  for (const [preset, canvas] of Object.entries(ASPECT_CANVAS) as Array<
-    [Aspect, { width: number; height: number }]
-  >) {
-    if (canvas.width === composition.canvas.width && canvas.height === composition.canvas.height) {
-      return preset
-    }
+function CanvasFacts({ composition }: { composition: CompositionV1 }) {
+  return (
+    <div className="space-y-2 text-small">
+      <p className="font-mono text-foreground">
+        {composition.canvas.width} × {composition.canvas.height}
+      </p>
+      <p className="text-muted-foreground">Length {formatTimecode(composition.durationMs)}</p>
+      <p className="text-muted-foreground">
+        Select an item on the timeline, a caption word, or a text overlay.
+      </p>
+    </div>
+  )
+}
+
+function ItemFields({
+  composition,
+  itemId,
+  playheadMs,
+  onTrim,
+  onCrop,
+  onSplit,
+  onDelete,
+}: {
+  composition: CompositionV1
+  itemId: string
+  playheadMs: number
+  onTrim: (sourceInMs: number, sourceOutMs: number) => void
+  onCrop: (crop: TrackItem['crop']) => void
+  onSplit: () => void
+  onDelete: () => void
+}) {
+  const item = composition.tracks
+    .flatMap((track) => track.items)
+    .find((candidate) => candidate.id === itemId)
+  if (item === undefined) return <CanvasFacts composition={composition} />
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <TimecodeInput
+          label="Start"
+          valueMs={item.sourceInMs}
+          maxMs={item.sourceOutMs - MIN_ITEM_MS}
+          onCommit={(ms) => onTrim(ms, item.sourceOutMs)}
+        />
+        <TimecodeInput
+          label="End"
+          valueMs={item.sourceOutMs}
+          minMs={item.sourceInMs + MIN_ITEM_MS}
+          onCommit={(ms) => onTrim(item.sourceInMs, ms)}
+        />
+      </div>
+      <p className="font-mono text-caption text-muted-foreground">
+        Duration {formatTimecode(item.sourceOutMs - item.sourceInMs)}
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <Button variant="secondary" size="sm" onClick={onSplit}>
+          Split at playhead
+        </Button>
+        <Button variant="secondary" size="sm" onClick={onDelete}>
+          Delete item
+        </Button>
+      </div>
+      <p className="font-mono text-caption text-subtle-foreground">
+        Playhead {formatTimecode(playheadMs)}
+      </p>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-caption text-muted-foreground">
+          {item.crop === null
+            ? 'Full frame'
+            : `Cropped to ${Math.round(item.crop.width * 100)}% × ${Math.round(item.crop.height * 100)}%`}
+        </span>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={item.crop === null}
+          onClick={() => onCrop(null)}
+        >
+          Clear crop
+        </Button>
+      </div>
+    </div>
+  )
+}
+
+function WordFields({
+  composition,
+  wordId,
+  onRetimeWord,
+  onWordText,
+}: {
+  composition: CompositionV1
+  wordId: string
+  onRetimeWord: (wordId: string, startMs: number, endMs: number) => void
+  onWordText: (wordId: string, text: string) => void
+}) {
+  const words = composition.captions.words
+  const index = words.findIndex((word) => word.id === wordId)
+  const word = words[index]
+  if (word === undefined) return <CanvasFacts composition={composition} />
+  const previousEnd = words[index - 1]?.endMs ?? 0
+  const nextStart = words[index + 1]?.startMs ?? composition.durationMs
+  return (
+    <div className="space-y-3">
+      <WordText
+        key={word.id + word.text}
+        text={word.text}
+        onCommit={(text) => onWordText(word.id, text)}
+      />
+      <div className="grid grid-cols-2 gap-2">
+        <TimecodeInput
+          label="Start"
+          valueMs={word.startMs}
+          minMs={previousEnd}
+          maxMs={word.endMs - MIN_WORD_MS}
+          onCommit={(ms) => onRetimeWord(word.id, ms, word.endMs)}
+        />
+        <TimecodeInput
+          label="End"
+          valueMs={word.endMs}
+          minMs={word.startMs + MIN_WORD_MS}
+          maxMs={nextStart}
+          onCommit={(ms) => onRetimeWord(word.id, word.startMs, ms)}
+        />
+      </div>
+    </div>
+  )
+}
+
+function WordText({ text, onCommit }: { text: string; onCommit: (text: string) => void }) {
+  const [draft, setDraft] = useState(text)
+  const commit = () => {
+    if (draft.trim() !== '' && draft.trim() !== text) onCommit(draft.trim())
   }
-  return null
+  return (
+    <label className="block space-y-1">
+      <span className="text-caption text-muted-foreground">Word</span>
+      <input
+        type="text"
+        value={draft}
+        onChange={(event) => setDraft(event.currentTarget.value)}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') commit()
+        }}
+        className="h-8 w-full rounded-md border border-input bg-secondary px-2 text-small"
+      />
+    </label>
+  )
+}
+
+function OverlayFields({
+  composition,
+  overlayId,
+  onMoveOverlay,
+}: {
+  composition: CompositionV1
+  overlayId: string
+  onMoveOverlay: (overlayId: string, startMs: number, endMs: number) => void
+}) {
+  const overlay = composition.overlays.find((entry) => entry.id === overlayId)
+  if (overlay === undefined) return <CanvasFacts composition={composition} />
+  return (
+    <div className="space-y-3">
+      <p className="text-small">
+        {overlay.type === 'text' || overlay.type === 'citation' ? overlay.text : 'B-roll'}
+      </p>
+      <div className="grid grid-cols-2 gap-2">
+        <TimecodeInput
+          label="Start"
+          valueMs={overlay.timelineStartMs}
+          maxMs={overlay.timelineEndMs - MIN_OVERLAY_MS}
+          onCommit={(ms) => onMoveOverlay(overlay.id, ms, overlay.timelineEndMs)}
+        />
+        <TimecodeInput
+          label="End"
+          valueMs={overlay.timelineEndMs}
+          minMs={overlay.timelineStartMs + MIN_OVERLAY_MS}
+          maxMs={composition.durationMs}
+          onCommit={(ms) => onMoveOverlay(overlay.id, overlay.timelineStartMs, ms)}
+        />
+      </div>
+    </div>
+  )
 }

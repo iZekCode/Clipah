@@ -49,7 +49,7 @@ export function BrollSuggestionCard({
   return (
     <article
       aria-label={intent.subject}
-      className="surface flex flex-col gap-2 p-4 text-xs"
+      className="space-y-3 text-small"
     >
       <header className="flex flex-col gap-1">
         <p className="font-medium">{intent.subject}</p>
@@ -67,13 +67,13 @@ export function BrollSuggestionCard({
       </p>
 
       {intent.factualRiskFlags.length === 0 ? null : (
-        <p role="note" className="rounded border border-amber-500/40 bg-amber-500/10 p-2">
+        <p role="note" className="rounded-md bg-warning-soft p-2 text-warning">
           Check this before publishing: {intent.factualRiskFlags.join(', ')}
         </p>
       )}
 
       {suggestion.provenance?.generated === true ? (
-        <p className="w-fit rounded bg-muted px-2 py-0.5 font-medium">AI-generated</p>
+        <p className="w-fit rounded-sm border border-line-strong px-1.5 py-0.5 font-mono text-caption">AI-generated</p>
       ) : null}
 
       {WORKING_STATUSES.has(suggestion.status) ? (
@@ -94,7 +94,7 @@ export function BrollSuggestionCard({
             type="button"
             disabled={busy}
             onClick={onRemove}
-            className="rounded-lg border bg-card px-2.5 py-1"
+            className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
           >
             Remove
           </button>
@@ -104,7 +104,7 @@ export function BrollSuggestionCard({
               type="button"
               disabled={busy || !hasMedia}
               onClick={onAccept}
-              className="rounded-lg border bg-card px-2.5 py-1"
+              className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
             >
               Accept
             </button>
@@ -112,7 +112,7 @@ export function BrollSuggestionCard({
               type="button"
               disabled={busy}
               onClick={onReject}
-              className="rounded-lg border bg-card px-2.5 py-1"
+              className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
             >
               Reject
             </button>
@@ -123,7 +123,7 @@ export function BrollSuggestionCard({
             type="button"
             disabled={busy}
             onClick={onGenerate}
-            className="rounded-lg border bg-card px-2.5 py-1"
+            className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
           >
             Generate still
           </button>

@@ -86,10 +86,10 @@ export function ReviewPanel({
   }
 
   return (
-    <section aria-labelledby="review-heading" className="space-y-3 rounded-lg border p-3">
+    <section aria-labelledby="review-heading" className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <h2 id="review-heading" className="text-sm font-semibold">Revision review</h2>
-        <p aria-live="polite" className="text-xs font-medium">
+        <p aria-live="polite" className="text-caption font-medium">
           {summary.data?.approved ? 'Approved' : 'Awaiting approval'}
         </p>
       </div>
@@ -101,16 +101,16 @@ export function ReviewPanel({
       {canReview ? (
         <div className="space-y-2">
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={() => void decide('approve')} className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground">
+            <button type="button" onClick={() => void decide('approve')} className="inline-flex h-8 items-center rounded-md bg-primary px-3 text-small font-semibold text-primary-foreground hover:bg-primary-hover disabled:opacity-40">
               Approve revision
             </button>
-            <button type="button" onClick={() => void decide('request_changes')} className="rounded border px-3 py-2 text-sm">
+            <button type="button" onClick={() => void decide('request_changes')} className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40">
               Request changes
             </button>
           </div>
-          <label className="block text-sm font-medium" htmlFor="review-comment">Comment at current time</label>
-          <textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={4000} className="min-h-20 w-full rounded border bg-background p-2 text-sm" />
-          <button type="button" onClick={() => void submitComment()} disabled={comment.trim() === ''} className="rounded border px-3 py-2 text-sm disabled:opacity-50">
+          <label className="block text-small font-medium" htmlFor="review-comment">Comment at current time</label>
+          <textarea id="review-comment" value={comment} onChange={(event) => setComment(event.target.value)} maxLength={4000} className="min-h-20 w-full rounded-md border border-input bg-secondary p-2 text-small" />
+          <button type="button" onClick={() => void submitComment()} disabled={comment.trim() === ''} className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40">
             Add comment
           </button>
         </div>
@@ -118,13 +118,13 @@ export function ReviewPanel({
 
       <ul aria-label="Review comments" className="space-y-2">
         {(summary.data?.comments ?? []).map((item) => (
-          <li key={item.id} className="rounded-lg border border-input bg-card p-2 text-sm">
+          <li key={item.id} className="py-2 text-small">
             <p>{item.text}</p>
-            <p className="text-xs text-muted-foreground">
+            <p className="text-caption text-muted-foreground">
               {item.anchor.kind === 'timestamp' ? `At ${item.anchor.timestampMs ?? 0} ms` : `On ${item.anchor.itemId ?? 'item'}`}
             </p>
             {canReview ? (
-              <button type="button" onClick={() => void setResolved(item.id, !item.resolved)} className="mt-1 text-xs underline">
+              <button type="button" onClick={() => void setResolved(item.id, !item.resolved)} className="mt-1 text-caption underline">
                 {item.resolved ? 'Reopen comment' : 'Resolve comment'}
               </button>
             ) : null}

@@ -49,8 +49,8 @@ export function AudioPanel({
   }
 
   return (
-    <section aria-label="Sound" className="surface flex flex-col gap-2 p-4 text-xs">
-      <h2 className="text-sm font-medium">Sound</h2>
+    <section aria-label="Sound" className="space-y-3 text-small">
+      <h2 className="text-title">Sound</h2>
 
       <label className="flex items-center justify-between gap-2">
         Dialogue level (dB)
@@ -71,7 +71,7 @@ export function AudioPanel({
               commit('gainDb')
             }
           }}
-          className="w-24 rounded-lg border bg-card px-2.5 py-1"
+          className="w-24 h-8 rounded-md border border-input bg-secondary px-2 font-mono text-small text-foreground"
         />
       </label>
       <label className="flex items-center justify-between gap-2">
@@ -93,13 +93,13 @@ export function AudioPanel({
               commit('musicGainDb')
             }
           }}
-          className="w-24 rounded-lg border bg-card px-2.5 py-1"
+          className="w-24 h-8 rounded-md border border-input bg-secondary px-2 font-mono text-small text-foreground"
         />
       </label>
 
       <ul className="flex flex-col gap-1">
         {composition.tracks.map((track) => (
-          <li key={track.id} className="flex items-center gap-2 rounded-lg border border-input bg-card p-2">
+          <li key={track.id} className="flex items-center gap-2 py-2">
             <span>{LANE_NAMES[track.type] ?? track.type}</span>
             <span className="font-mono text-muted-foreground">{track.id}</span>
             <span className="text-muted-foreground">{track.items.length} items</span>
@@ -116,13 +116,13 @@ export function AudioPanel({
       </ul>
 
       <div className="flex flex-wrap gap-2">
-        <button type="button" onClick={() => onAddTrack('music')} className="rounded-lg border bg-card px-2.5 py-1">
+        <button type="button" onClick={() => onAddTrack('music')} className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40">
           New music lane
         </button>
         <button
           type="button"
           onClick={() => onAddTrack('extractedAudio')}
-          className="rounded-lg border bg-card px-2.5 py-1"
+          className="inline-flex h-8 items-center rounded-md border border-line-strong bg-secondary px-3 text-small font-medium transition-colors duration-fast ease-signal hover:border-input disabled:opacity-40"
         >
           New extracted audio lane
         </button>

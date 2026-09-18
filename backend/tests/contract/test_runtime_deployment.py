@@ -10,6 +10,10 @@ import tomllib
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+from clipah.editor.models import FontFamily
+
 REPOSITORY_ROOT = Path(__file__).parents[3]
 COMPOSE_FILE = REPOSITORY_ROOT / "infra" / "compose.yaml"
 VERIFY_SCRIPT = REPOSITORY_ROOT / "scripts" / "verify-runtime.sh"
@@ -390,3 +394,18 @@ def test_the_api_signs_media_urls_against_a_browser_reachable_host() -> None:
     assert api["CLIPAH_OBJECT_STORE_ENDPOINT"] == "http://minio:9000"
     assert api["CLIPAH_OBJECT_STORE_PUBLIC_ENDPOINT"] == "http://localhost:59001"
     assert worker_endpoint.startswith(("http://minio:9000", "https://"))
+
+
+@pytest.mark.unit
+def test_the_media_image_installs_every_caption_font_the_editor_previews() -> None:
+    """The preview and the renderer must draw captions from the same font files."""
+    dockerfile = (REPOSITORY_ROOT / "infra/docker/backend.Dockerfile").read_text()
+    media_root = dockerfile.split("AS media-root")[1].split("FROM ")[0]
+    fonts = REPOSITORY_ROOT / "frontend/features/editor/fonts"
+
+    assert "COPY frontend/features/editor/fonts/ /usr/local/share/fonts/clipah/" in media_root
+    assert "fc-cache" in media_root
+    vendored = {path.name for path in fonts.iterdir()} if fonts.is_dir() else set()
+    for family in FontFamily:
+        stem = family.value.replace(" ", "")
+        assert any(name.startswith(stem) for name in vendored), family.value

@@ -48,3 +48,12 @@ Object.defineProperty(window.HTMLMediaElement.prototype, 'pause', {
   configurable: true,
   value: () => undefined,
 })
+
+// `next/font` is a build-time transform; under Vitest a font is just its variable name.
+vi.mock('next/font/local', () => ({
+  default: (options: { variable?: string }) => ({
+    className: 'font',
+    variable: options.variable ?? 'font-variable',
+    style: { fontFamily: 'sans-serif' },
+  }),
+}))

@@ -640,7 +640,7 @@ describe('the B-roll panel', () => {
     await userEvent.click(within(card).getByRole('button', { name: /^accept$/i }))
 
     const lane = await screen.findByRole('group', { name: /overlays/i })
-    const shot = within(lane).getByRole('button', { name: /b-roll from 0:05\.0 to 0:09\.0/i })
+    const shot = within(lane).getByRole('button', { name: /b-roll from 0:05\.00 to 0:09\.00/i })
     expect(shot).toBeInTheDocument()
   })
 
