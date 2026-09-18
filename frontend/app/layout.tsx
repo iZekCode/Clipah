@@ -2,18 +2,19 @@ import type { Metadata } from 'next'
 import type { ReactNode } from 'react'
 
 import { Providers } from '@/app/providers'
+import { fontVariables } from '@/lib/design/fonts'
 
 import './globals.css'
 
 export const metadata: Metadata = {
   title: 'Clipah',
-  description: 'Turn long-form video into ranked, review-ready short clips.',
+  description: 'Turn one long video into short clips worth posting.',
 }
 
-/** The single document shell: fonts, global styles, and the data-fetching provider. */
+/** The single document shell: Signal's fonts, global styles, and the data providers. */
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en">
+    <html lang="en" className={fontVariables}>
       <body>
         <Providers>{children}</Providers>
       </body>
