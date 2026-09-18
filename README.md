@@ -141,7 +141,9 @@ transcripts, filenames, and watermark text render as text and cannot execute any
 ## Local setup
 
 ```bash
-docker compose -f infra/compose.yaml up -d     # Postgres, Redis, MinIO on loopback
+# Always name backend/.env: Compose does not read it on its own, and without it
+# Google sign-in and the AI providers start with empty settings.
+docker compose --env-file backend/.env -f infra/compose.yaml up -d
 pnpm install
 cd backend && uv sync --all-extras && uv run alembic upgrade head
 ```

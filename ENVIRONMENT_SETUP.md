@@ -20,8 +20,17 @@ material refuses to start rather than falling back to a weak default.
 ## Step 1: Start the local infrastructure
 
 ```bash
-docker compose -f infra/compose.yaml up -d
+docker compose --env-file backend/.env -f infra/compose.yaml up -d
 ```
+
+**Always pass `--env-file backend/.env`.** Compose looks for a `.env` beside
+`infra/compose.yaml`, not in `backend/`, so without the flag every value the containers take
+from your environment starts empty. That covers the Google sign-in client, the AI provider
+keys, the model choices, and the queue concurrencies. Nothing refuses to start. Instead,
+sign-in fails at Google with "Missing required parameter: client_id", and analysis fails
+once it needs a provider. On the very first start, before Step 2 has written the file, run the
+command without the flag. After Step 2, run it again with the flag; Compose then recreates only
+the services whose settings changed.
 
 Three services, all bound to loopback only:
 
@@ -278,6 +287,7 @@ pnpm build
 | --- | --- |
 | Settings all show defaults; `.env` seems ignored | `CLIPAH_ENVIRONMENT=local` is not exported in the shell. |
 | Every page is `404` but `/api` works | `NEW_CLIPAH_ENABLED` is not exactly `true`. |
+| "Missing required parameter: client_id" from Google | The stack was started without `--env-file backend/.env`. Run Step 1's command again with the flag. |
 | `redirect_uri_mismatch` from Google | The registered URI differs from `CLIPAH_GOOGLE_OIDC_REDIRECT_URI`. Compare literally, including port and trailing slash. |
 | `access_denied`, or "app not verified" | Your account is not in the consent screen's Test users. |
 | Sign-in appears to work, then you are signed out | You reached the API's port directly instead of `localhost:3000`. |
