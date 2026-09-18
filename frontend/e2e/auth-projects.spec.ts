@@ -1,4 +1,4 @@
-import { expect, test, type APIRequestContext, type Page } from '@playwright/test'
+import { expect, test, type APIRequestContext, type Locator, type Page } from '@playwright/test'
 
 import { alertOf } from './support/locators'
 import { seedMember, signIn, uniqueEmail, type SeededMember } from './support/seed'
@@ -99,6 +99,8 @@ test('a member creates, renames, deletes, and recovers a Project', async ({ page
   await expect(page.getByRole('link', { name: 'Episode 12' })).toBeVisible()
 
   await page.getByRole('button', { name: /actions for episode 12/i }).click()
+  // The menu opens below the card, so the card must not clip its last action.
+  await expectUnclipped(page.getByRole('button', { name: /delete episode 12/i }))
   await page.getByRole('button', { name: /rename episode 12/i }).click()
   await page.getByRole('textbox', { name: /project name/i }).fill('Episode 12 final')
   // The new name shows before the backend answers; deleting before it has answered would
@@ -219,3 +221,24 @@ test('an owner removes a member and that member loses the Workspace', async ({ b
   await ownerContext.close()
   await memberContext.close()
 })
+
+/**
+ * Assert no ancestor clips an element: it lies wholly inside every ancestor that hides
+ * overflow. (Scrolling it into view would not do: a clipping ancestor can itself be
+ * scrolled, which hides the bug.)
+ */
+async function expectUnclipped(locator: Locator): Promise<void> {
+  const clippedBy = await locator.evaluate((element) => {
+    const box = element.getBoundingClientRect()
+    for (let parent = element.parentElement; parent !== null; parent = parent.parentElement) {
+      const style = getComputedStyle(parent)
+      if (style.overflowX === 'visible' && style.overflowY === 'visible') continue
+      const frame = parent.getBoundingClientRect()
+      if (box.top < frame.top || box.bottom > frame.bottom || box.left < frame.left || box.right > frame.right) {
+        return parent.tagName.toLowerCase() + (parent.className ? `.${String(parent.className).split(' ')[0]}` : '')
+      }
+    }
+    return null
+  })
+  expect(clippedBy).toBeNull()
+}

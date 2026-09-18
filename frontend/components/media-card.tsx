@@ -40,12 +40,13 @@ export function MediaCard({
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setFocused(false)
       }}
-      className="group relative flex flex-col overflow-hidden rounded-lg border bg-card transition-colors duration-fast ease-signal focus-within:border-line-strong hover:border-line-strong"
+      // No overflow clipping here: the item menu opens below the card and must not be cut off.
+      className="group relative flex flex-col rounded-lg border bg-card transition-colors duration-fast ease-signal focus-within:border-line-strong hover:border-line-strong"
     >
       <CardFocusContext.Provider value={focused}>
         <div
           className={cn(
-            'relative overflow-hidden bg-stage',
+            'relative overflow-hidden rounded-t-[inherit] bg-stage',
             aspect === 'video' ? 'aspect-video' : 'aspect-[9/16]',
           )}
         >
