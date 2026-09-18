@@ -125,6 +125,34 @@ class JobRepository:
             for event, kind, project_id in rows
         ]
 
+    def latest_workspace_events(self, *, workspace_id: UUID, jobs: int) -> list[JobEventRecord]:
+        """The newest event of each of the Workspace's most recently active Jobs.
+
+        A job center opening fresh needs where each Job stands, not how it got there: one
+        long preparation alone records thousands of progress events. The result keeps the
+        stream's own order, so its last entry is the Workspace's newest event and the stream
+        can continue from it without missing or repeating anything.
+        """
+        latest = (
+            select(JobEvent.id)
+            .where(JobEvent.workspace_id == workspace_id)
+            .distinct(JobEvent.job_id)
+            .order_by(JobEvent.job_id, JobEvent.created_at.desc(), JobEvent.sequence.desc())
+            .subquery()
+        )
+        newest_first = (
+            select(JobEvent, Job.kind, Job.project_id)
+            .join(Job, Job.id == JobEvent.job_id)
+            .where(JobEvent.id.in_(select(latest.c.id)))
+            .order_by(JobEvent.created_at.desc(), JobEvent.job_id.desc(), JobEvent.sequence.desc())
+            .limit(jobs)
+        )
+        rows = self._session.execute(newest_first).all()
+        return [
+            replace(_event_record(event), kind=kind.value, project_id=project_id)
+            for event, kind, project_id in reversed(rows)
+        ]
+
 
 def snapshot_of(job: Job) -> JobSnapshot:
     """Copy one job row into the immutable value every caller outside the ORM reads."""

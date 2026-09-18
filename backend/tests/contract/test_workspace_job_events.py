@@ -1,8 +1,10 @@
 """Contract for the one stream a Workspace's global job center subscribes to.
 
-The dashboard keeps a single connection open per Workspace rather than one per Job, so
-this stream carries every Job's history in the order it was recorded, resumes from what
-the client already holds, and stays open after any one Job finishes.
+The dashboard keeps a single connection open per Workspace rather than one per Job. A new
+connection starts from each Job's latest state rather than its whole history, because a long
+render records thousands of progress events that say nothing a job center still needs. After
+that the stream carries every new event in the order it was recorded, resumes from what the
+client already holds, and stays open after any one Job finishes.
 """
 
 from __future__ import annotations
@@ -20,7 +22,7 @@ from clipah.api.dependencies import open_database_session
 from clipah.db import RuntimeRole, get_engine, session_scope
 from clipah.jobs.admission import admission_policy
 from clipah.jobs.models import JobEventType
-from clipah.jobs.use_cases import create_job, start_job, succeed_job
+from clipah.jobs.use_cases import create_job, start_job, succeed_job, update_job_progress
 from clipah.models import (
     Job,
     JobKind,
@@ -42,10 +44,10 @@ STREAM_SETTINGS: dict[str, object] = {
 
 
 @pytest.mark.integration
-def test_the_workspace_stream_replays_every_job_it_paid_for(
+def test_a_new_connection_starts_from_each_jobs_latest_state(
     engine: Engine, clean_database: None
 ) -> None:
-    """A job center that opens after work started must still learn the whole history."""
+    """A job center that opens after work started learns where every Job stands, once."""
     del clean_database
     clock = Clock(NOW)
     browser, workspace_id = _signed_in_workspace(clock)
@@ -53,20 +55,39 @@ def test_the_workspace_stream_replays_every_job_it_paid_for(
     first = _finished_job(workspace_id, user_id, clock, key="workspace-first")
     second = _queued_job(workspace_id, user_id, clock, key="workspace-second")
 
-    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=4)
+    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=2)
 
-    assert [frame.event for frame in frames] == [
-        JobEventType.CREATED,
-        JobEventType.STARTED,
-        JobEventType.SUCCEEDED,
-        JobEventType.CREATED,
-    ]
-    assert [json.loads(frame.data)["jobId"] for frame in frames] == [
-        str(first),
-        str(first),
-        str(first),
-        str(second),
-    ]
+    assert [frame.event for frame in frames] == [JobEventType.SUCCEEDED, JobEventType.CREATED]
+    assert [json.loads(frame.data)["jobId"] for frame in frames] == [str(first), str(second)]
+
+
+@pytest.mark.integration
+def test_a_long_running_job_is_not_replayed_event_by_event(
+    engine: Engine, clean_database: None
+) -> None:
+    """Hundreds of progress events collapse to the one that says where the Job ended up."""
+    del clean_database
+    clock = Clock(NOW)
+    browser, workspace_id = _signed_in_workspace(clock)
+    user_id = _owner_of(engine, workspace_id)
+    job_id = _queued_job(workspace_id, user_id, clock, key="workspace-busy")
+    with _worker_session(workspace_id, user_id) as session:
+        start_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+        for step in range(1, 200):
+            update_job_progress(
+                session,
+                workspace_id=workspace_id,
+                job_id=job_id,
+                stage="proxy",
+                progress=step / 200,
+                now=clock(),
+            )
+        succeed_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+
+    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=2, comments=True)
+
+    assert frames[0].event == JobEventType.SUCCEEDED
+    assert frames[1].comment == "heartbeat"
 
 
 @pytest.mark.integration
@@ -82,11 +103,20 @@ def test_every_workspace_event_names_its_kind_of_work_and_project(
     with _api_session(workspace_id, user_id) as session:
         project_id = session.scalars(select(Job.project_id).where(Job.id == job_id)).one()
 
-    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=3)
+    first_read = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=1)
+    second = _queued_job(workspace_id, user_id, clock, key="workspace-named-2")
+    resumed = browser.stream(
+        f"{STREAM_PATH}?workspace_id={workspace_id}",
+        headers={"Last-Event-ID": first_read[-1].id or ""},
+        limit=1,
+    )
 
-    payloads = [json.loads(frame.data) for frame in frames]
-    assert [payload["kind"] for payload in payloads] == ["ingest"] * 3
-    assert [payload["projectId"] for payload in payloads] == [str(project_id)] * 3
+    # Both the fresh start and a resumed read carry the names.
+    fresh, later = json.loads(first_read[0].data), json.loads(resumed[0].data)
+    assert (fresh["kind"], fresh["projectId"]) == ("ingest", str(project_id))
+    assert later["jobId"] == str(second)
+    assert later["kind"] == "ingest"
+    assert later["projectId"] is not None
 
 
 @pytest.mark.integration
@@ -100,14 +130,10 @@ def test_the_workspace_stream_stays_open_after_one_job_finishes(
     user_id = _owner_of(engine, workspace_id)
     _finished_job(workspace_id, user_id, clock, key="stays-open")
 
-    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=5, comments=True)
+    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=3, comments=True)
 
-    assert [frame.event for frame in frames[:3]] == [
-        JobEventType.CREATED,
-        JobEventType.STARTED,
-        JobEventType.SUCCEEDED,
-    ]
-    assert [frame.comment for frame in frames[3:]] == ["heartbeat", "heartbeat"]
+    assert frames[0].event == JobEventType.SUCCEEDED
+    assert [frame.comment for frame in frames[1:]] == ["heartbeat", "heartbeat"]
 
 
 @pytest.mark.integration
@@ -119,24 +145,29 @@ def test_a_reconnect_resumes_after_the_last_delivered_workspace_event(
     clock = Clock(NOW)
     browser, workspace_id = _signed_in_workspace(clock)
     user_id = _owner_of(engine, workspace_id)
-    job_id = _finished_job(workspace_id, user_id, clock, key="workspace-resume")
+    job_id = _queued_job(workspace_id, user_id, clock, key="workspace-resume")
 
-    first_read = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=2)
+    first_read = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=1)
+    with _worker_session(workspace_id, user_id) as session:
+        start_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
+        succeed_job(session, workspace_id=workspace_id, job_id=job_id, now=clock())
     resumed = browser.stream(
         f"{STREAM_PATH}?workspace_id={workspace_id}",
         headers={"Last-Event-ID": first_read[-1].id or ""},
-        limit=1,
+        limit=2,
     )
 
-    assert [frame.event for frame in resumed] == [JobEventType.SUCCEEDED]
-    assert json.loads(resumed[0].data)["jobId"] == str(job_id)
+    # A resumed connection gets exactly what it missed, in order, not a fresh summary.
+    assert [frame.event for frame in first_read] == [JobEventType.CREATED]
+    assert [frame.event for frame in resumed] == [JobEventType.STARTED, JobEventType.SUCCEEDED]
+    assert {json.loads(frame.data)["jobId"] for frame in resumed} == {str(job_id)}
 
 
 @pytest.mark.integration
-def test_an_unreadable_resume_point_replays_the_whole_workspace_history(
+def test_an_unreadable_resume_point_starts_over_from_each_jobs_latest_state(
     engine: Engine, clean_database: None
 ) -> None:
-    """A corrupted or forged resume point must degrade to a full replay, never to a crash."""
+    """A corrupted or forged resume point degrades to a fresh start, never to a crash."""
     del clean_database
     clock = Clock(NOW)
     browser, workspace_id = _signed_in_workspace(clock)

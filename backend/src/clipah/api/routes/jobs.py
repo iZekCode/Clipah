@@ -41,6 +41,7 @@ from clipah.jobs.models import (
 from clipah.jobs.use_cases import (
     job_events,
     job_snapshot,
+    latest_workspace_job_events,
     request_job_cancellation,
     workspace_job_events,
 )
@@ -64,6 +65,8 @@ LastEventId = Annotated[str | None, Header(alias="Last-Event-ID")]
 SSE_MEDIA_TYPE = "text/event-stream"
 TERMINAL_EVENTS = frozenset({JobEventType.SUCCEEDED, JobEventType.FAILED, JobEventType.CANCELED})
 WORKSPACE_EVENT_BATCH = 100
+# How many of the most recently active Jobs a fresh job center is told about.
+WORKSPACE_LATEST_JOBS = 200
 
 
 @router.get("/jobs/events")
@@ -207,11 +210,20 @@ def _workspace_event_frames(
     heartbeat = settings.job_event_heartbeat_seconds
     quiet_since = time.monotonic()
     count("clipah.sse.connections", 1, outcome="opened")
+    # A fresh connection starts from each Job's latest state; a resumed one gets exactly
+    # what it missed.
+    fresh = after is None
     try:
         while True:
-            events = _read_workspace(
-                components, workspace_id=workspace_id, user_id=user_id, after=after
-            )
+            if fresh:
+                fresh = False
+                events = _read_latest_workspace(
+                    components, workspace_id=workspace_id, user_id=user_id
+                )
+            else:
+                events = _read_workspace(
+                    components, workspace_id=workspace_id, user_id=user_id, after=after
+                )
             for event in events:
                 after = WorkspaceEventBoundary(
                     created_at=event.created_at, job_id=event.job_id, sequence=event.sequence
@@ -240,6 +252,16 @@ def _read_workspace(
     with _tenant_session(components, workspace_id=workspace_id, user_id=user_id) as session:
         return workspace_job_events(
             session, workspace_id=workspace_id, after=after, limit=WORKSPACE_EVENT_BATCH
+        )
+
+
+def _read_latest_workspace(
+    components: AuthComponents, *, workspace_id: UUID, user_id: UUID
+) -> list[JobEventRecord]:
+    """Read each recent Job's latest event in its own short transaction."""
+    with _tenant_session(components, workspace_id=workspace_id, user_id=user_id) as session:
+        return latest_workspace_job_events(
+            session, workspace_id=workspace_id, jobs=WORKSPACE_LATEST_JOBS
         )
 
 

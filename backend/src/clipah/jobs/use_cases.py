@@ -219,6 +219,13 @@ def workspace_job_events(
     )
 
 
+def latest_workspace_job_events(
+    session: Session, *, workspace_id: UUID, jobs: int
+) -> list[JobEventRecord]:
+    """Where each of one Workspace's recent Jobs stands, as a fresh job center starts."""
+    return JobRepository(session).latest_workspace_events(workspace_id=workspace_id, jobs=jobs)
+
+
 def _finish(
     session: Session, *, workspace_id: UUID, job_id: UUID, target: JobStatus, now: datetime
 ) -> JobSnapshot:
