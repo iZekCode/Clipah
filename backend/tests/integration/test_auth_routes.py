@@ -84,7 +84,8 @@ def test_callback_signs_in_and_bootstraps_the_user(engine: Engine) -> None:
     response = sign_in(browser, flow)
 
     assert response.status_code == 302
-    assert response.headers["location"] == SITE_ORIGIN
+    # A signed-in member lands in the studio, not on the public landing page.
+    assert response.headers["location"] == f"{SITE_ORIGIN}/dashboard"
     token = browser.cookies.get("clipah_session")
     assert token is not None
     assert browser.cookies.get("clipah_csrf") is not None

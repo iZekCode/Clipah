@@ -124,7 +124,10 @@ def complete_google_login(
         user_agent=request.headers.get("user-agent"),
     )
 
-    response = RedirectResponse(settings.frontend_origin or "/", status_code=302)
+    # A fixed destination: no query parameter may choose where a new Session is sent.
+    response = RedirectResponse(
+        f"{(settings.frontend_origin or '').rstrip('/')}/dashboard", status_code=302
+    )
     set_session_cookies(
         response,
         settings=settings,

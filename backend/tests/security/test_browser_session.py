@@ -237,7 +237,7 @@ def test_no_query_parameter_can_choose_where_login_sends_the_browser(
     )
 
     assert started.headers["location"].startswith("https://accounts.google.com/")
-    assert completed.headers["location"] == SITE_ORIGIN
+    assert completed.headers["location"] == f"{SITE_ORIGIN}/dashboard"
     assert "attacker.example" not in started.headers["location"]
     assert "attacker.example" not in completed.headers["location"]
 
