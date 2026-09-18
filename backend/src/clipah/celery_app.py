@@ -19,6 +19,7 @@ MAX_ATTEMPTS = 5
 QUEUE_FOR_JOB_KIND: Mapping[JobKind, str] = {
     JobKind.SOURCE_IMPORT: "source_import",
     JobKind.INGEST: "ingest",
+    JobKind.PREVIEW_MEDIA: "ingest",
     JobKind.TRANSCRIBE: "ai",
     JobKind.ANALYZE: "ai",
     JobKind.BROLL_PLAN: "ai",

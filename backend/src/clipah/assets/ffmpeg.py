@@ -299,6 +299,51 @@ class FFmpegRunner:
             cancellation_check=cancellation_check,
         )
 
+    def generate_storyboard(
+        self,
+        source: Path,
+        workspace: Path,
+        *,
+        tile_width: int,
+        tile_height: int,
+        interval_ms: int,
+        columns: int,
+        rows: int,
+        cancellation_check: CancellationCheck,
+    ) -> None:
+        """Tile frames taken at a fixed interval into numbered JPEG sheets in the workspace."""
+        if min(tile_width, tile_height, interval_ms, columns, rows) <= 0:
+            raise ValueError("storyboard geometry must be positive")
+        filters = (
+            f"fps=1000/{interval_ms},scale={tile_width}:{tile_height},setsar=1,"
+            f"tile={columns}x{rows}"
+        )
+        arguments = (
+            self._ffmpeg_path,
+            "-nostdin",
+            "-v",
+            "error",
+            "-i",
+            str(source),
+            "-map",
+            "0:v:0",
+            "-vf",
+            filters,
+            "-q:v",
+            "5",
+            "-start_number",
+            "0",
+            "-map_metadata",
+            "-1",
+            "-y",
+            str(workspace / "sheet-%04d.jpg"),
+        )
+        self._executor.run(
+            arguments,
+            timeout_seconds=self._ffmpeg_timeout_seconds,
+            cancellation_check=cancellation_check,
+        )
+
     def generate_transcription_audio(
         self,
         source: Path,

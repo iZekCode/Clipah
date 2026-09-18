@@ -3602,3 +3602,62 @@ about five minutes until Plan 2 raises the limit). Seeding runs on the host and 
   fields (Plan 5), and copy (Plan 6).
 
 Owner commit message: `feat: add signal studio foundation`.
+
+### Signal Studio redesign — Plan 2, preview media (2026-09-18)
+
+**What landed.**
+
+- Migration `0023_preview_media` adds `storyboard` to `asset_kind` and `preview_media` to
+  `job_kind` (additive; the downgrade leaves both values, since PostgreSQL cannot drop an enum
+  value). Round-tripped `0023 → 0022 → 0023` on a disposable cluster.
+- `assets/preview_media.py`: storyboard v1 geometry (one frame every 2,000 ms, long side 160 px,
+  10 × 10 tiles per sheet), sheet naming (`storyboard-v1/sheet-NNNN.jpg`), and waveform v1 peaks
+  (20 per second, one byte per window). `assets/keys.py` gains `preview_media_key`, accepting only
+  those two names.
+- `FFmpegRunner.generate_storyboard` (`fps=1000/2000,scale=W:H,setsar=1,tile=10x10`, `-q:v 5`).
+  Proved once in the pinned media image (FFmpeg 7.1.5) on a 205 s 1280×720 test pattern: two
+  1600×900 sheets including the partial last one, 285 KB and 19 KB. The busy test pattern is a
+  worst case; it is still under the 300 KB budget.
+- `assets/ingest.py`: `upload_verified_artifact` extracted from `AssetIngestor._upload` (no
+  behaviour change); `assets/preview_builder.py` downloads the recorded proxy and transcription
+  audio, refuses either if its digest changed, renders sheets and peaks, and uploads each with
+  deterministic identities (`uuid5(source, "storyboard-v1:<i>")`, `uuid5(source, "waveform-v1")`).
+- `jobs/preview_media_task.py`: the `PREVIEW_MEDIA` runner (ingest queue, no quota) with stable
+  codes `PREVIEW_MEDIA_INPUT_MISSING`, `PREVIEW_MEDIA_INTEGRITY`, `PREVIEW_MEDIA_INVALID_AUDIO`;
+  a redelivery reuses finished previews, and a conflicting existing row rolls back the set.
+- `jobs/pipeline.py`: `SIDE_STAGES` and `admit_side_stages`. A finished ingest admits preview
+  work after its transcription successor in the same transaction; a concurrency refusal records
+  nothing, the Project status never moves, and both new Jobs are dispatched after commit.
+- Reads: `GET /projects/{id}/storyboard`, `/waveform` (five-minute signed URLs), and
+  `/transcript`, each answering a foreign Project exactly like a missing one. `GET /clips` gains
+  `order=recent` (one top-N page by last-saved Edit; a cursor is refused with 422), and every clip
+  now carries `editUpdatedAt`.
+- `studio/backfill_preview_media.py`: `--workspace-id`, `--user-id`, `--dry-run`,
+  `--retry-failed`; admits through ordinary Job admission and reports `admitted`, `would_admit`,
+  `already_running`, `previously_failed`, or `busy` per Project.
+- Retention: the existing Project purge test now includes a storyboard sheet and a waveform key
+  and still ends with an empty store, which proves previews are purged with their Project.
+- The per-user read limit default is now 300 per minute (`ENVIRONMENT_SETUP.md` updated).
+- Contracts regenerated; the client gains `storyboardApiV1ProjectsProjectIdStoryboardGet`,
+  `waveformApiV1ProjectsProjectIdWaveformGet`, `transcriptApiV1ProjectsProjectIdTranscriptGet`,
+  and `ClipOrder`. The upload panel ignores preview work when naming the pipeline stage, and the
+  job center calls it "Preparing previews".
+
+**Deviations from the plan.** The waveform reader requires exactly 16 kHz audio (the plan only
+required a rate divisible by 20, which let 44.1 kHz through and failed its own test). The
+recent-order test backdates the staged Edit directly, because the harness clock is frozen and
+two Edits would otherwise tie. A transcript word with no speaker or punctuation reads as an
+empty string rather than failing. The upload-panel test waits for the status text instead of the
+status element, which already exists and made the assertion race under a full run.
+
+**Verification.**
+
+- Backend, against a disposable `postgres:17-alpine` on port 55434 and Redis database 15:
+  `ruff check`, `ruff format --check`, strict `mypy` (234 files), and pytest 2,957 passed,
+  20 skipped, 92.89% coverage.
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (486 passed, twice), `pnpm build`.
+- Live: the Compose stack was rebuilt and `0023` applied to the application database. A dry-run
+  backfill of the owner's Workspace reported five Projects `would_admit` and created no Job. The
+  real backfill has not been run; it waits for the owner's approval.
+
+Owner commit message: `feat: derive storyboard and waveform previews`.

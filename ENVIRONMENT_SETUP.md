@@ -354,7 +354,7 @@ requires HTTPS origins.
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `CLIPAH_READ_REQUESTS_PER_MINUTE` | `60` | Per User. |
+| `CLIPAH_READ_REQUESTS_PER_MINUTE` | `300` | Per User. A dashboard page load issues several reads. |
 | `CLIPAH_WRITE_REQUESTS_PER_MINUTE` | `20` | Per User. |
 | `CLIPAH_UPLOAD_PART_SIGNATURES_PER_MINUTE` | `300` | Per-User allowance for signing upload parts, counted apart from writes; a 2 GiB upload needs at most 256. |
 | `CLIPAH_ANALYSES_PER_HOUR` | `3` | Per User. |

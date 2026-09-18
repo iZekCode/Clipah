@@ -70,6 +70,7 @@ function clip(overrides: Partial<ClipSummaryResponse> = {}): ClipSummaryResponse
     currentRevision: null,
     exportCount: 0,
     createdAt: '2026-02-01T00:00:00+00:00',
+    editUpdatedAt: null,
     ...overrides,
   }
 }

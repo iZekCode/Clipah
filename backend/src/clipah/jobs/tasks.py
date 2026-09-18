@@ -39,7 +39,7 @@ from clipah.jobs.models import (
     RetryableJobError,
     TerminalJobError,
 )
-from clipah.jobs.pipeline import advance_after
+from clipah.jobs.pipeline import admit_side_stages, advance_after
 from clipah.jobs.render_task import production_object_store
 from clipah.jobs.use_cases import cancel_job, complete_job_after_runner, fail_job, start_job
 from clipah.models import JobKind, JobStatus
@@ -209,27 +209,37 @@ def _run_stage(
         )
         # The successor is committed in the same transaction as the completion, so a
         # Project can never be recorded as finished with one stage and stranded before
-        # the next. Dispatch happens afterwards, and is only a wakeup: the durable row
-        # is what a sweep would find.
+        # the next. Decoration is admitted after it and may be refused without harm.
+        policy = admission_policy(settings)
+        access = DatabaseWorkspaceAuthorizer(session).access_for(
+            user_id=user, workspace_id=workspace
+        )
         following = advance_after(
             session,
-            policy=admission_policy(settings),
-            access=DatabaseWorkspaceAuthorizer(session).access_for(
-                user_id=user, workspace_id=workspace
-            ),
+            policy=policy,
+            access=access,
             project_id=snapshot.project_id,
             completed_kind=snapshot.kind,
             completed_job_id=job,
             now=_now(),
         )
-        following_id = None if following is None else following.job_id
-        following_kind = None if following is None else following.kind
-    _announce(notifier, workspace_id=workspace, job_id=job)
-    if following_id is not None and following_kind is not None:
-        _dispatch_next(
-            job_id=following_id, workspace_id=workspace, user_id=user, kind=following_kind
+        side = admit_side_stages(
+            session,
+            policy=policy,
+            access=access,
+            project_id=snapshot.project_id,
+            completed_kind=snapshot.kind,
+            completed_job_id=job,
+            now=_now(),
         )
-        _announce(notifier, workspace_id=workspace, job_id=following_id)
+        woken = tuple(
+            (entry.job_id, entry.kind)
+            for entry in (*(() if following is None else (following,)), *side)
+        )
+    _announce(notifier, workspace_id=workspace, job_id=job)
+    for woken_id, woken_kind in woken:
+        _dispatch_next(job_id=woken_id, workspace_id=workspace, user_id=user, kind=woken_kind)
+        _announce(notifier, workspace_id=workspace, job_id=woken_id)
     _record_stage(snapshot, outcome="succeeded", code="OK", started=started)
     return completed.status.value
 
@@ -337,6 +347,7 @@ from clipah.jobs.ingest_task import (  # noqa: E402
     ingest_stage_runner,
     validate_ingest_readiness,
 )
+from clipah.jobs.preview_media_task import preview_media_stage_runner  # noqa: E402
 from clipah.jobs.render_task import render_stage_runner, validate_render_readiness  # noqa: E402
 from clipah.jobs.source_import_task import source_import_stage_runner  # noqa: E402
 from clipah.jobs.transcribe_task import transcribe_stage_runner  # noqa: E402
@@ -349,6 +360,7 @@ _STAGE_RUNNERS.setdefault(JobKind.BROLL_PLAN, broll_plan_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.BROLL_RETRIEVE, broll_retrieve_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.BROLL_GENERATE, broll_generate_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.RENDER, render_stage_runner)
+_STAGE_RUNNERS.setdefault(JobKind.PREVIEW_MEDIA, preview_media_stage_runner)
 
 
 def _worker_accepts_ingest(queues: object) -> bool:

@@ -10,6 +10,7 @@ from one that never existed.
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -23,6 +24,7 @@ from clipah.models import (
     AssetProvenance,
     AssetSourceType,
     ClipCandidate,
+    ClipEdit,
     Project,
 )
 from clipah.renders.models import RenderPreset
@@ -323,11 +325,61 @@ def test_the_studio_reads_declare_strict_response_schemas() -> None:
         "/api/v1/assets": "AssetPageResponse",
         "/api/v1/assets/{asset_id}/preview-url": "MediaPreviewResponse",
         "/api/v1/projects/{project_id}/thumbnail": "MediaPreviewResponse",
+        "/api/v1/projects/{project_id}/storyboard": "StoryboardResponse",
+        "/api/v1/projects/{project_id}/waveform": "WaveformResponse",
+        "/api/v1/projects/{project_id}/transcript": "TranscriptResponse",
     }
 
     for path, component in expected.items():
         schema = paths[path]["get"]["responses"]["200"]["content"]["application/json"]["schema"]
         assert schema["$ref"].endswith(f"/{component}")
+
+
+@pytest.mark.integration
+def test_recent_order_puts_the_most_recently_edited_clip_first_as_a_single_page(
+    engine: Engine,
+) -> None:
+    """Home continues the work touched last, which is not the analysis order."""
+    stage = _staged(engine)
+    first = _candidate_id(stage)
+    second = _second_candidate(stage)
+    opened = stage.browser.request(
+        "POST",
+        _path(stage, f"/projects/{stage.project_id}/candidates/{second}/edits"),
+        json=None,
+    )
+    assert opened.status_code == 201
+    # The harness clock is frozen, so both Edits were saved at the same instant; date the
+    # staged one earlier so "most recently edited" has one right answer.
+    with stage.engine.begin() as connection:
+        connection.execute(
+            update(ClipEdit.__table__)
+            .where(ClipEdit.__table__.c.candidate_id == first)
+            .values(updated_at=NOW - timedelta(hours=1))
+        )
+
+    recent = stage.browser.get(_path(stage, "/clips?stage=edited&order=recent&limit=5")).json()
+    created = stage.browser.get(_path(stage, "/clips?stage=edited&limit=5")).json()
+
+    assert [clip["id"] for clip in recent["clips"]] == [str(second), str(first)]
+    assert recent["nextCursor"] is None
+    assert {clip["id"] for clip in created["clips"]} == {str(first), str(second)}
+    assert all(clip["editUpdatedAt"] is not None for clip in recent["clips"])
+    suggested = stage.browser.get(_path(stage, "/clips?stage=suggested")).json()
+    assert all(clip["editUpdatedAt"] is None for clip in suggested["clips"])
+
+
+@pytest.mark.integration
+def test_recent_order_refuses_a_cursor(engine: Engine) -> None:
+    """Recent is a top-N read; paging it would promise an order edits can reshuffle."""
+    stage = _staged(engine)
+    first = stage.browser.get(_path(stage, "/clips?limit=1")).json()
+
+    refused = stage.browser.get(
+        _path(stage, f"/clips?order=recent&cursor={first['nextCursor'] or 'x'}")
+    )
+
+    assert_error(refused, status_code=422, code="VALIDATION_ERROR")
 
 
 def _candidate_id(stage: Stage) -> UUID:
@@ -424,3 +476,137 @@ def _stranger(stage: Stage) -> tuple[Browser, UUID]:
     sign_in(stranger, stage.flow)
     workspace_id = UUID(stranger.get("/api/v1/workspaces").json()["workspaces"][0]["id"])
     return stranger, workspace_id
+
+
+@pytest.mark.integration
+def test_a_storyboard_describes_every_sheet_and_signs_each_one(engine: Engine) -> None:
+    """A poster is drawn by offset, so every sheet must say where its frames start."""
+    stage = _staged(engine)
+    before = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/storyboard"))
+    _preview_asset(
+        stage, name="storyboard-v1/sheet-0001.jpg", kind=AssetKind.STORYBOARD, duration_ms=5_000
+    )
+    _preview_asset(
+        stage, name="storyboard-v1/sheet-0000.jpg", kind=AssetKind.STORYBOARD, duration_ms=200_000
+    )
+
+    response = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/storyboard"))
+
+    assert_error(before, status_code=404, code="NOT_FOUND")
+    assert response.status_code == 200
+    body = response.json()
+    assert {
+        key: body[key]
+        for key in (
+            "version",
+            "intervalMs",
+            "tileWidth",
+            "tileHeight",
+            "columns",
+            "rows",
+            "durationMs",
+        )
+    } == {
+        "version": 1,
+        "intervalMs": 2_000,
+        "tileWidth": 160,
+        "tileHeight": 90,
+        "columns": 10,
+        "rows": 10,
+        "durationMs": 205_000,
+    }
+    assert [(sheet["index"], sheet["startMs"], sheet["tileCount"]) for sheet in body["sheets"]] == [
+        (0, 0, 100),
+        (1, 200_000, 3),
+    ]
+    assert all(sheet["url"].startswith("fake://download/") for sheet in body["sheets"])
+    assert "storageKey" not in str(body)
+
+
+@pytest.mark.integration
+def test_a_waveform_is_a_short_lived_capability_with_its_geometry(engine: Engine) -> None:
+    """The timeline must know how many peaks make a second before it can draw them."""
+    stage = _staged(engine)
+    _preview_asset(stage, name="waveform-v1.bin", kind=AssetKind.WAVEFORM, duration_ms=60_000)
+
+    body = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/waveform")).json()
+
+    assert body["version"] == 1
+    assert body["peaksPerSecond"] == 20
+    assert body["durationMs"] == 60_000
+    assert body["url"].startswith("fake://download/")
+
+
+@pytest.mark.integration
+def test_a_transcript_lists_its_words_in_order_with_speakers(engine: Engine) -> None:
+    """Review mode and the Project page show what was said around every moment."""
+    stage = _staged(engine)
+
+    body = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/transcript")).json()
+
+    assert body == {
+        "language": "id",
+        "durationMs": 60_000,
+        "words": [
+            {
+                "id": "w000001",
+                "text": "Satu",
+                "punctuation": "",
+                "startMs": 5_000,
+                "endMs": 5_900,
+                "speaker": "SPEAKER_00",
+            }
+        ],
+    }
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("suffix", ["storyboard", "waveform", "transcript"])
+def test_previews_and_transcripts_of_another_workspace_answer_like_missing_ones(
+    engine: Engine, suffix: str
+) -> None:
+    """A guessed Project must not reveal that its media exists."""
+    stage = _staged(engine)
+    _preview_asset(
+        stage, name="storyboard-v1/sheet-0000.jpg", kind=AssetKind.STORYBOARD, duration_ms=200_000
+    )
+    _preview_asset(stage, name="waveform-v1.bin", kind=AssetKind.WAVEFORM, duration_ms=60_000)
+    stranger, stranger_workspace = _stranger(stage)
+
+    guessed = stranger.get(
+        f"/api/v1/projects/{stage.project_id}/{suffix}?workspace_id={stranger_workspace}"
+    )
+    missing = stranger.get(f"/api/v1/projects/{uuid4()}/{suffix}?workspace_id={stranger_workspace}")
+
+    assert_error(guessed, status_code=404, code="NOT_FOUND")
+    assert_error(missing, status_code=404, code="NOT_FOUND")
+    assert guessed.json()["error"]["message"] == missing.json()["error"]["message"]
+
+
+def _preview_asset(stage: Stage, *, name: str, kind: AssetKind, duration_ms: int) -> UUID:
+    """Record one preview artifact the way the preview runner would have."""
+    asset_id = uuid4()
+    key = (
+        f"workspaces/{stage.workspace_id}/projects/{stage.project_id}"
+        f"/derived/{stage.source_asset_id}/{name}"
+    )
+    content_type = "image/jpeg" if kind is AssetKind.STORYBOARD else "application/octet-stream"
+    with stage.engine.begin() as connection:
+        connection.execute(
+            Asset.__table__.insert().values(
+                id=asset_id,
+                workspace_id=stage.workspace_id,
+                project_id=stage.project_id,
+                kind=kind,
+                source_type=AssetSourceType.DERIVED,
+                storage_key=key,
+                content_type=content_type,
+                size_bytes=512,
+                duration_ms=duration_ms,
+                width=1600 if kind is AssetKind.STORYBOARD else None,
+                height=900 if kind is AssetKind.STORYBOARD else None,
+                sha256=b"p" * 32,
+            )
+        )
+    stage.store.objects[key] = StoredObject(key=key, content_type=content_type, content_length=512)
+    return asset_id

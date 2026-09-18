@@ -106,7 +106,7 @@ class Settings(BaseSettings):
     session_absolute_ttl_minutes: int = 60 * 24 * 30
     session_recent_auth_ttl_minutes: int = 10
 
-    read_requests_per_minute: int = 60
+    read_requests_per_minute: int = 300
     write_requests_per_minute: int = 20
     # A 2 GiB upload is at most 256 parts at the 8 MiB minimum; signing them is not a write
     # a member chose to make, so it holds its own allowance sized for the largest upload.

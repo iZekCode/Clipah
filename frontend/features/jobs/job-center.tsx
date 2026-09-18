@@ -46,6 +46,7 @@ export const JOB_KIND_LABELS: Record<string, string> = {
   social_publish: 'Publishing',
   social_reconcile: 'Checking publication',
   cleanup: 'Cleaning up',
+  preview_media: 'Preparing previews',
 }
 
 const STATUS_LABELS: Record<string, string> = {

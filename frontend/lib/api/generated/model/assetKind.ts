@@ -18,4 +18,5 @@ export const AssetKind = {
   render: 'render',
   broll: 'broll',
   broll_proxy: 'broll_proxy',
+  storyboard: 'storyboard',
 } as const;

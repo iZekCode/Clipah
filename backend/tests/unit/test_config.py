@@ -670,7 +670,7 @@ def test_plan_limits_are_configuration_rather_than_route_code() -> None:
     """Section 7 processing limits must ship as settings a deployment can retune."""
     settings = Settings(environment=Environment.TEST)
 
-    assert settings.read_requests_per_minute == 60
+    assert settings.read_requests_per_minute == 300
     assert settings.write_requests_per_minute == 20
     assert settings.analyses_per_hour == 3
     assert settings.concurrent_jobs_per_workspace == 5

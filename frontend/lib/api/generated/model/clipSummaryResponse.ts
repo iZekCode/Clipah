@@ -7,6 +7,7 @@
 import type { ClipCategory } from './clipCategory';
 import type { ClipSummaryResponseCurrentRevision } from './clipSummaryResponseCurrentRevision';
 import type { ClipSummaryResponseEditId } from './clipSummaryResponseEditId';
+import type { ClipSummaryResponseEditUpdatedAt } from './clipSummaryResponseEditUpdatedAt';
 import type { ClipStage } from './clipStage';
 
 /**
@@ -18,6 +19,7 @@ export interface ClipSummaryResponse {
   currentRevision: ClipSummaryResponseCurrentRevision;
   durationMs: number;
   editId: ClipSummaryResponseEditId;
+  editUpdatedAt: ClipSummaryResponseEditUpdatedAt;
   endMs: number;
   exportCount: number;
   hook: string;

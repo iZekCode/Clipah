@@ -21,6 +21,12 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from clipah.assets.preview_media import (
+    STORYBOARD_V1,
+    WAVEFORM_PEAKS_PER_SECOND,
+    WAVEFORM_V1_NAME,
+    storyboard_sheet_index,
+)
 from clipah.assets.storage import ObjectStore, SignedUrl
 from clipah.assets.uploads import SIGNED_URL_TTL
 from clipah.highlights.repository import CandidateSummary, HighlightRepository
@@ -37,6 +43,7 @@ from clipah.models import (
     Project,
     RenderArtifact,
     RenderRequest,
+    Transcript,
 )
 from clipah.workspaces.models import WorkspaceAccess
 
@@ -57,6 +64,13 @@ _IN_PROGRESS_JOB_STATUSES = (
 
 class StudioNotFoundError(Exception):
     """The row does not exist, or the caller may not learn that it does."""
+
+
+class ClipOrder(StrEnum):
+    """How a browsed clip list is ordered."""
+
+    CREATED = "created"
+    RECENT = "recent"
 
 
 class ClipStage(StrEnum):
@@ -111,6 +125,7 @@ class ClipSummary:
     current_revision: int | None
     export_count: int
     created_at: datetime
+    edit_updated_at: datetime | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -235,10 +250,16 @@ def browse_clips(
     stage: ClipStage | None,
     limit: int,
     after: ClipBoundary | None,
+    order: ClipOrder = ClipOrder.CREATED,
 ) -> ClipPage:
-    """List exposed moments across the Workspace, newest analysis first, best rank first."""
+    """List exposed moments across the Workspace, newest analysis first, best rank first.
+
+    `RECENT` instead returns one top-N page, most recently saved Edit first; it has no
+    continuation, because saving an Edit reshuffles the order a cursor would promise.
+    """
     edit_id = _first_edit_column(ClipEdit.id)
     current_revision = _first_edit_column(ClipEdit.current_revision)
+    edit_updated_at = _first_edit_column(ClipEdit.updated_at)
     export_count = _export_count()
     conditions: list[ColumnElement[bool]] = [
         ClipCandidate.workspace_id == access.workspace_id,
@@ -252,6 +273,28 @@ def browse_clips(
         conditions.extend([edit_id.is_not(None), export_count == 0])
     elif stage is ClipStage.EXPORTED:
         conditions.append(export_count > 0)
+    if order is ClipOrder.RECENT:
+        recent_rows = session.execute(
+            select(
+                ClipCandidate,
+                Project.name,
+                edit_id,
+                current_revision,
+                export_count,
+                edit_updated_at,
+            )
+            .join(Project, _active_project(ClipCandidate.workspace_id, ClipCandidate.project_id))
+            .where(*conditions)
+            .order_by(edit_updated_at.desc().nulls_last(), ClipCandidate.id)
+            .limit(limit)
+        ).all()
+        return ClipPage(
+            clips=tuple(
+                _clip_summary(candidate, project_name, found_edit, revision, count, updated)
+                for candidate, project_name, found_edit, revision, count, updated in recent_rows
+            ),
+            next_boundary=None,
+        )
     if after is not None:
         conditions.append(
             or_(
@@ -269,15 +312,17 @@ def browse_clips(
             )
         )
     rows = session.execute(
-        select(ClipCandidate, Project.name, edit_id, current_revision, export_count)
+        select(
+            ClipCandidate, Project.name, edit_id, current_revision, export_count, edit_updated_at
+        )
         .join(Project, _active_project(ClipCandidate.workspace_id, ClipCandidate.project_id))
         .where(*conditions)
         .order_by(ClipCandidate.created_at.desc(), ClipCandidate.rank, ClipCandidate.id)
         .limit(limit + 1)
     ).all()
     clips = tuple(
-        _clip_summary(candidate, project_name, found_edit, revision, count)
-        for candidate, project_name, found_edit, revision, count in rows[:limit]
+        _clip_summary(candidate, project_name, found_edit, revision, count, updated)
+        for candidate, project_name, found_edit, revision, count, updated in rows[:limit]
     )
     next_boundary = None
     if len(rows) > limit:
@@ -518,6 +563,166 @@ def project_thumbnail(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class StoryboardSheet:
+    """One signed sheet and the frames it holds."""
+
+    index: int
+    start_ms: int
+    tile_count: int
+    download: SignedUrl
+
+
+@dataclass(frozen=True, slots=True)
+class StoryboardView:
+    """Everything a browser needs to draw any moment of a source from its sheets."""
+
+    version: int
+    interval_ms: int
+    tile_width: int
+    tile_height: int
+    columns: int
+    rows: int
+    duration_ms: int
+    sheets: tuple[StoryboardSheet, ...]
+    expires_at: datetime
+
+
+@dataclass(frozen=True, slots=True)
+class WaveformView:
+    """A signed waveform and how to read it."""
+
+    version: int
+    peaks_per_second: int
+    duration_ms: int
+    download: SignedUrl
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptWordView:
+    """One transcribed word with its timing and speaker."""
+
+    word_id: str
+    text: str
+    punctuation: str
+    start_ms: int
+    end_ms: int
+    speaker: str
+
+
+@dataclass(frozen=True, slots=True)
+class TranscriptView:
+    """One Project's canonical transcript, in spoken order."""
+
+    language: str
+    duration_ms: int
+    words: tuple[TranscriptWordView, ...]
+
+
+def project_storyboard(
+    session: Session, store: ObjectStore, *, access: WorkspaceAccess, project_id: UUID
+) -> StoryboardView:
+    """Sign every version-one sheet of one active Project, in order."""
+    rows = session.execute(
+        select(Asset.storage_key, Asset.width, Asset.height, Asset.duration_ms)
+        .join(Project, _active_project(Asset.workspace_id, Asset.project_id))
+        .where(
+            Asset.workspace_id == access.workspace_id,
+            Asset.project_id == project_id,
+            Asset.kind == AssetKind.STORYBOARD,
+        )
+        .order_by(Asset.storage_key)
+    ).all()
+    policy = STORYBOARD_V1
+    sheets: list[StoryboardSheet] = []
+    tile_width = tile_height = 0
+    duration_ms = 0
+    for key, width, height, sheet_duration in rows:
+        index = storyboard_sheet_index(key)
+        if index is None or width is None or height is None or sheet_duration is None:
+            continue
+        tile_width, tile_height = width // policy.columns, height // policy.rows
+        start_ms = index * policy.frames_per_sheet * policy.interval_ms
+        duration_ms = max(duration_ms, start_ms + sheet_duration)
+        sheets.append(
+            StoryboardSheet(
+                index=index,
+                start_ms=start_ms,
+                tile_count=max(1, -(-sheet_duration // policy.interval_ms)),
+                download=store.sign_download(key=key, expires_in=SIGNED_URL_TTL),
+            )
+        )
+    if not sheets:
+        raise StudioNotFoundError(str(project_id))
+    return StoryboardView(
+        version=policy.version,
+        interval_ms=policy.interval_ms,
+        tile_width=tile_width,
+        tile_height=tile_height,
+        columns=policy.columns,
+        rows=policy.rows,
+        duration_ms=duration_ms,
+        sheets=tuple(sheets),
+        expires_at=min(sheet.download.expires_at for sheet in sheets),
+    )
+
+
+def project_waveform(
+    session: Session, store: ObjectStore, *, access: WorkspaceAccess, project_id: UUID
+) -> WaveformView:
+    """Sign the version-one waveform of one active Project."""
+    row = session.execute(
+        select(Asset.storage_key, Asset.duration_ms)
+        .join(Project, _active_project(Asset.workspace_id, Asset.project_id))
+        .where(
+            Asset.workspace_id == access.workspace_id,
+            Asset.project_id == project_id,
+            Asset.kind == AssetKind.WAVEFORM,
+            Asset.storage_key.endswith(f"/{WAVEFORM_V1_NAME}"),
+        )
+        .order_by(Asset.created_at.desc(), Asset.id.desc())
+        .limit(1)
+    ).first()
+    if row is None or row.duration_ms is None:
+        raise StudioNotFoundError(str(project_id))
+    return WaveformView(
+        version=1,
+        peaks_per_second=WAVEFORM_PEAKS_PER_SECOND,
+        duration_ms=row.duration_ms,
+        download=store.sign_download(key=row.storage_key, expires_in=SIGNED_URL_TTL),
+    )
+
+
+def project_transcript(
+    session: Session, *, access: WorkspaceAccess, project_id: UUID
+) -> TranscriptView:
+    """Read the newest canonical transcript of one active Project."""
+    row = session.execute(
+        select(Transcript.language, Transcript.duration_ms, Transcript.words)
+        .join(Project, _active_project(Transcript.workspace_id, Transcript.project_id))
+        .where(Transcript.workspace_id == access.workspace_id, Transcript.project_id == project_id)
+        .order_by(Transcript.created_at.desc(), Transcript.id.desc())
+        .limit(1)
+    ).first()
+    if row is None:
+        raise StudioNotFoundError(str(project_id))
+    return TranscriptView(
+        language=row.language,
+        duration_ms=row.duration_ms,
+        words=tuple(
+            TranscriptWordView(
+                word_id=str(word["word_id"]),
+                text=str(word["text"]),
+                punctuation=str(word.get("punctuation") or ""),
+                start_ms=int(word["start_ms"]),
+                end_ms=int(word["end_ms"]),
+                speaker=str(word.get("speaker") or ""),
+            )
+            for word in row.words
+        ),
+    )
+
+
 def _active_project(workspace_id: Any, project_id: Any) -> ColumnElement[bool]:
     """Join to the owning Project only while it has not been deleted."""
     return and_(
@@ -578,6 +783,7 @@ def _clip_summary(
     edit_id: UUID | None,
     current_revision: int | None,
     export_count: int,
+    edit_updated_at: datetime | None,
 ) -> ClipSummary:
     """Name how far one moment has got from the rows that already record it."""
     if export_count > 0:
@@ -602,6 +808,7 @@ def _clip_summary(
         current_revision=current_revision,
         export_count=export_count,
         created_at=candidate.created_at,
+        edit_updated_at=edit_updated_at,
     )
 
 

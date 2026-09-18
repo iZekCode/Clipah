@@ -18,7 +18,7 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from clipah.jobs.admission import AdmissionPolicy
+from clipah.jobs.admission import AdmissionPolicy, ConcurrencyLimitError
 from clipah.jobs.models import JobSnapshot
 from clipah.jobs.use_cases import create_job
 from clipah.models import JobKind, Project, ProjectStatus
@@ -41,6 +41,9 @@ STAGE_STATUS = MappingProxyType(
         JobKind.ANALYZE: ProjectStatus.ANALYZING,
     }
 )
+
+#: Work a finished stage adds beside the belt: it decorates a Project and never moves it.
+SIDE_STAGES = MappingProxyType({JobKind.INGEST: (JobKind.PREVIEW_MEDIA,)})
 
 #: Statuses no completed stage may move a Project out of.
 _SETTLED = frozenset({ProjectStatus.FAILED, ProjectStatus.ARCHIVED})
@@ -109,6 +112,46 @@ def advance_after(
         idempotency_key=pipeline_key(after_job_id=completed_job_id, kind=following),
         now=now,
     )
+
+
+def admit_side_stages(
+    session: Session,
+    *,
+    policy: AdmissionPolicy,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    completed_kind: JobKind,
+    completed_job_id: UUID,
+    now: datetime,
+) -> tuple[JobSnapshot, ...]:
+    """Admit decoration after one finished stage, yielding every refusal to the belt.
+
+    Call this after `advance_after`, in the same transaction, so the belt's successor has
+    already taken its concurrency slot. A refusal records nothing: a later backfill can ask
+    again, while a pipeline stage that waited for decoration would be a Project that stalled.
+    """
+    kinds = SIDE_STAGES.get(completed_kind, ())
+    if not kinds:
+        return ()
+    if _live_project(session, workspace_id=access.workspace_id, project_id=project_id) is None:
+        return ()
+    admitted: list[JobSnapshot] = []
+    for kind in kinds:
+        try:
+            admitted.append(
+                create_job(
+                    session,
+                    policy=policy,
+                    access=access,
+                    project_id=project_id,
+                    kind=kind,
+                    idempotency_key=pipeline_key(after_job_id=completed_job_id, kind=kind),
+                    now=now,
+                )
+            )
+        except ConcurrencyLimitError:
+            continue
+    return tuple(admitted)
 
 
 def _live_project(session: Session, *, workspace_id: UUID, project_id: UUID) -> Project | None:

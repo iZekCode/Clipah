@@ -142,7 +142,8 @@
           "transcription_audio",
           "render",
           "broll",
-          "broll_proxy"
+          "broll_proxy",
+          "storyboard"
         ],
         "title": "AssetKind",
         "type": "string"
@@ -1986,6 +1987,15 @@
         "title": "ClipEditResponse",
         "type": "object"
       },
+      "ClipOrder": {
+        "description": "How a browsed clip list is ordered.",
+        "enum": [
+          "created",
+          "recent"
+        ],
+        "title": "ClipOrder",
+        "type": "string"
+      },
       "ClipPageResponse": {
         "additionalProperties": false,
         "description": "One page of browsable moments and its opaque continuation cursor.",
@@ -2090,6 +2100,17 @@
             ],
             "title": "Editid"
           },
+          "editUpdatedAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Editupdatedat"
+          },
           "endMs": {
             "title": "Endms",
             "type": "integer"
@@ -2152,7 +2173,8 @@
           "editId",
           "currentRevision",
           "exportCount",
-          "createdAt"
+          "createdAt",
+          "editUpdatedAt"
         ],
         "title": "ClipSummaryResponse",
         "type": "object"
@@ -3552,7 +3574,8 @@
           "social_rendition",
           "social_publish",
           "social_reconcile",
-          "cleanup"
+          "cleanup",
+          "preview_media"
         ],
         "title": "JobKind",
         "type": "string"
@@ -5844,6 +5867,94 @@
         "title": "SourceRange",
         "type": "object"
       },
+      "StoryboardResponse": {
+        "additionalProperties": false,
+        "description": "Sheet geometry and signed sheets for one Project.",
+        "properties": {
+          "columns": {
+            "title": "Columns",
+            "type": "integer"
+          },
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "intervalMs": {
+            "title": "Intervalms",
+            "type": "integer"
+          },
+          "rows": {
+            "title": "Rows",
+            "type": "integer"
+          },
+          "sheets": {
+            "items": {
+              "$ref": "#/components/schemas/StoryboardSheetResponse"
+            },
+            "title": "Sheets",
+            "type": "array"
+          },
+          "tileHeight": {
+            "title": "Tileheight",
+            "type": "integer"
+          },
+          "tileWidth": {
+            "title": "Tilewidth",
+            "type": "integer"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "intervalMs",
+          "tileWidth",
+          "tileHeight",
+          "columns",
+          "rows",
+          "durationMs",
+          "sheets",
+          "expiresAt"
+        ],
+        "title": "StoryboardResponse",
+        "type": "object"
+      },
+      "StoryboardSheetResponse": {
+        "additionalProperties": false,
+        "description": "One signed sheet and the first moment it shows.",
+        "properties": {
+          "index": {
+            "title": "Index",
+            "type": "integer"
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          },
+          "tileCount": {
+            "title": "Tilecount",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          }
+        },
+        "required": [
+          "index",
+          "startMs",
+          "tileCount",
+          "url"
+        ],
+        "title": "StoryboardSheetResponse",
+        "type": "object"
+      },
       "TemplateCreateRequest": {
         "additionalProperties": false,
         "description": "Accept one strictly shaped template publication.",
@@ -6404,6 +6515,74 @@
         "title": "TrackType",
         "type": "string"
       },
+      "TranscriptResponse": {
+        "additionalProperties": false,
+        "description": "One Project's transcript in spoken order.",
+        "properties": {
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "language": {
+            "title": "Language",
+            "type": "string"
+          },
+          "words": {
+            "items": {
+              "$ref": "#/components/schemas/TranscriptWordResponse"
+            },
+            "title": "Words",
+            "type": "array"
+          }
+        },
+        "required": [
+          "language",
+          "durationMs",
+          "words"
+        ],
+        "title": "TranscriptResponse",
+        "type": "object"
+      },
+      "TranscriptWordResponse": {
+        "additionalProperties": false,
+        "description": "One transcribed word.",
+        "properties": {
+          "endMs": {
+            "title": "Endms",
+            "type": "integer"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "punctuation": {
+            "title": "Punctuation",
+            "type": "string"
+          },
+          "speaker": {
+            "title": "Speaker",
+            "type": "string"
+          },
+          "startMs": {
+            "title": "Startms",
+            "type": "integer"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "text",
+          "punctuation",
+          "startMs",
+          "endMs",
+          "speaker"
+        ],
+        "title": "TranscriptWordResponse",
+        "type": "object"
+      },
       "Transform": {
         "additionalProperties": false,
         "description": "The position, scale, and rotation of one visual element.",
@@ -6659,6 +6838,41 @@
           "confidence"
         ],
         "title": "VisualIntentResponse",
+        "type": "object"
+      },
+      "WaveformResponse": {
+        "additionalProperties": false,
+        "description": "A signed waveform and how many peaks make a second.",
+        "properties": {
+          "durationMs": {
+            "title": "Durationms",
+            "type": "integer"
+          },
+          "expiresAt": {
+            "title": "Expiresat",
+            "type": "string"
+          },
+          "peaksPerSecond": {
+            "title": "Peakspersecond",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version",
+          "peaksPerSecond",
+          "durationMs",
+          "url",
+          "expiresAt"
+        ],
+        "title": "WaveformResponse",
         "type": "object"
       },
       "WorkspaceCollectionResponse": {
@@ -7751,6 +7965,15 @@
                 }
               ],
               "title": "Cursor"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ClipOrder",
+              "default": "created"
             }
           },
           {
@@ -10457,6 +10680,60 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/storyboard": {
+      "get": {
+        "description": "Sign five minutes of access to every storyboard sheet of one Project.",
+        "operationId": "storyboard_api_v1_projects__project_id__storyboard_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StoryboardResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Storyboard",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/thumbnail": {
       "get": {
         "description": "Sign five minutes of access to the frame ingest captured for one Project.",
@@ -10506,6 +10783,60 @@
           }
         },
         "summary": "Thumbnail",
+        "tags": [
+          "studio"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/transcript": {
+      "get": {
+        "description": "Read one Project's transcript for review and the Project page.",
+        "operationId": "transcript_api_v1_projects__project_id__transcript_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranscriptResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Transcript",
         "tags": [
           "studio"
         ]
@@ -10804,6 +11135,60 @@
         "summary": "Sign Part Route",
         "tags": [
           "uploads"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/waveform": {
+      "get": {
+        "description": "Sign five minutes of access to one Project's waveform peaks.",
+        "operationId": "waveform_api_v1_projects__project_id__waveform_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WaveformResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Waveform",
+        "tags": [
+          "studio"
         ]
       }
     },

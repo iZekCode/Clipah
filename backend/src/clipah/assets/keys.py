@@ -2,9 +2,12 @@
 
 from __future__ import annotations
 
+import re
 from uuid import UUID
 
 from clipah.models import AssetKind
+
+_PREVIEW_MEDIA_NAME = re.compile(r"(?:storyboard-v1/sheet-\d{4}\.jpg|waveform-v1\.bin)")
 
 
 def source_upload_key(
@@ -69,3 +72,14 @@ def generated_asset_key(
     if kind not in {AssetKind.BROLL, AssetKind.BROLL_PROXY}:
         raise ValueError("unsupported generated asset kind")
     return f"workspaces/{workspace_id}/projects/{project_id}/generated/{asset_id}/{kind.value}"
+
+
+def preview_media_key(
+    *, workspace_id: UUID, project_id: UUID, source_asset_id: UUID, name: str
+) -> str:
+    """Return the deterministic private key of one versioned preview beside its derivatives."""
+    if not all(isinstance(value, UUID) for value in (workspace_id, project_id, source_asset_id)):
+        raise TypeError("storage identifiers must be UUID values")
+    if _PREVIEW_MEDIA_NAME.fullmatch(name) is None:
+        raise ValueError("unsupported preview media name")
+    return f"workspaces/{workspace_id}/projects/{project_id}/derived/{source_asset_id}/{name}"

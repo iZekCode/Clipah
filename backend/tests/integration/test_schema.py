@@ -269,6 +269,7 @@ EXPECTED_ENUMS = {
         "render",
         "broll",
         "broll_proxy",
+        "storyboard",
     ),
     "asset_source_type": (
         "user_upload",
@@ -291,6 +292,7 @@ EXPECTED_ENUMS = {
         "social_publish",
         "social_reconcile",
         "cleanup",
+        "preview_media",
     ),
     "job_status": (
         "queued",

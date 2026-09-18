@@ -31,7 +31,13 @@ import type {
   MediaPreviewResponse,
   PreviewAssetApiV1AssetsAssetIdPreviewUrlGetParams,
   ShowClipApiV1ClipsCandidateIdGetParams,
-  ThumbnailApiV1ProjectsProjectIdThumbnailGetParams
+  StoryboardApiV1ProjectsProjectIdStoryboardGetParams,
+  StoryboardResponse,
+  ThumbnailApiV1ProjectsProjectIdThumbnailGetParams,
+  TranscriptApiV1ProjectsProjectIdTranscriptGetParams,
+  TranscriptResponse,
+  WaveformApiV1ProjectsProjectIdWaveformGetParams,
+  WaveformResponse
 } from '.././model';
 
 import { apiFetch } from '../../client';
@@ -598,6 +604,122 @@ export function useExportCollectionApiV1ExportsGet<TData = Awaited<ReturnType<ty
 
 
 /**
+ * Sign five minutes of access to every storyboard sheet of one Project.
+ * @summary Storyboard
+ */
+export const getStoryboardApiV1ProjectsProjectIdStoryboardGetUrl = (projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/storyboard?${stringifiedParams}` : `/api/v1/projects/${projectId}/storyboard`
+}
+
+export const storyboardApiV1ProjectsProjectIdStoryboardGet = async (projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options?: RequestInit): Promise<StoryboardResponse> => {
+  
+  return apiFetch<StoryboardResponse>(getStoryboardApiV1ProjectsProjectIdStoryboardGetUrl(projectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getStoryboardApiV1ProjectsProjectIdStoryboardGetQueryKey = (projectId?: string,
+    params?: StoryboardApiV1ProjectsProjectIdStoryboardGetParams,) => {
+    return [
+    `/api/v1/projects/${projectId}/storyboard`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getStoryboardApiV1ProjectsProjectIdStoryboardGetQueryOptions = <TData = Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError = HTTPValidationError>(projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getStoryboardApiV1ProjectsProjectIdStoryboardGetQueryKey(projectId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>> = ({ signal }) => storyboardApiV1ProjectsProjectIdStoryboardGet(projectId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type StoryboardApiV1ProjectsProjectIdStoryboardGetQueryResult = NonNullable<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>>
+export type StoryboardApiV1ProjectsProjectIdStoryboardGetQueryError = HTTPValidationError
+
+
+export function useStoryboardApiV1ProjectsProjectIdStoryboardGet<TData = Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>,
+          TError,
+          Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStoryboardApiV1ProjectsProjectIdStoryboardGet<TData = Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>,
+          TError,
+          Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useStoryboardApiV1ProjectsProjectIdStoryboardGet<TData = Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Storyboard
+ */
+
+export function useStoryboardApiV1ProjectsProjectIdStoryboardGet<TData = Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: StoryboardApiV1ProjectsProjectIdStoryboardGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof storyboardApiV1ProjectsProjectIdStoryboardGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getStoryboardApiV1ProjectsProjectIdStoryboardGetQueryOptions(projectId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
  * Sign five minutes of access to the frame ingest captured for one Project.
  * @summary Thumbnail
  */
@@ -702,6 +824,238 @@ export function useThumbnailApiV1ProjectsProjectIdThumbnailGet<TData = Awaited<R
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getThumbnailApiV1ProjectsProjectIdThumbnailGetQueryOptions(projectId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * Read one Project's transcript for review and the Project page.
+ * @summary Transcript
+ */
+export const getTranscriptApiV1ProjectsProjectIdTranscriptGetUrl = (projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/transcript?${stringifiedParams}` : `/api/v1/projects/${projectId}/transcript`
+}
+
+export const transcriptApiV1ProjectsProjectIdTranscriptGet = async (projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options?: RequestInit): Promise<TranscriptResponse> => {
+  
+  return apiFetch<TranscriptResponse>(getTranscriptApiV1ProjectsProjectIdTranscriptGetUrl(projectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getTranscriptApiV1ProjectsProjectIdTranscriptGetQueryKey = (projectId?: string,
+    params?: TranscriptApiV1ProjectsProjectIdTranscriptGetParams,) => {
+    return [
+    `/api/v1/projects/${projectId}/transcript`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getTranscriptApiV1ProjectsProjectIdTranscriptGetQueryOptions = <TData = Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError = HTTPValidationError>(projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getTranscriptApiV1ProjectsProjectIdTranscriptGetQueryKey(projectId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>> = ({ signal }) => transcriptApiV1ProjectsProjectIdTranscriptGet(projectId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type TranscriptApiV1ProjectsProjectIdTranscriptGetQueryResult = NonNullable<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>>
+export type TranscriptApiV1ProjectsProjectIdTranscriptGetQueryError = HTTPValidationError
+
+
+export function useTranscriptApiV1ProjectsProjectIdTranscriptGet<TData = Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>,
+          TError,
+          Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTranscriptApiV1ProjectsProjectIdTranscriptGet<TData = Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>,
+          TError,
+          Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useTranscriptApiV1ProjectsProjectIdTranscriptGet<TData = Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Transcript
+ */
+
+export function useTranscriptApiV1ProjectsProjectIdTranscriptGet<TData = Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: TranscriptApiV1ProjectsProjectIdTranscriptGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof transcriptApiV1ProjectsProjectIdTranscriptGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getTranscriptApiV1ProjectsProjectIdTranscriptGetQueryOptions(projectId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * Sign five minutes of access to one Project's waveform peaks.
+ * @summary Waveform
+ */
+export const getWaveformApiV1ProjectsProjectIdWaveformGetUrl = (projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/waveform?${stringifiedParams}` : `/api/v1/projects/${projectId}/waveform`
+}
+
+export const waveformApiV1ProjectsProjectIdWaveformGet = async (projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options?: RequestInit): Promise<WaveformResponse> => {
+  
+  return apiFetch<WaveformResponse>(getWaveformApiV1ProjectsProjectIdWaveformGetUrl(projectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getWaveformApiV1ProjectsProjectIdWaveformGetQueryKey = (projectId?: string,
+    params?: WaveformApiV1ProjectsProjectIdWaveformGetParams,) => {
+    return [
+    `/api/v1/projects/${projectId}/waveform`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getWaveformApiV1ProjectsProjectIdWaveformGetQueryOptions = <TData = Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError = HTTPValidationError>(projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getWaveformApiV1ProjectsProjectIdWaveformGetQueryKey(projectId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>> = ({ signal }) => waveformApiV1ProjectsProjectIdWaveformGet(projectId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type WaveformApiV1ProjectsProjectIdWaveformGetQueryResult = NonNullable<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>>
+export type WaveformApiV1ProjectsProjectIdWaveformGetQueryError = HTTPValidationError
+
+
+export function useWaveformApiV1ProjectsProjectIdWaveformGet<TData = Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>,
+          TError,
+          Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useWaveformApiV1ProjectsProjectIdWaveformGet<TData = Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>,
+          TError,
+          Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useWaveformApiV1ProjectsProjectIdWaveformGet<TData = Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Waveform
+ */
+
+export function useWaveformApiV1ProjectsProjectIdWaveformGet<TData = Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: WaveformApiV1ProjectsProjectIdWaveformGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof waveformApiV1ProjectsProjectIdWaveformGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getWaveformApiV1ProjectsProjectIdWaveformGetQueryOptions(projectId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

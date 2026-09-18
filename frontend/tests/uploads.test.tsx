@@ -513,6 +513,28 @@ describe('the media submission panel', () => {
     expect(await screen.findByText(/ready to review/i)).toBeInTheDocument()
   })
 
+  test('keeps showing the pipeline stage while previews are prepared beside it', async () => {
+    const user = userEvent.setup()
+    signedInApi()
+
+    renderPanel()
+    await user.upload(await screen.findByLabelText(/video file/i), realFile())
+    const stream = await openStream()
+
+    act(() => stream.emit('progress', jobEvent({ kind: 'transcribe' })))
+    act(() =>
+      stream.emit(
+        'started',
+        jobEvent({ jobId: '99999999-9999-4999-8999-999999999999', kind: 'preview_media' }),
+      ),
+    )
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Transcribing audio'))
+    expect(screen.getByRole('list', { name: 'Processing stages' })).toHaveTextContent(
+      /Transcribe \(in progress\)/,
+    )
+  })
+
   test('distinguishes a retry, a cancellation, and a failure from one another', async () => {
     const user = userEvent.setup()
     signedInApi()

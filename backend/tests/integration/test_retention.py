@@ -733,7 +733,14 @@ def test_discharging_a_project_tombstone_removes_its_media_and_its_rows(engine: 
     graph = _provision_project_graph(engine, suffix=f"retain-purge-{uuid4().hex[:8]}")
     workspace_id = graph["workspace"]
     prefix = project_prefix(workspace_id=workspace_id, project_id=graph["project"])
-    store = _store((f"{prefix}source/{uuid4()}", f"{prefix}renders/{uuid4()}"))
+    store = _store(
+        (
+            f"{prefix}source/{uuid4()}",
+            f"{prefix}renders/{uuid4()}",
+            f"{prefix}derived/{uuid4()}/storyboard-v1/sheet-0000.jpg",
+            f"{prefix}derived/{uuid4()}/waveform-v1.bin",
+        )
+    )
 
     with retention_session_scope(
         settings=retention_settings(),  # type: ignore[arg-type]

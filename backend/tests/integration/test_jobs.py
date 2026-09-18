@@ -417,6 +417,7 @@ def test_every_job_kind_is_routed_to_its_own_queue() -> None:
     assert QUEUE_FOR_JOB_KIND[JobKind.ANALYZE] == "ai"
     assert QUEUE_FOR_JOB_KIND[JobKind.CLEANUP] == "maintenance"
     assert QUEUE_FOR_JOB_KIND[JobKind.SOURCE_IMPORT] == "source_import"
+    assert QUEUE_FOR_JOB_KIND[JobKind.PREVIEW_MEDIA] == "ingest"
 
 
 @pytest.mark.unit
@@ -458,6 +459,25 @@ def test_an_eager_task_runs_its_registered_stage_and_succeeds(engine: Engine, cl
     assert seen == [job_id]
     assert _status(workspace_id, user_id, job_id) is JobStatus.SUCCEEDED
     assert _event_types(workspace_id, user_id, job_id)[-1] is JobEventType.SUCCEEDED
+
+
+@pytest.mark.integration
+def test_a_finished_ingest_dispatches_transcription_and_previews(
+    engine: Engine, clock: Clock, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Both successors are committed with the completion and both are woken afterwards."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="dispatch-side")
+    job_id = _queued_job(workspace_id, user_id, project_id, clock, key="dispatch-side")
+    dispatched: list[JobKind] = []
+    monkeypatch.setattr(
+        task_module, "_dispatch_next", lambda **kwargs: dispatched.append(kwargs["kind"])
+    )
+
+    with _eager_celery():
+        stage_runners()[JobKind.INGEST] = lambda context: None
+        run_job.apply(args=(str(job_id), str(workspace_id), str(user_id))).get()
+
+    assert dispatched == [JobKind.TRANSCRIBE, JobKind.PREVIEW_MEDIA]
 
 
 @pytest.mark.integration

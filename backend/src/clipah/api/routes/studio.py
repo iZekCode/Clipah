@@ -29,6 +29,7 @@ from clipah.highlights.models import ClipCategory
 from clipah.models import AssetKind, AssetSourceType
 from clipah.studio.use_cases import (
     ClipBoundary,
+    ClipOrder,
     ClipStage,
     ClipSummary,
     ExportListState,
@@ -42,7 +43,10 @@ from clipah.studio.use_cases import (
     browse_clips,
     clip_detail,
     list_exports,
+    project_storyboard,
     project_thumbnail,
+    project_transcript,
+    project_waveform,
 )
 from clipah.workspaces.models import WorkspaceAction
 
@@ -79,11 +83,17 @@ class ClipSummaryResponse(BaseModel):
     current_revision: int | None = Field(alias="currentRevision")
     export_count: int = Field(alias="exportCount")
     created_at: datetime = Field(alias="createdAt")
+    edit_updated_at: datetime | None = Field(alias="editUpdatedAt")
 
     @field_serializer("created_at")
     def serialize_created_at(self, value: datetime) -> str:
         """Preserve the API's established explicit UTC-offset timestamp shape."""
         return _timestamp(value)
+
+    @field_serializer("edit_updated_at")
+    def serialize_edit_updated_at(self, value: datetime | None) -> str | None:
+        """When the clip's Edit was last saved, or nothing if it has none."""
+        return None if value is None else _timestamp(value)
 
 
 class ClipPageResponse(BaseModel):
@@ -244,8 +254,11 @@ def browse_clip_collection(
     stage: ClipStage | None = None,
     limit: PageLimit = 24,
     cursor: str | None = None,
+    order: ClipOrder = ClipOrder.CREATED,
 ) -> ClipPageResponse:
     """Browse every exposed moment in the Workspace before anything is searched for."""
+    if order is ClipOrder.RECENT and cursor is not None:
+        raise ApiError(status_code=422, code="VALIDATION_ERROR")
     page = browse_clips(
         session,
         access=workspace.access,
@@ -253,6 +266,7 @@ def browse_clip_collection(
         stage=stage,
         limit=limit,
         after=None if cursor is None else _decode_clip_cursor(cursor),
+        order=order,
     )
     boundary = page.next_boundary
     return ClipPageResponse(
@@ -393,6 +407,7 @@ def _clip_body(clip: ClipSummary) -> ClipSummaryResponse:
         currentRevision=clip.current_revision,
         exportCount=clip.export_count,
         createdAt=clip.created_at,
+        editUpdatedAt=clip.edit_updated_at,
     )
 
 
@@ -502,3 +517,155 @@ def _encode_time_cursor(boundary: TimeBoundary | None) -> str | None:
     if boundary is None:
         return None
     return _encode(f"{boundary.created_at.isoformat()}|{boundary.row_id}")
+
+
+class StoryboardSheetResponse(BaseModel):
+    """One signed sheet and the first moment it shows."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    index: int
+    start_ms: int = Field(alias="startMs")
+    tile_count: int = Field(alias="tileCount")
+    url: str
+
+
+class StoryboardResponse(BaseModel):
+    """Sheet geometry and signed sheets for one Project."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    version: int
+    interval_ms: int = Field(alias="intervalMs")
+    tile_width: int = Field(alias="tileWidth")
+    tile_height: int = Field(alias="tileHeight")
+    columns: int
+    rows: int
+    duration_ms: int = Field(alias="durationMs")
+    sheets: tuple[StoryboardSheetResponse, ...]
+    expires_at: datetime = Field(alias="expiresAt")
+
+    @field_serializer("expires_at")
+    def serialize_expires_at(self, value: datetime) -> str:
+        """Preserve the API's established explicit UTC-offset timestamp shape."""
+        return _timestamp(value)
+
+
+class WaveformResponse(BaseModel):
+    """A signed waveform and how many peaks make a second."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    version: int
+    peaks_per_second: int = Field(alias="peaksPerSecond")
+    duration_ms: int = Field(alias="durationMs")
+    url: str
+    expires_at: datetime = Field(alias="expiresAt")
+
+    @field_serializer("expires_at")
+    def serialize_expires_at(self, value: datetime) -> str:
+        """Preserve the API's established explicit UTC-offset timestamp shape."""
+        return _timestamp(value)
+
+
+class TranscriptWordResponse(BaseModel):
+    """One transcribed word."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    id: str
+    text: str
+    punctuation: str
+    start_ms: int = Field(alias="startMs")
+    end_ms: int = Field(alias="endMs")
+    speaker: str
+
+
+class TranscriptResponse(BaseModel):
+    """One Project's transcript in spoken order."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    language: str
+    duration_ms: int = Field(alias="durationMs")
+    words: tuple[TranscriptWordResponse, ...]
+
+
+@router.get("/projects/{project_id}/storyboard", response_model=StoryboardResponse)
+def storyboard(
+    project_id: UUID,
+    session: DatabaseSession,
+    workspace: ReadableWorkspace,
+    store: Annotated[ObjectStore, Depends(object_store_for)],
+) -> StoryboardResponse:
+    """Sign five minutes of access to every storyboard sheet of one Project."""
+    try:
+        view = project_storyboard(session, store, access=workspace.access, project_id=project_id)
+    except StudioNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    return StoryboardResponse(
+        version=view.version,
+        intervalMs=view.interval_ms,
+        tileWidth=view.tile_width,
+        tileHeight=view.tile_height,
+        columns=view.columns,
+        rows=view.rows,
+        durationMs=view.duration_ms,
+        sheets=tuple(
+            StoryboardSheetResponse(
+                index=sheet.index,
+                startMs=sheet.start_ms,
+                tileCount=sheet.tile_count,
+                url=sheet.download.url,
+            )
+            for sheet in view.sheets
+        ),
+        expiresAt=view.expires_at,
+    )
+
+
+@router.get("/projects/{project_id}/waveform", response_model=WaveformResponse)
+def waveform(
+    project_id: UUID,
+    session: DatabaseSession,
+    workspace: ReadableWorkspace,
+    store: Annotated[ObjectStore, Depends(object_store_for)],
+) -> WaveformResponse:
+    """Sign five minutes of access to one Project's waveform peaks."""
+    try:
+        view = project_waveform(session, store, access=workspace.access, project_id=project_id)
+    except StudioNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    return WaveformResponse(
+        version=view.version,
+        peaksPerSecond=view.peaks_per_second,
+        durationMs=view.duration_ms,
+        url=view.download.url,
+        expiresAt=view.download.expires_at,
+    )
+
+
+@router.get("/projects/{project_id}/transcript", response_model=TranscriptResponse)
+def transcript(
+    project_id: UUID, session: DatabaseSession, workspace: ReadableWorkspace
+) -> TranscriptResponse:
+    """Read one Project's transcript for review and the Project page."""
+    try:
+        view = project_transcript(session, access=workspace.access, project_id=project_id)
+    except StudioNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    return TranscriptResponse(
+        language=view.language,
+        durationMs=view.duration_ms,
+        words=tuple(
+            TranscriptWordResponse(
+                id=word.word_id,
+                text=word.text,
+                punctuation=word.punctuation,
+                startMs=word.start_ms,
+                endMs=word.end_ms,
+                speaker=word.speaker,
+            )
+            for word in view.words
+        ),
+    )

@@ -364,3 +364,45 @@ def test_subprocess_executor_terminates_then_reraises_cancellation() -> None:
         )
 
     assert checks == 2
+
+
+@pytest.mark.unit
+def test_runner_tiles_fixed_interval_frames_into_numbered_jpeg_sheets(tmp_path: Path) -> None:
+    """One shell-free command must produce every sheet the storyboard layout expects."""
+    executor = RecordingExecutor()
+    runner = FFmpegRunner(executor=executor, ffmpeg_timeout_seconds=12.0)
+
+    runner.generate_storyboard(
+        tmp_path / "proxy.mp4",
+        tmp_path,
+        tile_width=160,
+        tile_height=90,
+        interval_ms=2_000,
+        columns=10,
+        rows=10,
+        cancellation_check=lambda: None,
+    )
+
+    arguments, timeout, progress_duration = executor.calls[-1]
+    assert arguments == (
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-i",
+        str(tmp_path / "proxy.mp4"),
+        "-map",
+        "0:v:0",
+        "-vf",
+        "fps=1000/2000,scale=160:90,setsar=1,tile=10x10",
+        "-q:v",
+        "5",
+        "-start_number",
+        "0",
+        "-map_metadata",
+        "-1",
+        "-y",
+        str(tmp_path / "sheet-%04d.jpg"),
+    )
+    assert timeout == 12.0
+    assert progress_duration is None

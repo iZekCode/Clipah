@@ -134,6 +134,26 @@ describe('the global job center', () => {
     )
   })
 
+  test('names preview work in plain words', async () => {
+    signedInApi()
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <JobCenter />
+      </WorkspaceProvider>,
+    )
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() =>
+      FakeEventSource.instances[0]?.emit(
+        'succeeded',
+        jobEvent({ kind: 'preview_media', status: 'succeeded', stage: 'preview_media' }),
+      ),
+    )
+
+    expect(await screen.findByText('Preparing previews')).toBeInTheDocument()
+  })
+
   test('keeps a finished job in this Workspace history instead of dropping it', async () => {
     signedInApi()
 

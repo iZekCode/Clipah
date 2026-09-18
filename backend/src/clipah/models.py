@@ -144,6 +144,8 @@ class AssetKind(StrEnum):
     # normalized rendition the editor plays instead of the original.
     BROLL = "broll"
     BROLL_PROXY = "broll_proxy"
+    # One sheet of fixed-interval frames drawn from the proxy, for posters and filmstrips.
+    STORYBOARD = "storyboard"
 
 
 class AssetSourceType(StrEnum):
@@ -204,6 +206,7 @@ class JobKind(StrEnum):
     SOCIAL_PUBLISH = "social_publish"
     SOCIAL_RECONCILE = "social_reconcile"
     CLEANUP = "cleanup"
+    PREVIEW_MEDIA = "preview_media"
 
 
 class ClaimVerificationStatus(StrEnum):

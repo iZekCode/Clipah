@@ -364,30 +364,15 @@ class AssetIngestor:
     ) -> IngestArtifact:
         """Verify and upload one complete direct-child artifact under its deterministic key."""
         kind, path, content_type, duration, width, height, video_codec, audio_codec = specification
-        _require_regular_workspace_file(path, workspace)
-        size_bytes, digest = _hash_file(path)
         key = derived_asset_key(
             workspace_id=source.workspace_id,
             project_id=source.project_id,
             source_asset_id=source.asset_id,
             kind=kind,
         )
-        with path.open("rb") as artifact_file:
-            stored = self._store.put_file(
-                key=key,
-                content_type=content_type,
-                file=artifact_file,
-                sha256=digest,
-            )
-        observed = self._store.head_object(key=key)
-        if any(
-            candidate.key != key
-            or candidate.content_length != size_bytes
-            or candidate.sha256 != digest
-            for candidate in (stored, observed)
-        ):
-            self._store.delete_object(key=key)
-            raise IngestIntegrityError("derived Asset upload metadata mismatch")
+        size_bytes, digest = upload_verified_artifact(
+            self._store, path=path, workspace=workspace, key=key, content_type=content_type
+        )
         return IngestArtifact(
             asset_id=uuid5(source.asset_id, kind.value),
             kind=kind,
@@ -402,6 +387,26 @@ class AssetIngestor:
             video_codec=video_codec,
             audio_codec=audio_codec,
         )
+
+
+def upload_verified_artifact(
+    store: ObjectStore, *, path: Path, workspace: Path, key: str, content_type: str
+) -> tuple[int, bytes]:
+    """Upload one complete direct-child artifact and prove the stored object is those bytes."""
+    _require_regular_workspace_file(path, workspace)
+    size_bytes, digest = _hash_file(path)
+    with path.open("rb") as artifact_file:
+        stored = store.put_file(
+            key=key, content_type=content_type, file=artifact_file, sha256=digest
+        )
+    observed = store.head_object(key=key)
+    if any(
+        candidate.key != key or candidate.content_length != size_bytes or candidate.sha256 != digest
+        for candidate in (stored, observed)
+    ):
+        store.delete_object(key=key)
+        raise IngestIntegrityError("derived Asset upload metadata mismatch")
+    return size_bytes, digest
 
 
 def write_download(

@@ -18,7 +18,8 @@ from sqlalchemy.orm import Session
 from clipah.assets.storage import FakeObjectStore
 from clipah.db import RuntimeRole, session_scope
 from clipah.jobs.admission import admission_policy
-from clipah.jobs.pipeline import advance_after, pipeline_key, start_stage
+from clipah.jobs.models import JobSnapshot
+from clipah.jobs.pipeline import admit_side_stages, advance_after, pipeline_key, start_stage
 from clipah.jobs.use_cases import create_job, start_job, succeed_job
 from clipah.models import Job, JobKind, Project, ProjectStatus, SourceKind, WorkspaceMembership
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
@@ -328,3 +329,120 @@ def _worker_session(workspace_id: UUID, user_id: UUID) -> AbstractContextManager
 
 
 assert isinstance(NOW, datetime)
+
+
+@pytest.mark.integration
+def test_finished_ingest_admits_previews_beside_transcription_without_moving_the_project(
+    engine: Engine,
+) -> None:
+    """Previews decorate a Project; only the belt decides where it is."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=JobKind.INGEST)
+
+    following, side = _advance_with_side(
+        workspace_id, user_id, project_id, completed, JobKind.INGEST
+    )
+
+    assert following is not None
+    assert [entry.kind for entry in side] == [JobKind.PREVIEW_MEDIA]
+    assert _project_status(workspace_id, user_id, project_id) is ProjectStatus.TRANSCRIBING
+    assert _job_kinds(workspace_id, user_id, project_id).count(JobKind.PREVIEW_MEDIA) == 1
+
+
+@pytest.mark.integration
+def test_a_replayed_ingest_completion_admits_previews_once(engine: Engine) -> None:
+    """The preview Job is keyed by the ingest Job it follows, like every successor."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-replay")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=JobKind.INGEST)
+
+    _advance_with_side(workspace_id, user_id, project_id, completed, JobKind.INGEST)
+    _, side = _advance_with_side(workspace_id, user_id, project_id, completed, JobKind.INGEST)
+
+    assert len(side) == 1
+    assert _job_kinds(workspace_id, user_id, project_id).count(JobKind.PREVIEW_MEDIA) == 1
+
+
+@pytest.mark.integration
+def test_a_full_workspace_refuses_previews_silently_and_still_transcribes(engine: Engine) -> None:
+    """A concurrency slot must go to the pipeline, never to decoration."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-full")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=JobKind.INGEST)
+    settings = runtime_settings(concurrent_jobs_per_workspace=1)
+
+    with _worker_session(workspace_id, user_id) as session:
+        access = _access(session, user_id=user_id, workspace_id=workspace_id)
+        following = advance_after(
+            session,
+            policy=admission_policy(settings),
+            access=access,
+            project_id=project_id,
+            completed_kind=JobKind.INGEST,
+            completed_job_id=completed,
+            now=NOW,
+        )
+        side = admit_side_stages(
+            session,
+            policy=admission_policy(settings),
+            access=access,
+            project_id=project_id,
+            completed_kind=JobKind.INGEST,
+            completed_job_id=completed,
+            now=NOW,
+        )
+
+    assert following is not None and following.kind is JobKind.TRANSCRIBE
+    assert side == ()
+    assert JobKind.PREVIEW_MEDIA not in _job_kinds(workspace_id, user_id, project_id)
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize("finished", [JobKind.SOURCE_IMPORT, JobKind.TRANSCRIBE, JobKind.ANALYZE])
+def test_no_other_stage_admits_previews(engine: Engine, finished: JobKind) -> None:
+    """Only a finished ingest has a proxy and audio to draw from."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-other")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=finished)
+
+    _, side = _advance_with_side(workspace_id, user_id, project_id, completed, finished)
+
+    assert side == ()
+
+
+@pytest.mark.integration
+def test_a_deleted_project_gets_no_previews(engine: Engine) -> None:
+    """Deleted work stays deleted, decoration included."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-deleted")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=JobKind.INGEST)
+    with _api_session(workspace_id, user_id) as session:
+        session.execute(update(Project).where(Project.id == project_id).values(archived_at=NOW))
+
+    _, side = _advance_with_side(workspace_id, user_id, project_id, completed, JobKind.INGEST)
+
+    assert side == ()
+
+
+def _advance_with_side(
+    workspace_id: UUID, user_id: UUID, project_id: UUID, completed: UUID, kind: JobKind
+) -> tuple[object | None, tuple[JobSnapshot, ...]]:
+    """Advance and admit side stages in one worker transaction, as a finishing Job does."""
+    with _worker_session(workspace_id, user_id) as session:
+        policy = admission_policy(runtime_settings())
+        access = _access(session, user_id=user_id, workspace_id=workspace_id)
+        following = advance_after(
+            session,
+            policy=policy,
+            access=access,
+            project_id=project_id,
+            completed_kind=kind,
+            completed_job_id=completed,
+            now=NOW,
+        )
+        side = admit_side_stages(
+            session,
+            policy=policy,
+            access=access,
+            project_id=project_id,
+            completed_kind=kind,
+            completed_job_id=completed,
+            now=NOW,
+        )
+        return following, side

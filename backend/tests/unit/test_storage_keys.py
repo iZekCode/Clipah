@@ -2,11 +2,16 @@
 
 from __future__ import annotations
 
-from uuid import UUID
+from uuid import UUID, uuid4
 
 import pytest
 
-from clipah.assets.keys import derived_asset_key, generated_asset_key, source_upload_key
+from clipah.assets.keys import (
+    derived_asset_key,
+    generated_asset_key,
+    preview_media_key,
+    source_upload_key,
+)
 from clipah.models import AssetKind
 
 
@@ -106,3 +111,34 @@ def test_generated_asset_key_rejects_untrusted_identifiers_and_foreign_kinds() -
         )
     with pytest.raises(ValueError):
         generated_asset_key(**identifiers, kind=AssetKind.SOURCE)
+
+
+@pytest.mark.unit
+def test_preview_media_keys_live_beside_ingest_derivatives_and_accept_only_known_names() -> None:
+    """A preview key must stay inside its Project prefix so retention purges it with the rest."""
+    workspace_id, project_id, source_id = uuid4(), uuid4(), uuid4()
+
+    sheet = preview_media_key(
+        workspace_id=workspace_id,
+        project_id=project_id,
+        source_asset_id=source_id,
+        name="storyboard-v1/sheet-0000.jpg",
+    )
+    peaks = preview_media_key(
+        workspace_id=workspace_id,
+        project_id=project_id,
+        source_asset_id=source_id,
+        name="waveform-v1.bin",
+    )
+
+    prefix = f"workspaces/{workspace_id}/projects/{project_id}/derived/{source_id}/"
+    assert sheet == f"{prefix}storyboard-v1/sheet-0000.jpg"
+    assert peaks == f"{prefix}waveform-v1.bin"
+    for name in ("../escape.jpg", "storyboard-v1/sheet-1.jpg", "waveform-v2.bin", ""):
+        with pytest.raises(ValueError):
+            preview_media_key(
+                workspace_id=workspace_id,
+                project_id=project_id,
+                source_asset_id=source_id,
+                name=name,
+            )

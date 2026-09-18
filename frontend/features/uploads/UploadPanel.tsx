@@ -36,6 +36,9 @@ const KIND_LABELS: Record<string, string> = {
   analyze: 'Finding moments',
 }
 
+/** Work that decorates a Project without being a stage the member is waiting on. */
+const BACKGROUND_KINDS = new Set(['preview_media'])
+
 /** One Job of this Project, as the stream last described it. */
 export interface ProjectJob {
   jobId: string
@@ -412,6 +415,9 @@ function readJob(event: Event, projectId: string): ProjectJob | null {
   }
   const fields = payload as Record<string, unknown>
   if (typeof fields['jobId'] !== 'string' || fields['projectId'] !== projectId) {
+    return null
+  }
+  if (typeof fields['kind'] === 'string' && BACKGROUND_KINDS.has(fields['kind'])) {
     return null
   }
   return {

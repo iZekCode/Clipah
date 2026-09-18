@@ -5,6 +5,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { ClipStage } from './clipStage';
+import type { ClipOrder } from './clipOrder';
 
 export type BrowseClipCollectionApiV1ClipsGetParams = {
 projectId?: string | null;
@@ -15,5 +16,6 @@ stage?: ClipStage | null;
  */
 limit?: number;
 cursor?: string | null;
+order?: ClipOrder;
 workspace_id: string;
 };

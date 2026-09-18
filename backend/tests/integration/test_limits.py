@@ -584,13 +584,13 @@ def test_read_requests_are_limited_per_user_and_state_their_retry_delay(
     )
     browser = Browser(app)
     sign_in(browser, flow)
-    assert settings.read_requests_per_minute == 60
+    assert settings.read_requests_per_minute == 300
 
-    responses = [browser.get("/api/v1/workspaces") for _ in range(61)]
+    responses = [browser.get("/api/v1/workspaces") for _ in range(301)]
 
-    assert [response.status_code for response in responses[:60]] == [200] * 60
-    assert_error(responses[60], status_code=429, code="RATE_LIMITED")
-    assert int(responses[60].headers["Retry-After"]) > 0
+    assert [response.status_code for response in responses[:300]] == [200] * 300
+    assert_error(responses[300], status_code=429, code="RATE_LIMITED")
+    assert int(responses[300].headers["Retry-After"]) > 0
 
 
 @pytest.mark.integration
