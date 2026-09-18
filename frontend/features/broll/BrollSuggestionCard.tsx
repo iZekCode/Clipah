@@ -1,5 +1,6 @@
 'use client'
 
+import { Select } from '@/components/ui/select'
 import type { BrollSuggestionResponse, ProjectAssetResponse } from '@/lib/api/generated/model'
 
 import { ProvenancePopover } from './ProvenancePopover'
@@ -130,7 +131,7 @@ export function BrollSuggestionCard({
         {placed && swappable.length > 0 ? (
           <label className="flex items-center gap-1">
             <span className="sr-only">Replace this picture</span>
-            <select
+            <Select
               defaultValue=""
               disabled={busy}
               onChange={(event) => {
@@ -138,7 +139,7 @@ export function BrollSuggestionCard({
                   onReplace(event.target.value)
                 }
               }}
-              className="rounded-lg border bg-card px-2.5 py-1"
+              controlSize="sm"
             >
               <option value="">Replace this picture…</option>
               {swappable.map((asset) => (
@@ -146,7 +147,7 @@ export function BrollSuggestionCard({
                   {asset.kind} · {formatSeconds(asset.durationMs ?? 0)}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
         ) : null}
       </div>

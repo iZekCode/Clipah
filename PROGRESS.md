@@ -3517,3 +3517,88 @@ legacy publishing query form, still work.
   and real media, and publishing needs provider credentials; live-provider checks were not run.
 
 Required owner commit message: `feat: guided creator studio redesign`.
+
+## Post-rebuild extension — Signal Studio redesign
+
+Specified in `redesign-plan-v2.md` and planned in `docs/superpowers/plans/2026-09-17-signal-*.md`
+(index: `2026-09-17-signal-studio-redesign.md`). It replaces the Guided Creator Studio's light,
+violet look with "Signal": a dark graphite studio with one acid-lime accent, condensed display
+type, and media-first surfaces. Each plan is recorded below as it lands.
+
+### Signal Studio redesign — Plan 1, foundation (2026-09-18)
+
+**What landed.**
+
+- Tokens: RGB triplets in `app/globals.css` under the existing shadcn variable names, mirrored as
+  hex in `lib/design/tokens.ts`; `tests/design-tokens.test.ts` holds the stylesheet to the table
+  and proves WCAG contrast for every text/surface, text/fill, and control-border pair. Tailwind
+  gains the named type scale (`text-caption` … `text-hero`), `bg-stage`, `border-line-strong`,
+  6/4/2 px radii, `duration-fast|panel|dialog`, `ease-signal`, and `max-w-studio`; the scale is
+  registered with tailwind-merge so a size and a colour class both survive `cn()`.
+- Fonts: Archivo (variable weight and width) and JetBrains Mono, vendored under
+  `lib/design/fonts/` with their OFL licences and a `SOURCES.md` of commit, URLs, and digests,
+  loaded through `next/font/local`.
+- Light theme removed: `next-themes`, the theme provider, and the unused vendor sidebar, chart,
+  and `use-mobile` files. `tests/design-rules.test.ts` bans theme switching, HSL token wiring,
+  violet-family colour classes, and gradients, with a self-expiring allowlist of five files later
+  plans rebuild.
+- Primitives: `Button` (with `loading`), `IconButton` (name plus shortcut tooltip),
+  `SegmentedControl`, and native-styled `Select`, `Checkbox`, `Radio`, `Slider`; restyled
+  switch, input, tooltip, skeleton, dialog, sheet, and command. Every native select, checkbox,
+  radio, and range outside `components/ui` (45 controls in 25 files) now uses them, and an ESLint
+  `no-restricted-syntax` rule keeps it that way (proved with a probe file that failed lint twice,
+  then deleted).
+- Shared components: display-type `PageHeader`, dot-and-words `StatusBadge` with `StatusDot` and an
+  overlay appearance, left-aligned `EmptyState` with a bare icon, `ErrorNotice` with "Copy details"
+  and `Ref <requestId>`, restyled `LoadingState`, and `ItemMenu` moved to `components/ui`.
+- Toasts: `lib/notify.ts` (`success`, `info`, `failure`) over sonner, mounted once in the app
+  providers.
+- Shell: 64 px icon rail that pins to 220 px (remembered in `localStorage` under
+  `clipah.rail.pinned`, surviving blocked storage), Library disclosure, rail New project button,
+  top bar with a "Search or jump to…" trigger, account menu, phone tab bar with a Navigation
+  control; ⌘K / Ctrl K command palette (destinations, New project, workspace search opening the
+  backend's deep link); docked render queue with a Stop control per running job; and a
+  full-window drop target that opens New project with the dropped video and its suggested name.
+
+**Deliberate refinements of the spec.** Select, Checkbox, Radio, and Slider are native controls in
+Signal's skin rather than Radix widgets (tests and phones rely on the native behaviour);
+`ItemMenu` is kept; text-muted is `#8F8F98`, signal red `#FF5A50`, and a separate control-border
+token `#72727C` exists because the spec's first values failed contrast.
+
+**Test-environment fixes found on the way** (`frontend/vitest.setup.ts`):
+
+- jsdom answers `:modal` by recursing through `:fullscreen` (about 73 million matches for one
+  tooltip), so every Radix tooltip took seven seconds to open under user-event. The setup answers
+  `:modal`, `:popover-open`, and `:fullscreen` with `false`, which is accurate for jsdom.
+- Node 25 defines its own method-less `localStorage` global that hides jsdom's; the setup puts
+  jsdom's Storage back.
+- jsdom has no `scrollIntoView`, which cmdk calls; the setup adds a no-op.
+
+**Screenshots.** `docs/design/signal/before/` (baseline, 54 images) and
+`docs/design/signal/foundation/` (54 images), each 18 routes at 1440, 820, and 390 px, captured by
+the opt-in `e2e/design-screens.spec.ts`, which also fails any route that scrolls sideways; none
+did. The capture waits out the 60-per-minute read limit when a load is refused (a full run takes
+about five minutes until Plan 2 raises the limit). Seeding runs on the host and needs
+`CLIPAH_DATABASE_URL`, `CLIPAH_SESSION_SECRET`, and `CLIPAH_WORKER_DATABASE_URL` copied from the
+`api` and `worker-render` containers with the host rewritten to `127.0.0.1:55433`.
+
+**Verification.**
+
+- Frontend: `pnpm lint` and `pnpm typecheck` clean; `pnpm test` 484 passed in 33 files (443 at the
+  last recorded run; the new tests are `design-tokens`, `root-layout`, `design-rules`,
+  `ui-primitives`, `notify`, `shared-components`, `shell`, `command-palette`, and additions to
+  `jobs` and `projects`);
+  `pnpm build` passes and emits both vendored fonts.
+- Browser suite (Chromium and WebKit, production build of this tree in Compose, collaboration
+  off): 88 passed, 16 skipped, 6 failed. The skips are the previous 14 plus the opt-in
+  screenshot spec in each engine. The failures are the same as the last recorded run: the
+  invite-based `auth-projects` member-removal and `team-review` specs get `404` creating an
+  invitation because collaboration is off (they need `CLIPAH_COLLABORATION_ENABLED=true`), and
+  `clip-variants` "a generated variant is compared against one proxy" fails in both engines as
+  before. No spec needed a selector change for the new shell.
+- Screens checked by eye at 1440 px (Home, editor) and 390 px (Project): graphite surfaces, one
+  lime primary action per view, Archivo condensed titles, the icon rail and phone tab bar.
+- Not changed yet, by plan: media posters (Plan 3), the editor's own controls and millisecond
+  fields (Plan 5), and copy (Plan 6).
+
+Owner commit message: `feat: add signal studio foundation`.

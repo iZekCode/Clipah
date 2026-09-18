@@ -7,8 +7,8 @@ import { Clapperboard } from 'lucide-react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
-import { selectClassName } from '@/components/field'
 import { LoadingState } from '@/components/loading-state'
+import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { listCollectionApiV1ProjectsProjectIdCandidatesGet } from '@/lib/api/generated/candidates/candidates'
@@ -134,24 +134,24 @@ export function ClipList({ projectId }: { projectId: string }) {
         </p>
         <label className="text-xs text-muted-foreground">
           <span className="sr-only">Sort clips</span>
-          <select
+          <Select
             aria-label="Sort clips"
             value={sort}
             onChange={(event) => setSort(event.target.value as SortKey)}
-            className={selectClassName}
+            controlSize="sm"
           >
             {Object.entries(SORTS).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
-        <select
+        <Select
           aria-label="Filter by category"
           value={category}
           onChange={(event) => setCategory(event.target.value)}
-          className={selectClassName}
+          controlSize="sm"
         >
           <option value="all">Every category</option>
           {Object.values(ClipCategory).map((value) => (
@@ -159,19 +159,19 @@ export function ClipList({ projectId }: { projectId: string }) {
               {CATEGORY_LABELS[value] ?? value}
             </option>
           ))}
-        </select>
-        <select
+        </Select>
+        <Select
           aria-label="Maximum length"
           value={maxDurationMs}
           onChange={(event) => setMaxDurationMs(event.target.value)}
-          className={selectClassName}
+          controlSize="sm"
         >
           {LENGTHS.map(([value, label]) => (
             <option key={value} value={value}>
               {label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {shown.length === 0 ? (

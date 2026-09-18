@@ -2,10 +2,10 @@ import type { LucideIcon } from 'lucide-react'
 import type { ReactNode } from 'react'
 
 /**
- * Say what belongs here, why it is empty, and how to fill it.
+ * Say what belongs here and how to fill it, as an invitation rather than an apology.
  *
- * An empty page that only says "nothing here" leaves a creator guessing whether they did
- * something wrong; this always names the next step when there is one.
+ * Left-aligned and as wide as its region, so an empty grid still reads as the grid it will
+ * become. An icon, when given, is drawn bare beside the title.
  */
 export function EmptyState({
   icon: Icon,
@@ -22,18 +22,18 @@ export function EmptyState({
 }) {
   return (
     <div
-      className={`flex flex-col items-center justify-center rounded-xl border border-dashed bg-card/60 text-center ${
-        compact ? 'gap-2 px-4 py-8' : 'gap-3 px-6 py-14'
+      className={`flex flex-col items-start rounded-lg border border-dashed border-line-strong bg-card/40 ${
+        compact ? 'gap-2 px-4 py-5' : 'gap-3 px-6 py-8'
       }`}
     >
-      {Icon === undefined ? null : (
-        <span className="flex size-11 items-center justify-center rounded-full bg-accent text-accent-foreground">
-          <Icon aria-hidden="true" className="size-5" />
-        </span>
-      )}
-      <p className="text-base font-medium">{title}</p>
+      <p className="flex items-center gap-2 text-title">
+        {Icon === undefined ? null : (
+          <Icon aria-hidden="true" strokeWidth={1.75} className="size-5 text-muted-foreground" />
+        )}
+        {title}
+      </p>
       {description === undefined ? null : (
-        <p className="max-w-md text-sm text-muted-foreground">{description}</p>
+        <p className="max-w-xl text-small text-muted-foreground">{description}</p>
       )}
       {action === undefined ? null : <div className="pt-1">{action}</div>}
     </div>

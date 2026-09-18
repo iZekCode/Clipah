@@ -2,6 +2,7 @@ import { act, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
+import { RenderQueue } from '@/components/shell/render-queue'
 import { JobCenter } from '@/features/jobs/job-center'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
@@ -59,6 +60,46 @@ beforeEach(() => {
 })
 
 describe('the global job center', () => {
+  test('the render queue toggle says how much is running and docks the queue', async () => {
+    const user = userEvent.setup()
+    renderWithApi(
+      <RenderQueue count={2}>
+        <p>Queue body</p>
+      </RenderQueue>,
+    )
+
+    const toggle = screen.getByRole('button', { name: 'Activity, 2 running' })
+    expect(toggle).toHaveTextContent('2 running')
+    expect(screen.getByText('Queue body')).not.toBeVisible()
+
+    await user.click(toggle)
+
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByText('Queue body')).toBeVisible()
+  })
+
+  test('a running job can be stopped from the queue', async () => {
+    const user = userEvent.setup()
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [`POST /api/v1/jobs/${JOB_ID}/cancel`]: { status: 202, body: {} },
+    })
+    renderWithApi(
+      <WorkspaceProvider>
+        <JobCenter />
+      </WorkspaceProvider>,
+    )
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() => FakeEventSource.instances[0]?.emit('started', jobEvent({ kind: 'transcribe' })))
+
+    await user.click(await screen.findByRole('button', { name: 'Stop Transcribing' }))
+
+    expect(
+      api.calls.some((call) => call.method === 'POST' && call.path === `/api/v1/jobs/${JOB_ID}/cancel`),
+    ).toBe(true)
+  })
+
   test('subscribes once to the Workspace it is showing, carrying the Session cookie', async () => {
     signedInApi()
 

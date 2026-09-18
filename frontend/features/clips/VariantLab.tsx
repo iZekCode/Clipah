@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useRef, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select } from '@/components/ui/select'
 import type { ApiError } from '@/lib/api/client'
 import type {
   ClipVariantListResponse,
@@ -96,8 +98,7 @@ export function VariantLab({
         <legend className="sr-only">Lengths to offer</legend>
         {supported.map((duration) => (
           <label key={duration} className="flex items-center gap-1">
-            <input
-              type="checkbox"
+            <Checkbox
               value={duration}
               checked={durations.includes(duration)}
               onChange={(event) =>
@@ -113,17 +114,17 @@ export function VariantLab({
         ))}
         <label className="flex items-center gap-1">
           <span className="sr-only">Platform</span>
-          <select
+          <Select
             value={platform}
             onChange={(event) => setPlatform(event.target.value as Platform)}
-            className="rounded-lg border bg-card px-2.5 py-1"
+            controlSize="sm"
           >
             {PLATFORMS.map((value) => (
               <option key={value} value={value}>
                 {value.replaceAll('_', ' ')}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <button
           type="button"

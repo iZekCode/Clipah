@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import type { SoundTrackKind } from './store'
+import { Checkbox } from '@/components/ui/checkbox'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 /** How each lane describes itself in the panel. */
@@ -103,8 +104,7 @@ export function AudioPanel({
             <span className="font-mono text-muted-foreground">{track.id}</span>
             <span className="text-muted-foreground">{track.items.length} items</span>
             <label className="ml-auto flex items-center gap-1">
-              <input
-                type="checkbox"
+              <Checkbox
                 aria-label={`Lock ${track.id}`}
                 checked={lockedTrackIds.includes(track.id)}
                 onChange={() => onToggleLock(track.id)}

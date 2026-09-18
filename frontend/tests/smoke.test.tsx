@@ -7,7 +7,7 @@
  * and text that happens to contain HTML tags is shown as text.
  */
 
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
@@ -40,8 +40,8 @@ describe('dashboard shell', () => {
       </DashboardShell>,
     )
 
-    expect(screen.getByRole('navigation', { name: /workspace/i })).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute(
+    const rail = screen.getByRole('navigation', { name: 'Workspace' })
+    expect(within(rail).getByRole('link', { name: 'Projects' })).toHaveAttribute(
       'href',
       '/dashboard/projects',
     )

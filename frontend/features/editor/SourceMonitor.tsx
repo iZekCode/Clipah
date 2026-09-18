@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { timecode } from './Player'
 import { MIN_ITEM_MS } from './store'
+import { Slider } from '@/components/ui/slider'
 import type { CompositionV1, ProxyPlaybackResponse } from '@/lib/api/generated/model'
 
 /**
@@ -57,8 +58,7 @@ export function SourceMonitor({
 
       <label className="flex items-center gap-2 text-xs">
         Source position
-        <input
-          type="range"
+        <Slider
           aria-label="Source position"
           min={0}
           max={lengthMs}

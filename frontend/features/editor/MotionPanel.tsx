@@ -3,6 +3,7 @@
 import { useState } from 'react'
 
 import { MOTIONS, motionDefinition, motionFits } from './templates'
+import { Select } from '@/components/ui/select'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 type Overlay = CompositionV1['overlays'][number]
@@ -66,20 +67,20 @@ export function MotionPanel({
             <span className="font-mono">{target.id}</span>
             <label className="ml-auto flex items-center gap-1">
               Movement
-              <select
+              <Select
                 aria-label={`Movement of ${target.id}`}
                 value={target.motion}
                 onChange={(event) =>
                   choose(target.id, event.currentTarget.value as MotionPreset, target.durationMs)
                 }
-                className="rounded border px-1 py-1"
+                controlSize="sm"
               >
                 {MOTIONS.map((motion) => (
                   <option key={motion.preset} value={motion.preset}>
                     {motion.preset}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
           </li>
         ))}

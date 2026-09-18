@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import {
@@ -91,8 +92,7 @@ export function CampaignPanel({ editId, revision }: { editId: string; revision: 
         <legend className="text-xs text-muted-foreground">Destinations</legend>
         {PLATFORMS.map((platform) => (
           <label key={platform} className="mr-3 inline-flex items-center gap-1 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={platforms.includes(platform)}
               onChange={() => setPlatforms(toggle(platforms, platform))}
             />
@@ -105,8 +105,7 @@ export function CampaignPanel({ editId, revision }: { editId: string; revision: 
         <legend className="text-xs text-muted-foreground">Languages</legend>
         {LANGUAGES.map((language) => (
           <label key={language.value} className="mr-3 inline-flex items-center gap-1 text-sm">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={languages.includes(language.value)}
               onChange={() => setLanguages(toggle(languages, language.value))}
             />

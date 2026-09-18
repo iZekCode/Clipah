@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Radio } from '@/components/ui/radio'
 import { ExportList, PRESET_LABELS, exportsQueryKey } from '@/features/exports/export-list'
 import { ApiError } from '@/lib/api/client'
 import type { RenderPreset } from '@/lib/api/generated/model'
@@ -122,8 +123,7 @@ export function ExportDialog({
                         preset === entry ? 'border-primary bg-accent' : 'hover:bg-secondary'
                       }`}
                     >
-                      <input
-                        type="radio"
+                      <Radio
                         name="export-preset"
                         value={entry}
                         checked={preset === entry}

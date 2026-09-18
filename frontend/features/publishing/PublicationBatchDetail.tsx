@@ -90,7 +90,7 @@ export function PublicationBatchDetail({ batchId }: { batchId: string }) {
         <div role="alert" className="rounded-xl border border-destructive/30 bg-destructive/5 p-4">
           <p className="text-sm">{failure.message}</p>
           {failure.error instanceof ApiError && failure.error.requestId !== null ? (
-            <p className="text-xs text-muted-foreground">Request ID: {failure.error.requestId}</p>
+            <p className="font-mono text-caption text-subtle-foreground">Ref {failure.error.requestId}</p>
           ) : null}
         </div>
       )}

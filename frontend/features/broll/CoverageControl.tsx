@@ -1,5 +1,6 @@
 'use client'
 
+import { Select } from '@/components/ui/select'
 import type { BrollCoverage } from '@/lib/api/generated/model'
 
 /** How busy each coverage makes the finished cut, in the words a member reads. */
@@ -33,18 +34,18 @@ export function CoverageControl({
     <div className="flex flex-col gap-2">
       <label className="flex flex-col gap-1 text-xs">
         <span className="font-medium">Coverage</span>
-        <select
+        <Select
           value={coverage}
           disabled={!enabled || busy}
           onChange={(event) => onCoverage(event.target.value as BrollCoverage)}
-          className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary"
+          controlSize="sm"
         >
           {(Object.keys(COVERAGE_LABELS) as BrollCoverage[]).map((option) => (
             <option key={option} value={option}>
               {COVERAGE_LABELS[option]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
       <button
         type="button"

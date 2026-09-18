@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 
+import { Select } from '@/components/ui/select'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 type Overlay = CompositionV1['overlays'][number]
@@ -125,7 +126,7 @@ export function TextPanel({
               </label>
               <label className="flex items-center gap-1">
                 Where
-                <select
+                <Select
                   aria-label={`Placement of ${overlay.id}`}
                   value={overlay.placement}
                   onChange={(event) =>
@@ -133,14 +134,14 @@ export function TextPanel({
                       placement: event.currentTarget.value as TextOverlay['placement'],
                     })
                   }
-                  className="rounded border px-1 py-1"
+                  controlSize="sm"
                 >
                   {PLACEMENTS.map((placement) => (
                     <option key={placement} value={placement}>
                       {placement}
                     </option>
                   ))}
-                </select>
+                </Select>
               </label>
               <button
                 type="button"

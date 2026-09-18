@@ -7,7 +7,6 @@ import { useId, useState } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
-import { selectClassName } from '@/components/field'
 import { LoadingState } from '@/components/loading-state'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
@@ -18,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import type {
@@ -109,11 +109,11 @@ export function AssetBrowser() {
         <label htmlFor={projectFieldId} className="sr-only">
           Project
         </label>
-        <select
+        <Select
           id={projectFieldId}
           value={projectId}
           onChange={(event) => setProjectId(event.target.value)}
-          className={selectClassName}
+          controlSize="sm"
         >
           <option value="">All projects</option>
           {(projects.data?.projects ?? []).map((project) => (
@@ -121,22 +121,22 @@ export function AssetBrowser() {
               {project.name}
             </option>
           ))}
-        </select>
+        </Select>
         <label htmlFor={kindFieldId} className="sr-only">
           Type
         </label>
-        <select
+        <Select
           id={kindFieldId}
           value={kind}
           onChange={(event) => setKind(event.target.value as AssetKind | '')}
-          className={selectClassName}
+          controlSize="sm"
         >
           {KINDS.map((entry) => (
             <option key={entry.value} value={entry.value}>
               {entry.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       {assets.isPending ? (

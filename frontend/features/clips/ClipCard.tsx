@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { listCollectionApiV1BrandKitsGet } from '@/lib/api/generated/brand-kits/brand-kits'
@@ -256,8 +257,8 @@ function LookSelection({
       {looks.length === 0 ? null : (
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">Look</span>
-          <select
-            className="h-8 rounded-lg border bg-card px-2"
+          <Select
+            controlSize="sm"
             value={templateId}
             onChange={(event) => onTemplate(event.target.value)}
           >
@@ -267,14 +268,14 @@ function LookSelection({
                 {look.name} (v{look.version})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
       {brands.length === 0 ? null : (
         <label className="flex items-center gap-1 text-xs">
           <span className="text-muted-foreground">Brand</span>
-          <select
-            className="h-8 rounded-lg border bg-card px-2"
+          <Select
+            controlSize="sm"
             value={brandKitId}
             onChange={(event) => onBrandKit(event.target.value)}
           >
@@ -284,7 +285,7 @@ function LookSelection({
                 {kit.name} (v{kit.version})
               </option>
             ))}
-          </select>
+          </Select>
         </label>
       )}
     </>

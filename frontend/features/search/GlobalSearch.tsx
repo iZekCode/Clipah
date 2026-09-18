@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useMemo, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { listCollectionApiV1ProjectsGet } from '@/lib/api/generated/projects/projects'
@@ -205,14 +206,14 @@ function SearchFilters({
       )}
       <label className="space-y-1 text-sm">
         <span className="font-medium">Content type</span>
-        <select
+        <Select
           value={filters.types[0] ?? ''}
           onChange={(event) =>
             onChange({
               types: event.target.value === '' ? [] : [event.target.value as SearchEntityType],
             })
           }
-          className="w-full rounded-md border px-2 py-1"
+          wrapperClassName="w-full"
         >
           <option value="">Everything</option>
           {(Object.keys(TYPE_LABELS) as SearchEntityType[]).map((type) => (
@@ -220,15 +221,15 @@ function SearchFilters({
               {TYPE_LABELS[type]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <label className="space-y-1 text-sm">
         <span className="font-medium">Language</span>
-        <select
+        <Select
           value={filters.language}
           onChange={(event) => onChange({ language: event.target.value as SearchLanguage | '' })}
-          className="w-full rounded-md border px-2 py-1"
+          wrapperClassName="w-full"
         >
           <option value="">Any language</option>
           {(Object.keys(LANGUAGE_LABELS) as SearchLanguage[]).map((language) => (
@@ -236,20 +237,20 @@ function SearchFilters({
               {LANGUAGE_LABELS[language]}
             </option>
           ))}
-        </select>
+        </Select>
       </label>
 
       <label className="space-y-1 text-sm">
         <span className="font-medium">Export state</span>
-        <select
+        <Select
           value={filters.exportState}
           onChange={(event) => onChange({ exportState: event.target.value as ExportState | '' })}
-          className="w-full rounded-md border px-2 py-1"
+          wrapperClassName="w-full"
         >
           <option value="">Exported or not</option>
           <option value="exported">Exported</option>
           <option value="not_exported">Not exported</option>
-        </select>
+        </Select>
       </label>
 
       <label className="space-y-1 text-sm">
@@ -318,10 +319,10 @@ function ProjectFilter({
   return (
     <label className="space-y-1 text-sm">
       <span className="font-medium">Project</span>
-      <select
+      <Select
         value={selected}
         onChange={(event) => onSelect(event.target.value)}
-        className="w-full rounded-md border px-2 py-1"
+        wrapperClassName="w-full"
       >
         <option value="">Every Project</option>
         {(projects.data?.projects ?? []).map((project) => (
@@ -329,7 +330,7 @@ function ProjectFilter({
             {project.name}
           </option>
         ))}
-      </select>
+      </Select>
     </label>
   )
 }

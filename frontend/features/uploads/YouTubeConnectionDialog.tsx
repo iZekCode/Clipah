@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Checkbox } from '@/components/ui/checkbox'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { readCurrentUserApiV1MeGet } from '@/lib/api/generated/auth/auth'
@@ -135,8 +136,7 @@ export function YouTubeConnectionDialog() {
       </label>
 
       <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={understood}
           onChange={(event) => setUnderstood(event.currentTarget.checked)}
         />
@@ -144,8 +144,7 @@ export function YouTubeConnectionDialog() {
         restricted.
       </label>
       <label className="flex items-center gap-2 text-xs">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={owned}
           onChange={(event) => setOwned(event.currentTarget.checked)}
         />

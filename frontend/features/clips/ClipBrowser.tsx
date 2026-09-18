@@ -7,11 +7,11 @@ import { useId, useState } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
-import { selectClassName } from '@/components/field'
 import { LoadingState } from '@/components/loading-state'
 import { MediaCard, ProjectThumbnail } from '@/components/media-card'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge, type StatusTone } from '@/components/status-badge'
+import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import type {
@@ -107,11 +107,11 @@ export function ClipBrowser() {
           <label htmlFor={projectFieldId} className="sr-only">
             Project
           </label>
-          <select
+          <Select
             id={projectFieldId}
             value={projectId}
             onChange={(event) => setProjectId(event.target.value)}
-            className={selectClassName}
+            controlSize="sm"
           >
             <option value="">All projects</option>
             {(projects.data?.projects ?? []).map((project) => (
@@ -119,7 +119,7 @@ export function ClipBrowser() {
                 {project.name}
               </option>
             ))}
-          </select>
+          </Select>
           <form role="search" action="/dashboard/search" method="get" className="relative">
             <input type="hidden" name="type" value="clip" />
             <label htmlFor={searchFieldId} className="sr-only">

@@ -9,6 +9,8 @@ import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
 import { PageHeader } from '@/components/page-header'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select } from '@/components/ui/select'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -95,8 +97,7 @@ export function TemplateLibrary() {
       )}
 
       <label className="flex items-center gap-2 text-sm">
-        <input
-          type="checkbox"
+        <Checkbox
           checked={includeArchived}
           onChange={(event) => setIncludeArchived(event.target.checked)}
         />
@@ -165,8 +166,8 @@ export function TemplateLibrary() {
           </label>
           <label className="block space-y-1 text-sm">
             <span className="text-muted-foreground">Captions</span>
-            <select
-              className="h-10 w-full rounded-lg border border-input bg-card px-3"
+            <Select
+              wrapperClassName="w-full"
               value={captionMode}
               onChange={(event) =>
                 setCaptionMode(event.target.value as (typeof CAPTION_MODES)[number])
@@ -177,7 +178,7 @@ export function TemplateLibrary() {
                   {mode}
                 </option>
               ))}
-            </select>
+            </Select>
           </label>
           <button type="submit" className="h-10 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground shadow-sm hover:bg-primary/90">
             Publish look

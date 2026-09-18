@@ -4,6 +4,7 @@ import { useState } from 'react'
 
 import { timecode } from './Player'
 import { activeWordAt } from './store'
+import { Select } from '@/components/ui/select'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 type CaptionMode = CompositionV1['captions']['mode']
@@ -59,16 +60,16 @@ export function KaraokePanel({
         <h2 className="text-sm font-medium">Karaoke</h2>
         <label className="ml-auto flex items-center gap-1">
           Captions
-          <select
+          <Select
             aria-label="Caption mode"
             value={captions.mode}
             onChange={(event) => onMode(event.currentTarget.value as CaptionMode)}
-            className="rounded border px-1 py-0.5"
+            controlSize="sm"
           >
             <option value="off">Off</option>
             <option value="block">Block</option>
             <option value="karaoke">Karaoke</option>
-          </select>
+          </Select>
         </label>
       </div>
 

@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Select } from '@/components/ui/select'
 import { useSession } from '@/features/auth/session'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -120,9 +121,9 @@ export function TeamSettings() {
             {canManage && member.role !== 'owner' ? (
               <div className="flex flex-wrap items-center gap-2">
                 <label className="sr-only" htmlFor={`role-${member.userId}`}>Role for {member.displayName}</label>
-                <select id={`role-${member.userId}`} value={member.role} onChange={(event) => void changeRole(member.userId, event.target.value as WorkspaceRole)} className="rounded border bg-background p-2 text-sm">
+                <Select id={`role-${member.userId}`} value={member.role} onChange={(event) => void changeRole(member.userId, event.target.value as WorkspaceRole)}>
                   {ASSIGNABLE_ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
+                </Select>
                 {active.role === 'owner' ? <button type="button" onClick={() => void transfer(member.userId)} className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary">Transfer ownership</button> : null}
                 <button type="button" onClick={() => void remove(member.userId)} className="rounded-lg border bg-card px-2.5 py-1 text-xs hover:bg-secondary">Remove {member.displayName}</button>
               </div>
@@ -150,9 +151,9 @@ export function TeamSettings() {
           <label className="block text-sm" htmlFor="invite-email">Invite email</label>
           <input id="invite-email" type="email" required value={email} onChange={(event) => setEmail(event.target.value)} className="w-full rounded border bg-background p-2" />
           <label className="block text-sm" htmlFor="invite-role">Invite role</label>
-          <select id="invite-role" value={role} onChange={(event) => setRole(event.target.value as WorkspaceRole)} className="w-full rounded border bg-background p-2">
+          <Select id="invite-role" value={role} onChange={(event) => setRole(event.target.value as WorkspaceRole)} wrapperClassName="w-full">
             {ASSIGNABLE_ROLES.map((item) => <option key={item} value={item}>{item}</option>)}
-          </select>
+          </Select>
           <button type="submit" className="rounded bg-primary px-3 py-2 text-sm text-primary-foreground">Create invite</button>
           {invite === null ? null : (
             <div role="status" className="space-y-1">

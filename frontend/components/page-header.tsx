@@ -32,7 +32,7 @@ export function PageHeader({
       <div className="min-w-0 space-y-1.5">
         {crumbs.length === 0 ? null : (
           <nav aria-label="Breadcrumb">
-            <ol className="flex flex-wrap items-center gap-1 text-sm text-muted-foreground">
+            <ol className="flex flex-wrap items-center gap-1 text-caption font-medium uppercase tracking-wide text-subtle-foreground">
               {crumbs.map((crumb) => (
                 <li key={crumb.href} className="flex items-center gap-1">
                   <Link href={crumb.href} className="rounded hover:text-foreground">
@@ -44,9 +44,9 @@ export function PageHeader({
             </ol>
           </nav>
         )}
-        <h1 className="truncate text-2xl font-semibold tracking-tight sm:text-3xl">{title}</h1>
+        <h1 className="font-display truncate text-h1">{title}</h1>
         {description === undefined ? null : (
-          <p className="max-w-2xl text-sm text-muted-foreground">{description}</p>
+          <p className="max-w-2xl text-small text-muted-foreground">{description}</p>
         )}
         {meta === undefined ? null : (
           <div className="flex flex-wrap items-center gap-2 pt-1">{meta}</div>
@@ -77,11 +77,11 @@ export function Section({
     <section aria-labelledby={labelledBy} className="space-y-3">
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="space-y-0.5">
-          <h2 id={labelledBy} className="text-base font-semibold tracking-tight">
+          <h2 id={labelledBy} className="text-title">
             {title}
           </h2>
           {description === undefined ? null : (
-            <p className="text-sm text-muted-foreground">{description}</p>
+            <p className="text-small text-muted-foreground">{description}</p>
           )}
         </div>
         {actions}

@@ -4,11 +4,13 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState, type ReactNode } from 'react'
 
 import { DashboardShell } from '@/components/dashboard-shell'
+import { CommandPalette, useCommandPaletteShortcut } from '@/components/shell/command-palette'
 import { RequireSession } from '@/features/auth/require-session'
 import { useSession } from '@/features/auth/session'
 import { JobCenter } from '@/features/jobs/job-center'
-import { NewProjectButton, NewProjectProvider } from '@/features/projects/new-project'
-import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
+import { NewProjectButton, NewProjectProvider, useNewProject } from '@/features/projects/new-project'
+import { mayWriteProjects } from '@/features/workspaces/roles'
+import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
 import { logoutApiV1AuthLogoutPost } from '@/lib/api/generated/auth/auth'
 
@@ -33,6 +35,10 @@ function SignedInShell({ children }: { children: ReactNode }) {
   const session = useSession()
   const queryClient = useQueryClient()
   const [running, setRunning] = useState(0)
+  const [paletteOpen, setPaletteOpen] = useState(false)
+  const newProject = useNewProject()
+  const { active } = useWorkspaceScope()
+  useCommandPaletteShortcut(() => setPaletteOpen(true))
   const user = session.data
 
   const signOut = useCallback(() => {
@@ -58,10 +64,15 @@ function SignedInShell({ children }: { children: ReactNode }) {
       workspaceSwitcher={<WorkspaceSwitcher />}
       jobCenter={<JobCenter onActiveCountChange={setRunning} />}
       activeJobCount={running}
-      newProject={<NewProjectButton className="w-full" />}
+      newProject={<NewProjectButton appearance="rail" />}
       onSignOut={signOut}
+      onOpenCommandPalette={() => setPaletteOpen(true)}
+      onDropFile={
+        newProject !== null && mayWriteProjects(active.role) ? (file) => newProject.open(file) : undefined
+      }
     >
       {children}
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} onNewProject={() => newProject?.open()} />
     </DashboardShell>
   )
 }

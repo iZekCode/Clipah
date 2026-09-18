@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import {
   createContext,
   useContext,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -16,6 +17,7 @@ import {
 import { ErrorNotice } from '@/components/error-notice'
 import { Field, inputClassName } from '@/components/field'
 import { Button } from '@/components/ui/button'
+import { IconButton } from '@/components/ui/icon-button'
 import {
   Dialog,
   DialogContent,
@@ -39,7 +41,8 @@ type Source = 'upload' | 'youtube'
 
 /** Open the one New project dialog from anywhere inside the Workspace frame. */
 interface NewProjectControl {
-  open: () => void
+  /** Open New project, with the file already chosen when one was dropped or picked. */
+  open: (file?: File) => void
 }
 
 const NewProjectContext = createContext<NewProjectControl | null>(null)
@@ -50,13 +53,34 @@ const NewProjectContext = createContext<NewProjectControl | null>(null)
  */
 export function NewProjectProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false)
-  const control = useMemo(() => ({ open: () => setOpen(true) }), [])
+  const [initialFile, setInitialFile] = useState<File | null>(null)
+  const control = useMemo<NewProjectControl>(
+    () => ({
+      open: (file?: File) => {
+        setInitialFile(file ?? null)
+        setOpen(true)
+      },
+    }),
+    [],
+  )
   return (
     <NewProjectContext.Provider value={control}>
       {children}
-      <NewProjectDialog open={open} onOpenChange={setOpen} />
+      <NewProjectDialog
+        open={open}
+        initialFile={initialFile}
+        onOpenChange={(next) => {
+          setOpen(next)
+          if (!next) setInitialFile(null)
+        }}
+      />
     </NewProjectContext.Provider>
   )
+}
+
+/** Open New project from anywhere inside the Workspace frame, optionally with a file. */
+export function useNewProject(): NewProjectControl | null {
+  return useContext(NewProjectContext)
 }
 
 /**
@@ -66,9 +90,12 @@ export function NewProjectProvider({ children }: { children: ReactNode }) {
 export function NewProjectButton({
   size = 'default',
   className,
+  appearance = 'button',
 }: {
   size?: 'default' | 'sm' | 'lg'
   className?: string
+  /** `rail` is the square lime-plus control at the top of the navigation rail. */
+  appearance?: 'button' | 'rail'
 }) {
   const { active } = useWorkspaceScope()
   const shared = useContext(NewProjectContext)
@@ -76,6 +103,20 @@ export function NewProjectButton({
 
   if (!mayWriteProjects(active.role)) {
     return null
+  }
+  if (appearance === 'rail') {
+    return (
+      <>
+        <IconButton
+          label="New project"
+          variant="secondary"
+          icon={<Plus strokeWidth={2} className="text-primary" />}
+          onClick={() => (shared === null ? setOpen(true) : shared.open())}
+          tooltipSide="right"
+        />
+        {shared === null ? <NewProjectDialog open={open} onOpenChange={setOpen} /> : null}
+      </>
+    )
   }
   return (
     <>
@@ -112,9 +153,12 @@ type Phase =
 export function NewProjectDialog({
   open,
   onOpenChange,
+  initialFile = null,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
+  /** A file chosen before the dialog opened, such as one dropped on the window. */
+  initialFile?: File | null
 }) {
   const { active } = useWorkspaceScope()
   const queryClient = useQueryClient()
@@ -161,6 +205,15 @@ export function NewProjectDialog({
       setName(suggestedName(picked.name))
     }
   }
+
+  useEffect(() => {
+    if (open && initialFile !== null) {
+      setSource('upload')
+      pickFile(initialFile)
+    }
+    // Only a newly offered file is picked; edits after that belong to the member.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialFile])
 
   /** Create the Project once per submission, however many times the media step is retried. */
   async function ensureProject(projectName: string, kind: SourceKind): Promise<string> {

@@ -3,11 +3,7 @@ import { cloneElement } from 'react'
 
 /** The one look every text input shares. */
 export const inputClassName =
-  'h-10 w-full rounded-lg border border-input bg-card px-3 text-sm shadow-sm placeholder:text-muted-foreground disabled:opacity-60'
-
-/** The one look every select shares. */
-export const selectClassName =
-  'h-9 rounded-lg border border-input bg-card px-2.5 text-sm shadow-sm disabled:opacity-60'
+  'h-9 w-full rounded-md border border-input bg-secondary px-3 text-small text-foreground placeholder:text-subtle-foreground disabled:opacity-60'
 
 /**
  * A labelled form control with optional help text.
@@ -28,7 +24,7 @@ export function Field({
   const helpId = `${id}-help`
   return (
     <div className="space-y-1.5">
-      <label htmlFor={id} className="block text-sm font-medium">
+      <label htmlFor={id} className="block text-small font-medium">
         {label}
       </label>
       {cloneElement(children, {
@@ -36,7 +32,7 @@ export function Field({
         ...(help === undefined ? {} : { 'aria-describedby': helpId }),
       })}
       {help === undefined ? null : (
-        <p id={helpId} className="text-xs text-muted-foreground">
+        <p id={helpId} className="text-caption text-muted-foreground">
           {help}
         </p>
       )}

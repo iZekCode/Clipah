@@ -1,11 +1,11 @@
 import 'fake-indexeddb/auto'
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { RequireSession } from '@/features/auth/require-session'
 import { ProjectDetail } from '@/features/projects/project-detail'
-import { NewProjectButton } from '@/features/projects/new-project'
+import { NewProjectButton, NewProjectProvider, useNewProject } from '@/features/projects/new-project'
 import { ProjectsPanel } from '@/features/projects/projects-panel'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { WorkspaceSwitcher } from '@/features/workspaces/workspace-switcher'
@@ -17,6 +17,13 @@ import { currentUser, project, workspace } from './support/fixtures'
 const ME = 'GET /api/v1/me'
 const WORKSPACES = 'GET /api/v1/workspaces'
 const PROJECTS = 'GET /api/v1/projects'
+
+const opener = { current: null as ReturnType<typeof useNewProject> }
+function OpenerProbe() {
+  opener.current = useNewProject()
+  return null
+}
+
 const pathname = vi.hoisted(() => ({ current: '/dashboard' }))
 const push = vi.hoisted(() => vi.fn())
 
@@ -83,8 +90,9 @@ describe('the signed-in shell', () => {
       </DashboardShell>,
     )
 
-    expect(screen.getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page')
-    expect(screen.getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
+    const rail = screen.getByRole('navigation', { name: 'Workspace' })
+    expect(within(rail).getByRole('link', { name: 'Projects' })).toHaveAttribute('aria-current', 'page')
+    expect(within(rail).getByRole('link', { name: 'Home' })).not.toHaveAttribute('aria-current')
   })
 
   test('keeps its navigation reachable on a narrow screen behind one labelled control', async () => {
@@ -95,13 +103,15 @@ describe('the signed-in shell', () => {
       </DashboardShell>,
     )
 
-    const toggle = screen.getByRole('button', { name: /navigation/i })
+    const toggle = within(screen.getByRole('navigation', { name: 'Primary' })).getByRole('button', {
+      name: 'Navigation',
+    })
     expect(toggle).toHaveAttribute('aria-expanded', 'false')
 
     await user.click(toggle)
 
     expect(toggle).toHaveAttribute('aria-expanded', 'true')
-    expect(screen.getByRole('navigation', { name: /workspace/i })).toBeVisible()
+    expect(screen.getByRole('navigation', { name: 'Workspace' })).toBeInTheDocument()
   })
 })
 
@@ -361,6 +371,49 @@ describe('one project', () => {
 })
 
 describe('starting a project', () => {
+  test('a video dropped anywhere opens New project with the file and its suggested name', async () => {
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace({ role: 'owner' })] } },
+    })
+    renderWithApi(
+      <WorkspaceProvider>
+        <NewProjectProvider>
+          <DashboardShell user={currentUser()} workspaceSwitcher={null} jobCenter={null} onDropFile={(file) => opener.current?.open(file)}>
+            <OpenerProbe />
+          </DashboardShell>
+        </NewProjectProvider>
+      </WorkspaceProvider>,
+    )
+    const file = new File(['x'], 'Episode_42_interview.mp4', { type: 'video/mp4' })
+    // The shell mounts once the Workspace has loaded; only then is anything listening.
+    await screen.findByRole('navigation', { name: 'Workspace' })
+
+    fireEvent.dragEnter(window, { dataTransfer: { types: ['Files'], files: [file] } })
+    expect(await screen.findByText('Drop to start a project')).toBeInTheDocument()
+    fireEvent.drop(window, { dataTransfer: { types: ['Files'], files: [file] } })
+
+    expect(await screen.findByRole('dialog', { name: 'New project' })).toBeInTheDocument()
+    expect(screen.getByDisplayValue('Episode 42 interview')).toBeInTheDocument()
+    expect(screen.getByText('Episode_42_interview.mp4')).toBeInTheDocument()
+  })
+
+  test('a dropped file that is not a video is refused without opening anything', async () => {
+    const onDropFile = vi.fn()
+    renderWithApi(
+      <DashboardShell user={currentUser()} workspaceSwitcher={null} jobCenter={null} onDropFile={onDropFile}>
+        <p>Body</p>
+      </DashboardShell>,
+    )
+    const file = new File(['x'], 'notes.pdf', { type: 'application/pdf' })
+
+    fireEvent.dragEnter(window, { dataTransfer: { types: ['Files'], files: [file] } })
+    fireEvent.drop(window, { dataTransfer: { types: ['Files'], files: [file] } })
+
+    expect(onDropFile).not.toHaveBeenCalled()
+    expect(screen.queryByText('Drop to start a project')).not.toBeInTheDocument()
+  })
+
   test('the create request carries an idempotency key and the name the member chose', async () => {
     // The backend requires one on this route, so a browser that omits it cannot create a
     // Project at all — a refusal no stubbed test would ever see.

@@ -66,14 +66,14 @@ export function ItemMenu({
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((current) => !current)}
-        className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-secondary hover:text-foreground"
+        className="flex size-8 items-center justify-center rounded-md text-muted-foreground hover:bg-secondary hover:text-foreground"
       >
         {icon ?? <MoreHorizontal aria-hidden="true" className="size-4" />}
       </button>
       <div
         id={panelId}
         hidden={!open}
-        className="absolute right-0 top-9 z-30 min-w-40 rounded-lg border bg-popover p-1 shadow-lg"
+        className="absolute right-0 top-9 z-30 min-w-44 rounded-lg border border-line-strong bg-popover p-1 shadow-xl"
       >
         {actions.map((action) => (
           <button
@@ -85,7 +85,7 @@ export function ItemMenu({
               action.onSelect()
             }}
             className={cn(
-              'block w-full rounded-md px-3 py-2 text-left text-sm hover:bg-secondary disabled:opacity-50',
+              'block w-full rounded-md px-3 py-2 text-left text-small hover:bg-secondary disabled:opacity-50',
               action.destructive === true ? 'text-destructive' : '',
             )}
           >

@@ -4,6 +4,9 @@ import { useQueries, useQuery } from '@tanstack/react-query'
 import { useMemo, useRef, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Radio } from '@/components/ui/radio'
+import { Select } from '@/components/ui/select'
 import { useSession } from '@/features/auth/session'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -243,8 +246,7 @@ export function PublicationComposer({
           return (
             <div key={account.id} className="space-y-1">
               <label className="flex items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={selected.includes(account.id)}
                   disabled={unhealthy !== null}
                   onChange={() => toggle(account)}
@@ -294,8 +296,7 @@ export function PublicationComposer({
       <fieldset className="surface space-y-3 p-5">
         <legend className="px-1 text-sm font-semibold">When to publish</legend>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
+          <Radio
             name="publish-timing"
             checked={timing === 'now'}
             onChange={() => setTiming('now')}
@@ -303,8 +304,7 @@ export function PublicationComposer({
           <span>Publish now</span>
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="radio"
+          <Radio
             name="publish-timing"
             checked={timing === 'schedule'}
             onChange={() => setTiming('schedule')}
@@ -324,17 +324,16 @@ export function PublicationComposer({
             </label>
             <label className="block space-y-1 text-sm font-medium">
               <span>Time zone</span>
-              <select
+              <Select
                 value={timezone}
                 onChange={(event) => setTimezone(event.target.value)}
-                className="h-10 rounded-lg border border-input bg-card px-3"
               >
                 {timezoneOptions().map((zone) => (
                   <option key={zone} value={zone}>
                     {zone}
                   </option>
                 ))}
-              </select>
+              </Select>
             </label>
             {scheduleIsPast ? <p className="text-sm">Choose a time in the future.</p> : null}
           </div>

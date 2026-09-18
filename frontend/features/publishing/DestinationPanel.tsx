@@ -1,5 +1,7 @@
 'use client'
 
+import { Checkbox } from '@/components/ui/checkbox'
+import { Radio } from '@/components/ui/radio'
 import type { SocialAccountResponse } from '@/lib/api/generated/model'
 
 import { providerLabel } from './gates'
@@ -78,7 +80,7 @@ function YouTubeFields({
       <fieldset className="space-y-1">
         <legend className="text-sm font-medium">Visibility</legend>
         {(['private', 'unlisted', 'public'] as const).map((value) => (
-          <Radio
+          <RadioOption
             key={value}
             group="youtube-visibility"
             label={value === 'private' ? 'Private' : value === 'unlisted' ? 'Unlisted' : 'Public'}
@@ -173,7 +175,7 @@ function TikTokFields({
       <fieldset className="space-y-1">
         <legend className="text-sm font-medium">Who can see this video</legend>
         {choices.privacyLevelOptions.map((option) => (
-          <Radio
+          <RadioOption
             key={option}
             group="tiktok-privacy"
             label={tiktokPrivacyLabel(option)}
@@ -234,7 +236,7 @@ function TikTokFields({
             ['branded_content', 'Branded content for another brand'],
           ] as Array<[CommercialContent, string]>
         ).map(([value, label]) => (
-          <Radio
+          <RadioOption
             key={value}
             group="tiktok-commercial"
             label={label}
@@ -307,7 +309,7 @@ function Text({
   )
 }
 
-function Radio({
+function RadioOption({
   group,
   label,
   value,
@@ -324,8 +326,7 @@ function Radio({
 }) {
   return (
     <label className="flex items-center gap-2 text-sm font-normal">
-      <input
-        type="radio"
+      <Radio
         name={group}
         value={value}
         checked={checked}
@@ -350,8 +351,7 @@ function Check({
 }) {
   return (
     <label className="flex items-center gap-2 text-sm font-normal">
-      <input
-        type="checkbox"
+      <Checkbox
         checked={checked}
         disabled={disabled}
         onChange={(event) => onToggle(event.target.checked)}
@@ -379,14 +379,14 @@ function YesNo({
   return (
     <fieldset className="space-y-1">
       <legend className="text-sm font-medium">{legend}</legend>
-      <Radio
+      <RadioOption
         group={group}
         label={yesLabel}
         value="yes"
         checked={value === 'yes'}
         onSelect={() => onSelect('yes')}
       />
-      <Radio
+      <RadioOption
         group={group}
         label={noLabel}
         value="no"

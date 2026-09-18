@@ -2,6 +2,8 @@
 
 import { useState } from 'react'
 
+import { Checkbox } from '@/components/ui/checkbox'
+
 import type { SoundTrackKind } from './store'
 
 /**
@@ -92,8 +94,7 @@ export function TimelineToolbar({
       </div>
 
       <label className="flex items-center gap-1">
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label="Snap to edges"
           checked={snapping}
           onChange={(event) => onSnapping(event.currentTarget.checked)}
@@ -101,8 +102,7 @@ export function TimelineToolbar({
         Snap
       </label>
       <label className="flex items-center gap-1">
-        <input
-          type="checkbox"
+        <Checkbox
           aria-label="Ripple edits"
           checked={ripple}
           onChange={(event) => onRipple(event.currentTarget.checked)}

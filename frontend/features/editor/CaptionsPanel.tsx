@@ -3,6 +3,8 @@
 import { useState } from 'react'
 
 import { timecode } from './Player'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Select } from '@/components/ui/select'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 /** The weights every shipped font face carries. */
@@ -72,7 +74,7 @@ export function CaptionsPanel({
       <div className="flex flex-wrap items-center gap-3 text-xs">
         <label className="flex items-center gap-1">
           Font
-          <select
+          <Select
             aria-label="Caption font"
             value={captions.style.fontFamily}
             onChange={(event) =>
@@ -81,14 +83,14 @@ export function CaptionsPanel({
                   .value as CompositionV1['captions']['style']['fontFamily'],
               })
             }
-            className="rounded border px-1 py-0.5"
+            controlSize="sm"
           >
             {FONTS.map((font) => (
               <option key={font} value={font}>
                 {font}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex items-center gap-1">
           Size
@@ -114,7 +116,7 @@ export function CaptionsPanel({
         </label>
         <label className="flex items-center gap-1">
           Alignment
-          <select
+          <Select
             aria-label="Caption alignment"
             value={captions.style.align}
             onChange={(event) =>
@@ -122,16 +124,15 @@ export function CaptionsPanel({
                 align: event.currentTarget.value as CompositionV1['captions']['style']['align'],
               })
             }
-            className="rounded border px-1 py-0.5"
+            controlSize="sm"
           >
             <option value="left">Left</option>
             <option value="center">Centre</option>
             <option value="right">Right</option>
-          </select>
+          </Select>
         </label>
         <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
+          <Checkbox
             aria-label="Caption background"
             checked={captions.style.backgroundEnabled}
             onChange={(event) => onStyle({ backgroundEnabled: event.currentTarget.checked })}
@@ -140,22 +141,21 @@ export function CaptionsPanel({
         </label>
         <label className="flex items-center gap-1">
           Weight
-          <select
+          <Select
             aria-label="Caption weight"
             value={captions.style.weight}
             onChange={(event) => onStyle({ weight: Number(event.currentTarget.value) })}
-            className="rounded border px-1 py-0.5"
+            controlSize="sm"
           >
             {WEIGHTS.map((weight) => (
               <option key={weight} value={weight}>
                 {weight}
               </option>
             ))}
-          </select>
+          </Select>
         </label>
         <label className="flex items-center gap-1">
-          <input
-            type="checkbox"
+          <Checkbox
             aria-label="Caption italic"
             checked={captions.style.italic}
             onChange={(event) => onStyle({ italic: event.currentTarget.checked })}
@@ -164,7 +164,7 @@ export function CaptionsPanel({
         </label>
         <label className="flex items-center gap-1">
           Decoration
-          <select
+          <Select
             aria-label="Caption decoration"
             value={captions.style.decoration}
             onChange={(event) =>
@@ -173,12 +173,12 @@ export function CaptionsPanel({
                   .value as CompositionV1['captions']['style']['decoration'],
               })
             }
-            className="rounded border px-1 py-0.5"
+            controlSize="sm"
           >
             <option value="none">None</option>
             <option value="underline">Underline</option>
             <option value="strikethrough">Strikethrough</option>
-          </select>
+          </Select>
         </label>
         <label className="flex items-center gap-1">
           Letter spacing

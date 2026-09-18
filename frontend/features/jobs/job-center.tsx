@@ -5,6 +5,8 @@ import { useEffect, useState } from 'react'
 
 import { StatusBadge, type StatusTone } from '@/components/status-badge'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
+import { cancelApiV1JobsJobIdCancelPost } from '@/lib/api/generated/jobs/jobs'
+import { notify } from '@/lib/notify'
 
 /** Every event type a Job appends to its own history. */
 export const JOB_EVENT_TYPES = [
@@ -126,34 +128,49 @@ export function JobCenter({
   // Newest work first: what a creator just started is what they are looking for.
   const ordered = [...jobs].reverse()
 
+  async function stop(job: AnnouncedJob): Promise<void> {
+    try {
+      await cancelApiV1JobsJobIdCancelPost(job.jobId, { workspace_id: active.id })
+    } catch (error) {
+      notify.failure(error)
+    }
+  }
+
   return (
     <section aria-label="Job center" className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-semibold">Activity</h2>
-        <span className="text-xs text-muted-foreground">
+        <h2 className="text-title">Activity</h2>
+        <span className="font-mono text-caption text-subtle-foreground">
           {running === 0 ? 'All caught up' : `${running} running`}
         </span>
       </div>
       {jobs.length === 0 ? (
-        <p className="text-xs text-muted-foreground">Nothing is running.</p>
+        <p className="text-small text-muted-foreground">Nothing is running.</p>
       ) : (
         <ul className="space-y-2">
           {ordered.map((job) => (
-            <li key={job.jobId} className="space-y-1.5 rounded-lg border bg-card px-3 py-2.5 text-xs">
+            <li key={job.jobId} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5">
               <div className="flex items-center justify-between gap-2">
-                <p className="font-medium">{stageLabel(job)}</p>
-                <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>
-                  {statusLabel(job.status)}
-                </StatusBadge>
+                <p className="text-small font-medium">{stageLabel(job)}</p>
+                <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>{statusLabel(job.status)}</StatusBadge>
               </div>
-              {job.projectId === null ? null : (
-                <Link
-                  href={`/dashboard/projects/${job.projectId}`}
-                  className="font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  Open project
-                </Link>
-              )}
+              <div className="flex items-center gap-3 text-caption">
+                {job.projectId === null ? null : (
+                  <Link href={`/dashboard/projects/${job.projectId}`} className="font-medium text-primary hover:underline">
+                    Open project
+                  </Link>
+                )}
+                {TERMINAL_STATUSES.has(job.status) || job.status === 'cancel_requested' ? null : (
+                  <button
+                    type="button"
+                    onClick={() => void stop(job)}
+                    aria-label={`Stop ${stageLabel(job)}`}
+                    className="font-medium text-muted-foreground hover:text-destructive"
+                  >
+                    Stop
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

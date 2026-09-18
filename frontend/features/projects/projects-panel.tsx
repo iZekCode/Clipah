@@ -7,12 +7,12 @@ import { useState, type FormEvent } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { Field, inputClassName } from '@/components/field'
-import { ItemMenu } from '@/components/item-menu'
 import { LoadingState } from '@/components/loading-state'
 import { MediaCard, ProjectThumbnail } from '@/components/media-card'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import { ItemMenu } from '@/components/ui/item-menu'
 import {
   Dialog,
   DialogContent,

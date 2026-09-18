@@ -4,11 +4,12 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useState, type FormEvent } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
-import { Field, inputClassName, selectClassName } from '@/components/field'
+import { Field, inputClassName } from '@/components/field'
 import { LoadingState } from '@/components/loading-state'
 import { Section } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import { Select } from '@/components/ui/select'
 import { WORKSPACES_QUERY_KEY, useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import {
@@ -115,14 +116,14 @@ function WorkspaceForm({ workspace }: { workspace: WorkspaceResponse }) {
         <input value={name} maxLength={120} onChange={(event) => setName(event.target.value)} className={inputClassName} />
       </Field>
       <Field label="Who may publish">
-        <select
+        <Select
           value={policy}
           onChange={(event) => setPolicy(event.target.value as PublishingRolePolicy)}
-          className={`${selectClassName} h-10 w-full`}
+          wrapperClassName="w-full"
         >
           <option value="owner_admin_editor">Owners, admins, and editors</option>
           <option value="owner_admin">Owners and admins only</option>
-        </select>
+        </Select>
       </Field>
       <div className="flex items-center gap-3 sm:col-span-2">
         <Button type="submit" disabled={unchanged || save.isPending}>

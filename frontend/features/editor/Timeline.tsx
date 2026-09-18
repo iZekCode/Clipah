@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 
 import { timecode } from './Player'
 import { snap, snapTargets, snapThresholdMs } from './store'
+import { Slider } from '@/components/ui/slider'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 /** How far apart the zoom levels are, in pixels per second. */
@@ -176,8 +177,7 @@ export function Timeline({
         </button>
         <label className="ml-auto flex items-center gap-2 text-xs">
           Playhead
-          <input
-            type="range"
+          <Slider
             aria-label="Scrub the clip"
             min={0}
             max={composition.durationMs}
