@@ -315,7 +315,15 @@ def _workspace_event_cursor(event: JobEventRecord) -> str:
 
 def _workspace_event_frame(event: JobEventRecord) -> str:
     """Render one Workspace-wide event, naming the Job it belongs to."""
-    data = json.dumps({**event.payload, "jobId": str(event.job_id), "sequence": event.sequence})
+    data = json.dumps(
+        {
+            **event.payload,
+            "jobId": str(event.job_id),
+            "kind": event.kind,
+            "projectId": None if event.project_id is None else str(event.project_id),
+            "sequence": event.sequence,
+        }
+    )
     return (
         f"id: {_workspace_event_cursor(event)}\nevent: {event.event_type.value}\ndata: {data}\n\n"
     )

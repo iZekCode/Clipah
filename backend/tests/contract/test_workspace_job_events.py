@@ -22,6 +22,7 @@ from clipah.jobs.admission import admission_policy
 from clipah.jobs.models import JobEventType
 from clipah.jobs.use_cases import create_job, start_job, succeed_job
 from clipah.models import (
+    Job,
     JobKind,
     Project,
     PublishingRolePolicy,
@@ -66,6 +67,26 @@ def test_the_workspace_stream_replays_every_job_it_paid_for(
         str(first),
         str(second),
     ]
+
+
+@pytest.mark.integration
+def test_every_workspace_event_names_its_kind_of_work_and_project(
+    engine: Engine, clean_database: None
+) -> None:
+    """A job center labels each row from the frame alone, including replayed history."""
+    del clean_database
+    clock = Clock(NOW)
+    browser, workspace_id = _signed_in_workspace(clock)
+    user_id = _owner_of(engine, workspace_id)
+    job_id = _finished_job(workspace_id, user_id, clock, key="workspace-named")
+    with _api_session(workspace_id, user_id) as session:
+        project_id = session.scalars(select(Job.project_id).where(Job.id == job_id)).one()
+
+    frames = browser.stream(f"{STREAM_PATH}?workspace_id={workspace_id}", limit=3)
+
+    payloads = [json.loads(frame.data) for frame in frames]
+    assert [payload["kind"] for payload in payloads] == ["ingest"] * 3
+    assert [payload["projectId"] for payload in payloads] == [str(project_id)] * 3
 
 
 @pytest.mark.integration

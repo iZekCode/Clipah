@@ -23,13 +23,20 @@ export const JOB_EVENT_TYPES = [
 
 const TERMINAL_STATUSES = new Set(['succeeded', 'failed', 'canceled'])
 
+/** The steps inside a Job, in plain words. A step not named here is never shown raw. */
 const STAGE_LABELS: Record<string, string> = {
-  queued: 'Queued',
   importing: 'Importing',
   transcribing: 'Transcribing',
   analyzing: 'Finding moments',
   rendering: 'Rendering',
   publishing: 'Publishing',
+  download: 'Downloading the video',
+  probe: 'Reading the video',
+  proxy: 'Making a preview copy',
+  transcription_audio: 'Extracting the audio',
+  thumbnail: 'Making a thumbnail',
+  upload: 'Saving',
+  render: 'Rendering',
 }
 
 /** What each kind of work is called in plain words. */
@@ -159,7 +166,12 @@ export function JobCenter({
               )}
               <div className="min-w-0 flex-1 space-y-2">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-small font-medium">{stageLabel(job)}</p>
+                  <div className="min-w-0">
+                    <p className="text-small font-medium">{stageLabel(job)}</p>
+                    {stepLabel(job) === null ? null : (
+                      <p className="text-caption text-muted-foreground">{stepLabel(job)}</p>
+                    )}
+                  </div>
                   <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>{statusLabel(job.status)}</StatusBadge>
                 </div>
                 <div className="flex items-center gap-3 text-caption">
@@ -188,12 +200,16 @@ export function JobCenter({
   )
 }
 
-/** Name the work being done, or what the work was once there is nothing left to do. */
+/** Name the kind of work, never an internal identifier. */
 function stageLabel(job: AnnouncedJob): string {
-  if (TERMINAL_STATUSES.has(job.status)) {
-    return JOB_KIND_LABELS[job.kind] ?? job.kind
-  }
-  return STAGE_LABELS[job.stage] ?? JOB_KIND_LABELS[job.kind] ?? job.stage
+  return JOB_KIND_LABELS[job.kind] ?? 'Background work'
+}
+
+/** The step a running Job is on, when it has plain words and says more than the title. */
+function stepLabel(job: AnnouncedJob): string | null {
+  if (TERMINAL_STATUSES.has(job.status)) return null
+  const step = STAGE_LABELS[job.stage]
+  return step === undefined || step === stageLabel(job) ? null : step
 }
 
 function statusLabel(status: string): string {
@@ -229,7 +245,7 @@ function readJob(data: unknown): AnnouncedJob | null {
   return {
     jobId,
     projectId: typeof projectId === 'string' ? projectId : null,
-    kind: typeof kind === 'string' ? kind : 'job',
+    kind: typeof kind === 'string' ? kind : '',
     status: typeof status === 'string' ? status : 'running',
     stage: typeof stage === 'string' ? stage : '',
     progress: typeof progress === 'number' ? progress : 0,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -110,10 +111,19 @@ class JobRepository:
                 tuple_(*order)
                 > tuple_(literal(after.created_at), literal(after.job_id), literal(after.sequence))
             )
-        events = self._session.scalars(
-            select(JobEvent).where(*conditions).order_by(*order).limit(limit)
+        # Each row names its Job's kind and Project, so a job center can label replayed
+        # history without a second read per Job.
+        rows = self._session.execute(
+            select(JobEvent, Job.kind, Job.project_id)
+            .join(Job, Job.id == JobEvent.job_id)
+            .where(*conditions)
+            .order_by(*order)
+            .limit(limit)
         ).all()
-        return [_event_record(event) for event in events]
+        return [
+            replace(_event_record(event), kind=kind.value, project_id=project_id)
+            for event, kind, project_id in rows
+        ]
 
 
 def snapshot_of(job: Job) -> JobSnapshot:

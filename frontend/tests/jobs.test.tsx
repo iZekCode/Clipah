@@ -154,6 +154,46 @@ describe('the global job center', () => {
     expect(await screen.findByText('Preparing previews')).toBeInTheDocument()
   })
 
+  test('names running work by what it is, with the step in plain words beneath', async () => {
+    signedInApi()
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <JobCenter />
+      </WorkspaceProvider>,
+    )
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() =>
+      FakeEventSource.instances[0]?.emit('progress', jobEvent({ kind: 'ingest', stage: 'proxy' })),
+    )
+
+    expect(await screen.findByText('Preparing video')).toBeInTheDocument()
+    expect(screen.getByText('Making a preview copy')).toBeInTheDocument()
+    expect(screen.queryByText('proxy')).not.toBeInTheDocument()
+  })
+
+  test('never shows an internal step name it has no words for', async () => {
+    signedInApi()
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <JobCenter />
+      </WorkspaceProvider>,
+    )
+
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+    act(() =>
+      FakeEventSource.instances[0]?.emit(
+        'progress',
+        jobEvent({ kind: 'analyze', stage: 'analyze_window_failed' }),
+      ),
+    )
+
+    expect(await screen.findByText('Finding moments')).toBeInTheDocument()
+    expect(screen.queryByText(/analyze_window_failed/)).not.toBeInTheDocument()
+  })
+
   test('keeps a finished job in this Workspace history instead of dropping it', async () => {
     signedInApi()
 

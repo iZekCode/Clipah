@@ -113,6 +113,9 @@ class JobEventRecord:
     event_type: JobEventType
     payload: dict[str, Any]
     created_at: datetime
+    # Filled only by the Workspace-wide replay, whose rows mix every kind of Job.
+    kind: str | None = None
+    project_id: UUID | None = None
 
 
 @dataclass(frozen=True, slots=True)
