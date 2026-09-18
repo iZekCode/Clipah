@@ -11,6 +11,8 @@
 export const CSRF_HEADER = 'X-CSRF-Token'
 export const CURRENT_REVISION_HEADER = 'X-Clipah-Current-Revision'
 export const CSRF_COOKIE_NAMES = ['__Host-clipah_csrf', 'clipah_csrf'] as const
+/** The Session cookie: `__Host-` prefixed in production, plain locally. It is HttpOnly, so only the server can see it. */
+export const SESSION_COOKIE_NAMES = ['__Host-clipah_session', 'clipah_session'] as const
 const UNSAFE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const UNKNOWN_ERROR_CODE = 'UNKNOWN_ERROR'
 const UNKNOWN_ERROR_MESSAGE = 'Something went wrong. Please try again.'

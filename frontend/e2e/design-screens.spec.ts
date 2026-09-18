@@ -25,6 +25,7 @@ test.skip(PHASE === undefined, 'set CLIPAH_CAPTURE_SCREENS=<folder> to capture s
 
 test('every route renders without sideways scrolling at each review width', async ({
   page,
+  browser,
   browserName,
 }) => {
   test.skip(browserName !== 'chromium', 'screenshots are captured once, in Chromium')
@@ -71,17 +72,23 @@ test('every route renders without sideways scrolling at each review width', asyn
     ['editor', `/editor/${editId}`],
   ]
 
+  // A signed-in visitor to `/` is sent to the dashboard, so public pages are shot signed out.
+  const anonymous = await (await browser.newContext({ baseURL: SITE })).newPage()
+  const PUBLIC = new Set(['landing', 'signin', 'demo'])
+
   for (const width of WIDTHS) {
-    await page.setViewportSize({ width, height: width === 390 ? 844 : 900 })
     for (const [name, path] of routes) {
-      await visit(page, path)
-      await page.screenshot({ path: `${OUTPUT}/${name}-${width}.png`, fullPage: true })
-      const overflow = await page.evaluate(
+      const shot = PUBLIC.has(name) ? anonymous : page
+      await shot.setViewportSize({ width, height: width === 390 ? 844 : 900 })
+      await visit(shot, path)
+      await shot.screenshot({ path: `${OUTPUT}/${name}-${width}.png`, fullPage: true })
+      const overflow = await shot.evaluate(
         () => document.documentElement.scrollWidth - window.innerWidth,
       )
       expect(overflow, `${name} at ${width}px scrolls sideways`).toBeLessThanOrEqual(0)
     }
   }
+  await anonymous.context().close()
 
   // Opt-in: Home's largest contentful paint, which only means something on a production build.
   if (process.env.CLIPAH_MEASURE_LCP === '1') {

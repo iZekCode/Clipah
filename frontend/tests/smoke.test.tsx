@@ -11,10 +11,10 @@ import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-import LandingPage from '@/app/page'
 import { ClipOptionsForm } from '@/components/clip-options-form'
 import { DashboardShell } from '@/components/dashboard-shell'
 import { ErrorNotice } from '@/components/error-notice'
+import { LandingPage } from '@/components/landing-page'
 import { ApiError, apiFetch, CSRF_HEADER } from '@/lib/api/client'
 
 import { expectAccessible } from './support/axe'
