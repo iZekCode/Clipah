@@ -141,6 +141,23 @@ def test_previews_are_recorded_once_and_a_redelivery_reuses_them(engine: Engine)
 
 
 @pytest.mark.integration
+def test_inputs_recorded_under_other_identities_are_found_by_their_storage_keys(
+    engine: Engine,
+) -> None:
+    """Rows restored by hand keep ingest's key layout even when their identities are random."""
+    context, source_id = _seed(
+        engine, suffix=f"preview-restored-{uuid4().hex[:8]}", derived_ids=False
+    )
+    maker = StaticMaker()
+
+    PreviewMediaStageRunner(maker_factory=lambda _settings: maker)(context)
+
+    assert len(maker.inputs) == 1
+    assert maker.inputs[0].proxy_key.endswith(f"/derived/{source_id}/proxy")
+    assert maker.inputs[0].audio_key.endswith(f"/derived/{source_id}/transcription_audio")
+
+
+@pytest.mark.integration
 def test_a_project_without_ingest_outputs_fails_terminally(engine: Engine) -> None:
     """Previews of a source ingest never finished would be previews of nothing."""
     context, _ = _seed(engine, suffix=f"preview-missing-{uuid4().hex[:8]}", derivatives=False)
@@ -199,7 +216,9 @@ def test_a_conflicting_existing_sheet_rolls_back_the_whole_set(engine: Engine) -
     assert waveform is None
 
 
-def _seed(engine: Engine, *, suffix: str, derivatives: bool = True) -> tuple[JobContext, UUID]:
+def _seed(
+    engine: Engine, *, suffix: str, derivatives: bool = True, derived_ids: bool = True
+) -> tuple[JobContext, UUID]:
     """Create one running PREVIEW_MEDIA Job and the source, proxy, and audio ingest recorded."""
     user_id, workspace_id = provision_identity(engine, suffix=suffix)
     project_id, job_id, source_id = uuid4(), uuid4(), uuid4()
@@ -249,7 +268,7 @@ def _seed(engine: Engine, *, suffix: str, derivatives: bool = True) -> tuple[Job
         if derivatives:
             rows += [
                 dict(
-                    id=uuid5(source_id, "proxy"),
+                    id=uuid5(source_id, "proxy") if derived_ids else uuid4(),
                     kind=AssetKind.PROXY,
                     source_type=AssetSourceType.DERIVED,
                     storage_key=f"{prefix}/derived/{source_id}/proxy",
@@ -262,7 +281,7 @@ def _seed(engine: Engine, *, suffix: str, derivatives: bool = True) -> tuple[Job
                     audio_codec="aac",
                 ),
                 dict(
-                    id=uuid5(source_id, "transcription_audio"),
+                    id=uuid5(source_id, "transcription_audio") if derived_ids else uuid4(),
                     kind=AssetKind.TRANSCRIPTION_AUDIO,
                     source_type=AssetSourceType.DERIVED,
                     storage_key=f"{prefix}/derived/{source_id}/transcription_audio",

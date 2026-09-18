@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from functools import lru_cache
-from uuid import uuid5
+from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from clipah.assets.ingest import (
     IngestIntegrityError,
     SourceDownloadError,
 )
+from clipah.assets.keys import derived_asset_key
 from clipah.assets.preview_builder import (
     PreviewInputs,
     PreviewMediaBuilder,
@@ -95,13 +96,11 @@ class PreviewMediaStageRunner:
             if len(sources) != 1:
                 raise TerminalJobError(INPUT_MISSING_CODE)
             source = sources[0]
-            proxy = session.get(Asset, uuid5(source.id, AssetKind.PROXY.value))
-            audio = session.get(Asset, uuid5(source.id, AssetKind.TRANSCRIPTION_AUDIO.value))
+            proxy = _derivative(session, context, source.id, AssetKind.PROXY)
+            audio = _derivative(session, context, source.id, AssetKind.TRANSCRIPTION_AUDIO)
             if (
                 proxy is None
                 or audio is None
-                or proxy.project_id != context.project_id
-                or audio.project_id != context.project_id
                 or proxy.width is None
                 or proxy.height is None
                 or proxy.duration_ms is None
@@ -159,6 +158,33 @@ class PreviewMediaStageRunner:
                 if artifact.asset_id not in existing:
                     session.add(_asset_row(context, artifact))
             session.flush()
+
+
+def _derivative(
+    session: Session, context: JobContext, source_id: UUID, kind: AssetKind
+) -> Asset | None:
+    """Find one ingest derivative of a source by the storage key ingest always writes it under.
+
+    Ingest also derives the row identity from the source, but rows restored by hand keep the
+    key layout while carrying other identities; the key is the part both always share.
+    """
+    key = derived_asset_key(
+        workspace_id=context.workspace_id,
+        project_id=context.project_id,
+        source_asset_id=source_id,
+        kind=kind,
+    )
+    return session.scalar(
+        select(Asset)
+        .where(
+            Asset.workspace_id == context.workspace_id,
+            Asset.project_id == context.project_id,
+            Asset.kind == kind,
+            Asset.storage_key == key,
+        )
+        .order_by(Asset.created_at, Asset.id)
+        .limit(1)
+    )
 
 
 def _matches(row: Asset, artifact: IngestArtifact) -> bool:

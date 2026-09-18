@@ -3657,7 +3657,18 @@ status element, which already exists and made the assertion race under a full ru
   20 skipped, 92.89% coverage.
 - Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (486 passed, twice), `pnpm build`.
 - Live: the Compose stack was rebuilt and `0023` applied to the application database. A dry-run
-  backfill of the owner's Workspace reported five Projects `would_admit` and created no Job. The
-  real backfill has not been run; it waits for the owner's approval.
+  backfill of the owner's Workspace reported five Projects `would_admit` and created no Job. With
+  the owner's approval the real backfill admitted all five: four succeeded (59 sheets at
+  1600×900, the largest 253 KB, and four waveforms, the largest 76 KB), and one sheet opened from
+  MinIO shows a correct 10 × 10 grid of real frames. The fifth Project (`806e1f6b…`) failed with
+  `PREVIEW_MEDIA_INPUT_MISSING`: it has no ingest Job, and its source, proxy, and audio rows share
+  one creation instant and carry random identifiers rather than `uuid5(source, kind)`. These rows
+  were recreated, not written by ingest, so the runner's lookup by derived identity cannot find
+  them, although their storage keys follow the normal layout. The runner now finds the proxy and
+  transcription audio by the storage key ingest always writes them under (a new test seeds
+  derivatives with random identities), and `--retry-failed` then gave that Project 20 sheets
+  (largest 188 KB) and its waveform. All five Projects now have previews; the first failed Job
+  stays in the history as the record of that attempt. Backend suite after the change: 2,958
+  passed, 20 skipped, 92.89% coverage.
 
 Owner commit message: `feat: derive storyboard and waveform previews`.
