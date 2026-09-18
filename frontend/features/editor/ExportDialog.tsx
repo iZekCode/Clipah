@@ -128,7 +128,7 @@ export function ExportDialog({
                         value={entry}
                         checked={preset === entry}
                         onChange={() => setPreset(entry)}
-                        className="mt-1 accent-[hsl(var(--primary))]"
+                        className="mt-1"
                       />
                       <span>
                         <span className="block text-sm font-medium">
