@@ -3757,3 +3757,81 @@ that does not add another request.
   changes without new requests.
 
 Owner commit message: `feat: show media across the studio`.
+
+### Signal Studio redesign — Plan 4, project page and review mode (2026-09-18)
+
+**What landed.**
+
+- `lib/media/transcript.ts`: `joinWords`, `transcriptSegments` (breaks at a sentence end or a
+  new speaker), `overlaps`, and `transcriptWindow` (words before, inside, and after a range).
+  `features/media/use-transcript.ts` reads a Project's transcript once per visit.
+- `features/clips/`:
+  - `use-open-edit.ts` is the one "open this candidate's Edit" mutation.
+  - `use-project-candidates.ts` reads the whole exposed candidate set, every page, under the
+    existing cache key. The moments list, the Project page, and review mode share it.
+  - `ScoreBars` shows the seven dimensions as labelled bars.
+  - `WhyThisMoment` is a side sheet with the reason, payoff, excerpt, score bars, context
+    dependencies, visual opportunities, tags, and the look and brand choice (`LookSelection`
+    moved here unchanged).
+  - `MomentCard` has a 9:16 poster that swaps for the bounded preview, the rank, category,
+    length, score, hook, and reason. Context warnings stay on the card. It carries Edit clip,
+    Preview clip, Why this moment, and an optional "Show in source".
+  - `ClipList` renders `MomentCard`s in a 2/3/4-column grid and exposes `selectedId`/`onSelect`.
+  - `ClipCard.tsx` is deleted; `formatDuration` callers use `formatClock`.
+- `features/projects/source-column.tsx` is a sticky proxy player plus the transcript with every
+  moment's range underlined. Choosing a moment marks its lines (`aria-current`), scrolls to them,
+  and seeks the player; choosing a line seeks the player. It also owns the `?t=` search deep link.
+- The Project page:
+  - The header's primary action follows the Project's state. It is "Add media" (created or
+    failed; it opens the upload panel's file picker through the new `fileInputId`), nothing
+    while processing, or "Review moments" with a secondary "Open exports" (ready).
+  - The next-step card and `projectNextStep` are gone.
+  - Processing Projects show the upload panel beside the source.
+  - Ready Projects show moments beside the source and transcript.
+  - Tabs use `url-tabs`.
+- Review mode at `/dashboard/projects/[projectId]/review`:
+  - A theater with the ranked moments list (hidden on phones, which get Previous and Next), a
+    9:16 player that plays exactly the moment and stops at its end (optional loop), and the
+    hook, reason, warnings, surrounding transcript, and score.
+  - The current moment lives in `?moment=`.
+  - Keys: Space, J, K, E or Enter, Esc, and `?` (the shortcut sheet). They are inert while a
+    text field has focus or a dialog is open, and Enter on a focused control stays with that
+    control.
+  - Nothing is saved.
+- The journey now goes through review mode. Home's "Ready to review" reel links to
+  `…/review?moment=<id>`, and suggested tiles in Clips carry a "Review" link. Clips with an Edit
+  keep "Continue editing".
+
+**Task 20 guarantees, restated.** The payoff, the seven score dimensions, and the tags moved from
+the card into "Why this moment", one click away. That still satisfies Task 20: the score is never
+shown without a way to its dimensions, and the reason stays on the card. Context warnings remain
+on the card itself, where a reviewer cannot miss them, and every model-written field still renders
+as text. The whole exposed set is read before any sort or filter is offered, and a 404 still reads
+as "No clips to review yet", now in review mode too. The clip-list tests open the sheet to find
+what moved.
+
+**Deviations from the plan.**
+
+- `?t=` is read through `useSearchParams`, not `window.location`, because the content-search
+  tests drive it that way.
+- A Project that is not ready shows the source column when a `?t=` link opened it, so a search
+  result still plays at its timecode.
+- Review mode answers a 404 or an empty set with "No clips to review yet" rather than a bare
+  sentence.
+- The brand-campaign tests that chose a look through `ClipCard` now render `WhyThisMoment`,
+  where that choice moved.
+- The review scenario also waits for the shortcut sheet to close before pressing `e`.
+
+**Verification.**
+
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (543 passed), and `pnpm build` (the new
+  route is `/dashboard/projects/[projectId]/review`).
+- Browser suite (chromium and webkit), after restarting the Compose stack: 90 passed, 16 skipped,
+  6 failed. The new review scenario passes in both engines. The failures are the recorded
+  baseline: the invite specs (collaboration is off) and `clip-variants` "compared against one
+  proxy", each in both engines.
+- Screenshots in `docs/design/signal/review/` (the review route added to the screenshot spec),
+  with no sideways scroll. The seeded proxy has no playable picture, so the review player shows
+  an empty stage.
+
+Owner commit message: `feat: add moments-first project page and review mode`.

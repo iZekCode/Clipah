@@ -48,39 +48,3 @@ export function projectIsProcessing(status: string): boolean {
     status === ProjectStatus.analyzing
   )
 }
-
-/** The next useful thing to do with a Project, decided only by its durable state. */
-export interface NextStep {
-  title: string
-  description: string
-  action: 'add-media' | 'follow' | 'review' | 'retry'
-}
-
-export function projectNextStep(status: string): NextStep {
-  if (status === ProjectStatus.created) {
-    return {
-      title: 'Add your video',
-      description: 'Upload a file or import a public YouTube link to get started.',
-      action: 'add-media',
-    }
-  }
-  if (status === ProjectStatus.failed) {
-    return {
-      title: 'Processing stopped',
-      description: 'Something went wrong with this video. Add it again to retry.',
-      action: 'retry',
-    }
-  }
-  if (status === ProjectStatus.ready) {
-    return {
-      title: 'Choose your moments',
-      description: 'Review the suggested moments and open the ones you like in the editor.',
-      action: 'review',
-    }
-  }
-  return {
-    title: 'Processing your video',
-    description: 'You can leave this page — the work continues and shows up here when it is done.',
-    action: 'follow',
-  }
-}

@@ -68,11 +68,14 @@ export function UploadPanel({
   projectId,
   addMedia = true,
   onJob,
+  fileInputId,
 }: {
   projectId: string
   /** Whether this Project still needs its video; a processed Project only shows its work. */
   addMedia?: boolean
   onJob?: (job: ProjectJob) => void
+  /** The file input's id, so a page action elsewhere can open the same picker. */
+  fileInputId?: string
 }) {
   const { active } = useWorkspaceScope()
 
@@ -89,6 +92,7 @@ export function UploadPanel({
       workspaceId={active.id}
       addMedia={addMedia}
       onJob={onJob}
+      fileInputId={fileInputId}
     />
   )
 }
@@ -98,13 +102,16 @@ function SubmissionPanel({
   workspaceId,
   addMedia,
   onJob,
+  fileInputId,
 }: {
   projectId: string
   workspaceId: string
   addMedia: boolean
   onJob?: (job: ProjectJob) => void
+  fileInputId?: string
 }) {
-  const fieldId = useId()
+  const generatedId = useId()
+  const fieldId = fileInputId ?? generatedId
   const [uploading, setUploading] = useState<UploadProgress | null>(null)
   const [uploadId, setUploadId] = useState<string | null>(null)
   const [failure, setFailure] = useState<unknown>(null)

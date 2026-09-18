@@ -171,7 +171,7 @@ describe('Home', () => {
     const reel = await screen.findByRole('list', { name: 'Ready to review' })
     expect(within(reel).getByRole('link', { name: 'The surprising opening' })).toHaveAttribute(
       'href',
-      '/dashboard/clips/99999999-9999-4999-8999-999999999999',
+      '/dashboard/projects/44444444-4444-4444-8444-444444444444/review?moment=99999999-9999-4999-8999-999999999999',
     )
   })
 

@@ -208,14 +208,21 @@ function ClipTile({ clip }: { clip: ClipSummaryResponse }) {
         </span>
       }
       footer={
-        clip.editId === null ? null : (
+        clip.editId !== null ? (
           <Link
             href={`/editor/${clip.editId}`}
             className="text-caption font-semibold text-primary hover:underline"
           >
             Continue editing
           </Link>
-        )
+        ) : clip.stage === 'suggested' ? (
+          <Link
+            href={`/dashboard/projects/${clip.projectId}/review?moment=${clip.id}`}
+            className="text-caption font-semibold text-primary hover:underline"
+          >
+            Review
+          </Link>
+        ) : null
       }
     />
   )

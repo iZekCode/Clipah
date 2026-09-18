@@ -9,7 +9,7 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ClipCard } from '@/features/clips/ClipCard'
+import { MomentCard } from '@/features/clips/MomentCard'
 import { EditorScreen } from '@/features/editor/EditorScreen'
 import {
   AUTOSAVE_DEBOUNCE_MS,
@@ -707,7 +707,9 @@ describe('editor screen', () => {
     api.set(created, { status: 201, body: edit() })
     renderWithApi(
       <WorkspaceProvider>
-        <ClipCard candidate={candidate()} />
+        <ul>
+          <MomentCard candidate={candidate()} />
+        </ul>
       </WorkspaceProvider>,
     )
 

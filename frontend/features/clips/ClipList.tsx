@@ -1,7 +1,6 @@
 'use client'
 
-import { useInfiniteQuery } from '@tanstack/react-query'
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 
 import { Clapperboard } from 'lucide-react'
 
@@ -9,14 +8,10 @@ import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
 import { Select } from '@/components/ui/select'
-import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
-import type { ApiError } from '@/lib/api/client'
-import { listCollectionApiV1ProjectsProjectIdCandidatesGet } from '@/lib/api/generated/candidates/candidates'
-import { ClipCategory, type CandidatePageResponse, type CandidateResponse } from '@/lib/api/generated/model'
+import { ClipCategory, type CandidateResponse } from '@/lib/api/generated/model'
 
-import { ClipCard } from './ClipCard'
-
-const PAGE_SIZE = 100
+import { CATEGORY_LABELS, MomentCard } from './MomentCard'
+import { useProjectCandidates } from './use-project-candidates'
 
 /** The orders a reviewer may put the exposed clips in. */
 const SORTS = {
@@ -36,18 +31,6 @@ const LENGTHS = [
   ['90000', 'Up to 90 seconds'],
 ] as const
 
-/** What each analysis category is called in the filter. */
-const CATEGORY_LABELS: Record<string, string> = {
-  story: 'Story',
-  insight: 'Insight',
-  how_to: 'How-to',
-  opinion: 'Opinion',
-  question_answer: 'Question and answer',
-  humour: 'Humour',
-  data: 'Data',
-  announcement: 'Announcement',
-}
-
 /**
  * Review the moments the analysis proposed, before anything has been rendered.
  *
@@ -56,40 +39,21 @@ const CATEGORY_LABELS: Record<string, string> = {
  * analysis decided. The set is small by design — the ranking policy exposes a bounded
  * number of candidates — so reading it whole costs one or two requests.
  */
-export function ClipList({ projectId }: { projectId: string }) {
-  const { active } = useWorkspaceScope()
+export function ClipList({
+  projectId,
+  selectedId = null,
+  onSelect,
+}: {
+  projectId: string
+  selectedId?: string | null
+  onSelect?: (candidate: CandidateResponse) => void
+}) {
   const [sort, setSort] = useState<SortKey>('rank')
   const [category, setCategory] = useState<string>('all')
   const [maxDurationMs, setMaxDurationMs] = useState<string>('any')
 
-  const clips = useInfiniteQuery<CandidatePageResponse, ApiError>({
-    queryKey: ['/api/v1/projects/candidates', active.id, projectId],
-    queryFn: ({ pageParam, signal }) =>
-      listCollectionApiV1ProjectsProjectIdCandidatesGet(
-        projectId,
-        {
-          workspace_id: active.id,
-          limit: PAGE_SIZE,
-          ...(typeof pageParam === 'string' ? { cursor: pageParam } : {}),
-        },
-        { signal },
-      ),
-    initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.nextCursor,
-    retry: false,
-  })
-
-  const { hasNextPage, isFetchingNextPage, fetchNextPage } = clips
-  useEffect(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage()
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage])
-
-  const listed = useMemo(
-    () => clips.data?.pages.flatMap((page) => page.candidates) ?? [],
-    [clips.data],
-  )
+  const { candidates: listed, query: clips } = useProjectCandidates(projectId)
+  const { hasNextPage } = clips
   const shown = useMemo(
     () => arrange(listed, { sort, category, maxDurationMs }),
     [listed, sort, category, maxDurationMs],
@@ -129,7 +93,7 @@ export function ClipList({ projectId }: { projectId: string }) {
   return (
     <section aria-label="Clips" className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <p className="mr-auto text-sm text-muted-foreground">
+        <p className="mr-auto text-small text-muted-foreground">
           {listed.length} suggested {listed.length === 1 ? 'moment' : 'moments'}, best first.
         </p>
         <label className="text-xs text-muted-foreground">
@@ -177,9 +141,14 @@ export function ClipList({ projectId }: { projectId: string }) {
       {shown.length === 0 ? (
         <EmptyState compact title="No clips match those filters" description="Try another category or a longer maximum length." />
       ) : (
-        <ul aria-label="Ranked clips" className="grid gap-4 xl:grid-cols-2">
+        <ul aria-label="Ranked clips" className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
           {shown.map((clip) => (
-            <ClipCard key={clip.id} candidate={clip} />
+            <MomentCard
+              key={clip.id}
+              candidate={clip}
+              selected={clip.id === selectedId}
+              onSelect={onSelect === undefined ? undefined : () => onSelect(clip)}
+            />
           ))}
         </ul>
       )}

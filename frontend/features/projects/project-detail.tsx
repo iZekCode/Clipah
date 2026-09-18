@@ -3,37 +3,34 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { Clapperboard, History, Scissors } from 'lucide-react'
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
-import { useCallback, useState, type ReactNode, type SyntheticEvent } from 'react'
+import { useCallback, useState } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
-import { DesignedFrame } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
+import { Button } from '@/components/ui/button'
+import { TabList, TabPanel, useUrlTab } from '@/components/url-tabs'
 import { ClipList } from '@/features/clips/ClipList'
-import { formatDuration } from '@/features/clips/ClipCard'
+import { useProjectCandidates } from '@/features/clips/use-project-candidates'
 import { ExportList } from '@/features/exports/export-list'
 import { JOB_KIND_LABELS } from '@/features/jobs/job-center'
 import { UploadPanel, type ProjectJob } from '@/features/uploads/UploadPanel'
+import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import type {
+  CandidateResponse,
   ClipPageResponse,
   ProjectResponse,
-  ProxyPlaybackResponse,
 } from '@/lib/api/generated/model'
-import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
 import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
 import { browseClipCollectionApiV1ClipsGet } from '@/lib/api/generated/studio/studio'
+import { formatClock } from '@/lib/media/time'
 
-import {
-  projectIsProcessing,
-  projectNextStep,
-  projectStatusLabel,
-  projectStatusTone,
-} from './status-labels'
+import { SourceColumn, useRequestedMomentMs } from './source-column'
+import { projectIsProcessing, projectStatusLabel, projectStatusTone } from './status-labels'
 
 const TABS = [
   { id: 'moments', label: 'Moments' },
@@ -43,6 +40,7 @@ const TABS = [
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
+const TAB_IDS = TABS.map((entry) => entry.id)
 
 /**
  * Show one Project of the active Workspace.
@@ -71,12 +69,17 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
 }
 
 function LoadedProject({ project, onChanged }: { project: ProjectResponse; onChanged: () => void }) {
-  const parameters = useSearchParams()
-  const requestedTab = parameters?.get('tab') ?? null
-  const [tab, setTab] = useState<TabId>(isTab(requestedTab) ? requestedTab : 'moments')
+  const [tab, choose] = useUrlTab<TabId>(TAB_IDS, 'moments')
   const [jobs, setJobs] = useState<ProjectJob[]>([])
+  const [selected, setSelected] = useState<CandidateResponse | null>(null)
   const queryClient = useQueryClient()
   const { active } = useWorkspaceScope()
+  const requestedMs = useRequestedMomentMs()
+  const ready = project.status === 'ready'
+  const { candidates: moments } = useProjectCandidates(project.id, { enabled: ready })
+  const needsMedia = project.status === 'created' || project.status === 'failed'
+  const processing = projectIsProcessing(project.status)
+  const fileInputId = `project-${project.id}-file`
 
   // Every job event for this Project may have moved its durable state, so the Project and
   // what hangs off it are read again rather than guessed at from the event.
@@ -89,22 +92,14 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
       )
       if (['succeeded', 'failed', 'canceled'].includes(job.status)) {
         onChanged()
-        void queryClient.invalidateQueries({ queryKey: ['/api/v1/projects/candidates', active.id, project.id] })
+        void queryClient.invalidateQueries({
+          queryKey: ['/api/v1/projects/candidates', active.id, project.id],
+        })
         void queryClient.invalidateQueries({ queryKey: ['/api/v1/exports', active.id] })
       }
     },
     [active.id, onChanged, project.id, queryClient],
   )
-
-  function choose(next: TabId) {
-    setTab(next)
-    const url = new URL(window.location.href)
-    url.searchParams.set('tab', next)
-    window.history.replaceState(window.history.state, '', url.toString())
-  }
-
-  const step = projectNextStep(project.status)
-  const needsMedia = step.action === 'add-media' || step.action === 'retry'
 
   return (
     <article className="space-y-8">
@@ -116,177 +111,92 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
             {projectStatusLabel(project.status)}
           </StatusBadge>
         }
+        actions={
+          needsMedia && mayWriteProjects(active.role) ? (
+            <Button size="lg" onClick={() => document.getElementById(fileInputId)?.click()}>
+              Add media
+            </Button>
+          ) : ready ? (
+            <>
+              <Button asChild size="lg">
+                <Link href={`/dashboard/projects/${project.id}/review`}>Review moments</Link>
+              </Button>
+              <Button variant="secondary" size="lg" onClick={() => choose('exports')}>
+                Open exports
+              </Button>
+            </>
+          ) : undefined
+        }
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]">
-        <SourcePreview projectId={project.id} status={project.status} />
-        <NextStepCard
-          title={step.title}
-          description={step.description}
-          action={
-            step.action === 'review' ? (
-              <button
-                type="button"
-                onClick={() => choose('moments')}
-                className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90"
-              >
-                Review moments
-              </button>
-            ) : null
-          }
-        />
-      </div>
-
-      <UploadPanel projectId={project.id} addMedia={needsMedia} onJob={onJob} />
-
-      <div className="space-y-4">
-        <div role="tablist" aria-label="Project contents" className="flex gap-1 overflow-x-auto border-b">
-          {TABS.map((entry) => (
-            <button
-              key={entry.id}
-              type="button"
-              role="tab"
-              id={`project-tab-${entry.id}`}
-              aria-selected={tab === entry.id}
-              aria-controls={`project-panel-${entry.id}`}
-              onClick={() => choose(entry.id)}
-              className={`-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-sm font-medium transition-colors ${
-                tab === entry.id
-                  ? 'border-primary text-foreground'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {entry.label}
-            </button>
-          ))}
+      {ready ? (
+        <UploadPanel projectId={project.id} addMedia={false} onJob={onJob} />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
+          <UploadPanel
+            projectId={project.id}
+            addMedia={needsMedia}
+            onJob={onJob}
+            fileInputId={fileInputId}
+          />
+          {processing || requestedMs !== null ? (
+            <SourceColumn
+              projectId={project.id}
+              status={project.status}
+              candidates={[]}
+              selected={null}
+            />
+          ) : null}
         </div>
-        <TabPanel id="moments" active={tab}>
-          {project.status === 'ready' ? (
-            <ClipList projectId={project.id} />
+      )}
+
+      <div>
+        <TabList
+          label="Project contents"
+          tabs={TABS}
+          active={tab}
+          onChoose={choose}
+          idPrefix="project"
+        />
+        <TabPanel idPrefix="project" id="moments" active={tab}>
+          {ready ? (
+            <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px] xl:grid-cols-[minmax(0,1fr)_420px]">
+              <ClipList
+                projectId={project.id}
+                selectedId={selected?.id ?? null}
+                onSelect={setSelected}
+              />
+              <SourceColumn
+                projectId={project.id}
+                status={project.status}
+                candidates={moments}
+                selected={selected}
+              />
+            </div>
           ) : (
             <EmptyState
               compact
               icon={Clapperboard}
               title="Moments appear when processing finishes"
               description={
-                projectIsProcessing(project.status)
+                processing
                   ? 'Clipah is working on this video. Suggested moments will show up here.'
                   : 'Add a video to this project to get suggested moments.'
               }
             />
           )}
         </TabPanel>
-        <TabPanel id="edits" active={tab}>
+        <TabPanel idPrefix="project" id="edits" active={tab}>
           <ProjectEdits projectId={project.id} />
         </TabPanel>
-        <TabPanel id="exports" active={tab}>
+        <TabPanel idPrefix="project" id="exports" active={tab}>
           <ExportList projectId={project.id} />
         </TabPanel>
-        <TabPanel id="activity" active={tab}>
+        <TabPanel idPrefix="project" id="activity" active={tab}>
           <ProjectActivity jobs={jobs} />
         </TabPanel>
       </div>
     </article>
-  )
-}
-
-function TabPanel({ id, active, children }: { id: TabId; active: TabId; children: ReactNode }) {
-  // Only the chosen panel is mounted, so a tab never reads data nobody is looking at.
-  if (id !== active) {
-    return null
-  }
-  return (
-    <div role="tabpanel" id={`project-panel-${id}`} aria-labelledby={`project-tab-${id}`}>
-      {children}
-    </div>
-  )
-}
-
-function NextStepCard({
-  title,
-  description,
-  action,
-}: {
-  title: string
-  description: string
-  action: ReactNode
-}) {
-  return (
-    <section aria-label="Next step" className="surface flex flex-col justify-center gap-3 p-6">
-      <p className="text-xs font-semibold uppercase tracking-wide text-primary">Next step</p>
-      <h2 className="text-lg font-semibold">{title}</h2>
-      <p className="text-sm text-muted-foreground">{description}</p>
-      {action === null ? null : <div>{action}</div>}
-    </section>
-  )
-}
-
-/**
- * The Project's proxy, opened at the moment a search result pointed at when there is one.
- *
- * A timecode a member has to find again by hand is not an answer. The capability is signed
- * when the page opens and asked for again if the player reports it expired; a Project with no proxy yet
- * shows an intentional placeholder instead of a broken player.
- */
-function SourcePreview({ projectId, status }: { projectId: string; status: string }) {
-  const { active } = useWorkspaceScope()
-  const parameters = useSearchParams()
-  const requested = parameters?.get('t') ?? null
-  const startMs = requested === null ? null : Number.parseInt(requested, 10)
-  const opensAMoment = startMs !== null && Number.isFinite(startMs) && startMs >= 0
-
-  const playback = useQuery<ProxyPlaybackResponse, ApiError>({
-    queryKey: ['/api/v1/projects/proxy', active.id, projectId],
-    queryFn: ({ signal }) =>
-      showApiV1ProjectsProjectIdProxyGet(projectId, { workspace_id: active.id }, { signal }),
-    retry: false,
-    gcTime: 0,
-    staleTime: 0,
-    enabled: opensAMoment || status === 'ready' || projectIsProcessing(status),
-  })
-
-  /** Start where the search result pointed rather than at the top of the source. */
-  function start(event: SyntheticEvent<HTMLVideoElement>) {
-    if (opensAMoment) {
-      event.currentTarget.currentTime = (startMs ?? 0) / 1000
-    }
-  }
-
-  return (
-    <section aria-label="Source video" className="space-y-2">
-      {opensAMoment ? (
-        <h2 className="text-sm font-medium">The moment you searched for</h2>
-      ) : null}
-      <div className="surface aspect-video overflow-hidden bg-foreground/95">
-        {playback.data === undefined ? (
-          playback.isFetching ? (
-            <div className="flex size-full items-center justify-center">
-              <p role="status" className="text-sm text-background/80">
-                {opensAMoment ? 'Opening that moment…' : 'Loading preview…'}
-              </p>
-            </div>
-          ) : (
-            <div className="relative size-full">
-              <DesignedFrame />
-            </div>
-          )
-        ) : (
-          <video
-            data-testid="transcript-moment-video"
-            src={playback.data.url}
-            controls
-            preload="metadata"
-            onLoadedMetadata={start}
-            onError={() => void playback.refetch()}
-            className="size-full bg-black object-contain"
-          />
-        )}
-      </div>
-      {playback.isError && playback.error.status !== 404 ? <ErrorNotice error={playback.error} /> : null}
-      {playback.data?.durationMs == null ? null : (
-        <p className="text-xs text-muted-foreground">Length {formatDuration(playback.data.durationMs)}</p>
-      )}
-    </section>
   )
 }
 
@@ -327,7 +237,7 @@ function ProjectEdits({ projectId }: { projectId: string }) {
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{clip.hook}</p>
             <p className="text-xs text-muted-foreground">
-              {formatDuration(clip.durationMs)} · Revision {clip.currentRevision ?? 1}
+              {formatClock(clip.durationMs)} · Revision {clip.currentRevision ?? 1}
               {clip.exportCount === 0 ? '' : ` · ${clip.exportCount} exported`}
             </p>
           </div>
@@ -399,8 +309,4 @@ function ProjectActivity({ jobs }: { jobs: ProjectJob[] }) {
       ))}
     </ul>
   )
-}
-
-function isTab(value: string | null): value is TabId {
-  return TABS.some((entry) => entry.id === value)
 }

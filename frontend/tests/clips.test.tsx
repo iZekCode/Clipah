@@ -145,9 +145,12 @@ describe('the ranked clip list', () => {
     expect(within(clip).getByRole('heading', { level: 3 })).toHaveTextContent(
       'The surprising opening',
     )
-    expect(clip).toHaveTextContent('The useful resolution')
     expect(clip).toHaveTextContent('A complete and useful moment')
     expect(clip).toHaveTextContent('91')
+    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
+    expect(await screen.findByRole('dialog', { name: 'Why this moment' })).toHaveTextContent(
+      'The useful resolution',
+    )
   })
 
   test('explains the score through every dimension the analysis reported', async () => {
@@ -156,6 +159,8 @@ describe('the ranked clip list', () => {
     renderClips()
 
     const clip = await firstClip()
+    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
+    const sheet = await screen.findByRole('dialog', { name: 'Why this moment' })
     for (const dimension of [
       /hook/i,
       /payoff/i,
@@ -165,7 +170,7 @@ describe('the ranked clip list', () => {
       /transcript confidence/i,
       /visual opportunity/i,
     ]) {
-      expect(within(clip).getByText(dimension)).toBeInTheDocument()
+      expect(within(sheet).getByText(dimension)).toBeInTheDocument()
     }
   })
 
@@ -188,8 +193,38 @@ describe('the ranked clip list', () => {
 
     const clip = await firstClip()
     expect(clip).toHaveTextContent(/question and answer/i)
-    expect(clip).toHaveTextContent('creator')
     expect(clip).toHaveTextContent('1:30')
+    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
+    expect(await screen.findByRole('dialog', { name: 'Why this moment' })).toHaveTextContent(
+      'creator',
+    )
+  })
+
+  test('draws each moment as a poster and lets the page select it', async () => {
+    const user = userEvent.setup()
+    const onSelect = vi.fn()
+    signedInApi([candidate()])
+    renderWithApi(
+      <WorkspaceProvider>
+        <ClipList projectId={PROJECT_ID} onSelect={onSelect} />
+      </WorkspaceProvider>,
+    )
+
+    const clip = await firstClip()
+    expect(within(clip).getByTestId('poster')).toBeInTheDocument()
+    await user.click(within(clip).getByRole('button', { name: 'Show in source' }))
+
+    expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: candidate().id }))
+  })
+
+  test('marks a context warning on the card itself', async () => {
+    signedInApi([candidate({ contextWarnings: ['Needs a source overlay.'] })])
+    renderClips()
+
+    const clip = await firstClip()
+    expect(within(clip).getByRole('group', { name: /context warnings/i })).toHaveTextContent(
+      'Needs a source overlay.',
+    )
   })
 
   test('shows only the category the reviewer asked for', async () => {

@@ -28,9 +28,9 @@ import type {
   RevisionHistoryResponse,
 } from '@/lib/api/generated/model'
 import { showClipApiV1ClipsCandidateIdGet } from '@/lib/api/generated/studio/studio'
+import { formatClock } from '@/lib/media/time'
 import { cn } from '@/lib/utils'
 
-import { formatDuration } from './ClipCard'
 import { ClipPreview } from './ClipPreview'
 import { EvidencePanel } from './EvidencePanel'
 import { VariantLab } from './VariantLab'
@@ -123,7 +123,7 @@ function ResolvedClip({ detail }: { detail: ClipDetailResponse }) {
                   {exports.length > 0 ? 'Exported' : edit === null ? 'Suggested' : 'In editing'}
                 </StatusBadge>
                 <span className="font-mono text-caption text-muted-foreground">
-                  {formatDuration(candidate.durationMs)} · Ranked #{candidate.rank}
+                  {formatClock(candidate.durationMs)} · Ranked #{candidate.rank}
                 </span>
               </>
             }

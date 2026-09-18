@@ -21,12 +21,12 @@ export function ClipPreview({
   projectId,
   startMs,
   endMs,
-  className = 'mt-2 w-full max-w-md rounded-md border',
+  className = 'absolute inset-0 size-full bg-stage object-contain',
 }: {
   projectId: string
   startMs: number
   endMs: number
-  /** Where the video sits; the clip page fills a 9:16 stage with it. */
+  /** Where the video sits; by default it fills the 9:16 box around it. */
   className?: string
 }) {
   const { active } = useWorkspaceScope()

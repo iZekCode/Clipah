@@ -12,8 +12,8 @@ import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 
 import { BrandKitEditor } from '@/features/brand-kits/BrandKitEditor'
-import { ClipCard } from '@/features/clips/ClipCard'
 import { CampaignPanel } from '@/features/campaigns/CampaignPanel'
+import { WhyThisMoment } from '@/features/clips/WhyThisMoment'
 import { TemplateLibrary } from '@/features/templates/TemplateLibrary'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type {
@@ -450,7 +450,7 @@ describe('opening a clip with a look and a brand', () => {
     })
     renderWithApi(
       <WorkspaceProvider>
-        <ClipCard candidate={candidate()} />
+        <WhyThisMoment candidate={candidate()} open onOpenChange={() => undefined} />
       </WorkspaceProvider>,
     )
 
@@ -472,7 +472,7 @@ describe('opening a clip with a look and a brand', () => {
     })
     renderWithApi(
       <WorkspaceProvider>
-        <ClipCard candidate={candidate()} />
+        <WhyThisMoment candidate={candidate()} open onOpenChange={() => undefined} />
       </WorkspaceProvider>,
     )
 

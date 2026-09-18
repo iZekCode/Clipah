@@ -56,6 +56,7 @@ test('every route renders without sideways scrolling at each review width', asyn
     ['home', '/dashboard'],
     ['projects', '/dashboard/projects'],
     ['project', `/dashboard/projects/${projectId}`],
+    ['review', `/dashboard/projects/${projectId}/review`],
     ['clips', '/dashboard/clips'],
     ['clip', `/dashboard/clips/${candidateId}`],
     ['publishing', '/dashboard/publishing'],

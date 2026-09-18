@@ -247,7 +247,7 @@ function ReadyToReview({ candidates }: { candidates: DashboardCandidateResponse[
         {candidates.map((candidate) => (
           <li key={candidate.id} className="w-40 shrink-0 snap-start sm:w-44">
             <MediaCard
-              href={`/dashboard/clips/${candidate.id}`}
+              href={`/dashboard/projects/${candidate.projectId}/review?moment=${candidate.id}`}
               title={candidate.hook}
               hideTitle
               aspect="portrait"

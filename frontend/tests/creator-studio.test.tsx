@@ -136,6 +136,13 @@ describe('the clip browser', () => {
       `/editor/${EDIT_ID}`,
     )
     expect(within(list).getAllByTestId('poster')).toHaveLength(2)
+    const suggested = within(list)
+      .getByRole('link', { name: 'The surprising opening' })
+      .closest('article')!
+    expect(within(suggested).getByRole('link', { name: 'Review' })).toHaveAttribute(
+      'href',
+      `/dashboard/projects/${PROJECT_ID}/review?moment=55555555-5555-4555-8555-555555555551`,
+    )
   })
 
   test('asks the backend for one stage and one project rather than hiding rows itself', async () => {
@@ -355,7 +362,7 @@ describe('one project', () => {
       </WorkspaceProvider>,
     )
 
-    expect(await screen.findByRole('region', { name: /next step/i })).toHaveTextContent(/add your video/i)
+    expect(await screen.findByRole('button', { name: 'Add media' })).toBeInTheDocument()
     expect(screen.getByRole('region', { name: /upload a video/i })).toBeInTheDocument()
 
     await user.click(screen.getByRole('tab', { name: 'Exports' }))
