@@ -1,39 +1,55 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { ArrowRight, Clapperboard, FolderOpen, Sparkles } from 'lucide-react'
+import { ArrowRight, Clapperboard } from 'lucide-react'
 import Link from 'next/link'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
-import { MediaCard, ProjectThumbnail } from '@/components/media-card'
-import { PageHeader, Section } from '@/components/page-header'
+import { MediaCard } from '@/components/media-card'
+import { Poster } from '@/components/media/poster'
+import { PIPELINE_KINDS, StageBar } from '@/components/media/stage-bar'
+import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
-import { formatDuration } from '@/features/clips/ClipCard'
-import { JOB_KIND_LABELS } from '@/features/jobs/job-center'
+import { Button } from '@/components/ui/button'
 import { NewProjectButton } from '@/features/projects/new-project'
 import { projectStatusLabel, projectStatusTone } from '@/features/projects/status-labels'
 import type { ApiError } from '@/lib/api/client'
 import { showApiV1DashboardSummaryGet } from '@/lib/api/generated/dashboard/dashboard'
-import type { ClipPageResponse, DashboardSummaryResponse } from '@/lib/api/generated/model'
+import type {
+  ClipPageResponse,
+  ClipSummaryResponse,
+  DashboardCandidateResponse,
+  DashboardJobResponse,
+  DashboardProjectResponse,
+  DashboardSummaryResponse,
+} from '@/lib/api/generated/model'
 import { browseClipCollectionApiV1ClipsGet } from '@/lib/api/generated/studio/studio'
 
 import { useWorkspaceScope } from './workspace-context'
 
 /**
- * Home: the one place that answers "what should I do next?".
+ * Home: the work to pick up, the work in motion, and the moments waiting for a decision.
  *
- * Starting something new comes first, then the work already in motion, then the moments
- * waiting for a decision. Budget details live in Settings; the numbers that matter when
- * starting metered work are shown where that work is started.
+ * An empty Workspace is the importer itself. Otherwise the clip edited most recently leads,
+ * processing shows the real pipeline stages, the strongest suggestions sit in a reel of
+ * posters, and recent Projects follow.
  */
 export function WorkspaceOverview() {
   const { active } = useWorkspaceScope()
   const summary = useQuery<DashboardSummaryResponse, ApiError>({
     queryKey: ['/api/v1/dashboard/summary', active.id],
+    queryFn: ({ signal }) => showApiV1DashboardSummaryGet({ workspace_id: active.id }, { signal }),
+    retry: false,
+  })
+  const editing = useQuery<ClipPageResponse, ApiError>({
+    queryKey: ['/api/v1/clips', active.id, 'edited', 'recent'],
     queryFn: ({ signal }) =>
-      showApiV1DashboardSummaryGet({ workspace_id: active.id }, { signal }),
+      browseClipCollectionApiV1ClipsGet(
+        { workspace_id: active.id, stage: 'edited', order: 'recent', limit: 5 },
+        { signal },
+      ),
     retry: false,
   })
 
@@ -55,176 +71,265 @@ export function WorkspaceOverview() {
   }
 
   const { projects, topCandidates, jobs } = summary.data
+  const clips = (editing.data?.clips ?? []).filter((clip) => clip.editId !== null)
+  const lead = clips[0] ?? null
+  const firstRun = projects.activeCount === 0
+  const names = new Map(projects.recent.map((project) => [project.id, project.name]))
+  const processing = latestPipelineJobs(jobs.active)
 
   return (
     <div className="space-y-10">
       <PageHeader
         title={summary.data.workspace.name}
-        description="Turn a long video into short clips: add a video, choose the best moments, edit, export, and publish."
-        actions={<NewProjectButton size="lg" />}
-      />
-
-      {projects.activeCount === 0 ? (
-        <EmptyState
-          icon={Sparkles}
-          title="Start with your first video"
-          description="Upload a recording or paste a YouTube link. Clipah transcribes it and suggests the moments worth sharing."
-          action={<NewProjectButton />}
-        />
-      ) : null}
-
-      {jobs.active.length === 0 ? null : (
-        <Section title="In progress" description="Work that is running right now.">
-          <ul aria-label="Work in progress" className="surface divide-y">
-            {jobs.active.map((job) => (
-              <li key={job.id} className="flex items-center justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium">{JOB_KIND_LABELS[job.kind] ?? job.kind}</p>
-                  <p className="text-xs text-muted-foreground">{job.stage}</p>
-                </div>
-                <Link
-                  href={`/dashboard/projects/${job.projectId}`}
-                  className="shrink-0 text-sm font-medium text-primary hover:underline"
-                >
-                  Open project
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      {projects.recent.length === 0 ? null : (
-        <Section
-          title="Recent projects"
-          actions={
-            <Link
-              href="/dashboard/projects"
-              className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-            >
-              All projects <ArrowRight aria-hidden="true" className="size-4" />
-            </Link>
-          }
-        >
-          <ul aria-label="Recent projects" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {projects.recent.map((project) => (
-              <li key={project.id}>
-                <MediaCard
-                  href={`/dashboard/projects/${project.id}`}
-                  title={project.name}
-                  thumbnail={
-                    <ProjectThumbnail
-                      workspaceId={active.id}
-                      projectId={project.id}
-                      hasMedia={project.status !== 'created' && project.status !== 'uploading'}
-                    />
-                  }
-                  status={
-                    <StatusBadge tone={projectStatusTone(project.status)}>
-                      {projectStatusLabel(project.status)}
-                    </StatusBadge>
-                  }
-                  subtitle={`Updated ${formatDate(project.updatedAt)}`}
-                />
-              </li>
-            ))}
-          </ul>
-        </Section>
-      )}
-
-      <ContinueEditing workspaceId={active.id} />
-
-      <Section
-        title="Moments to review"
-        description="The strongest suggestions waiting for your decision."
         actions={
-          <Link
-            href="/dashboard/clips"
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            All clips <ArrowRight aria-hidden="true" className="size-4" />
-          </Link>
-        }
-      >
-        {topCandidates.length === 0 ? (
-          <EmptyState
-            compact
-            icon={Clapperboard}
-            title="Nothing is waiting for review"
-            description="Suggested moments appear here once a video has been processed."
+          <NewProjectButton
+            size="lg"
+            variant={lead === null && !firstRun ? 'default' : 'secondary'}
           />
-        ) : (
-          <ul aria-label="Top candidates" className="surface divide-y">
-            {topCandidates.map((candidate) => (
-              <li key={candidate.id} className="flex items-center justify-between gap-4 px-4 py-3">
-                <div className="min-w-0 space-y-0.5">
-                  <p className="truncate text-sm font-medium">{candidate.hook}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {candidate.projectName} · {formatDuration(candidate.endMs - candidate.startMs)}
-                  </p>
-                </div>
-                <Link
-                  href={`/dashboard/clips/${candidate.id}`}
-                  className="shrink-0 text-sm font-medium text-primary hover:underline"
-                >
-                  Review in {candidate.projectName}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+        }
+      />
+      {firstRun ? <FirstRun /> : null}
+      {lead === null ? null : <ContinueEditing lead={lead} others={clips.slice(1)} />}
+      {processing.length === 0 ? null : <ProcessingNow jobs={processing} names={names} />}
+      {topCandidates.length > 0 ? (
+        <ReadyToReview candidates={topCandidates} />
+      ) : firstRun ? null : (
+        <EmptyState
+          compact
+          icon={Clapperboard}
+          title="Nothing is waiting for review"
+          description="Suggested moments appear here once a video has been processed."
+        />
+      )}
+      {projects.recent.length === 0 ? null : <RecentProjects projects={projects.recent} />}
     </div>
   )
 }
 
-/** Clips the member already opened in the editor and has not exported yet. */
-function ContinueEditing({ workspaceId }: { workspaceId: string }) {
-  const edited = useQuery<ClipPageResponse, ApiError>({
-    queryKey: ['/api/v1/clips', workspaceId, 'edited', 'home'],
-    queryFn: ({ signal }) =>
-      browseClipCollectionApiV1ClipsGet(
-        { workspace_id: workspaceId, stage: 'edited', limit: 4 },
-        { signal },
-      ),
-    retry: false,
-  })
-
-  const clips = edited.data?.clips ?? []
-  if (clips.length === 0) {
-    return null
-  }
+function FirstRun() {
   return (
-    <Section title="Continue editing" description="Clips you opened in the editor and have not exported yet.">
-      <ul aria-label="Continue editing" className="grid gap-3 sm:grid-cols-2">
-        {clips.map((clip) => (
-          <li key={clip.id} className="surface flex items-center gap-3 p-3">
-            <span className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground">
-              <FolderOpen aria-hidden="true" className="size-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium">{clip.hook}</p>
-              <p className="truncate text-xs text-muted-foreground">{clip.projectName}</p>
-            </div>
-            {clip.editId === null ? null : (
-              <Link
-                href={`/editor/${clip.editId}`}
-                className="shrink-0 rounded-lg border px-3 py-1.5 text-sm font-medium hover:bg-secondary"
-              >
-                Continue
-              </Link>
-            )}
-          </li>
-        ))}
-      </ul>
-    </Section>
+    <section
+      aria-labelledby="first-run-title"
+      className="rounded-lg border-2 border-dashed border-line-strong bg-card/40 px-6 py-12 sm:px-10"
+    >
+      <h2 id="first-run-title" className="font-display text-h1 sm:text-display">
+        Drop a long video to start
+      </h2>
+      <p className="mt-3 max-w-xl text-body text-muted-foreground">
+        Drag a podcast, interview, or stream recording anywhere on this page, or choose a file
+        or a YouTube link. Clipah transcribes it and finds the moments worth posting.
+      </p>
+      <div className="mt-6">
+        <NewProjectButton size="lg" label="Choose a video" />
+      </div>
+    </section>
   )
 }
 
-function formatDate(value: string): string {
-  const date = new Date(value)
-  if (Number.isNaN(date.getTime())) {
-    return value
+function ContinueEditing({
+  lead,
+  others,
+}: {
+  lead: ClipSummaryResponse
+  others: ClipSummaryResponse[]
+}) {
+  return (
+    <section aria-labelledby="continue-title" className="space-y-4">
+      <h2 id="continue-title" className="text-title">
+        Continue editing
+      </h2>
+      <div className="grid gap-6 rounded-lg border bg-card p-4 sm:grid-cols-[200px_minmax(0,1fr)] sm:p-6 lg:grid-cols-[240px_minmax(0,1fr)]">
+        <div className="relative aspect-[9/16] overflow-hidden rounded-md">
+          <Poster
+            projectId={lead.projectId}
+            startMs={lead.startMs}
+            endMs={lead.endMs}
+            aspect="portrait"
+            durationMs={lead.durationMs}
+          />
+        </div>
+        <div className="flex min-w-0 flex-col justify-center gap-3">
+          <p className="text-caption font-medium uppercase tracking-wide text-subtle-foreground">
+            {lead.projectName}
+          </p>
+          <p className="font-display text-balance text-h1 lg:text-display">{lead.hook}</p>
+          <p className="font-mono text-caption text-muted-foreground">
+            {lead.editUpdatedAt === null ? '' : `Saved ${formatWhen(lead.editUpdatedAt)} · `}
+            Revision {lead.currentRevision ?? 1}
+          </p>
+          <div>
+            <Button asChild size="lg">
+              <Link href={`/editor/${lead.editId}`}>Continue editing</Link>
+            </Button>
+          </div>
+        </div>
+      </div>
+      {others.length === 0 ? null : (
+        <ul aria-label="More clips in editing" className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+          {others.map((clip) => (
+            <li key={clip.id}>
+              <MediaCard
+                href={`/editor/${clip.editId}`}
+                title={clip.hook}
+                aspect="portrait"
+                subtitle={clip.projectName}
+                thumbnail={
+                  <Poster
+                    projectId={clip.projectId}
+                    startMs={clip.startMs}
+                    endMs={clip.endMs}
+                    aspect="portrait"
+                    durationMs={clip.durationMs}
+                  />
+                }
+              />
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function ProcessingNow({
+  jobs,
+  names,
+}: {
+  jobs: DashboardJobResponse[]
+  names: Map<string, string>
+}) {
+  return (
+    <section aria-labelledby="processing-title" className="space-y-3">
+      <h2 id="processing-title" className="text-title">
+        Processing now
+      </h2>
+      <ul aria-label="Processing now" className="space-y-2">
+        {jobs.map((job) => (
+          <li
+            key={job.id}
+            className="grid gap-3 rounded-lg border bg-card p-4 sm:grid-cols-[minmax(0,220px)_minmax(0,1fr)_auto] sm:items-center"
+          >
+            <p className="truncate text-small font-semibold">
+              {names.get(job.projectId) ?? 'Project'}
+            </p>
+            <StageBar kind={job.kind} status={job.status} />
+            <Link
+              href={`/dashboard/projects/${job.projectId}`}
+              className="text-small font-semibold text-primary hover:underline"
+            >
+              Open project
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function ReadyToReview({ candidates }: { candidates: DashboardCandidateResponse[] }) {
+  return (
+    <section aria-labelledby="ready-title" className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <h2 id="ready-title" className="text-title">
+          Ready to review
+        </h2>
+        <Link
+          href="/dashboard/clips"
+          className="inline-flex items-center gap-1 text-small font-semibold text-primary hover:underline"
+        >
+          All clips <ArrowRight aria-hidden="true" strokeWidth={1.75} className="size-4" />
+        </Link>
+      </div>
+      <ul
+        aria-label="Ready to review"
+        className="-mx-4 flex snap-x gap-3 overflow-x-auto px-4 pb-2 sm:-mx-6 sm:px-6"
+      >
+        {candidates.map((candidate) => (
+          <li key={candidate.id} className="w-40 shrink-0 snap-start sm:w-44">
+            <MediaCard
+              href={`/dashboard/clips/${candidate.id}`}
+              title={candidate.hook}
+              hideTitle
+              aspect="portrait"
+              subtitle={candidate.projectName}
+              thumbnail={
+                <Poster
+                  projectId={candidate.projectId}
+                  startMs={candidate.startMs}
+                  endMs={candidate.endMs}
+                  aspect="portrait"
+                  rank={candidate.rank}
+                  durationMs={candidate.endMs - candidate.startMs}
+                  hook={candidate.hook}
+                />
+              }
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+function RecentProjects({ projects }: { projects: DashboardProjectResponse[] }) {
+  return (
+    <section aria-labelledby="recent-title" className="space-y-3">
+      <div className="flex items-end justify-between gap-3">
+        <h2 id="recent-title" className="text-title">
+          Recent projects
+        </h2>
+        <Link
+          href="/dashboard/projects"
+          className="inline-flex items-center gap-1 text-small font-semibold text-primary hover:underline"
+        >
+          All projects <ArrowRight aria-hidden="true" strokeWidth={1.75} className="size-4" />
+        </Link>
+      </div>
+      <ul aria-label="Recent projects" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {projects.map((project) => (
+          <li key={project.id}>
+            <MediaCard
+              href={`/dashboard/projects/${project.id}`}
+              title={project.name}
+              thumbnail={
+                <Poster
+                  projectId={project.id}
+                  hasMedia={project.status !== 'created' && project.status !== 'uploading'}
+                />
+              }
+              status={
+                <StatusBadge tone={projectStatusTone(project.status)} appearance="overlay">
+                  {projectStatusLabel(project.status)}
+                </StatusBadge>
+              }
+              subtitle={`Updated ${formatWhen(project.updatedAt)}`}
+            />
+          </li>
+        ))}
+      </ul>
+    </section>
+  )
+}
+
+/** The newest pipeline job per Project, so each Project gets one stage bar. */
+function latestPipelineJobs(jobs: DashboardJobResponse[]): DashboardJobResponse[] {
+  const latest = new Map<string, DashboardJobResponse>()
+  for (const job of jobs) {
+    if (!PIPELINE_KINDS.has(job.kind)) continue
+    const known = latest.get(job.projectId)
+    if (known === undefined || known.updatedAt < job.updatedAt) latest.set(job.projectId, job)
   }
-  return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+  return [...latest.values()]
+}
+
+function formatWhen(value: string): string {
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleString(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+      })
 }

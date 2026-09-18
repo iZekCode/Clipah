@@ -8,7 +8,7 @@
  */
 import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { ClipDetail } from '@/features/clips/ClipDetail'
 import { EditorScreen } from '@/features/editor/EditorScreen'
@@ -308,6 +308,11 @@ function renderClipDetail() {
 }
 
 describe('the clip detail page', () => {
+  beforeEach(() => {
+    // A chosen tab is kept in the address, so each test starts from a clean one.
+    window.history.replaceState(null, '', '/dashboard/clips/one')
+  })
+
   test('every picture in the clip is listed with the licence that traces it', async () => {
     stubApi({
       [ME]: { body: currentUser() },
@@ -316,6 +321,7 @@ describe('the clip detail page', () => {
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'placed' })] } },
     })
     renderClipDetail()
+    await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
     await userEvent.click(within(row).getByRole('button', { name: /where this came from/i }))
@@ -345,6 +351,7 @@ describe('the clip detail page', () => {
       },
     })
     renderClipDetail()
+    await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
     expect(within(row).getByText(/ai-generated/i)).toBeInTheDocument()
@@ -381,8 +388,33 @@ describe('the clip detail page', () => {
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'rejected' })] } },
     })
     renderClipDetail()
+    await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     expect(await screen.findByText(/no b-roll in this clip/i)).toBeInTheDocument()
+  })
+
+  test('the clip page opens on its exports and keeps each section one tab away', async () => {
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
+      [SUGGESTIONS]: { body: { suggestions: [] } },
+    })
+    renderClipDetail()
+
+    const tabs = await screen.findByRole('tablist', { name: 'Clip sections' })
+    expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([
+      'Exports',
+      'Revisions',
+      'B-roll',
+      'Variants',
+      'Evidence',
+      'Campaign copy',
+    ])
+    expect(within(tabs).getByRole('tab', { name: 'Exports' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
   })
 })
 

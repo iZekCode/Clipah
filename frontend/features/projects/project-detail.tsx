@@ -9,7 +9,7 @@ import { useCallback, useState, type ReactNode, type SyntheticEvent } from 'reac
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
-import { MediaPlaceholder } from '@/components/media-card'
+import { DesignedFrame } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
 import { ClipList } from '@/features/clips/ClipList'
@@ -266,7 +266,9 @@ function SourcePreview({ projectId, status }: { projectId: string; status: strin
               </p>
             </div>
           ) : (
-            <MediaPlaceholder label="The preview appears once the video is prepared" />
+            <div className="relative size-full">
+              <DesignedFrame />
+            </div>
           )
         ) : (
           <video

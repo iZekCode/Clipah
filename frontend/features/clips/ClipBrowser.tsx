@@ -8,9 +8,12 @@ import { useId, useState } from 'react'
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
 import { LoadingState } from '@/components/loading-state'
-import { MediaCard, ProjectThumbnail } from '@/components/media-card'
+import { MediaCard } from '@/components/media-card'
+import { Poster } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge, type StatusTone } from '@/components/status-badge'
+import { Input } from '@/components/ui/input'
+import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Select } from '@/components/ui/select'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
@@ -22,8 +25,6 @@ import type {
 } from '@/lib/api/generated/model'
 import { listCollectionApiV1ProjectsGet } from '@/lib/api/generated/projects/projects'
 import { browseClipCollectionApiV1ClipsGet } from '@/lib/api/generated/studio/studio'
-
-import { formatDuration } from './ClipCard'
 
 const PAGE_SIZE = 24
 
@@ -88,21 +89,12 @@ export function ClipBrowser() {
       />
 
       <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div role="group" aria-label="Show clips" className="flex flex-wrap gap-1 rounded-lg bg-secondary p-1">
-          {FILTERS.map((filter) => (
-            <button
-              key={filter.id}
-              type="button"
-              aria-pressed={stage === filter.id}
-              onClick={() => setStage(filter.id)}
-              className={`rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
-                stage === filter.id ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {filter.label}
-            </button>
-          ))}
-        </div>
+        <SegmentedControl
+          label="Show clips"
+          value={stage}
+          options={FILTERS.map((filter) => ({ value: filter.id, label: filter.label }))}
+          onChange={setStage}
+        />
         <div className="flex flex-wrap items-center gap-2">
           <label htmlFor={projectFieldId} className="sr-only">
             Project
@@ -129,12 +121,12 @@ export function ClipBrowser() {
               aria-hidden="true"
               className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
             />
-            <input
+            <Input
               id={searchFieldId}
               type="search"
               name="q"
               placeholder="Search by what was said"
-              className="h-9 w-56 rounded-lg border border-input bg-card pl-9 pr-3 text-sm shadow-sm"
+              className="w-56 pl-9"
             />
           </form>
         </div>
@@ -162,10 +154,13 @@ export function ClipBrowser() {
           }
         />
       ) : (
-        <ul aria-label="Clips" className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul
+          aria-label="Clips"
+          className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-6"
+        >
           {listed.map((clip) => (
             <li key={clip.id}>
-              <ClipTile clip={clip} workspaceId={active.id} />
+              <ClipTile clip={clip} />
             </li>
           ))}
         </ul>
@@ -187,25 +182,36 @@ export function ClipBrowser() {
   )
 }
 
-function ClipTile({ clip, workspaceId }: { clip: ClipSummaryResponse; workspaceId: string }) {
+function ClipTile({ clip }: { clip: ClipSummaryResponse }) {
   const badge = STAGE_BADGES[clip.stage]
   return (
     <MediaCard
       href={`/dashboard/clips/${clip.id}`}
       title={clip.hook}
-      thumbnail={<ProjectThumbnail workspaceId={workspaceId} projectId={clip.projectId} />}
-      status={<StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>}
+      hideTitle
+      aspect="portrait"
+      thumbnail={
+        <Poster
+          projectId={clip.projectId}
+          startMs={clip.startMs}
+          endMs={clip.endMs}
+          aspect="portrait"
+          rank={clip.rank}
+          durationMs={clip.durationMs}
+          hook={clip.hook}
+        />
+      }
       subtitle={
-        <span>
-          {clip.projectName} · {formatDuration(clip.durationMs)}
-          {clip.exportCount > 0 ? ` · ${clip.exportCount} ${clip.exportCount === 1 ? 'export' : 'exports'}` : ''}
+        <span className="flex items-center gap-2">
+          <StatusBadge tone={badge.tone}>{badge.label}</StatusBadge>
+          <span className="truncate">{clip.projectName}</span>
         </span>
       }
       footer={
         clip.editId === null ? null : (
           <Link
             href={`/editor/${clip.editId}`}
-            className="relative z-10 text-xs font-medium text-primary hover:underline"
+            className="text-caption font-semibold text-primary hover:underline"
           >
             Continue editing
           </Link>

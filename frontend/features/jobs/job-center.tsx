@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 
+import { Poster } from '@/components/media/poster'
 import { StatusBadge, type StatusTone } from '@/components/status-badge'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import { cancelApiV1JobsJobIdCancelPost } from '@/lib/api/generated/jobs/jobs'
@@ -150,27 +151,34 @@ export function JobCenter({
       ) : (
         <ul className="space-y-2">
           {ordered.map((job) => (
-            <li key={job.jobId} className="space-y-2 rounded-md border border-border bg-card px-3 py-2.5">
-              <div className="flex items-center justify-between gap-2">
-                <p className="text-small font-medium">{stageLabel(job)}</p>
-                <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>{statusLabel(job.status)}</StatusBadge>
-              </div>
-              <div className="flex items-center gap-3 text-caption">
-                {job.projectId === null ? null : (
-                  <Link href={`/dashboard/projects/${job.projectId}`} className="font-medium text-primary hover:underline">
-                    Open project
-                  </Link>
-                )}
-                {TERMINAL_STATUSES.has(job.status) || job.status === 'cancel_requested' ? null : (
-                  <button
-                    type="button"
-                    onClick={() => void stop(job)}
-                    aria-label={`Stop ${stageLabel(job)}`}
-                    className="font-medium text-muted-foreground hover:text-destructive"
-                  >
-                    Stop
-                  </button>
-                )}
+            <li key={job.jobId} className="flex gap-3 rounded-md border border-border bg-card px-3 py-2.5">
+              {job.projectId === null ? null : (
+                <div className="relative aspect-video w-16 shrink-0 overflow-hidden rounded-sm">
+                  <Poster projectId={job.projectId} />
+                </div>
+              )}
+              <div className="min-w-0 flex-1 space-y-2">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-small font-medium">{stageLabel(job)}</p>
+                  <StatusBadge tone={STATUS_TONES[job.status] ?? 'neutral'}>{statusLabel(job.status)}</StatusBadge>
+                </div>
+                <div className="flex items-center gap-3 text-caption">
+                  {job.projectId === null ? null : (
+                    <Link href={`/dashboard/projects/${job.projectId}`} className="font-medium text-primary hover:underline">
+                      Open project
+                    </Link>
+                  )}
+                  {TERMINAL_STATUSES.has(job.status) || job.status === 'cancel_requested' ? null : (
+                    <button
+                      type="button"
+                      onClick={() => void stop(job)}
+                      aria-label={`Stop ${stageLabel(job)}`}
+                      className="font-medium text-muted-foreground hover:text-destructive"
+                    >
+                      Stop
+                    </button>
+                  )}
+                </div>
               </div>
             </li>
           ))}

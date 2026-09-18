@@ -18,6 +18,7 @@ import type {
   TemplateListResponse,
 } from '@/lib/api/generated/model'
 import { listCollectionApiV1TemplatesGet } from '@/lib/api/generated/templates/templates'
+import { formatClock } from '@/lib/media/time'
 
 import { ClipPreview } from './ClipPreview'
 
@@ -294,8 +295,5 @@ function LookSelection({
 
 /** Render a length the way a reviewer reads one, as minutes and seconds. */
 export function formatDuration(durationMs: number): string {
-  const totalSeconds = Math.round(durationMs / 1000)
-  const minutes = Math.floor(totalSeconds / 60)
-  const seconds = totalSeconds % 60
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
+  return formatClock(durationMs)
 }

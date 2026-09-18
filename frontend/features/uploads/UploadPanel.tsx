@@ -5,6 +5,7 @@ import { useCallback, useEffect, useId, useRef, useState, type ChangeEvent } fro
 import { Upload as UploadIcon } from 'lucide-react'
 
 import { ErrorNotice } from '@/components/error-notice'
+import { StageBar } from '@/components/media/stage-bar'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import { ApiError } from '@/lib/api/client'
@@ -236,31 +237,18 @@ function SubmissionPanel({
       ) : null}
 
       <div hidden={!showStatus} className="surface space-y-3 p-5">
-        <PipelineSteps job={job} uploading={uploading !== null} />
+        <StageBar
+          kind={job?.kind ?? null}
+          status={job?.status ?? null}
+          uploadPercent={uploading === null ? null : percent(uploading)}
+          reconnecting={!connected}
+        />
         <p role="status" className="text-sm font-medium">
           {label}
         </p>
-        {uploading === null ? null : (
-          <div
-            role="progressbar"
-            aria-label="Upload progress"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={percent(uploading)}
-            className="h-2 overflow-hidden rounded-full bg-secondary"
-          >
-            <div
-              className="h-full rounded-full bg-primary transition-[width]"
-              style={{ width: `${percent(uploading)}%` }}
-            />
-          </div>
-        )}
         {job !== null && job.errorCode !== null ? (
           <p className="text-xs text-muted-foreground">Reported as {job.errorCode}.</p>
         ) : null}
-        {connected ? null : (
-          <p className="text-xs text-warning">Reconnecting to live updates…</p>
-        )}
         <div className="flex flex-wrap gap-2">
           {running ? (
             <button
@@ -284,49 +272,6 @@ function SubmissionPanel({
       </div>
       {failure === null ? null : <UploadFailure failure={failure} />}
     </section>
-  )
-}
-
-const PIPELINE = [
-  { label: 'Import', kinds: ['source_import', 'ingest'] },
-  { label: 'Transcribe', kinds: ['transcribe'] },
-  { label: 'Find moments', kinds: ['analyze'] },
-] as const
-
-/**
- * The three stages a video passes through, marked only from what the backend reported.
- * No percentage is invented: a stage is done, current, or still ahead.
- */
-function PipelineSteps({ job, uploading }: { job: ProjectJob | null; uploading: boolean }) {
-  const current = job === null ? -1 : PIPELINE.findIndex((step) => (step.kinds as readonly string[]).includes(job.kind))
-  const finished = job !== null && job.status === 'succeeded'
-  if (current === -1 && !uploading) {
-    return null
-  }
-  return (
-    <ol aria-label="Processing stages" className="flex flex-wrap items-center gap-2 text-xs">
-      {PIPELINE.map((step, index) => {
-        const done = index < current || (index === current && finished)
-        const active = index === current && !finished
-        return (
-          <li key={step.label} className="flex items-center gap-2">
-            <span
-              className={`rounded-full px-2.5 py-1 font-medium ${
-                done
-                  ? 'bg-success-soft text-success'
-                  : active
-                    ? 'bg-info-soft text-info'
-                    : 'bg-secondary text-muted-foreground'
-              }`}
-            >
-              {step.label}
-              <span className="sr-only">{done ? ' (done)' : active ? ' (in progress)' : ' (not started)'}</span>
-            </span>
-            {index < PIPELINE.length - 1 ? <span aria-hidden="true" className="text-muted-foreground">→</span> : null}
-          </li>
-        )
-      })}
-    </ol>
   )
 }
 

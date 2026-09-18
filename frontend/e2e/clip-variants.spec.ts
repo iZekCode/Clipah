@@ -27,7 +27,7 @@ test('a member is offered only the supported lengths', async ({ page }) => {
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
-  await page.locator('summary', { hasText: 'Variants' }).click()
+  await page.getByRole('tab', { name: 'Variants' }).click()
   const lab = page.getByRole('region', { name: /variants/i })
 
   await expect(lab).toBeVisible()
@@ -47,7 +47,7 @@ test('a generated variant is compared against one proxy, not a second copy', asy
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
-  await page.locator('summary', { hasText: 'Variants' }).click()
+  await page.getByRole('tab', { name: 'Variants' }).click()
   const lab = page.getByRole('region', { name: /variants/i })
   const videosBefore = await lab.locator('video').count()
   await lab.getByRole('checkbox').first().check()
@@ -69,7 +69,7 @@ test('an unsafe source link is refused with a reason a member can act on', async
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
-  await page.locator('summary', { hasText: 'Sources and evidence' }).click()
+  await page.getByRole('tab', { name: 'Evidence' }).click()
   const panel = page.getByRole('region', { name: /claim evidence/i })
   await panel.getByLabel('Claim').fill('Growth doubled after the change')
   await panel.getByLabel('Source link').fill('http://127.0.0.1/internal')
@@ -91,7 +91,7 @@ test('a citation opens isolated and is never rendered as markup', async ({ page 
   })
   await open(page, member, `/dashboard/clips/${member.project.candidateId}?projectId=${member.project.projectId}`)
 
-  await page.locator('summary', { hasText: 'Sources and evidence' }).click()
+  await page.getByRole('tab', { name: 'Evidence' }).click()
   const panel = page.getByRole('region', { name: /claim evidence/i })
   await panel.getByLabel('Claim').fill('Activation doubled')
   await panel.getByLabel('Source link').fill('https://example.test/report')

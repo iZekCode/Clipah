@@ -501,16 +501,16 @@ describe('the media submission panel', () => {
     const stream = await openStream()
 
     act(() => stream.emit('progress', jobEvent({ kind: 'ingest' })))
-    expect(await screen.findByText(/importing media/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/importing media/i))
 
     act(() => stream.emit('progress', jobEvent({ kind: 'transcribe' })))
-    expect(await screen.findByText(/transcribing/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/transcribing/i))
 
     act(() => stream.emit('progress', jobEvent({ kind: 'analyze' })))
-    expect(await screen.findByText(/finding moments/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/finding moments/i))
 
     act(() => stream.emit('succeeded', jobEvent({ kind: 'analyze', status: 'succeeded', progress: 1 })))
-    expect(await screen.findByText(/ready to review/i)).toBeInTheDocument()
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/ready to review/i))
   })
 
   test('keeps showing the pipeline stage while previews are prepared beside it', async () => {
@@ -531,7 +531,7 @@ describe('the media submission panel', () => {
 
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent('Transcribing audio'))
     expect(screen.getByRole('list', { name: 'Processing stages' })).toHaveTextContent(
-      /Transcribe \(in progress\)/,
+      /Transcribing \(in progress\)/,
     )
   })
 

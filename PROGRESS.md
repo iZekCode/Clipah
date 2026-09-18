@@ -3672,3 +3672,88 @@ status element, which already exists and made the assertion race under a full ru
   passed, 20 skipped, 92.89% coverage.
 
 Owner commit message: `feat: derive storyboard and waveform previews`.
+
+### Signal Studio redesign — Plan 3, media surfaces (2026-09-18)
+
+**What landed.**
+
+- `lib/media/`: `formatClock`; storyboard geometry (`tileAt`, `spriteStyle`, `posterTimeMs`,
+  `scrubTimeMs`, `tilesAcross`), which clamps past the end and falls back to the last frame a
+  missing sheet leaves; and `peakBuckets` for waveform bars. `ClipCard.formatDuration` now
+  delegates to `formatClock`.
+- `features/media/`: `useInView` (asks for media only once a card is near the screen),
+  `useReducedMotion`, `useStoryboard`, and `useWaveform`. Manifests are cached for four of their five
+  signed minutes, and peak bytes are fetched from the signed URL with `credentials: 'omit'`.
+- `components/media/`: `SpriteFrame` (a cover-cropped tile), `Poster`, `DesignedFrame`,
+  `Filmstrip`, `WaveformCanvas`, and `StageBar`, plus `CardFocusContext`.
+  - `Poster` falls back from storyboard tile to Project thumbnail to a designed graphite frame.
+    It never shows "No preview yet".
+  - `Poster` scrubs on hover without new requests, holds still under reduced motion, and shows
+    the middle frame while its card has keyboard focus. Rank, length, and hook sit on solid
+    plates, and all of it is `aria-hidden` because the card names the link.
+  - `StageBar` names the four real stages (Uploading, Importing, Transcribing, Finding moments).
+    Its only number is the browser's own upload percentage.
+- `components/media-card.tsx`:
+  - `ProjectThumbnail` and `MediaPlaceholder` are gone.
+  - The card gains `hideTitle` and focus context, and portrait cards are now 9:16.
+  - It is off the design-rules allowlist.
+- `components/url-tabs.tsx`: `useUrlTab`, `TabList`, and `TabPanel`. A tab choice lives in
+  `?tab=`, and only the chosen panel mounts.
+- Screens:
+  - **Home** is rebuilt around five sections:
+    - "Continue editing" leads with the most recently saved clip, using `order=recent`.
+    - "Processing now" shows one stage bar per Project. Preview work is not a stage.
+    - "Ready to review" is a reel of ranked posters.
+    - "Recent projects" follows.
+    - An empty Workspace shows the importer itself ("Drop a long video to start").
+  - **Projects**: `Poster` cards with overlay status badges, the `Input` primitive in the rename
+    dialog, and a four-column grid at 2xl.
+  - **Clips**: `SegmentedControl` filters, 9:16 hook posters, and a denser grid.
+  - **Clip page**: a 9:16 preview stage beside the header, "Why this moment", and download or
+    publish for the newest ready export. Below them sit tabs for Exports, Revisions (a
+    timeline), B-roll, Variants, Evidence, and Campaign copy. These replace the stacked
+    disclosures.
+  - **Upload panel**: now uses `StageBar`. Its separate progress bar and reconnect line are gone.
+  - **Render queue**: each job with a Project shows a small poster.
+- `NewProjectButton` gains `variant` and `label`, `ClipPreview` accepts a `className`, and
+  `ReadyActions` is exported from the export list.
+
+**Deliberate choice.** A Project card shows the source duration from the storyboard manifest.
+The Project list read carries no duration or clip count, so the manifest is the only source
+that does not add another request.
+
+**Deviations from the plan.**
+
+- jsdom has no `PointerEvent`, so the scrub tests dispatch a mouse event of the pointer type.
+  This is the idiom the editor tests already use.
+- Stage state is a screen-reader suffix in its own span, so the Home and upload assertions read
+  a list's or the status line's text instead of matching one element.
+- The upload tests' status assertions are scoped to the status line, because the stage bar now
+  repeats "Transcribing" and "Finding moments".
+- The clip-page tests reset the address before each test, because a chosen tab persists in
+  `?tab=`.
+- The revision timeline's dot sits at `-left-[21px]` so it lands on the line; the plan's `-5px`
+  put it inside the padding.
+- `DesignedFrame` drops its decorative bottom rule. In screenshots it ran through the hook plate
+  and the status badge.
+- The Projects poster test passed before the grid moved, because the temporary bridge already
+  rendered `Poster`.
+- Two browser specs (`clip-variants`, `brand-campaign`) now open clip sections by tab rather than
+  `summary`.
+
+**Verification.**
+
+- Frontend: `pnpm lint`, `pnpm typecheck`, `pnpm test` (525 passed), and `pnpm build`.
+- Screenshots in `docs/design/signal/media/` (chromium, 390/820/1440) with no sideways scroll.
+  Seeded Projects have no storyboard, so their posters show designed frames with timecodes, and
+  no screenshot says "No preview yet".
+- Browser suite (chromium and webkit): 14 failures on the first run. Eight came from the old
+  disclosure selectors; with the specs moved to tabs, those two specs pass except the recorded
+  `clip-variants` "compared against one proxy" failure. That leaves the baseline six: the invite
+  specs (collaboration is off) and that `clip-variants` test, each in both engines.
+- Not done by the agent: hovering a real storyboard poster in the owner's Workspace. Plan 2 gave
+  those Projects storyboards, but the agent does not sign in as the owner. The check is to open
+  Home or Projects, hover a poster, and confirm in DevTools (filter `storyboard`) that the frame
+  changes without new requests.
+
+Owner commit message: `feat: show media across the studio`.

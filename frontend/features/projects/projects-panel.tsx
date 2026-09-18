@@ -6,12 +6,14 @@ import { useState, type FormEvent } from 'react'
 
 import { EmptyState } from '@/components/empty-state'
 import { ErrorNotice } from '@/components/error-notice'
-import { Field, inputClassName } from '@/components/field'
+import { Field } from '@/components/field'
 import { LoadingState } from '@/components/loading-state'
-import { MediaCard, ProjectThumbnail } from '@/components/media-card'
+import { MediaCard } from '@/components/media-card'
+import { Poster } from '@/components/media/poster'
 import { PageHeader } from '@/components/page-header'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { ItemMenu } from '@/components/ui/item-menu'
 import {
   Dialog,
@@ -125,7 +127,7 @@ function ProjectsList() {
           action={mayWrite ? <NewProjectButton /> : undefined}
         />
       ) : (
-        <ul aria-label="Projects" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ul aria-label="Projects" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {listed.map((project) => (
             <ProjectCard
               key={project.id}
@@ -187,13 +189,14 @@ function ProjectCard({
       <MediaCard
         href={`/dashboard/projects/${project.id}`}
         title={project.name}
-        thumbnail={<ProjectThumbnail
-                    workspaceId={active.id}
-                    projectId={project.id}
-                    hasMedia={project.status !== 'created' && project.status !== 'uploading'}
-                  />}
+        thumbnail={
+          <Poster
+            projectId={project.id}
+            hasMedia={project.status !== 'created' && project.status !== 'uploading'}
+          />
+        }
         status={
-          <StatusBadge tone={projectStatusTone(project.status)}>
+          <StatusBadge tone={projectStatusTone(project.status)} appearance="overlay">
             {projectStatusLabel(project.status)}
           </StatusBadge>
         }
@@ -257,11 +260,10 @@ function RenameDialog({ project, onDone }: { project: ProjectResponse; onDone: (
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4">
           <Field label="Project name">
-            <input
+            <Input
               value={name}
               maxLength={200}
               onChange={(event) => setName(event.target.value)}
-              className={inputClassName}
             />
           </Field>
           <DialogFooter className="gap-2">
@@ -294,7 +296,7 @@ function RestoreNotice({
   return (
     <div
       role="status"
-      className="flex flex-wrap items-center justify-between gap-3 rounded-xl border bg-card px-4 py-3 text-sm shadow-sm"
+      className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-line-strong bg-card px-4 py-3 text-small"
     >
       <p>
         <span className="font-medium">{project.name}</span> was deleted. You can restore it

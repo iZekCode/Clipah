@@ -172,6 +172,43 @@ describe('the Workspace switcher', () => {
 })
 
 describe('the project list', () => {
+  test('shows each project as a poster that asks for its storyboard only once it has media', async () => {
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECTS]: {
+        body: {
+          projects: [
+            project({ id: '44444444-4444-4444-8444-444444444441', name: 'Waiting', status: 'created' }),
+            project({ id: '44444444-4444-4444-8444-444444444442', name: 'Ready', status: 'ready' }),
+          ],
+          nextCursor: null,
+        },
+      },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <ProjectsPanel />
+      </WorkspaceProvider>,
+    )
+
+    const list = await screen.findByRole('list', { name: 'Projects' })
+    expect(within(list).getAllByTestId('poster')).toHaveLength(2)
+    await waitFor(() =>
+      expect(
+        api.calls.some(
+          (call) => call.path === '/api/v1/projects/44444444-4444-4444-8444-444444444442/storyboard',
+        ),
+      ).toBe(true),
+    )
+    expect(
+      api.calls.some(
+        (call) => call.path === '/api/v1/projects/44444444-4444-4444-8444-444444444441/storyboard',
+      ),
+    ).toBe(false)
+  })
+
   test('invites the first project when the Workspace has none', async () => {
     stubApi({
       [ME]: { body: currentUser() },

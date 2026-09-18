@@ -16,7 +16,7 @@ import {
 
 import { ErrorNotice } from '@/components/error-notice'
 import { Field, inputClassName } from '@/components/field'
-import { Button } from '@/components/ui/button'
+import { Button, type ButtonProps } from '@/components/ui/button'
 import { IconButton } from '@/components/ui/icon-button'
 import {
   Dialog,
@@ -89,10 +89,14 @@ export function useNewProject(): NewProjectControl | null {
  */
 export function NewProjectButton({
   size = 'default',
+  variant,
+  label = 'New project',
   className,
   appearance = 'button',
 }: {
   size?: 'default' | 'sm' | 'lg'
+  variant?: ButtonProps['variant']
+  label?: string
   className?: string
   /** `rail` is the square lime-plus control at the top of the navigation rail. */
   appearance?: 'button' | 'rail'
@@ -123,11 +127,12 @@ export function NewProjectButton({
       <Button
         type="button"
         size={size}
+        variant={variant}
         className={className}
         onClick={() => (shared === null ? setOpen(true) : shared.open())}
       >
         <Plus aria-hidden="true" />
-        New project
+        {label}
       </Button>
       {shared === null ? <NewProjectDialog open={open} onOpenChange={setOpen} /> : null}
     </>

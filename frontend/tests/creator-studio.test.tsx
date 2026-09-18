@@ -135,6 +135,7 @@ describe('the clip browser', () => {
       'href',
       `/editor/${EDIT_ID}`,
     )
+    expect(within(list).getAllByTestId('poster')).toHaveLength(2)
   })
 
   test('asks the backend for one stage and one project rather than hiding rows itself', async () => {

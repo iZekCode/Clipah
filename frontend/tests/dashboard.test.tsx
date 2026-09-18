@@ -56,80 +56,159 @@ beforeEach(() => {
   window.sessionStorage.clear()
 })
 
-describe('the Workspace overview', () => {
-  test('puts starting a project first, then recent work and moments to review', async () => {
-    stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [SUMMARY]: { body: summary() },
-    })
+const CLIPS = 'GET /api/v1/clips'
 
-    renderWithApi(
-      <WorkspaceProvider>
-        <WorkspaceOverview />
-      </WorkspaceProvider>,
-    )
+function edited(overrides: Record<string, unknown> = {}) {
+  return {
+    id: '55555555-5555-4555-8555-555555555551',
+    projectId: '44444444-4444-4444-8444-444444444444',
+    projectName: 'Episode 12',
+    rank: 1,
+    score: 0.91,
+    hook: 'The surprising opening',
+    reason: 'A complete and useful moment',
+    category: 'insight',
+    startMs: 1000,
+    endMs: 31000,
+    durationMs: 30000,
+    stage: 'edited',
+    editId: '66666666-6666-4666-8666-666666666661',
+    currentRevision: 3,
+    exportCount: 0,
+    createdAt: '2026-02-01T00:00:00+00:00',
+    editUpdatedAt: '2026-02-03T09:30:00+00:00',
+    ...overrides,
+  }
+}
 
-    const recent = await screen.findByRole('list', { name: /recent projects/i })
-    expect(screen.getByRole('button', { name: /new project/i })).toBeInTheDocument()
-    expect(within(recent).getByRole('link', { name: 'Episode 12' })).toHaveAttribute(
+function signedIn(summaryBody = summary(), clips: unknown[] = []) {
+  return stubApi({
+    [ME]: { body: currentUser() },
+    [WORKSPACES]: { body: { workspaces: [workspace()] } },
+    [SUMMARY]: { body: summaryBody },
+    [CLIPS]: { body: { clips, nextCursor: null } },
+  })
+}
+
+function renderHome() {
+  renderWithApi(
+    <WorkspaceProvider>
+      <WorkspaceOverview />
+    </WorkspaceProvider>,
+  )
+}
+
+describe('Home', () => {
+  test('leads with the clip edited most recently and one way back into it', async () => {
+    const api = signedIn(summary(), [
+      edited(),
+      edited({
+        id: '55555555-5555-4555-8555-555555555552',
+        hook: 'Second cut',
+        editId: '66666666-6666-4666-8666-666666666662',
+      }),
+    ])
+    renderHome()
+
+    const hero = await screen.findByRole('region', { name: 'Continue editing' })
+    expect(within(hero).getByText('The surprising opening')).toBeInTheDocument()
+    expect(within(hero).getByText(/revision 3/i)).toBeInTheDocument()
+    expect(within(hero).getByRole('link', { name: 'Continue editing' })).toHaveAttribute(
       'href',
-      '/dashboard/projects/44444444-4444-4444-8444-444444444444',
+      '/editor/66666666-6666-4666-8666-666666666661',
     )
-    expect(within(recent).getByText('Ready to review')).toBeInTheDocument()
-    expect(screen.getByText('The surprising opening')).toBeInTheDocument()
-    expect(screen.getByRole('link', { name: /review in episode 12/i })).toHaveAttribute(
+    expect(
+      within(screen.getByRole('list', { name: 'More clips in editing' })).getByRole('link', {
+        name: 'Second cut',
+      }),
+    ).toHaveAttribute('href', '/editor/66666666-6666-4666-8666-666666666662')
+    const read = api.calls.find((call) => call.path === '/api/v1/clips')
+    expect(read?.params.get('stage')).toBe('edited')
+    expect(read?.params.get('order')).toBe('recent')
+  })
+
+  test('shows what is processing on the real stage bar', async () => {
+    signedIn(
+      summary({
+        jobs: {
+          active: [
+            {
+              id: 'job-1',
+              projectId: '44444444-4444-4444-8444-444444444444',
+              kind: 'transcribe',
+              status: 'running',
+              stage: 'transcribing',
+              progress: 0,
+              updatedAt: '2026-02-02T00:00:00+00:00',
+            },
+            {
+              id: 'job-2',
+              projectId: '44444444-4444-4444-8444-444444444444',
+              kind: 'preview_media',
+              status: 'running',
+              stage: 'preview_media',
+              progress: 0,
+              updatedAt: '2026-02-02T00:00:01+00:00',
+            },
+          ],
+        },
+      }),
+    )
+    renderHome()
+
+    const processing = await screen.findByRole('list', { name: 'Processing now' })
+    // One row: preview work is not a pipeline stage. Each row's StageBar holds its own list.
+    expect(processing.children).toHaveLength(1)
+    expect(within(processing).getByText('Episode 12')).toBeInTheDocument()
+    // The state is a screen-reader suffix in its own span, so read the list's text.
+    expect(processing).toHaveTextContent(/transcribing \(in progress\)/i)
+  })
+
+  test('offers the strongest moments as a reel of posters', async () => {
+    signedIn()
+    renderHome()
+
+    const reel = await screen.findByRole('list', { name: 'Ready to review' })
+    expect(within(reel).getByRole('link', { name: 'The surprising opening' })).toHaveAttribute(
       'href',
       '/dashboard/clips/99999999-9999-4999-8999-999999999999',
     )
   })
 
-  test('leaves detailed budget numbers to Settings', async () => {
-    stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [SUMMARY]: { body: summary() },
-    })
+  test('lists recent projects with their state', async () => {
+    signedIn()
+    renderHome()
 
-    renderWithApi(
-      <WorkspaceProvider>
-        <WorkspaceOverview />
-      </WorkspaceProvider>,
+    const recent = await screen.findByRole('list', { name: /recent projects/i })
+    expect(within(recent).getByRole('link', { name: 'Episode 12' })).toHaveAttribute(
+      'href',
+      '/dashboard/projects/44444444-4444-4444-8444-444444444444',
     )
+    expect(within(recent).getByText('Ready to review')).toBeInTheDocument()
+  })
+
+  test('an empty workspace is the importer itself', async () => {
+    signedIn(summary({ projects: { activeCount: 0, recent: [] }, topCandidates: [] }))
+    renderHome()
+
+    expect(
+      await screen.findByRole('heading', { name: 'Drop a long video to start' }),
+    ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Choose a video' })).toBeInTheDocument()
+    expect(screen.queryByText(/nothing is waiting for review/i)).not.toBeInTheDocument()
+  })
+
+  test('leaves detailed budget numbers to Settings', async () => {
+    signedIn()
+    renderHome()
 
     await screen.findByRole('list', { name: /recent projects/i })
     expect(screen.queryByText('4 of 30')).not.toBeInTheDocument()
   })
 
-  test('invites a first video when the Workspace has no projects', async () => {
-    stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [SUMMARY]: { body: summary({ projects: { activeCount: 0, recent: [] }, topCandidates: [] }) },
-    })
-
-    renderWithApi(
-      <WorkspaceProvider>
-        <WorkspaceOverview />
-      </WorkspaceProvider>,
-    )
-
-    expect(await screen.findByText(/start with your first video/i)).toBeInTheDocument()
-    expect(screen.getByText(/nothing is waiting for review/i)).toBeInTheDocument()
-  })
-
   test('asks the backend only for the Workspace the member is looking at', async () => {
-    const api = stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [SUMMARY]: { body: summary() },
-    })
-
-    renderWithApi(
-      <WorkspaceProvider>
-        <WorkspaceOverview />
-      </WorkspaceProvider>,
-    )
+    const api = signedIn()
+    renderHome()
 
     await screen.findByRole('list', { name: /recent projects/i })
     const reads = api.calls.filter((call) => call.path === '/api/v1/dashboard/summary')
@@ -143,12 +222,7 @@ describe('the Workspace overview', () => {
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
       [SUMMARY]: { status: 500 },
     })
-
-    renderWithApi(
-      <WorkspaceProvider>
-        <WorkspaceOverview />
-      </WorkspaceProvider>,
-    )
+    renderHome()
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Something went wrong. Please try again.',

@@ -11,7 +11,6 @@ const SKIPPED = ['lib/api/generated']
 const PENDING_REDESIGN: Record<string, string> = {
   'app/page.tsx': 'Plan 6 rebuilds the landing page',
   'app/demo/page.tsx': 'Plan 6 rebuilds the demo page',
-  'components/media-card.tsx': 'Plan 3 replaces the placeholder with Poster',
   'features/assets/AssetBrowser.tsx': 'Plan 6 rebuilds the asset browser on Poster',
   'features/templates/TemplateLibrary.tsx': 'Plan 6 rebuilds template previews as look cards',
 }

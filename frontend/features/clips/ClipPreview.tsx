@@ -21,10 +21,13 @@ export function ClipPreview({
   projectId,
   startMs,
   endMs,
+  className = 'mt-2 w-full max-w-md rounded-md border',
 }: {
   projectId: string
   startMs: number
   endMs: number
+  /** Where the video sits; the clip page fills a 9:16 stage with it. */
+  className?: string
 }) {
   const { active } = useWorkspaceScope()
   const video = useRef<HTMLVideoElement>(null)
@@ -74,7 +77,7 @@ export function ClipPreview({
       preload="metadata"
       onLoadedMetadata={start}
       onTimeUpdate={stopAtEnd}
-      className="mt-2 w-full max-w-md rounded-md border"
+      className={className}
     />
   )
 }

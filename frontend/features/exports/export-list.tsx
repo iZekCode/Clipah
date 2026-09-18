@@ -134,7 +134,7 @@ export function ExportRow({ entry, showProject }: { entry: ExportResponse; showP
   )
 }
 
-function ReadyActions({ entry, renderId }: { entry: ExportResponse; renderId: string }) {
+export function ReadyActions({ entry, renderId }: { entry: ExportResponse; renderId: string }) {
   const { active } = useWorkspaceScope()
   const session = useSession()
   const download = useMutation<RenderDownloadResponse, ApiError>({
