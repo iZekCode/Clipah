@@ -899,3 +899,35 @@ def production_environment_values() -> dict[str, str]:
         "CLIPAH_SESSION_SECRET": "s" * 32,
         "CLIPAH_SECRET_ENCRYPTION_KEY": "e" * 32,
     }
+
+
+@pytest.mark.unit
+def test_every_language_model_task_defaults_to_gemini() -> None:
+    """Moments, B-roll plans, and context checks all run on Gemini unless told otherwise."""
+    settings = Settings()
+
+    assert settings.highlight_provider == "gemini"
+    assert settings.broll_plan_provider == "gemini"
+    assert settings.context_assessor_provider == "gemini"
+
+
+@pytest.mark.unit
+def test_moment_finding_reads_the_whole_transcript_in_one_request_by_default() -> None:
+    """One request covers the transcript; overlapping windows are the opt-in alternative."""
+    assert Settings().analysis_single_window is True
+
+
+@pytest.mark.unit
+def test_groq_and_openrouter_remain_selectable() -> None:
+    """Changing the default removes no provider a deployment already relies on."""
+    settings = Settings(
+        highlight_provider="openrouter",
+        broll_plan_provider="groq",
+        context_assessor_provider="groq",
+        analysis_single_window=False,
+    )
+
+    assert settings.highlight_provider == "openrouter"
+    assert settings.broll_plan_provider == "groq"
+    assert settings.context_assessor_provider == "groq"
+    assert settings.analysis_single_window is False

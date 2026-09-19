@@ -33,7 +33,7 @@ from clipah.broll.planner import (
     BrollPlanner,
     BrollProviderRetryableError,
     BrollProviderTerminalError,
-    GroqBrollPlanner,
+    ChatCompletionsBrollPlanner,
 )
 from clipah.broll.repository import BrollRepository
 from clipah.config import Settings
@@ -41,6 +41,11 @@ from clipah.db import RuntimeRole, session_scope
 from clipah.highlights.provider import ProviderCall
 from clipah.jobs.models import JobCancelledError, JobContext, RetryableJobError, TerminalJobError
 from clipah.jobs.use_cases import update_job_progress
+from clipah.language_models.chat_completions import (
+    GEMINI_OPENAI_BASE_URL,
+    ChatCompletionsClient,
+    ModelFallbackCompletions,
+)
 from clipah.models import BrollSuggestion, Transcript
 from clipah.observability.metrics import count
 from clipah.observability.usage import ProviderCallRecord, record_provider_usage
@@ -331,8 +336,26 @@ def _transaction(context: JobContext) -> Iterator[Session]:
 
 
 def production_broll_provider(settings: Settings) -> BrollBeatProvider:
-    """Compose the configured Groq planner, which has no offline substitute by design."""
-    return GroqBrollPlanner(
+    """Compose the configured planner, which has no offline substitute by design.
+
+    Gemini is the default; Groq remains selectable with `CLIPAH_BROLL_PLAN_PROVIDER`.
+    """
+    if settings.broll_plan_provider == "gemini":
+        if settings.gemini_api_key is None:
+            raise RuntimeError("B-roll planning on Gemini requires CLIPAH_GEMINI_API_KEY")
+        return ChatCompletionsBrollPlanner(
+            model=settings.gemini_reranking_model,
+            # Gemini's newest model is often busy; older ones answer the same request.
+            completions=ModelFallbackCompletions(
+                ChatCompletionsClient(
+                    base_url=GEMINI_OPENAI_BASE_URL,
+                    api_key=settings.gemini_api_key.get_secret_value(),
+                ),
+                models=(settings.gemini_reranking_model, *settings.gemini_fallback_models),
+            ),
+            provider="gemini",
+        )
+    return ChatCompletionsBrollPlanner(
         model=settings.groq_reranking_model,
         api_key=(
             settings.groq_api_key.get_secret_value() if settings.groq_api_key is not None else None

@@ -130,15 +130,24 @@ openssl rand -hex 32
 | Variable | Purpose | Where |
 | --- | --- | --- |
 | `CLIPAH_ASSEMBLYAI_API_KEY` | Transcription and speaker diarization | <https://www.assemblyai.com/dashboard/> |
-| `CLIPAH_GROQ_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=groq` | <https://console.groq.com/keys> |
-| `CLIPAH_OPENROUTER_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=openrouter` | <https://openrouter.ai/keys> |
-| `CLIPAH_GEMINI_API_KEY` | Highlight extraction and reranking, when `CLIPAH_HIGHLIGHT_PROVIDER=gemini` | <https://aistudio.google.com/apikey> |
+| `CLIPAH_GEMINI_API_KEY` | Moment finding, B-roll planning, and the context-safety check (the default provider for all three) | <https://aistudio.google.com/apikey> |
+| `CLIPAH_GROQ_API_KEY` | Only when a task is switched to Groq | <https://console.groq.com/keys> |
+| `CLIPAH_OPENROUTER_API_KEY` | Only when `CLIPAH_HIGHLIGHT_PROVIDER=openrouter` | <https://openrouter.ai/keys> |
 
 Transcription model routing is decided by language, not by configuration: English, Spanish,
 German, French, Portuguese, and Italian use `universal-3-pro`; Indonesian and every other
 language outside that set use `universal-2`; an unspecified language tries U3 Pro and falls
-back to U2. Highlight extraction and reranking use `CLIPAH_GROQ_EXTRACTION_MODEL` and
-`CLIPAH_GROQ_RERANKING_MODEL`. Startup refuses a retired model ID.
+back to U2. Startup refuses a retired or unknown model ID.
+
+**Gemini runs every language-model task by default**: moment finding
+(`CLIPAH_HIGHLIGHT_PROVIDER`), B-roll planning (`CLIPAH_BROLL_PLAN_PROVIDER`), and the
+context-safety check on clip variants (`CLIPAH_CONTEXT_ASSESSOR_PROVIDER`). Each can be
+switched to `groq`, and moment finding also to `openrouter`. On Groq, extraction and B-roll
+planning use `CLIPAH_GROQ_EXTRACTION_MODEL` and `CLIPAH_GROQ_RERANKING_MODEL`. On Gemini,
+moment finding uses the Gemini models and fallbacks below, B-roll planning uses
+`CLIPAH_GEMINI_RERANKING_MODEL`, and the context check uses `CLIPAH_GEMINI_EXTRACTION_MODEL`.
+Without the chosen provider's key, moment finding and B-roll planning refuse to start, and
+the context check falls back to its deterministic rules.
 
 `CLIPAH_HIGHLIGHT_PROVIDER` chooses which adapter serves extraction and reranking. The
 OpenRouter adapter reads `CLIPAH_OPENROUTER_EXTRACTION_MODEL` and
@@ -147,9 +156,10 @@ sentence spans this deployment built, so it never supplies transcript text or a 
 `gemini` runs the same adapter against Gemini's OpenAI-compatible endpoint and reads
 `CLIPAH_GEMINI_EXTRACTION_MODEL` and `CLIPAH_GEMINI_RERANKING_MODEL`. Gemini's free tier
 uses submitted data to improve Google's products, so real transcripts need a billed project.
-`CLIPAH_ANALYSIS_SINGLE_WINDOW` offers the whole transcript in one request instead of
-overlapping windows; it removes cross-window duplicates and costs fewer requests, but a
-single request has been measured to under-cover the end of a long source.
+`CLIPAH_ANALYSIS_SINGLE_WINDOW` (default `true`) offers the whole transcript in one request
+instead of overlapping windows; it removes cross-window duplicates and costs far fewer
+requests, which matters on Gemini's free tier. A single request has been measured to
+under-cover the end of a long source; set it to `false` for overlapping windows.
 
 ### Stock B-roll (optional)
 
@@ -381,14 +391,16 @@ requires HTTPS origins.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CLIPAH_ASSEMBLYAI_API_KEY` | — | Transcription and diarization. |
-| `CLIPAH_GROQ_API_KEY` | — | Extraction and reranking. |
+| `CLIPAH_GROQ_API_KEY` | — | Required for any task switched to `groq`. |
 | `CLIPAH_GROQ_EXTRACTION_MODEL` | `openai/gpt-oss-20b` | Refused if retired. |
 | `CLIPAH_GROQ_RERANKING_MODEL` | `openai/gpt-oss-120b` | Refused if retired. |
-| `CLIPAH_HIGHLIGHT_PROVIDER` | `groq` | `groq`, `openrouter`, or `gemini`. |
+| `CLIPAH_HIGHLIGHT_PROVIDER` | `gemini` | Moment finding: `gemini`, `groq`, or `openrouter`. |
+| `CLIPAH_BROLL_PLAN_PROVIDER` | `gemini` | B-roll planning: `gemini` or `groq`. |
+| `CLIPAH_CONTEXT_ASSESSOR_PROVIDER` | `gemini` | Context-safety check: `gemini` or `groq`. |
 | `CLIPAH_OPENROUTER_API_KEY` | — | Required when the provider is `openrouter`. |
 | `CLIPAH_OPENROUTER_EXTRACTION_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
 | `CLIPAH_OPENROUTER_RERANKING_MODEL` | `nvidia/nemotron-3-super-120b-a12b` | Refused if unknown. |
-| `CLIPAH_GEMINI_API_KEY` | — | Required when the provider is `gemini`. |
+| `CLIPAH_GEMINI_API_KEY` | — | Required for any task on `gemini`, the default. |
 | `CLIPAH_GEMINI_EXTRACTION_MODEL` | `gemini-3.8-flash` | Refused if unknown. |
 | `CLIPAH_GEMINI_RERANKING_MODEL` | `gemini-3.8-flash` | Refused if unknown. |
 | `CLIPAH_GEMINI_FALLBACK_MODELS` | `["gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash"]` | JSON array tried in order when the model before it is rate limited or unavailable; a refusal never falls through. Each is refused at startup if unknown. |
@@ -398,7 +410,7 @@ requires HTTPS origins.
 | `CLIPAH_ANALYSIS_WINDOW_OVERLAP_MS` | `20000` | |
 | `CLIPAH_ANALYSIS_WINDOW_SILENCE_GAP_MS` | `1200` | Preferred cut point. |
 | `CLIPAH_ANALYSIS_WINDOW_MIN_WORDS` | `25` | Below this a transcript yields no windows. |
-| `CLIPAH_ANALYSIS_SINGLE_WINDOW` | `false` | Offer the whole transcript in one request. |
+| `CLIPAH_ANALYSIS_SINGLE_WINDOW` | `true` | Offer the whole transcript in one request; `false` for overlapping windows. |
 | `CLIPAH_ANALYSIS_CANDIDATE_MIN_DURATION_MS` | `20000` | |
 | `CLIPAH_ANALYSIS_CANDIDATE_MAX_DURATION_MS` | `90000` | |
 | `CLIPAH_ANALYSIS_DEDUPLICATION_TEMPORAL_IOU` | `0.65` | |

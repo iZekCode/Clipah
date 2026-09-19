@@ -83,7 +83,11 @@ class Settings(BaseSettings):
     groq_api_key: SecretStr | None = None
     groq_extraction_model: str = "openai/gpt-oss-20b"
     groq_reranking_model: str = "openai/gpt-oss-120b"
-    highlight_provider: Literal["groq", "openrouter", "gemini"] = "groq"
+    # Gemini is the default for every language-model task; Groq and OpenRouter stay
+    # selectable for deployments that configure them.
+    highlight_provider: Literal["groq", "openrouter", "gemini"] = "gemini"
+    broll_plan_provider: Literal["groq", "gemini"] = "gemini"
+    context_assessor_provider: Literal["groq", "gemini"] = "gemini"
     openrouter_api_key: SecretStr | None = None
     openrouter_extraction_model: str = "nvidia/nemotron-3-super-120b-a12b"
     openrouter_reranking_model: str = "nvidia/nemotron-3-super-120b-a12b"
@@ -119,7 +123,9 @@ class Settings(BaseSettings):
     analysis_window_overlap_ms: int = Field(default=20_000, ge=0)
     analysis_window_silence_gap_ms: int = Field(default=1_200, ge=0)
     analysis_window_min_words: int = Field(default=25, gt=0)
-    analysis_single_window: bool = False
+    # The whole transcript in one request: no cross-window duplicates and far fewer
+    # requests against provider rate limits. Overlapping windows remain the opt-out.
+    analysis_single_window: bool = True
     analysis_candidate_min_duration_ms: int = Field(default=20_000, gt=0)
     analysis_candidate_max_duration_ms: int = Field(default=90_000, gt=0)
     analysis_deduplication_temporal_iou: float = Field(default=0.65, ge=0, le=1)
@@ -262,6 +268,33 @@ class Settings(BaseSettings):
         if self.session_cookie_name.startswith(HOST_COOKIE_PREFIX):
             return f"{HOST_COOKIE_PREFIX}{stem}"
         return stem
+
+    @property
+    def highlight_models(self) -> tuple[str, str]:
+        """The (extraction, reranking) models moment finding calls first on its provider."""
+        if self.highlight_provider == "gemini":
+            return self.gemini_extraction_model, self.gemini_reranking_model
+        if self.highlight_provider == "openrouter":
+            return self.openrouter_extraction_model, self.openrouter_reranking_model
+        return self.groq_extraction_model, self.groq_reranking_model
+
+    @property
+    def language_models_in_use(self) -> tuple[str, ...]:
+        """Every language model some task of this deployment is configured to call."""
+        models: list[str] = list(self.highlight_models)
+        if self.highlight_provider == "gemini":
+            models.extend(self.gemini_fallback_models)
+        models.append(
+            self.gemini_reranking_model
+            if self.broll_plan_provider == "gemini"
+            else self.groq_reranking_model
+        )
+        models.append(
+            self.gemini_extraction_model
+            if self.context_assessor_provider == "gemini"
+            else self.groq_extraction_model
+        )
+        return tuple(dict.fromkeys(models))
 
     @property
     def gpt_oss_extraction_model(self) -> str:

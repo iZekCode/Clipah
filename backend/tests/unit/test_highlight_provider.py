@@ -455,6 +455,8 @@ def test_router_raises_the_primary_failure_when_no_fallback_is_configured() -> N
 def _settings(**overrides: Any) -> Settings:
     """Build settings carrying only the highlight provider fields under test."""
     values: dict[str, Any] = {
+        # These tests exercise the Groq adapter; Gemini is the deployment default.
+        "highlight_provider": "groq",
         "groq_api_key": SecretStr("test-key"),
         "groq_extraction_model": "openai/gpt-oss-20b",
         "groq_reranking_model": "openai/gpt-oss-120b",
@@ -1012,5 +1014,19 @@ def test_rejects_an_unknown_gemini_model_alias() -> None:
 @pytest.mark.unit
 def test_single_window_analysis_is_a_deployment_setting() -> None:
     """A provider with room for the whole transcript must not be asked window by window."""
-    assert production_analysis_policy(_settings()).single_window is False
-    assert production_analysis_policy(_settings(analysis_single_window=True)).single_window is True
+    assert production_analysis_policy(_settings()).single_window is True
+    assert (
+        production_analysis_policy(_settings(analysis_single_window=False)).single_window is False
+    )
+
+
+@pytest.mark.unit
+def test_a_default_deployment_finds_moments_on_gemini() -> None:
+    """Gemini is the default provider; its key is the only credential analysis needs."""
+    router = highlight_provider_router(
+        Settings(gemini_api_key=SecretStr("test-key")), today=date(2026, 9, 1)
+    )
+
+    assert isinstance(router, HighlightProviderRouter)
+    with pytest.raises(RuntimeError):
+        highlight_provider_router(Settings(gemini_api_key=None), today=date(2026, 9, 1))

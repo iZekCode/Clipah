@@ -409,12 +409,29 @@ class TestProviderReadiness:
     def test_an_announced_shutdown_warns_well_before_it_happens(self) -> None:
         """The point of the monitor is to make the migration a planned piece of work."""
         report = readiness_report(
-            _settings(provider_shutdowns=("model:openai/gpt-oss-20b=2027-01-15",)),
+            _settings(provider_shutdowns=("model:gemini-3.8-flash=2027-01-15",)),
             today=date(2026, 9, 10),
         )
 
         assert report.ready is True
         assert any("2027-01-15" in warning for warning in report.warnings)
+
+    def test_only_the_models_of_the_providers_in_use_are_watched(self) -> None:
+        """A Groq retirement means nothing to a deployment whose tasks all run on Gemini."""
+        on_gemini = readiness_report(
+            _settings(provider_shutdowns=("model:openai/gpt-oss-20b=2026-01-01",)),
+            today=date(2026, 9, 10),
+        )
+        on_groq = readiness_report(
+            _settings(
+                broll_plan_provider="groq",
+                provider_shutdowns=("model:openai/gpt-oss-120b=2026-01-01",),
+            ),
+            today=date(2026, 9, 10),
+        )
+
+        assert on_gemini.ready is True
+        assert on_groq.ready is False
 
     def test_a_model_that_is_already_retired_fails_readiness(self) -> None:
         """Once the date has passed, the deployment is broken whether or not anybody looks."""
@@ -494,6 +511,9 @@ class TestConfiguration:
         samples = [sample for sample in recorded.samples if sample.name == "clipah.build.info"]
         assert samples
         assert samples[0].labels["environment"] == "local"
+        # The models named are the ones moment finding actually uses: Gemini's by default.
+        assert samples[0].labels["extractionModel"] == "gemini-3.8-flash"
+        assert samples[0].labels["rerankingModel"] == "gemini-3.8-flash"
 
 
 class TestInstrumentedStorage:

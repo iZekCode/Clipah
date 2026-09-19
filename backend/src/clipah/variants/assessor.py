@@ -19,6 +19,11 @@ from typing import Any, Protocol, cast
 
 from clipah.config import Settings
 from clipah.highlights.provider import ProviderCall
+from clipah.language_models.chat_completions import (
+    GEMINI_OPENAI_BASE_URL,
+    ChatCompletionsClient,
+    ModelFallbackCompletions,
+)
 from clipah.transcripts.models import TranscriptWord
 from clipah.variants.models import ContextWarningType
 
@@ -116,8 +121,12 @@ def context_warning_json_schema() -> dict[str, Any]:
     }
 
 
-class GroqContextSafetyAssessor:
-    """Translate Groq chat completions into unvalidated warning proposals."""
+class ChatCompletionsContextSafetyAssessor:
+    """Translate OpenAI-style chat completions into unvalidated warning proposals.
+
+    The client is Groq's SDK or the shared client pointed at Gemini; `provider` names which
+    one the usage record is charged to.
+    """
 
     def __init__(
         self,
@@ -125,12 +134,18 @@ class GroqContextSafetyAssessor:
         model: str,
         api_key: str | None = None,
         completions: _Completions | None = None,
+        provider: str = PROVIDER,
+        response_format: Mapping[str, Any] | None = None,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         max_attempts: int = 3,
     ) -> None:
         """Bind the configured model and an injectable clock, sleep, and client."""
-        self._model = model
+        self.model = model
+        self.provider = provider
+        # Groq honours loose JSON mode with this prompt; Gemini needs the exact schema, or it
+        # may answer a bare list.
+        self.response_format = dict(response_format or {"type": "json_object"})
         self._completions = completions or _default_completions(api_key)
         self._clock = clock
         self._sleep = sleep
@@ -153,9 +168,9 @@ class GroqContextSafetyAssessor:
         return AssessmentResult(
             proposals=tuple(item for item in proposals if isinstance(item, dict)),
             call=ProviderCall(
-                provider=PROVIDER,
+                provider=self.provider,
                 operation=CONTEXT_ASSESS_OPERATION,
-                model=self._model,
+                model=_answered_model(response, self.model),
                 request_id=_request_id(response),
                 latency_ms=latency_ms,
                 input_units=len(words),
@@ -172,12 +187,12 @@ class GroqContextSafetyAssessor:
         for attempt in range(self._max_attempts):
             try:
                 response = self._completions.create(
-                    model=self._model,
+                    model=self.model,
                     messages=(
                         {"role": "system", "content": _SYSTEM_PROMPT},
                         {"role": "user", "content": prompt},
                     ),
-                    response_format={"type": "json_object"},
+                    response_format=self.response_format,
                     timeout=REQUEST_TIMEOUT_SECONDS,
                 )
             except Exception as error:
@@ -252,10 +267,38 @@ def configured_context_assessor(settings: Settings) -> ContextSafetyAssessor | N
     An absent credential is an ordinary state: the deterministic rules still run, and a
     member still sees every warning the transcript alone can establish.
     """
+    if settings.context_assessor_provider == "gemini":
+        if settings.gemini_api_key is None:
+            return None
+        return ChatCompletionsContextSafetyAssessor(
+            model=settings.gemini_extraction_model,
+            completions=ModelFallbackCompletions(
+                ChatCompletionsClient(
+                    base_url=GEMINI_OPENAI_BASE_URL,
+                    api_key=settings.gemini_api_key.get_secret_value(),
+                ),
+                models=(settings.gemini_extraction_model, *settings.gemini_fallback_models),
+            ),
+            provider="gemini",
+            response_format={
+                "type": "json_schema",
+                "json_schema": {
+                    "name": "context_warnings",
+                    "strict": True,
+                    "schema": context_warning_json_schema(),
+                },
+            },
+        )
     api_key = settings.groq_api_key
     if api_key is None:
         return None
-    return GroqContextSafetyAssessor(
+    return ChatCompletionsContextSafetyAssessor(
         model=settings.groq_extraction_model,
         api_key=api_key.get_secret_value(),
     )
+
+
+def _answered_model(response: Any, configured: str) -> str:
+    """Name the model that answered, when a fallback chain says so; else the configured one."""
+    answered = getattr(response, "model", None)
+    return answered if isinstance(answered, str) and answered else configured

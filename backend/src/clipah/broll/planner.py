@@ -194,14 +194,18 @@ def validate_beat(
 
 
 class _Completions(Protocol):
-    """Structural subset of the Groq chat completions client used by this adapter."""
+    """Structural subset of an OpenAI-style chat completions client used by this adapter."""
 
     def create(self, **request: Any) -> Any:
         """Submit one chat completion request."""
 
 
-class GroqBrollPlanner:
-    """Translate Groq chat completions into Clipah's beat-proposal contract."""
+class ChatCompletionsBrollPlanner:
+    """Translate OpenAI-style chat completions into Clipah's beat-proposal contract.
+
+    The client is Groq's SDK or the shared client pointed at Gemini; both answer the same
+    `create` call, and `provider` names which one the usage record is charged to.
+    """
 
     def __init__(
         self,
@@ -209,12 +213,14 @@ class GroqBrollPlanner:
         model: str,
         api_key: str | None = None,
         completions: _Completions | None = None,
+        provider: str = PROVIDER,
         clock: Callable[[], float] = time.monotonic,
         sleep: Callable[[float], None] = time.sleep,
         max_attempts: int = 3,
     ) -> None:
         """Bind the configured model and an injectable clock, sleep, and client."""
-        self._model = model
+        self.model = model
+        self.provider = provider
         self._completions = completions or cast(
             _Completions, Groq(api_key=api_key).chat.completions
         )
@@ -245,9 +251,9 @@ class GroqBrollPlanner:
         return ProposalResult(
             proposals=tuple(cast(list[Mapping[str, Any]], proposals)),
             call=ProviderCall(
-                provider=PROVIDER,
+                provider=self.provider,
                 operation=PLAN_OPERATION,
-                model=self._model,
+                model=_answered_model(response, self.model),
                 request_id=_text(getattr(response, "id", "")),
                 latency_ms=latency_ms,
                 input_units=_units(getattr(usage, "prompt_tokens", 0)),
@@ -265,7 +271,7 @@ class GroqBrollPlanner:
             started = self._clock()
             try:
                 response = self._completions.create(
-                    model=self._model,
+                    model=self.model,
                     messages=messages,
                     temperature=0,
                     timeout=REQUEST_TIMEOUT_SECONDS,
@@ -449,3 +455,9 @@ def _units(value: object) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         return 0
     return value
+
+
+def _answered_model(response: Any, configured: str) -> str:
+    """Name the model that answered, when a fallback chain says so; else the configured one."""
+    answered = getattr(response, "model", None)
+    return answered if isinstance(answered, str) and answered else configured

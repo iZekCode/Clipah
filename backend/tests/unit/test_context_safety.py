@@ -9,16 +9,19 @@ file, which is the point of writing all three languages into it.
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 
+from clipah.config import Settings
 from clipah.transcripts.models import TranscriptWord
 from clipah.variants.assessor import (
     CONTEXT_ASSESS_OPERATION,
     RATE_LIMITED_CODE,
     REJECTED_CODE,
     UNAVAILABLE_CODE,
+    ChatCompletionsContextSafetyAssessor,
     ContextProviderRetryableError,
     ContextProviderTerminalError,
-    GroqContextSafetyAssessor,
+    configured_context_assessor,
     context_warning_json_schema,
 )
 from clipah.variants.context_safety import assess_context, assess_context_with_proposals
@@ -429,10 +432,10 @@ class _BadRequestError(Exception):
     """Stand in for the provider SDK's rejection exception by name."""
 
 
-def _assessor(**overrides: object) -> GroqContextSafetyAssessor:
+def _assessor(**overrides: object) -> ChatCompletionsContextSafetyAssessor:
     """Build the adapter over a stubbed client and a clock that never really sleeps."""
     completions = overrides.pop("completions", _Completions())
-    return GroqContextSafetyAssessor(
+    return ChatCompletionsContextSafetyAssessor(
         model="openai/gpt-oss-20b",
         completions=completions,  # type: ignore[arg-type]
         clock=lambda: 0.0,
@@ -515,3 +518,71 @@ def test_the_answer_schema_offers_only_types_clipah_can_evaluate() -> None:
 
     offered = schema["properties"]["warnings"]["items"]["properties"]["type"]["enum"]
     assert set(offered) == {value.value for value in ContextWarningType}
+
+
+@pytest.mark.unit
+def test_the_context_check_runs_on_gemini_by_default() -> None:
+    """Gemini is the default provider for every language-model task."""
+    assessor = configured_context_assessor(Settings(gemini_api_key=SecretStr("test-key")))
+
+    assert isinstance(assessor, ChatCompletionsContextSafetyAssessor)
+    assert assessor.provider == "gemini"
+    assert assessor.model == Settings().gemini_extraction_model
+
+
+@pytest.mark.unit
+def test_the_context_check_can_still_run_on_groq() -> None:
+    """Groq stays selectable for deployments that configure it."""
+    assessor = configured_context_assessor(
+        Settings(context_assessor_provider="groq", groq_api_key=SecretStr("test-key"))
+    )
+
+    assert isinstance(assessor, ChatCompletionsContextSafetyAssessor)
+    assert assessor.provider == "groq"
+
+
+@pytest.mark.unit
+def test_without_the_chosen_providers_key_only_the_deterministic_rules_run() -> None:
+    """An absent credential is an ordinary state, not a startup failure."""
+    assert configured_context_assessor(Settings(gemini_api_key=None)) is None
+    assert (
+        configured_context_assessor(Settings(context_assessor_provider="groq", groq_api_key=None))
+        is None
+    )
+
+
+@pytest.mark.unit
+def test_on_gemini_the_check_demands_its_exact_answer_shape() -> None:
+    """Loose JSON let Gemini answer a bare list; the schema holds it to `{"warnings": [...]}`."""
+    on_gemini = configured_context_assessor(Settings(gemini_api_key=SecretStr("test-key")))
+    on_groq = configured_context_assessor(
+        Settings(context_assessor_provider="groq", groq_api_key=SecretStr("test-key"))
+    )
+
+    assert on_gemini is not None and on_groq is not None
+    assert on_gemini.response_format == {
+        "type": "json_schema",
+        "json_schema": {
+            "name": "context_warnings",
+            "strict": True,
+            "schema": context_warning_json_schema(),
+        },
+    }
+    assert on_groq.response_format == {"type": "json_object"}
+
+
+@pytest.mark.unit
+def test_the_usage_record_names_the_model_that_actually_answered() -> None:
+    """When a busy model is stepped past, the cost belongs to the one that answered."""
+
+    class _Answered(_Completions):
+        def create(self, **request: object) -> object:
+            response = super().create(**request)
+            response.model = "gemini-3.6-flash"  # type: ignore[attr-defined]
+            return response
+
+    result = _assessor(completions=_Answered()).assess(
+        words=_words(QUESTION_SPEECH), start_word_id="w000005", end_word_id="w000011"
+    )
+
+    assert result.call.model == "gemini-3.6-flash"

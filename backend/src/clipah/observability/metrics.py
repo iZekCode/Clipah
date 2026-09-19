@@ -381,8 +381,8 @@ def record_build_info(settings: Settings) -> None:
         "clipah.build.info",
         environment=settings.environment.value,
         version=BUILD_VERSION,
-        extractionModel=settings.groq_extraction_model,
-        rerankingModel=settings.groq_reranking_model,
+        extractionModel=settings.highlight_models[0],
+        rerankingModel=settings.highlight_models[1],
         capabilityVersion=CAPABILITY_VERSION,
     )
 

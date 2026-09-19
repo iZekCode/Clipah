@@ -30,8 +30,8 @@ from clipah.broll.planner import (
     BrollPlanner,
     BrollProviderRetryableError,
     BrollProviderTerminalError,
+    ChatCompletionsBrollPlanner,
     FakeBrollProvider,
-    GroqBrollPlanner,
     ProposalResult,
     beat_json_schema,
     validate_beat,
@@ -450,11 +450,13 @@ class _ProviderError(Exception):
         super().__init__(f"provider said {status_code} about cookie abc123")
 
 
-def _groq(outcomes: list[Any], **overrides: Any) -> tuple[GroqBrollPlanner, _StubCompletions]:
+def _groq(
+    outcomes: list[Any], **overrides: Any
+) -> tuple[ChatCompletionsBrollPlanner, _StubCompletions]:
     """Build the adapter over a stub client with no sleeping and a fixed clock."""
     completions = _StubCompletions(outcomes)
     ticks = iter(range(0, 1_000))
-    planner = GroqBrollPlanner(
+    planner = ChatCompletionsBrollPlanner(
         model="openai/gpt-oss-120b",
         completions=completions,
         clock=lambda: float(next(ticks)),
@@ -752,3 +754,17 @@ def test_a_planner_with_no_reporting_sink_still_drops_a_malformed_beat() -> None
     )
 
     assert [beat.start_ms for beat in result.beats] == [10_000]
+
+
+@pytest.mark.unit
+def test_the_plan_usage_names_the_model_that_actually_answered() -> None:
+    """A fallback chain may answer from an older model; the cost is recorded against it."""
+    response = _Response('{"beats": []}')
+    response.model = "gemini-3.6-flash"  # type: ignore[attr-defined]
+    planner, _ = _groq([response])
+
+    result = planner.propose(
+        candidate=CANDIDATE, words=WORDS[:20], boundaries=(), coverage=BrollCoverage.BALANCED
+    )
+
+    assert result.call.model == "gemini-3.6-flash"

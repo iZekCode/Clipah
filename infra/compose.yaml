@@ -130,6 +130,12 @@ services:
       CLIPAH_GOOGLE_OIDC_CLIENT_SECRET: "${CLIPAH_GOOGLE_OIDC_CLIENT_SECRET:-}"
       CLIPAH_GOOGLE_OIDC_REDIRECT_URI: "${CLIPAH_GOOGLE_OIDC_REDIRECT_URI:-http://localhost:3000/api/v1/auth/google/callback}"
       CLIPAH_FORWARDED_ALLOW_IPS: "127.0.0.1"
+      # The context-safety check on clip variants runs in the API. Without a usable key a
+      # variant still gets every warning the deterministic rules can establish.
+      CLIPAH_CONTEXT_ASSESSOR_PROVIDER: "${CLIPAH_CONTEXT_ASSESSOR_PROVIDER:-gemini}"
+      CLIPAH_GEMINI_API_KEY: "${GEMINI_API_KEY:-fake-gemini}"
+      CLIPAH_GEMINI_EXTRACTION_MODEL: "${CLIPAH_GEMINI_EXTRACTION_MODEL:-gemini-3.8-flash}"
+      CLIPAH_GROQ_API_KEY: "${CLIPAH_GROQ_API_KEY:-fake-groq}"
     ports: ["127.0.0.1:58000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()"]
@@ -212,10 +218,11 @@ services:
       # was previously no way to do that, which made a local end-to-end run impossible.
       CLIPAH_ASSEMBLYAI_API_KEY: "${CLIPAH_ASSEMBLYAI_API_KEY:-fake-assemblyai}"
       CLIPAH_GROQ_API_KEY: "${CLIPAH_GROQ_API_KEY:-fake-groq}"
-      # Highlight extraction is provider-selectable. The default keeps the Groq adapter;
-      # an OpenRouter deployment lets the model choose only from sentence spans this
-      # deployment built, and may offer the whole transcript in one request.
-      CLIPAH_HIGHLIGHT_PROVIDER: "${CLIPAH_HIGHLIGHT_PROVIDER:-groq}"
+      # Every language-model task runs on Gemini by default. Moment finding may be switched
+      # to groq or openrouter, and B-roll planning to groq; each model chooses only from
+      # sentence spans or word IDs this deployment built.
+      CLIPAH_HIGHLIGHT_PROVIDER: "${CLIPAH_HIGHLIGHT_PROVIDER:-gemini}"
+      CLIPAH_BROLL_PLAN_PROVIDER: "${CLIPAH_BROLL_PLAN_PROVIDER:-gemini}"
       CLIPAH_OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-fake-openrouter}"
       CLIPAH_OPENROUTER_EXTRACTION_MODEL: "${CLIPAH_OPENROUTER_EXTRACTION_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
       CLIPAH_OPENROUTER_RERANKING_MODEL: "${CLIPAH_OPENROUTER_RERANKING_MODEL:-nvidia/nemotron-3-super-120b-a12b}"
@@ -224,7 +231,7 @@ services:
       CLIPAH_GEMINI_RERANKING_MODEL: "${CLIPAH_GEMINI_RERANKING_MODEL:-gemini-3.8-flash}"
       # A JSON array, tried in order when the model before it is rate limited or unavailable.
       CLIPAH_GEMINI_FALLBACK_MODELS: '${CLIPAH_GEMINI_FALLBACK_MODELS:-["gemini-3.7-flash","gemini-3.6-flash","gemini-3.5-flash"]}'
-      CLIPAH_ANALYSIS_SINGLE_WINDOW: "${CLIPAH_ANALYSIS_SINGLE_WINDOW:-false}"
+      CLIPAH_ANALYSIS_SINGLE_WINDOW: "${CLIPAH_ANALYSIS_SINGLE_WINDOW:-true}"
       # Window shape is tunable for providers whose sweet spot is larger than the default
       # two-to-three-minute windows, such as a long-context OpenRouter model.
       CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS: "${CLIPAH_ANALYSIS_WINDOW_TARGET_MIN_MS:-120000}"

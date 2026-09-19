@@ -26,8 +26,8 @@ from clipah.broll.planner import (
     UNKNOWN_WORD_CODE,
     BrollProviderRetryableError,
     BrollProviderTerminalError,
+    ChatCompletionsBrollPlanner,
     FakeBrollProvider,
-    GroqBrollPlanner,
     ProposalResult,
 )
 from clipah.db import RuntimeRole
@@ -700,7 +700,7 @@ def test_the_shipped_default_policy_applies_when_no_policy_is_configured(
 @pytest.mark.integration
 def test_the_production_runner_reads_its_policy_and_provider_from_settings() -> None:
     """The shipped runner must be wired to configuration rather than to test defaults."""
-    settings = runtime_settings(RuntimeRole.WORKER, groq_api_key="test-key")
+    settings = runtime_settings(RuntimeRole.WORKER, gemini_api_key="test-key")
 
     policy = production_placement_policy(settings)
     provider = production_broll_provider(settings)
@@ -709,8 +709,33 @@ def test_the_production_runner_reads_its_policy_and_provider_from_settings() -> 
     assert policy.max_shot_ms == settings.broll_max_shot_ms
     assert policy.hook_guard_ms == settings.broll_hook_guard_ms
     assert policy.min_confidence == settings.broll_min_confidence
-    assert isinstance(provider, GroqBrollPlanner)
+    assert isinstance(provider, ChatCompletionsBrollPlanner)
+    assert provider.provider == "gemini"
+    assert provider.model == settings.gemini_reranking_model
     assert broll_plan_stage_runner is stage_runners()[JobKind.BROLL_PLAN]
+
+
+@pytest.mark.integration
+def test_b_roll_planning_can_still_run_on_groq() -> None:
+    """Gemini is the default, not the only choice."""
+    settings = runtime_settings(
+        RuntimeRole.WORKER, broll_plan_provider="groq", groq_api_key="test-key"
+    )
+
+    provider = production_broll_provider(settings)
+
+    assert isinstance(provider, ChatCompletionsBrollPlanner)
+    assert provider.provider == "groq"
+    assert provider.model == settings.groq_reranking_model
+
+
+@pytest.mark.integration
+def test_b_roll_planning_on_gemini_needs_its_key() -> None:
+    """A missing credential stops the stage plainly instead of failing on every request."""
+    settings = runtime_settings(RuntimeRole.WORKER, gemini_api_key=None)
+
+    with pytest.raises(RuntimeError, match="Gemini"):
+        production_broll_provider(settings)
 
 
 def _store_conflicting_suggestion(engine: Engine, seed: _Seed) -> None:

@@ -193,8 +193,7 @@ class ReadinessReport:
 def configured_releases(settings: Settings) -> tuple[tuple[str, str], ...]:
     """List the (kind, identifier) pairs this deployment is actually configured to call."""
     models = (
-        settings.groq_extraction_model,
-        settings.groq_reranking_model,
+        *settings.language_models_in_use,
         settings.fal_image_model_id,
         settings.fal_video_model_id,
         settings.runway_video_model_id,
