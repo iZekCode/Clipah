@@ -31,6 +31,7 @@ from clipah.models import (
 )
 from clipah.observability.logging import get_logger
 from clipah.observability.metrics import count
+from clipah.projects.arrival import release_media_arrival
 from clipah.publishing.models import PublicationStatus
 from clipah.retention.policy import RetentionEntityKind, RetentionPolicy
 from clipah.retention.use_cases import (
@@ -313,6 +314,13 @@ def _expire_abandoned_uploads(session: Session, *, policy: RetentionPolicy, now:
             entity_id=upload.id,
             storage_prefix=upload.storage_key,
             eligible_at=now,
+        )
+        # An upload nobody finished is no longer a video on its way.
+        release_media_arrival(
+            session,
+            workspace_id=upload.workspace_id,
+            project_id=upload.project_id,
+            ignoring_upload_id=upload.id,
         )
         scheduled += 1
     return scheduled

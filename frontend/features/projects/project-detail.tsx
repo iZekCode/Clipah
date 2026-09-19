@@ -40,6 +40,9 @@ const TABS = [
 ] as const
 
 type TabId = (typeof TABS)[number]['id']
+
+/** How often a Project that is being processed is read again. */
+const PROCESSING_REFRESH_MS = 10_000
 const TAB_IDS = TABS.map((entry) => entry.id)
 
 /**
@@ -56,6 +59,12 @@ export function ProjectDetail({ projectId }: { projectId: string }) {
     queryFn: ({ signal }) =>
       showApiV1ProjectsProjectIdGet(projectId, { workspace_id: active.id }, { signal }),
     retry: false,
+    // Live updates refresh the Project as each stage ends; this catches anything the
+    // stream missed, so the status never sits stale while work is going on.
+    refetchInterval: (query) =>
+      query.state.data !== undefined && projectIsProcessing(query.state.data.status)
+        ? PROCESSING_REFRESH_MS
+        : false,
   })
 
   if (project.isPending) {
@@ -77,7 +86,12 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
   const requestedMs = useRequestedMomentMs()
   const ready = project.status === 'ready'
   const { candidates: moments } = useProjectCandidates(project.id, { enabled: ready })
-  const needsMedia = project.status === 'created' || project.status === 'failed'
+  // A file upload that stopped part-way resumes when the member picks the file again, so a
+  // Project still `uploading` from a file keeps offering the picker.
+  const needsMedia =
+    project.status === 'created' ||
+    project.status === 'failed' ||
+    (project.status === 'uploading' && project.sourceKind === 'upload')
   const processing = projectIsProcessing(project.status)
   const fileInputId = `project-${project.id}-file`
 
@@ -108,7 +122,7 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
         crumbs={[{ href: '/dashboard/projects', label: 'Projects' }]}
         meta={
           <StatusBadge tone={projectStatusTone(project.status)}>
-            {projectStatusLabel(project.status)}
+            {projectStatusLabel(project.status, project.sourceKind)}
           </StatusBadge>
         }
         actions={
@@ -130,7 +144,13 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
       />
 
       {ready ? (
-        <UploadPanel projectId={project.id} addMedia={false} onJob={onJob} />
+        <UploadPanel
+          projectId={project.id}
+          addMedia={false}
+          onJob={onJob}
+          projectStatus={project.status}
+          sourceKind={project.sourceKind}
+        />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
           <UploadPanel
@@ -138,6 +158,8 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
             addMedia={needsMedia}
             onJob={onJob}
             fileInputId={fileInputId}
+            projectStatus={project.status}
+            sourceKind={project.sourceKind}
           />
           {processing || requestedMs !== null ? (
             <SourceColumn

@@ -32,6 +32,7 @@ from clipah.models import (
     ProjectStatus,
     QuotaResource,
 )
+from clipah.projects.arrival import release_media_arrival
 from clipah.workspaces.models import WorkspaceAccess
 
 SUCCESS_PROGRESS = 1.0
@@ -154,6 +155,7 @@ def fail_job(
     if target is JobStatus.FAILED:
         job.finished_at = now
         _reconcile_analysis_terminal(session, job=job, target=target, now=now)
+        _reconcile_import_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -170,6 +172,7 @@ def request_job_cancellation(
     if target is JobStatus.CANCELED:
         job.finished_at = now
         _reconcile_analysis_terminal(session, job=job, target=target, now=now)
+        _reconcile_import_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -238,7 +241,23 @@ def _finish(
     if target is JobStatus.SUCCEEDED:
         job.progress = SUCCESS_PROGRESS
     _reconcile_analysis_terminal(session, job=job, target=target, now=now)
+    _reconcile_import_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
+
+
+def _reconcile_import_terminal(session: Session, *, job: Job, target: JobStatus) -> None:
+    """A YouTube import that ended without a video leaves its Project waiting for one.
+
+    Waiting, not failed: a failed Project can never be processed again, and a member
+    whose import failed should be able to try another link or upload the file.
+    """
+    if job.kind is not JobKind.SOURCE_IMPORT or job.project_id is None:
+        return
+    if target not in {JobStatus.FAILED, JobStatus.CANCELED}:
+        return
+    release_media_arrival(
+        session, workspace_id=job.workspace_id, project_id=job.project_id, ignoring_job_id=job.id
+    )
 
 
 def _reconcile_analysis_terminal(

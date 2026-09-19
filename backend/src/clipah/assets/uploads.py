@@ -19,6 +19,7 @@ from clipah.assets.storage import (
 )
 from clipah.models import MultipartUpload as MultipartUploadRecord
 from clipah.models import MultipartUploadStatus, Project
+from clipah.projects.arrival import mark_media_arriving, release_media_arrival
 from clipah.workspaces.models import WorkspaceAccess
 
 MAX_UPLOAD_BYTES = 2 * 1024 * 1024 * 1024
@@ -77,7 +78,9 @@ def create_upload(
     """Create one bounded source upload after resolving its Project in the authorized Workspace."""
     _validate_declared_size(command.content_length)
     _validate_filename(command.filename)
-    _require_active_project(session, workspace_id=access.workspace_id, project_id=project_id)
+    project = _require_active_project(
+        session, workspace_id=access.workspace_id, project_id=project_id
+    )
     upload_id = uuid4()
     storage_key = source_upload_key(
         workspace_id=access.workspace_id,
@@ -103,6 +106,7 @@ def create_upload(
             expires_at=expires_at,
         )
     )
+    mark_media_arriving(project)
     session.flush()
     return UploadCreated(upload_id=upload_id, expires_at=expires_at)
 
@@ -193,12 +197,18 @@ def abort_upload(
         raise UploadConflictError("upload cannot be aborted")
     store.abort_multipart_upload(upload_id=upload.storage_upload_id, key=upload.storage_key)
     upload.status = MultipartUploadStatus.ABORTED
+    release_media_arrival(
+        session,
+        workspace_id=access.workspace_id,
+        project_id=project_id,
+        ignoring_upload_id=upload.id,
+    )
 
 
-def _require_active_project(session: Session, *, workspace_id: UUID, project_id: UUID) -> None:
+def _require_active_project(session: Session, *, workspace_id: UUID, project_id: UUID) -> Project:
     """Hide missing, archived, and cross-Workspace Projects behind the same absence result."""
     project = session.scalar(
-        select(Project.id)
+        select(Project)
         .where(
             Project.workspace_id == workspace_id,
             Project.id == project_id,
@@ -208,6 +218,7 @@ def _require_active_project(session: Session, *, workspace_id: UUID, project_id:
     )
     if project is None:
         raise UploadNotFoundError("project unavailable")
+    return project
 
 
 def _load_upload(

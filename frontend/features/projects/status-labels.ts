@@ -8,9 +8,9 @@ import { ProjectStatus } from '@/lib/api/generated/model'
  * transcribed never looks finished.
  */
 const PROJECT_STATUS_LABELS: Record<string, string> = {
-  [ProjectStatus.created]: 'Waiting for media',
+  [ProjectStatus.created]: 'Waiting for a video',
   [ProjectStatus.uploading]: 'Uploading',
-  [ProjectStatus.ingesting]: 'Importing',
+  [ProjectStatus.ingesting]: 'Preparing video',
   [ProjectStatus.transcribing]: 'Transcribing',
   [ProjectStatus.analyzing]: 'Finding moments',
   [ProjectStatus.ready]: 'Ready to review',
@@ -29,8 +29,16 @@ const PROJECT_STATUS_TONES: Record<string, StatusTone> = {
   [ProjectStatus.archived]: 'neutral',
 }
 
-/** Render one Project status, falling back to the raw status the backend reported. */
-export function projectStatusLabel(status: string): string {
+/**
+ * Render one Project status, falling back to the raw status the backend reported.
+ *
+ * `uploading` covers both ways a video arrives, so the Project's source says which: a
+ * YouTube link is imported, a file is uploaded.
+ */
+export function projectStatusLabel(status: string, sourceKind?: string): string {
+  if (status === ProjectStatus.uploading && sourceKind === 'public_url') {
+    return 'Importing'
+  }
   return PROJECT_STATUS_LABELS[status] ?? status
 }
 

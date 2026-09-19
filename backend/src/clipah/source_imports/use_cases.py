@@ -12,6 +12,7 @@ from clipah.assets.youtube import NormalizedYouTubeUrl
 from clipah.jobs.admission import AdmissionPolicy
 from clipah.jobs.use_cases import create_job
 from clipah.models import JobKind, JobStatus, SourceImport, SourceImportStatus
+from clipah.projects.arrival import mark_media_arriving
 from clipah.source_imports.repository import SourceImportRepository
 from clipah.workspaces.models import WorkspaceAccess
 
@@ -49,7 +50,8 @@ def create_source_import(
     """Create one Job and SourceImport atomically, or replay their exact payload."""
     repository = SourceImportRepository(session)
     repository.lock_idempotency(workspace_id=access.workspace_id, key=idempotency_key)
-    if repository.active_project(workspace_id=access.workspace_id, project_id=project_id) is None:
+    project = repository.active_project(workspace_id=access.workspace_id, project_id=project_id)
+    if project is None:
         raise SourceImportProjectNotFoundError(str(project_id))
     existing_job = repository.job_by_key(workspace_id=access.workspace_id, key=idempotency_key)
     if existing_job is not None:
@@ -86,6 +88,7 @@ def create_source_import(
         source_connection_id=source_connection_id,
     )
     repository.add(source_import)
+    mark_media_arriving(project)
     return _snapshot(source_import, job.status)
 
 

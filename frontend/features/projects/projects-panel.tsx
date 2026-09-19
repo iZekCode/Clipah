@@ -201,7 +201,7 @@ function ProjectCard({
         }
         status={
           <StatusBadge tone={projectStatusTone(project.status)} appearance="overlay">
-            {projectStatusLabel(project.status)}
+            {projectStatusLabel(project.status, project.sourceKind)}
           </StatusBadge>
         }
         subtitle={`Created ${formatDate(project.createdAt)}`}

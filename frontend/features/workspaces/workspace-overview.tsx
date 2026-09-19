@@ -29,6 +29,9 @@ import { browseClipCollectionApiV1ClipsGet } from '@/lib/api/generated/studio/st
 
 import { useWorkspaceScope } from './workspace-context'
 
+/** How often Home re-reads the summary while any work is running. */
+const PROCESSING_REFRESH_MS = 5_000
+
 /**
  * Home: the work to pick up, the work in motion, and the moments waiting for a decision.
  *
@@ -42,6 +45,10 @@ export function WorkspaceOverview() {
     queryKey: ['/api/v1/dashboard/summary', active.id],
     queryFn: ({ signal }) => showApiV1DashboardSummaryGet({ workspace_id: active.id }, { signal }),
     retry: false,
+    // "Processing now" follows the work as it happens rather than only when the tab
+    // regains focus.
+    refetchInterval: (query) =>
+      (query.state.data?.jobs.active.length ?? 0) > 0 ? PROCESSING_REFRESH_MS : false,
   })
   const editing = useQuery<ClipPageResponse, ApiError>({
     queryKey: ['/api/v1/clips', active.id, 'edited', 'recent'],
@@ -299,7 +306,7 @@ function RecentProjects({ projects }: { projects: DashboardProjectResponse[] }) 
               }
               status={
                 <StatusBadge tone={projectStatusTone(project.status)} appearance="overlay">
-                  {projectStatusLabel(project.status)}
+                  {projectStatusLabel(project.status, project.sourceKind)}
                 </StatusBadge>
               }
               subtitle={`Updated ${formatWhen(project.updatedAt)}`}

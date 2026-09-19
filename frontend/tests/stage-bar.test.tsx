@@ -13,10 +13,33 @@ describe('StageBar', () => {
 
     expect(stages().map((stage) => stage.textContent)).toEqual([
       'Uploading (done)',
-      'Importing (done)',
+      'Preparing video (done)',
       'Transcribing (in progress)',
       'Finding moments (not started)',
     ])
+  })
+
+  test('a YouTube project brings its video in by importing it', () => {
+    render(<StageBar kind="source_import" status="running" sourceKind="public_url" />)
+
+    expect(stages()[0]).toHaveTextContent('Importing (in progress)')
+  })
+
+  test("the project's own status places the bar before any job has reported", () => {
+    render(<StageBar kind={null} status={null} projectStatus="ingesting" />)
+
+    expect(stages().map((stage) => stage.textContent)).toEqual([
+      'Uploading (done)',
+      'Preparing video (in progress)',
+      'Transcribing (not started)',
+      'Finding moments (not started)',
+    ])
+  })
+
+  test('a ready project shows every stage done', () => {
+    render(<StageBar kind={null} status={null} projectStatus="ready" />)
+
+    expect(stages().every((stage) => stage.textContent?.endsWith('(done)'))).toBe(true)
   })
 
   test('shows the upload percentage only while the browser is uploading', () => {
@@ -46,7 +69,7 @@ describe('StageBar', () => {
   })
 
   test('maps job kinds onto stages and leaves other work off the bar', () => {
-    expect(pipelineStageIndex('source_import')).toBe(1)
+    expect(pipelineStageIndex('source_import')).toBe(0)
     expect(pipelineStageIndex('ingest')).toBe(1)
     expect(pipelineStageIndex('transcribe')).toBe(2)
     expect(pipelineStageIndex('analyze')).toBe(3)

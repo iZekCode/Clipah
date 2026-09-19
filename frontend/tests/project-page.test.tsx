@@ -121,6 +121,39 @@ describe('the Project page', () => {
     expect(screen.queryByRole('region', { name: /next step/i })).not.toBeInTheDocument()
   })
 
+  test('a processing project shows where it is before any live update arrives', async () => {
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECT]: { body: project({ status: 'ingesting', sourceKind: 'public_url' }) },
+      [TRANSCRIPT]: { status: 404 },
+      [PROXY]: { status: 404 },
+    })
+    renderProject()
+
+    const bar = await screen.findByRole('list', { name: 'Processing stages' })
+    expect(bar).toHaveTextContent('Importing (done)')
+    expect(bar).toHaveTextContent('Preparing video (in progress)')
+    // The badge says it too: the bar and the status agree.
+    expect(screen.getAllByText('Preparing video').length).toBeGreaterThanOrEqual(2)
+  })
+
+  test('an upload that stopped part-way can be resumed from the project', async () => {
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECT]: { body: project({ status: 'uploading', sourceKind: 'upload' }) },
+      [TRANSCRIPT]: { status: 404 },
+      [PROXY]: { status: 404 },
+    })
+    renderProject()
+
+    expect(await screen.findByRole('region', { name: /upload a video/i })).toBeInTheDocument()
+    expect(screen.getByRole('list', { name: 'Processing stages' })).toHaveTextContent(
+      'Uploading (in progress)',
+    )
+  })
+
   test('a ready project is its moments beside the source and transcript', async () => {
     readyApi()
     const { container } = renderProject()

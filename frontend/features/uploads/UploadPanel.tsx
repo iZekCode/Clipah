@@ -6,6 +6,7 @@ import { Upload as UploadIcon } from 'lucide-react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { StageBar } from '@/components/media/stage-bar'
+import { projectIsProcessing, projectStatusLabel } from '@/features/projects/status-labels'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import { ApiError } from '@/lib/api/client'
@@ -69,8 +70,16 @@ export function UploadPanel({
   addMedia = true,
   onJob,
   fileInputId,
+  projectStatus = null,
+  sourceKind = null,
 }: {
   projectId: string
+  /**
+   * The Project's own status, so the stage bar shows where it stands even when no live
+   * update has arrived yet, as after a page load or between two stages.
+   */
+  projectStatus?: string | null
+  sourceKind?: string | null
   /** Whether this Project still needs its video; a processed Project only shows its work. */
   addMedia?: boolean
   onJob?: (job: ProjectJob) => void
@@ -93,6 +102,8 @@ export function UploadPanel({
       addMedia={addMedia}
       onJob={onJob}
       fileInputId={fileInputId}
+      projectStatus={projectStatus}
+      sourceKind={sourceKind}
     />
   )
 }
@@ -103,12 +114,16 @@ function SubmissionPanel({
   addMedia,
   onJob,
   fileInputId,
+  projectStatus,
+  sourceKind,
 }: {
   projectId: string
   workspaceId: string
   addMedia: boolean
   onJob?: (job: ProjectJob) => void
   fileInputId?: string
+  projectStatus: string | null
+  sourceKind: string | null
 }) {
   const generatedId = useId()
   const fieldId = fileInputId ?? generatedId
@@ -205,8 +220,20 @@ function SubmissionPanel({
   }
 
   const running = job !== null && !TERMINAL_STATUSES.has(job.status)
-  const label = submissionLabel({ uploading, uploadId, analysisPending, job })
-  const showStatus = uploading !== null || job !== null || uploadId !== null || analysisPending
+  const label = submissionLabel({
+    uploading,
+    uploadId,
+    analysisPending,
+    job,
+    projectStatus,
+    sourceKind,
+  })
+  const showStatus =
+    uploading !== null ||
+    job !== null ||
+    uploadId !== null ||
+    analysisPending ||
+    (projectStatus !== null && projectIsProcessing(projectStatus))
 
   return (
     <section aria-label="Add media" className="space-y-4">
@@ -247,6 +274,8 @@ function SubmissionPanel({
         <StageBar
           kind={job?.kind ?? null}
           status={job?.status ?? null}
+          projectStatus={projectStatus}
+          sourceKind={sourceKind}
           uploadPercent={uploading === null ? null : percent(uploading)}
           reconnecting={!connected}
         />
@@ -304,11 +333,15 @@ function submissionLabel({
   uploadId,
   analysisPending,
   job,
+  projectStatus,
+  sourceKind,
 }: {
   uploading: UploadProgress | null
   uploadId: string | null
   analysisPending: boolean
   job: ProjectJob | null
+  projectStatus: string | null
+  sourceKind: string | null
 }): string {
   if (uploading !== null) {
     return `Uploading video — ${percent(uploading)}%`
@@ -318,6 +351,10 @@ function submissionLabel({
   }
   if (analysisPending || uploadId !== null) {
     return 'Queued — waiting for the workspace to start'
+  }
+  if (projectStatus !== null && projectIsProcessing(projectStatus)) {
+    // No live update yet, as after a page load: say what the Project itself says.
+    return projectStatusLabel(projectStatus, sourceKind ?? undefined)
   }
   return 'Nothing has been submitted yet.'
 }
