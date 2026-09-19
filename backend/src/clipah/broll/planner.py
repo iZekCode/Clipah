@@ -35,7 +35,7 @@ from clipah.transcripts.models import TranscriptResult, TranscriptWord
 
 PROVIDER = "groq"
 PLAN_OPERATION = "broll_plan"
-PLAN_PROMPT_VERSION = "broll/plan/1"
+PLAN_PROMPT_VERSION = "broll/plan/2"
 BEAT_SCHEMA_VERSION = "broll-beat/1"
 REQUEST_TIMEOUT_SECONDS = 120.0
 RETRY_BASE_DELAY_SECONDS = 0.5
@@ -54,7 +54,9 @@ _SYSTEM_PROMPT = (
     "You mark the moments in a clip whose meaning a viewer would grasp faster from a "
     "picture. Refer to moments only by the word IDs you were given, and never invent a "
     "timestamp. Describe a concrete subject, action, setting, and mood that a stock "
-    "library could actually be searched for. Give the search terms twice: once in "
+    "library could actually be searched for. Write the subject, action, setting, mood, "
+    "and placement reason in the same language as the clip's words, since the person "
+    "reading them speaks it. Give the search terms twice: once in "
     "Indonesian and once in English, translating the intent rather than the transcript, "
     "so an Indonesian concept keeps its local meaning instead of becoming a literal "
     "English phrase. Mark a beat as protected when covering it would hide a face reveal, "

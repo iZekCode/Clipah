@@ -10,5 +10,6 @@ import type { BrollSuggestionResponse } from './brollSuggestionResponse';
  * One clip's proposals, in the order they occur inside the clip.
  */
 export interface BrollSuggestionListResponse {
+  searching: boolean;
   suggestions: BrollSuggestionResponse[];
 }

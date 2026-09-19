@@ -40,6 +40,7 @@ from clipah.broll.use_cases import (
     GenerationVideoConfirmationRequiredError,
     estimate_generation,
     list_suggestions,
+    search_in_progress,
     start_broll_generation,
     start_broll_plan,
     start_broll_retrieval,
@@ -153,6 +154,9 @@ class BrollSuggestionListResponse(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     suggestions: tuple[BrollSuggestionResponse, ...]
+    # True while a plan or a picture search for this clip has not finished, so a reader
+    # can tell "nothing found" from "not finished yet".
+    searching: bool
 
 
 @router.post(
@@ -441,9 +445,10 @@ def list_collection(
     workspace: ReadableWorkspace,
 ) -> BrollSuggestionListResponse:
     """List one clip's proposals without admitting a foreign or hidden candidate."""
+    repository = BrollRepository(session)
     try:
         suggestions = list_suggestions(
-            BrollRepository(session),
+            repository,
             access=workspace.access,
             project_id=project_id,
             candidate_id=candidate_id,
@@ -451,7 +456,10 @@ def list_collection(
     except BrollTargetNotFoundError as error:
         raise ApiError(status_code=404, code="NOT_FOUND") from error
     return BrollSuggestionListResponse(
-        suggestions=tuple(_suggestion_body(item) for item in suggestions)
+        suggestions=tuple(_suggestion_body(item) for item in suggestions),
+        searching=search_in_progress(
+            repository, access=workspace.access, candidate_id=candidate_id
+        ),
     )
 
 

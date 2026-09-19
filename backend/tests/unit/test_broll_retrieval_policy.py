@@ -220,6 +220,23 @@ def test_both_indonesian_and_english_terms_reach_the_provider() -> None:
 
 
 @pytest.mark.unit
+def test_stock_libraries_are_searched_in_english_first_and_the_workspace_in_indonesian() -> None:
+    """Stock catalogues are tagged in English; a member's own footage keeps its local words."""
+    local = FakeBrollRetriever(results=[])
+    stock = FakeBrollRetriever(results=[_candidate()])
+
+    retrieve_candidates(
+        RetrievalRequest(intent=_intent(), limit=4),
+        local=local,
+        stock=(stock,),
+        policy=DEFAULT_RETRIEVAL_POLICY,
+    )
+
+    assert local.searches[0].queries[0] == "formulir pendaftaran"
+    assert stock.searches[0].queries[0] == "signup form"
+
+
+@pytest.mark.unit
 def test_the_request_budget_stops_a_search_from_paying_every_provider_forever() -> None:
     """One suggestion must not be able to spend a Workspace's whole monthly allowance."""
     first = FakeBrollRetriever(results=[_candidate(provider="pexels")])

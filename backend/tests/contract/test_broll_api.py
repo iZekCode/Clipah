@@ -20,6 +20,7 @@ from clipah.models import (
     ClipCandidate,
     Job,
     JobKind,
+    JobStatus,
     Project,
     ProjectStatus,
     Transcript,
@@ -198,7 +199,64 @@ def test_a_clip_with_no_plan_yet_reads_as_an_empty_list_rather_than_an_error(
     response = browser.get(_suggestions_path(fixture))
 
     assert response.status_code == 200
-    assert response.json() == {"suggestions": []}
+    assert response.json() == {"suggestions": [], "searching": False}
+
+
+@pytest.mark.integration
+def test_the_list_says_when_ideas_or_pictures_are_still_being_looked_for(
+    engine: Engine, clean_database: None
+) -> None:
+    """A panel that cannot tell "nothing found" from "not finished" looks broken."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+
+    _plan(browser, fixture, key="plan-searching")
+    searching = browser.get(_suggestions_path(fixture)).json()["searching"]
+    with engine.begin() as connection:
+        connection.execute(
+            Job.__table__.update()
+            .where(Job.kind == JobKind.BROLL_PLAN)
+            .values(status=JobStatus.SUCCEEDED)
+        )
+    finished = browser.get(_suggestions_path(fixture)).json()["searching"]
+
+    assert searching is True
+    assert finished is False
+
+
+@pytest.mark.integration
+def test_asking_again_replaces_undecided_ideas_and_keeps_decided_ones(
+    engine: Engine, clean_database: None
+) -> None:
+    """A new request means the earlier ideas are not wanted; a decision still stands."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    undecided = _store_suggestion(engine, fixture)
+    decided = _store_suggestion(engine, fixture, start_word_id="w000041", status="rejected")
+
+    response = _plan(browser, fixture, key="plan-again")
+
+    assert response.status_code == 202
+    listed = browser.get(_suggestions_path(fixture)).json()["suggestions"]
+    remaining = {item["id"] for item in listed}
+    assert remaining == {str(decided)}
+    assert str(undecided) not in remaining
+
+
+@pytest.mark.integration
+def test_replaying_a_request_does_not_discard_the_ideas_it_produced(
+    engine: Engine, clean_database: None
+) -> None:
+    """A retried request is the same request; it must not erase its own answer."""
+    del clean_database
+    browser, fixture = _signed_in_with_clip(engine)
+    _plan(browser, fixture, key="plan-replayed")
+    produced = _store_suggestion(engine, fixture)
+
+    _plan(browser, fixture, key="plan-replayed")
+
+    listed = browser.get(_suggestions_path(fixture)).json()["suggestions"]
+    assert [item["id"] for item in listed] == [str(produced)]
 
 
 @pytest.mark.integration
@@ -300,7 +358,13 @@ def _signed_in_with_clip(engine: Engine) -> tuple[Browser, ClipFixture]:
     return browser, _ready_clip(engine, browser)
 
 
-def _store_suggestion(engine: Engine, fixture: ClipFixture) -> UUID:
+def _store_suggestion(
+    engine: Engine,
+    fixture: ClipFixture,
+    *,
+    start_word_id: str = "w000021",
+    status: str = "proposed",
+) -> UUID:
     """Persist one proposal whose private provider metadata is deliberately toxic."""
     suggestion_id = uuid4()
     with engine.begin() as connection:
@@ -312,7 +376,7 @@ def _store_suggestion(engine: Engine, fixture: ClipFixture) -> UUID:
                 candidate_id=fixture.candidate_id,
                 planner_version="broll-plan/1",
                 coverage="balanced",
-                beat_start_word_id="w000021",
+                beat_start_word_id=start_word_id,
                 beat_end_word_id="w000024",
                 start_ms=10_000,
                 end_ms=12_000,
@@ -327,7 +391,7 @@ def _store_suggestion(engine: Engine, fixture: ClipFixture) -> UUID:
                 },
                 search_terms={"id": ["formulir pendaftaran"], "en": ["signup form"]},
                 exclusions=["stock office handshake"],
-                status="proposed",
+                status=status,
                 placement_reason="The sentence names an object the viewer cannot see",
                 provider_metadata={
                     "provider": "private-provider",

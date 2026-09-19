@@ -218,15 +218,20 @@ def provenance_of(
     )
 
 
-def intent_queries(intent: VisualIntent) -> tuple[str, ...]:
-    """Offer a retriever both languages of one intent, Indonesian first.
+def intent_queries(intent: VisualIntent, *, english_first: bool = False) -> tuple[str, ...]:
+    """Offer a retriever both languages of one intent, Indonesian first by default.
 
     Searching an Indonesian concept only in English has already translated away the thing
-    that made it local, so both sets of terms are always sent and the original order is
-    preserved.
+    that made it local, so both sets of terms are always sent. A stock catalogue, though,
+    is tagged in English and searched by its first phrase, so it is asked in English first.
     """
+    ordered = (
+        (*intent.search_terms_en, *intent.search_terms_id)
+        if english_first
+        else (*intent.search_terms_id, *intent.search_terms_en)
+    )
     seen: list[str] = []
-    for term in (*intent.search_terms_id, *intent.search_terms_en):
+    for term in ordered:
         cleaned = " ".join(term.split())
         if cleaned and cleaned not in seen:
             seen.append(cleaned)
@@ -261,6 +266,11 @@ def retrieve_candidates(
     accepted: list[ExternalAssetCandidate] = []
 
     _collect(local, search, accepted, seen, refused, failures, retrieved_at_iso=retrieved_at_iso)
+    stock_search = SearchRequest(
+        intent=request.intent,
+        queries=intent_queries(request.intent, english_first=True),
+        limit=request.limit,
+    )
     if decide(tuple(accepted)):
         return RetrievalResult(
             candidates=tuple(accepted[: request.limit]),
@@ -275,7 +285,13 @@ def retrieve_candidates(
             break
         provider_requests += 1
         _collect(
-            retriever, search, accepted, seen, refused, failures, retrieved_at_iso=retrieved_at_iso
+            retriever,
+            stock_search,
+            accepted,
+            seen,
+            refused,
+            failures,
+            retrieved_at_iso=retrieved_at_iso,
         )
         if decide(tuple(accepted)):
             break

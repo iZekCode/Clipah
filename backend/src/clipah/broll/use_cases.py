@@ -35,10 +35,11 @@ from clipah.broll.generation_policy import (
 from clipah.broll.models import BrollCoverage
 from clipah.broll.repository import BrollRepository, SuggestionSummary
 from clipah.config import Settings
-from clipah.jobs.admission import AdmissionPolicy
+from clipah.jobs.admission import AdmissionPolicy, ConcurrencyLimitError, QuotaExceededError
 from clipah.jobs.models import JobSnapshot
+from clipah.jobs.pipeline import pipeline_key
 from clipah.jobs.use_cases import create_job
-from clipah.models import BrollSuggestion, JobKind, QuotaResource
+from clipah.models import BrollSuggestion, Job, JobKind, QuotaResource
 from clipah.workspaces.models import WorkspaceAccess
 
 
@@ -69,8 +70,13 @@ def start_broll_plan(
     idempotency_key: str,
     now: datetime,
 ) -> JobSnapshot:
-    """Create one durable BROLL_PLAN Job after proving the clip is reviewable."""
-    return _admit(
+    """Create one durable BROLL_PLAN Job after proving the clip is reviewable.
+
+    A new request replaces the ideas nobody has decided on yet, whatever coverage they
+    were planned at, so asking again never leaves two overlapping sets side by side. A
+    replayed request is the same request and discards nothing.
+    """
+    job, created = _admit(
         session,
         policy=policy,
         access=access,
@@ -81,6 +87,51 @@ def start_broll_plan(
         idempotency_key=idempotency_key,
         now=now,
     )
+    if created:
+        BrollRepository(session).discard_undecided_suggestions(
+            workspace_id=access.workspace_id, candidate_id=candidate_id
+        )
+    return job
+
+
+def start_retrieval_after_plan(
+    session: Session,
+    *,
+    policy: AdmissionPolicy,
+    access: WorkspaceAccess,
+    plan_job_id: UUID,
+    now: datetime,
+) -> JobSnapshot | None:
+    """Start the search for pictures once a plan has stored the beats it illustrates.
+
+    Searching any earlier finds no beats and succeeds having done nothing, so the finished
+    plan admits its own search, keyed by the plan so a replayed completion admits one. A
+    Workspace at its job or stock limit simply gets no pictures this time: the ideas stand
+    on their own, and a member can ask again later.
+    """
+    request = BrollRepository(session).plan_request_for_job(
+        workspace_id=access.workspace_id, job_id=plan_job_id
+    )
+    if request is None:
+        return None
+    plan = session.get(Job, plan_job_id)
+    if plan is None:
+        return None
+    try:
+        job, _ = _admit(
+            session,
+            policy=policy,
+            access=access,
+            project_id=plan.project_id,
+            candidate_id=request.candidate_id,
+            coverage=request.coverage,
+            kind=JobKind.BROLL_RETRIEVE,
+            idempotency_key=pipeline_key(after_job_id=plan_job_id, kind=JobKind.BROLL_RETRIEVE),
+            now=now,
+        )
+    except (BrollTargetNotFoundError, ConcurrencyLimitError, QuotaExceededError):
+        return None
+    return job
 
 
 def start_broll_retrieval(
@@ -102,7 +153,7 @@ def start_broll_retrieval(
     read the clip and coverage they were admitted for from the same request row, so the
     worker never learns what to illustrate from the broker.
     """
-    return _admit(
+    job, _ = _admit(
         session,
         policy=policy,
         access=access,
@@ -113,6 +164,7 @@ def start_broll_retrieval(
         idempotency_key=idempotency_key,
         now=now,
     )
+    return job
 
 
 def _admit(
@@ -126,15 +178,18 @@ def _admit(
     kind: JobKind,
     idempotency_key: str,
     now: datetime,
-) -> JobSnapshot:
-    """Bind one idempotency key to one Job over one reviewable clip, exactly once."""
+) -> tuple[JobSnapshot, bool]:
+    """Bind one idempotency key to one Job over one reviewable clip, exactly once.
+
+    The second value says whether this call created the Job rather than replaying it.
+    """
     repository = BrollRepository(session)
     repository.lock_idempotency(workspace_id=access.workspace_id, key=idempotency_key)
     existing = repository.job_by_key(workspace_id=access.workspace_id, key=idempotency_key)
     if existing is not None:
         if existing.kind is not kind or existing.project_id != project_id:
             raise BrollPlanConflictError(idempotency_key)
-        return existing
+        return existing, False
 
     target = repository.lock_plan_target(
         workspace_id=access.workspace_id,
@@ -160,7 +215,7 @@ def _admit(
         coverage=coverage,
         requested_by_user_id=access.user_id,
     )
-    return job
+    return job, True
 
 
 @dataclass(frozen=True, slots=True)
@@ -383,4 +438,13 @@ def list_suggestions(
     return repository.suggestions_for_candidate(
         workspace_id=access.workspace_id,
         candidate_id=candidate_id,
+    )
+
+
+def search_in_progress(
+    repository: BrollRepository, *, access: WorkspaceAccess, candidate_id: UUID
+) -> bool:
+    """Report whether ideas or pictures are still being looked for on one clip."""
+    return repository.search_in_progress(
+        workspace_id=access.workspace_id, candidate_id=candidate_id
     )

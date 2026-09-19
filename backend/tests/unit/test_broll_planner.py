@@ -126,7 +126,7 @@ def _call() -> ProviderCall:
         latency_ms=1,
         input_units=10,
         output_units=5,
-        prompt_version="broll/plan/1",
+        prompt_version="broll/plan/2",
         schema_version="broll-beat/1",
     )
 
@@ -483,6 +483,23 @@ def test_the_groq_planner_asks_for_a_strict_schema_at_temperature_zero() -> None
     assert request["response_format"]["json_schema"]["strict"] is True
     assert request["response_format"]["json_schema"]["schema"] == beat_json_schema()
     assert request["timeout"] > 0
+
+
+@pytest.mark.unit
+def test_the_planner_asks_for_ideas_in_the_language_the_clip_is_spoken_in() -> None:
+    """A member reading an Indonesian clip's ideas in English, or a mix, reads them twice."""
+    planner, completions = _groq([_Response('{"beats": []}')])
+
+    result = planner.propose(
+        candidate=CANDIDATE,
+        words=WORDS[:20],
+        boundaries=(),
+        coverage=BrollCoverage.BALANCED,
+    )
+
+    system = completions.requests[0]["messages"][0]["content"]
+    assert "same language as the clip" in system
+    assert result.call.prompt_version == "broll/plan/2"
 
 
 @pytest.mark.unit

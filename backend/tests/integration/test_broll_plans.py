@@ -7,7 +7,7 @@ necessary — a replay writes no second row, and nothing planning does touches a
 
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import UUID, uuid4
 
@@ -30,8 +30,10 @@ from clipah.broll.planner import (
     FakeBrollProvider,
     ProposalResult,
 )
-from clipah.db import RuntimeRole
+from clipah.broll.use_cases import start_retrieval_after_plan
+from clipah.db import RuntimeRole, session_scope
 from clipah.highlights.provider import ProviderCall
+from clipah.jobs.admission import admission_policy
 from clipah.jobs.broll_plan_task import (
     INTEGRITY_CODE,
     REQUEST_NOT_FOUND_CODE,
@@ -43,6 +45,7 @@ from clipah.jobs.broll_plan_task import (
 from clipah.jobs.models import (
     JobCancelledError,
     JobContext,
+    JobSnapshot,
     RetryableJobError,
     TerminalJobError,
 )
@@ -65,6 +68,7 @@ from clipah.models import (
     SourceKind,
     Transcript,
 )
+from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from support import provision_identity, runtime_settings
 
 WORD_MS = 500
@@ -354,7 +358,7 @@ def _result(beats: tuple[dict[str, Any], ...]) -> ProposalResult:
             latency_ms=5,
             input_units=100,
             output_units=20,
-            prompt_version="broll/plan/1",
+            prompt_version="broll/plan/2",
             schema_version="broll-beat/1",
         ),
     )
@@ -833,3 +837,88 @@ def test_a_write_that_conflicts_on_something_other_than_the_plan_is_reported(
 
     assert str(error.value) == INTEGRITY_CODE
     assert _stored(engine, seed) == []
+
+
+@pytest.mark.integration
+def test_a_new_request_plans_again_but_never_over_a_beat_already_decided(engine: Engine) -> None:
+    """Asking again is a fresh plan; a picture a member rejected must not come back."""
+    seed = _seed(engine, suffix="broll-replan")
+    _store_decided_suggestion(engine, seed, beat_index=0)
+    provider = _provider([_result(_beats())])
+
+    BrollPlanStageRunner(provider_factory=lambda _: provider)(seed.context)
+
+    stored = _stored(engine, seed)
+    assert provider.calls == 1
+    assert [(row.beat_start_word_id, row.status) for row in stored] == [
+        (_word_id(_beat_start(0)), BrollSuggestionStatus.REJECTED),
+        (_word_id(_beat_start(1)), BrollSuggestionStatus.PROPOSED),
+        (_word_id(_beat_start(2)), BrollSuggestionStatus.PROPOSED),
+    ]
+
+
+@pytest.mark.integration
+def test_a_finished_plan_starts_the_search_for_its_pictures_once(engine: Engine) -> None:
+    """Searching before the plan exists finds nothing, so the plan starts the search itself."""
+    seed = _seed(engine, suffix="broll-follow-on")
+
+    first = _follow_on(seed)
+    second = _follow_on(seed)
+
+    assert first is not None
+    assert second is not None
+    assert first.job_id == second.job_id
+    assert first.kind is JobKind.BROLL_RETRIEVE
+    with Session(engine) as session:
+        request = session.scalars(
+            select(BrollPlanRequest).where(BrollPlanRequest.job_id == first.job_id)
+        ).one()
+    assert request.candidate_id == seed.candidate_id
+    assert request.coverage is BrollCoverage.BALANCED
+
+
+def _follow_on(seed: _Seed) -> JobSnapshot | None:
+    """Admit the search that follows this plan, as the worker does once planning ends."""
+    with session_scope(
+        settings=runtime_settings(RuntimeRole.WORKER),
+        workspace_id=seed.workspace_id,
+        user_id=seed.context.user_id,
+        runtime_role=RuntimeRole.WORKER,
+    ) as session:
+        access = DatabaseWorkspaceAuthorizer(session).access_for(
+            user_id=seed.context.user_id, workspace_id=seed.workspace_id
+        )
+        return start_retrieval_after_plan(
+            session,
+            policy=admission_policy(runtime_settings(RuntimeRole.WORKER)),
+            access=access,
+            plan_job_id=seed.context.job_id,
+            now=datetime.now(tz=UTC),
+        )
+
+
+def _store_decided_suggestion(engine: Engine, seed: _Seed, *, beat_index: int) -> None:
+    """Keep one beat a member already rejected, from a plan made before this request."""
+    start = _beat_start(beat_index)
+    with engine.begin() as connection:
+        connection.execute(
+            BrollSuggestion.__table__.insert().values(
+                id=uuid4(),
+                workspace_id=seed.workspace_id,
+                project_id=seed.project_id,
+                candidate_id=seed.candidate_id,
+                planner_version=PLANNER_VERSION,
+                coverage=BrollCoverage.BALANCED,
+                beat_start_word_id=_word_id(start),
+                beat_end_word_id=_word_id(start + 1_500),
+                start_ms=start,
+                end_ms=start + 2_000,
+                visual_intent={},
+                search_terms={"id": [], "en": []},
+                exclusions=[],
+                status="rejected",
+                placement_reason="Rejected by the member",
+                provider_metadata={},
+                created_at=datetime.now(tz=UTC) - timedelta(hours=1),
+            )
+        )

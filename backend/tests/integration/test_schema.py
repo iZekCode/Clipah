@@ -109,10 +109,11 @@ API_TABLE_PRIVILEGES = {
     # Retrieval writes provenance; a member only ever reads it, and nobody rewrites it.
     "asset_provenance": {"SELECT"},
     # Planning is worker work. The API reads suggestions and, once accepting them lands,
-    # records the member's decision on a row it never created.
+    # records the member's decision on a row it never created. A new request for B-roll
+    # discards the undecided ones, so the API alone may delete.
     # The API records what a planning Job is for when it admits that Job.
     "broll_plan_requests": {"SELECT", "INSERT"},
-    "broll_suggestions": {"SELECT", "UPDATE"},
+    "broll_suggestions": {"SELECT", "UPDATE", "DELETE"},
     # A Variant is written once by the request that generated it and never rewritten: the
     # stored row is the boundary a member was actually shown.
     "clip_variants": {"SELECT", "INSERT"},
@@ -175,8 +176,9 @@ WORKER_TABLE_PRIVILEGES = {
     "clip_candidates": {"SELECT", "INSERT"},
     "asset_provenance": {"SELECT", "INSERT"},
     # A worker proposes suggestions and can never rewrite one a member has decided on.
-    # The worker only reads back the target the API wrote for the Job it was handed.
-    "broll_plan_requests": {"SELECT"},
+    # The worker reads back the target the API wrote for the Job it was handed, and
+    # writes one itself when a finished plan starts the search for its pictures.
+    "broll_plan_requests": {"SELECT", "INSERT"},
     "broll_suggestions": {"SELECT", "INSERT"},
     "clip_edits": {"SELECT"},
     "clip_edit_revisions": {"SELECT"},

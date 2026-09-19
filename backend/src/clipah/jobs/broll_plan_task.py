@@ -72,6 +72,7 @@ class _PlanSnapshot:
     candidate_id: UUID
     project_id: UUID
     coverage: BrollCoverage
+    requested_at: datetime
     span: CandidateSpan
     transcript: TranscriptResult
 
@@ -158,18 +159,20 @@ class BrollPlanStageRunner:
                 candidate_id=request.candidate_id,
                 project_id=project_id,
                 coverage=request.coverage,
+                requested_at=request.requested_at,
                 span=span,
                 transcript=_transcript_result(transcript),
             )
 
     def _already_planned(self, context: JobContext, snapshot: _PlanSnapshot) -> bool:
-        """Treat this plan's stored suggestions as the answer the clip already has."""
+        """Treat suggestions stored for this request as the answer the clip already has."""
         with _transaction(context) as session:
             return BrollRepository(session).plan_is_stored(
                 workspace_id=context.workspace_id,
                 candidate_id=snapshot.candidate_id,
                 planner_version=PLANNER_VERSION,
                 coverage=snapshot.coverage,
+                since=snapshot.requested_at,
             )
 
     def _report_beat_rejected(self, context: JobContext, *, code: str) -> None:
@@ -200,6 +203,25 @@ class BrollPlanStageRunner:
         """
         metadata = _plan_metadata(calls)
         with _transaction(context) as session:
+            repository = BrollRepository(session)
+            # Another delivery of this request finished first: its plan is the answer.
+            if repository.plan_is_stored(
+                workspace_id=context.workspace_id,
+                candidate_id=snapshot.candidate_id,
+                planner_version=PLANNER_VERSION,
+                coverage=snapshot.coverage,
+                since=snapshot.requested_at,
+            ):
+                return
+            # A beat a member already decided on keeps that decision; a new request only
+            # fills the beats nobody has answered yet.
+            decided = repository.planned_beats(
+                workspace_id=context.workspace_id,
+                candidate_id=snapshot.candidate_id,
+                planner_version=PLANNER_VERSION,
+                coverage=snapshot.coverage,
+            )
+            placed = tuple(item for item in placed if item.beat.start_word_id not in decided)
             for suggestion in placed:
                 session.add(
                     _suggestion_row(

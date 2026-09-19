@@ -126,7 +126,7 @@ function stubEditor(
       body: { url: 'https://cdn.test/proxy.mp4', contentType: 'video/mp4', width: 1080, height: 1920, durationMs: 30_000 },
     },
     [ASSETS]: { body: { assets: [] } },
-    [SUGGESTIONS]: { body: { suggestions } },
+    [SUGGESTIONS]: { body: { suggestions, searching: false } },
     [PLAN]: { status: 202, body: { jobId: 'job-1', status: 'queued' } },
     [RETRIEVE]: { status: 202, body: { jobId: 'job-2', status: 'queued' } },
     ...overrides,
@@ -427,7 +427,7 @@ describe('the B-roll panel', () => {
     expect(screen.getByRole('button', { name: /suggest b-roll/i })).toBeEnabled()
   })
 
-  test('asking for B-roll plans the clip and then searches for its pictures', async () => {
+  test('asking for B-roll plans the clip, and the server searches for its pictures', async () => {
     const api = stubEditor([])
     await openEditor()
 
@@ -436,31 +436,48 @@ describe('the B-roll panel', () => {
     await waitFor(() => {
       expect(api.calls.filter((call) => call.path.endsWith('/broll-plans'))).toHaveLength(1)
     })
-    await waitFor(() => {
-      expect(api.calls.filter((call) => call.path.endsWith('/broll-retrievals'))).toHaveLength(1)
-    })
+    // Searching before the plan exists finds nothing; the finished plan starts the search.
+    expect(api.calls.filter((call) => call.path.endsWith('/broll-retrievals'))).toHaveLength(0)
     expect(screen.getByRole('combobox', { name: /coverage/i })).toBeEnabled()
   })
 
-  test('pressing the button twice buys one plan and one search', async () => {
-    // A second press is a replay rather than a second purchase: the backend binds one
-    // key to one Job, so pressing again reaches the work already admitted.
+  test('each press is a new request, which replaces the ideas nobody decided on', async () => {
     const api = stubEditor([])
     await openEditor()
     const button = screen.getByRole('button', { name: /suggest b-roll/i })
 
     await userEvent.click(button)
+    await waitFor(() => expect(button).toBeEnabled())
     await userEvent.click(button)
 
     await waitFor(() => {
       expect(api.calls.filter((call) => call.path.endsWith('/broll-plans'))).toHaveLength(2)
     })
-    for (const suffix of ['/broll-plans', '/broll-retrievals']) {
-      const keys = api.calls
-        .filter((call) => call.path.endsWith(suffix))
-        .map((call) => call.headers.get('Idempotency-Key'))
-      expect(new Set(keys).size).toBe(1)
-    }
+    const keys = api.calls
+      .filter((call) => call.path.endsWith('/broll-plans'))
+      .map((call) => call.headers.get('Idempotency-Key'))
+    expect(new Set(keys).size).toBe(2)
+  })
+
+  test('while ideas and pictures are being found the panel says so and looks again', async () => {
+    let reads = 0
+    stubEditor([], {
+      [SUGGESTIONS]: () => {
+        reads += 1
+        return reads < 2
+          ? { body: { suggestions: [], searching: true } }
+          : { body: { suggestions: [suggestion()], searching: false } }
+      },
+    })
+    await openEditor()
+
+    expect(await screen.findByText(/ideas arrive first/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /looking for b-roll/i })).toBeDisabled()
+    expect(
+      await screen.findByRole('article', { name: /a shortened signup form/i }, { timeout: 5_000 }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText(/ideas arrive first/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /suggest b-roll/i })).toBeEnabled()
   })
 
   test('a clip with no suggestions yet says so rather than looking broken', async () => {
@@ -475,19 +492,6 @@ describe('the B-roll panel', () => {
     await openEditor()
 
     expect(await screen.findByText(/request-1234/)).toBeInTheDocument()
-  })
-
-  test('a spent stock budget is explained rather than reported as a failure', async () => {
-    stubEditor([], {
-      [RETRIEVE]: { status: 429, body: errorBody(429, 'QUOTA_EXCEEDED') },
-    })
-    await openEditor()
-
-    await userEvent.click(screen.getByRole('button', { name: /suggest b-roll/i }))
-
-    expect(
-      await screen.findByText(/monthly stock allowance/i),
-    ).toBeInTheDocument()
   })
 
   test('a suggestion explains what it wants to show and why it belongs there', async () => {

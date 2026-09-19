@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
-from sqlalchemy import func, select, text
+from sqlalchemy import delete, func, select, text
 from sqlalchemy.orm import Session
 
 from clipah.broll.models import (
@@ -25,6 +25,8 @@ from clipah.models import (
     BrollSuggestion,
     ClipCandidate,
     Job,
+    JobKind,
+    JobStatus,
     Project,
     ProjectStatus,
     Transcript,
@@ -48,6 +50,7 @@ class PlanRequest:
 
     candidate_id: UUID
     coverage: BrollCoverage
+    requested_at: datetime
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,7 +212,11 @@ class BrollRepository:
             return None
         request, candidate, transcript = row
         return (
-            PlanRequest(candidate_id=candidate.id, coverage=request.coverage),
+            PlanRequest(
+                candidate_id=candidate.id,
+                coverage=request.coverage,
+                requested_at=request.created_at,
+            ),
             candidate.project_id,
             CandidateSpan(
                 start_word_id=candidate.start_word_id,
@@ -306,8 +313,13 @@ class BrollRepository:
         candidate_id: UUID,
         planner_version: str,
         coverage: BrollCoverage,
+        since: datetime,
     ) -> bool:
-        """Report whether this exact plan has already produced its suggestions."""
+        """Report whether the request made at `since` has already produced its suggestions.
+
+        Suggestions from an earlier request are another answer: the ones a member decided
+        on stay, and they must not make a new request look as if it were already planned.
+        """
         stored = self._session.scalar(
             select(func.count())
             .select_from(BrollSuggestion)
@@ -316,9 +328,70 @@ class BrollRepository:
                 BrollSuggestion.candidate_id == candidate_id,
                 BrollSuggestion.planner_version == planner_version,
                 BrollSuggestion.coverage == coverage,
+                BrollSuggestion.created_at >= since,
             )
         )
         return bool(stored)
+
+    def planned_beats(
+        self,
+        *,
+        workspace_id: UUID,
+        candidate_id: UUID,
+        planner_version: str,
+        coverage: BrollCoverage,
+    ) -> frozenset[str]:
+        """Name the beats of this plan that already hold a suggestion."""
+        return frozenset(
+            self._session.scalars(
+                select(BrollSuggestion.beat_start_word_id).where(
+                    BrollSuggestion.workspace_id == workspace_id,
+                    BrollSuggestion.candidate_id == candidate_id,
+                    BrollSuggestion.planner_version == planner_version,
+                    BrollSuggestion.coverage == coverage,
+                )
+            )
+        )
+
+    def discard_undecided_suggestions(self, *, workspace_id: UUID, candidate_id: UUID) -> int:
+        """Remove every idea for one clip that no member has decided on yet."""
+        result = self._session.execute(
+            delete(BrollSuggestion).where(
+                BrollSuggestion.workspace_id == workspace_id,
+                BrollSuggestion.candidate_id == candidate_id,
+                BrollSuggestion.status == BrollSuggestionStatus.PROPOSED,
+                BrollSuggestion.edit_id.is_(None),
+            )
+        )
+        return int(getattr(result, "rowcount", 0) or 0)
+
+    def plan_request_for_job(self, *, workspace_id: UUID, job_id: UUID) -> BrollPlanRequest | None:
+        """Read what one planning or retrieval Job was admitted to cover."""
+        return self._session.scalar(
+            select(BrollPlanRequest).where(
+                BrollPlanRequest.workspace_id == workspace_id,
+                BrollPlanRequest.job_id == job_id,
+            )
+        )
+
+    def search_in_progress(self, *, workspace_id: UUID, candidate_id: UUID) -> bool:
+        """Report whether ideas or pictures are still being looked for on one clip."""
+        running = self._session.scalar(
+            select(func.count())
+            .select_from(BrollPlanRequest)
+            .join(
+                Job,
+                (Job.workspace_id == BrollPlanRequest.workspace_id)
+                & (Job.id == BrollPlanRequest.job_id),
+            )
+            .where(
+                BrollPlanRequest.workspace_id == workspace_id,
+                BrollPlanRequest.candidate_id == candidate_id,
+                Job.kind.in_((JobKind.BROLL_PLAN, JobKind.BROLL_RETRIEVE)),
+                Job.status.in_((JobStatus.QUEUED, JobStatus.RUNNING, JobStatus.RETRYING)),
+            )
+        )
+        return bool(running)
 
     def suggestions_for_candidate(
         self, *, workspace_id: UUID, candidate_id: UUID

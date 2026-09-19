@@ -341,3 +341,68 @@ def test_an_intent_whose_local_terms_are_punctuation_scores_local_fit_neutrally(
 
     assert ranked
     assert ranked[0].breakdown.local_fit == pytest.approx(0.5)
+
+
+def _willow_intent() -> VisualIntent:
+    """The intent a real plan produced, whose right pictures used to be refused."""
+    return _intent(
+        subject="A beautiful weeping willow tree",
+        action="Swaying gently in the wind",
+        setting="By a calm lake at golden hour",
+        mood="Romantic and serene",
+        search_terms_id=(
+            "pohon willow",
+            "weeping willow romantis",
+            "pohon rindang tepi danau",
+            "suasana romantis alam",
+        ),
+        search_terms_en=(
+            "weeping willow tree",
+            "romantic willow tree sunlight",
+            "graceful willow branches breeze",
+            "fairy tale romantic landscape",
+        ),
+        exclusions=(),
+    )
+
+
+@pytest.mark.unit
+def test_a_picture_tagged_with_one_search_phrase_is_relevant_however_many_phrases_there_are() -> (
+    None
+):
+    """A willow tree is the right picture for a willow beat, not a 2-in-25 word match."""
+    # As Pixabay described one of the pictures the real plan was offered.
+    willow = _candidate(
+        provider_asset_id="willow",
+        description="winter tree willow snow",
+        tags=("winter", "tree", "willow", "snow"),
+        query="willow tree",
+    )
+
+    ranked = _rank([willow], intent=_willow_intent())
+
+    assert [item.candidate.provider_asset_id for item in ranked] == ["willow"]
+
+
+@pytest.mark.unit
+def test_an_untagged_result_is_judged_by_the_phrase_it_was_found_for_but_trusted_less() -> None:
+    """Pexels describes its videos with nothing; the provider's own search is the evidence."""
+    found_for_willow = _candidate(
+        provider_asset_id="untagged-willow", description="", tags=(), query="weeping willow tree"
+    )
+    tagged = _candidate(
+        provider_asset_id="tagged-willow",
+        description="weeping willow tree",
+        tags=("weeping", "willow", "tree"),
+        query="weeping willow tree",
+    )
+    found_for_beach = _candidate(
+        provider_asset_id="untagged-beach", description="", tags=(), query="beach"
+    )
+
+    ranked = _rank([found_for_willow, tagged, found_for_beach], intent=_willow_intent())
+
+    assert [item.candidate.provider_asset_id for item in ranked] == [
+        "tagged-willow",
+        "untagged-willow",
+    ]

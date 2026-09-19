@@ -10,7 +10,6 @@ import {
   createGenerationApiV1BrollSuggestionsSuggestionIdGeneratePost,
   createGenerationEstimateApiV1BrollSuggestionsSuggestionIdGenerationEstimatesPost,
   createPlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPost,
-  createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost,
   listCollectionApiV1ProjectsProjectIdCandidatesCandidateIdBrollSuggestionsGet,
 } from '@/lib/api/generated/broll/broll'
 import { indexApiV1ProjectsProjectIdAssetsGet } from '@/lib/api/generated/assets/assets'
@@ -39,6 +38,16 @@ export interface DecisionRequest {
   action: BrollAction
   placement?: BrollPlacement
   assetId?: string
+}
+
+/** How often the panel looks again while ideas or pictures are still being found. */
+const SEARCH_POLL_MS = 2_000
+
+/** A fresh identity for one press of the button. */
+function newRequestId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
 }
 
 /**
@@ -83,6 +92,8 @@ export function BrollPanel({
         { signal },
       ),
     retry: false,
+    // Ideas and then pictures arrive in the background; keep looking until both are done.
+    refetchInterval: (query) => (query.state.data?.searching === true ? SEARCH_POLL_MS : false),
   })
 
   // Replacing a picture means naming another asset this Project already holds, so the
@@ -98,33 +109,23 @@ export function BrollPanel({
     setWorking(true)
     setRefusal(null)
     setFailure(null)
-    // One key per clip and coverage, so a second press reaches the work already admitted
-    // rather than buying a second plan and a second search of a provider's catalogue.
-    const key = `broll:${candidateId}:${coverage}`
+    // Every press is a new request: it replaces the ideas nobody decided on, and the
+    // server starts the search for pictures once the new plan exists. The button is
+    // disabled while one request is in flight, so a double click cannot buy two plans.
+    const key = `plan:broll:${candidateId}:${coverage}:${newRequestId()}`
     try {
       await createPlanApiV1ProjectsProjectIdCandidatesCandidateIdBrollPlansPost(
         projectId,
         candidateId,
         { coverage },
         { workspace_id: workspaceId },
-        { headers: { 'Idempotency-Key': `plan:${key}` } },
-      )
-      await createRetrievalApiV1ProjectsProjectIdCandidatesCandidateIdBrollRetrievalsPost(
-        projectId,
-        candidateId,
-        { coverage },
-        { workspace_id: workspaceId },
-        { headers: { 'Idempotency-Key': `retrieve:${key}` } },
+        { headers: { 'Idempotency-Key': key } },
       )
       setAsked(true)
       await suggestions.refetch()
     } catch (error) {
       const refused = error as ApiError
-      if (refused.code === 'QUOTA_EXCEEDED') {
-        setRefusal(
-          'This Workspace has spent its monthly stock allowance. B-roll can be searched for again next month.',
-        )
-      } else if (refused.code === 'CONCURRENCY_LIMIT') {
+      if (refused.code === 'CONCURRENCY_LIMIT') {
         setRefusal('This Workspace is already running as many jobs as it can. Try again shortly.')
       } else {
         setFailure(refused)
@@ -133,7 +134,6 @@ export function BrollPanel({
       setWorking(false)
     }
   }, [candidateId, coverage, projectId, suggestions, workspaceId])
-
 
   /** Ask the server what one media kind would cost for one suggestion. */
   const priceGeneration = useCallback(
@@ -187,7 +187,8 @@ export function BrollPanel({
   }, [generating, offer, suggestions, workspaceId])
 
   const found = suggestions.data?.suggestions ?? []
-  const busy = working || deciding
+  const searching = suggestions.data?.searching === true
+  const busy = working || deciding || searching
   // Absence is the backend's one answer for a clip nobody has planned yet and for a clip
   // this member has no standing on, and only the first is possible on a clip they already
   // have open. Every other failure still raises the alert carrying the request identifier.
@@ -212,6 +213,11 @@ export function BrollPanel({
         }}
       />
 
+      {searching ? (
+        <p role="status" className="text-caption text-muted-foreground">
+          Ideas arrive first, then pictures for them. This can take a minute.
+        </p>
+      ) : null}
       {refusal === null ? null : (
         <p role="status" className="py-2 text-small">
           {refusal}
@@ -226,7 +232,7 @@ export function BrollPanel({
         </p>
       ) : null}
 
-      {!suggestions.isPending && !unreadable && found.length === 0 ? (
+      {!suggestions.isPending && !unreadable && !searching && found.length === 0 ? (
         <p className="text-caption text-muted-foreground">
           No B-roll suggestions yet. Ask for some when this moment would be clearer with a picture.
         </p>

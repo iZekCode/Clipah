@@ -24,6 +24,10 @@ from clipah.broll.retriever import ExternalAssetCandidate
 _TARGET_ASPECT = 9 / 16
 _QUALITY_REFERENCE_PIXELS = 1080 * 1920
 _TOKEN = re.compile(r"[^\w]+", re.UNICODE)
+# How much a provider's own search for a phrase counts, next to the picture being described
+# with that phrase's words.
+_PROVIDER_QUERY_TRUST = 0.6
+_MIN_CONTENT_TOKEN_LENGTH = 3
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,16 +256,31 @@ def _names_an_exclusion(intent: VisualIntent, candidate: ExternalAssetCandidate)
 
 
 def _semantic_relevance(intent: VisualIntent, candidate: ExternalAssetCandidate) -> float:
-    """Measure how much of the intent's own vocabulary the candidate actually carries."""
-    wanted = _tokens(
-        intent.subject,
-        intent.action,
-        intent.setting,
-        " ".join(intent.search_terms_en),
-        " ".join(intent.search_terms_id),
-    )
-    described = _tokens(candidate.description, " ".join(candidate.tags), candidate.query)
-    return _clamp(len(wanted & described) / len(wanted) * 2)
+    """Measure how well the candidate answers the one search phrase it matches best.
+
+    An intent names several phrases for the same picture, in two languages. A picture of a
+    willow tree answers "weeping willow tree" fully even though it mentions nothing of the
+    other seven phrases, so it is judged against its best phrase, not against all of them.
+    A provider's own search for a phrase is evidence too, but weaker than the words the
+    picture is described with: Pexels describes its videos with nothing else.
+    """
+    phrases = [
+        words
+        for phrase in (intent.subject, *intent.search_terms_en, *intent.search_terms_id)
+        if (words := _content_tokens(phrase))
+    ]
+    if not phrases:
+        return 0.0
+    described = _content_tokens(candidate.description, " ".join(candidate.tags))
+    searched = _content_tokens(candidate.query)
+    best_described = max(len(words & described) / len(words) for words in phrases)
+    best_searched = max(len(words & searched) / len(words) for words in phrases)
+    return _clamp(max(best_described, best_searched * _PROVIDER_QUERY_TRUST))
+
+
+def _content_tokens(*values: str) -> set[str]:
+    """Keep the words that carry meaning, dropping articles and prepositions like "a" or "di"."""
+    return {token for token in _tokens(*values) if len(token) >= _MIN_CONTENT_TOKEN_LENGTH}
 
 
 def _local_fit(intent: VisualIntent, candidate: ExternalAssetCandidate) -> float:

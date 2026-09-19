@@ -774,6 +774,10 @@
         "additionalProperties": false,
         "description": "One clip's proposals, in the order they occur inside the clip.",
         "properties": {
+          "searching": {
+            "title": "Searching",
+            "type": "boolean"
+          },
           "suggestions": {
             "items": {
               "$ref": "#/components/schemas/BrollSuggestionResponse"
@@ -783,7 +787,8 @@
           }
         },
         "required": [
-          "suggestions"
+          "suggestions",
+          "searching"
         ],
         "title": "BrollSuggestionListResponse",
         "type": "object"

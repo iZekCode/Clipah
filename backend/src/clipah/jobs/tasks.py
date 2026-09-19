@@ -15,6 +15,7 @@ from celery.exceptions import MaxRetriesExceededError
 from redis import Redis, RedisError
 from sqlalchemy.orm import Session
 
+from clipah.broll.use_cases import start_retrieval_after_plan
 from clipah.celery_app import (
     MAX_ATTEMPTS,
     RETENTION_SWEEP_TASK,
@@ -232,9 +233,22 @@ def _run_stage(
             completed_job_id=job,
             now=_now(),
         )
+        # A finished plan starts the search for its pictures; before it, there was nothing
+        # for a search to illustrate.
+        search = (
+            start_retrieval_after_plan(
+                session, policy=policy, access=access, plan_job_id=job, now=_now()
+            )
+            if snapshot.kind is JobKind.BROLL_PLAN
+            else None
+        )
         woken = tuple(
             (entry.job_id, entry.kind)
-            for entry in (*(() if following is None else (following,)), *side)
+            for entry in (
+                *(() if following is None else (following,)),
+                *side,
+                *(() if search is None else (search,)),
+            )
         )
     _announce(notifier, workspace_id=workspace, job_id=job)
     for woken_id, woken_kind in woken:
