@@ -1,6 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useRef, type ReactNode, type SyntheticEvent } from 'react'
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  type CSSProperties,
+  type ReactNode,
+  type SyntheticEvent,
+} from 'react'
 
 import { captionFontStack } from './caption-fonts'
 import { htmlVideoPreviewEngine, type PreviewEngine, type PreviewSource } from './engine'
@@ -52,7 +59,16 @@ export function Player({
   }, [engine])
 
   useEffect(() => {
-    engine.seek(sourceMsAt(placed, playheadMs))
+    const target = sourceMsAt(placed, playheadMs)
+    // While playing, the playhead mostly just echoes the media's own time back. Seeking to
+    // it would restart decoding a few times a second and make playback stutter, so only a
+    // real jump moves the media.
+    const tolerance = playing ? PLAYING_SYNC_TOLERANCE_MS : 0
+    if (Math.abs(engine.currentSourceMs() - target) > tolerance) {
+      engine.seek(target)
+    }
+    // `playing` is read, not followed: starting or stopping playback is no reason to seek.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [engine, placed, playheadMs])
 
   useEffect(() => {
@@ -114,7 +130,13 @@ export function Player({
           playsInline
           onTimeUpdate={follow}
           style={crop === null || showFullFrame ? undefined : cropStyle(crop)}
-          className={showFullFrame ? 'h-full w-full object-contain' : 'h-full w-full object-cover'}
+          className={
+            crop !== null && !showFullFrame
+              ? 'absolute max-w-none'
+              : showFullFrame
+                ? 'h-full w-full object-contain'
+                : 'h-full w-full object-cover'
+          }
         />
         {/* Captions sit on the canvas, not on the source frame a crop is chosen from. */}
         {showFullFrame || composition.captions.mode === 'off' || activeWord === undefined ? null : (
@@ -177,16 +199,24 @@ function clipMsAt(placed: ReturnType<typeof timelineItems>, sourceMs: number): n
   return null
 }
 
-/** Frame the video by its normalized crop, without re-encoding anything. */
-function cropStyle(crop: NonNullable<CompositionV1['tracks'][number]['items'][number]['crop']>) {
-  return {
-    transform: `scale(${1 / crop.width}, ${1 / crop.height})`,
-    transformOrigin: `${percentage(crop.x, crop.width)}% ${percentage(crop.y, crop.height)}%`,
-  }
-}
+/** How far the media may drift from the playhead during playback before it is sought. */
+const PLAYING_SYNC_TOLERANCE_MS = 300
 
-/** Turn a normalized crop edge into the origin percentage CSS scales around. */
-function percentage(offset: number, size: number): number {
-  const remaining = 1 - size
-  return remaining <= 0 ? 50 : (offset / remaining) * 100
+/**
+ * Frame the video by its normalized crop, without re-encoding anything.
+ *
+ * The whole frame is drawn larger than the canvas and shifted so the crop's window lands
+ * exactly on it. A crop already has the canvas's shape, so nothing is stretched; the
+ * frame must not also be fitted to the canvas first, or it would be scaled twice.
+ */
+function cropStyle(
+  crop: NonNullable<CompositionV1['tracks'][number]['items'][number]['crop']>,
+): CSSProperties {
+  return {
+    width: `${100 / crop.width}%`,
+    height: `${100 / crop.height}%`,
+    left: `${(-crop.x / crop.width) * 100}%`,
+    top: `${(-crop.y / crop.height) * 100}%`,
+    objectFit: 'fill',
+  }
 }
