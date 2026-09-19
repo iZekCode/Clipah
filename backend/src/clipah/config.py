@@ -7,7 +7,7 @@ from enum import StrEnum
 from typing import Any, Literal, Self
 from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, PydanticBaseSettingsSource, SettingsConfigDict
 from sqlalchemy.engine import make_url
 
@@ -305,6 +305,21 @@ class Settings(BaseSettings):
     def gpt_oss_reranking_model(self) -> str:
         """Expose the configured GPT-OSS global-reranking model alias."""
         return self.groq_reranking_model
+
+    @field_validator(
+        "pexels_api_key",
+        "pixabay_api_key",
+        "fal_api_key",
+        "fal_webhook_base_url",
+        "runway_api_secret",
+        mode="before",
+    )
+    @classmethod
+    def blank_provider_setting_is_absent(cls, value: Any) -> Any:
+        """Read an empty provider credential as unset, so no adapter is built around it."""
+        if isinstance(value, str) and value.strip() == "":
+            return None
+        return value
 
     @model_validator(mode="before")
     @classmethod

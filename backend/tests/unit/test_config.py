@@ -931,3 +931,26 @@ def test_groq_and_openrouter_remain_selectable() -> None:
     assert settings.broll_plan_provider == "groq"
     assert settings.context_assessor_provider == "groq"
     assert settings.analysis_single_window is False
+
+
+@pytest.mark.unit
+def test_a_blank_stock_or_generation_credential_means_the_provider_is_not_configured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A local stack passes every provider key through, set or not; blank must mean absent."""
+    for name in (
+        "CLIPAH_PEXELS_API_KEY",
+        "CLIPAH_PIXABAY_API_KEY",
+        "CLIPAH_FAL_API_KEY",
+        "CLIPAH_FAL_WEBHOOK_BASE_URL",
+        "CLIPAH_RUNWAY_API_SECRET",
+    ):
+        monkeypatch.setenv(name, "")
+
+    settings = Settings(environment=Environment.LOCAL)
+
+    assert settings.pexels_api_key is None
+    assert settings.pixabay_api_key is None
+    assert settings.fal_api_key is None
+    assert settings.fal_webhook_base_url is None
+    assert settings.runway_api_secret is None

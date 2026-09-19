@@ -136,6 +136,13 @@ services:
       CLIPAH_GEMINI_API_KEY: "${GEMINI_API_KEY:-fake-gemini}"
       CLIPAH_GEMINI_EXTRACTION_MODEL: "${CLIPAH_GEMINI_EXTRACTION_MODEL:-gemini-3.8-flash}"
       CLIPAH_GROQ_API_KEY: "${CLIPAH_GROQ_API_KEY:-fake-groq}"
+      # The API prices a generated picture before a member confirms it.
+      CLIPAH_FAL_API_KEY: "${CLIPAH_FAL_API_KEY:-}"
+      CLIPAH_FAL_WEBHOOK_BASE_URL: "${CLIPAH_FAL_WEBHOOK_BASE_URL:-}"
+      CLIPAH_FAL_IMAGE_MODEL_ALIAS: "${CLIPAH_FAL_IMAGE_MODEL_ALIAS:-image-default}"
+      CLIPAH_FAL_IMAGE_MODEL_ID: "${CLIPAH_FAL_IMAGE_MODEL_ID:-fal-ai/nano-banana-2}"
+      CLIPAH_FAL_VIDEO_MODEL_ALIAS: "${CLIPAH_FAL_VIDEO_MODEL_ALIAS:-video-default}"
+      CLIPAH_FAL_VIDEO_MODEL_ID: "${CLIPAH_FAL_VIDEO_MODEL_ID:-fal-ai/kling-video/v2.6/pro/text-to-video}"
     ports: ["127.0.0.1:58000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()"]
@@ -256,10 +263,16 @@ services:
       CLIPAH_OBJECT_STORE_SECRET_ACCESS_KEY: clipah_local_secret
       CLIPAH_WORKER_QUEUES: broll_retrieve,broll_generate
       CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_BROLL_CONCURRENCY:-2}"
-      CLIPAH_PEXELS_API_KEY: fake-pexels
-      CLIPAH_PIXABAY_API_KEY: fake-pixabay
-      CLIPAH_FAL_API_KEY: fake-fal
-      CLIPAH_FAL_WEBHOOK_BASE_URL: https://example.invalid
+      # Stock search and picture generation use the keys in backend/.env. A blank key
+      # leaves that provider off: suggestions still arrive, without a picture.
+      CLIPAH_PEXELS_API_KEY: "${CLIPAH_PEXELS_API_KEY:-}"
+      CLIPAH_PIXABAY_API_KEY: "${CLIPAH_PIXABAY_API_KEY:-}"
+      CLIPAH_FAL_API_KEY: "${CLIPAH_FAL_API_KEY:-}"
+      CLIPAH_FAL_WEBHOOK_BASE_URL: "${CLIPAH_FAL_WEBHOOK_BASE_URL:-}"
+      CLIPAH_FAL_IMAGE_MODEL_ALIAS: "${CLIPAH_FAL_IMAGE_MODEL_ALIAS:-image-default}"
+      CLIPAH_FAL_IMAGE_MODEL_ID: "${CLIPAH_FAL_IMAGE_MODEL_ID:-fal-ai/nano-banana-2}"
+      CLIPAH_FAL_VIDEO_MODEL_ALIAS: "${CLIPAH_FAL_VIDEO_MODEL_ALIAS:-video-default}"
+      CLIPAH_FAL_VIDEO_MODEL_ID: "${CLIPAH_FAL_VIDEO_MODEL_ID:-fal-ai/kling-video/v2.6/pro/text-to-video}"
     depends_on: *dependencies
     healthcheck: *worker-health
     deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}
