@@ -28,6 +28,8 @@ _TOKEN = re.compile(r"[^\w]+", re.UNICODE)
 # with that phrase's words.
 _PROVIDER_QUERY_TRUST = 0.6
 _MIN_CONTENT_TOKEN_LENGTH = 3
+# The least a picture must answer its best phrase, whatever its other qualities.
+_MIN_MEANING = 0.5
 
 
 @dataclass(frozen=True, slots=True)
@@ -145,6 +147,10 @@ class DeterministicVisualReranker:
         local = _local_fit(intent, candidate)
 
         meaning = semantic if frame is None else (semantic + frame * 2) / 3
+        # Sharpness and a clean crop are worth something only for the right picture; they
+        # must not lift a picture that merely shares one word with a phrase over the floor.
+        if meaning < _MIN_MEANING:
+            return None
         relevance = _clamp(meaning * 0.5 + quality * 0.15 + crop * 0.2 + local * 0.15)
         if relevance < policy.min_relevance:
             return None

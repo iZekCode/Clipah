@@ -361,3 +361,47 @@ def test_a_term_repeated_across_both_languages_is_searched_once() -> None:
     )
 
     assert queries == ("signup form",)
+
+
+@pytest.mark.unit
+def test_a_stored_clip_is_offered_under_the_phrase_it_was_first_found_for(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A willow clip is evidence for "willow tree", never for whatever the next beat asks."""
+    from clipah.broll import user_asset_retriever
+    from clipah.broll.user_asset_retriever import StoredBrollAsset, UserAssetRetriever
+
+    stored = StoredBrollAsset(
+        asset_id=uuid4(),
+        project_id=uuid4(),
+        storage_key="workspaces/w/projects/p/broll/a/original",
+        content_type="video/mp4",
+        width=1080,
+        height=1920,
+        duration_ms=11_000,
+        sha256=b"s" * 32,
+        provider="pexels",
+        provider_asset_id="123",
+        source_url="https://www.pexels.com/video/123/",
+        author="Ana",
+        author_url="https://www.pexels.com/@ana",
+        license_name="Pexels License",
+        license_url="https://www.pexels.com/license/",
+        terms_snapshot="Free to use.",
+        attribution_text="Video by Ana on Pexels",
+        query="willow tree",
+    )
+    monkeypatch.setattr(
+        user_asset_retriever, "accepted_broll_assets", lambda *_args, **_kwargs: (stored,)
+    )
+    retriever = UserAssetRetriever(None, workspace_id=uuid4())  # type: ignore[arg-type]
+
+    found = retriever.search(
+        request=SearchRequest(
+            intent=_intent(search_terms_en=("couple under tree",)),
+            queries=("bertemu saat matahari terbit", "couple under tree"),
+            limit=4,
+        )
+    )
+
+    assert [candidate.query for candidate in found] == ["willow tree"]

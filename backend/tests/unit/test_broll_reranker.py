@@ -406,3 +406,27 @@ def test_an_untagged_result_is_judged_by_the_phrase_it_was_found_for_but_trusted
         "tagged-willow",
         "untagged-willow",
     ]
+
+
+@pytest.mark.unit
+def test_a_picture_sharing_one_word_with_a_phrase_is_not_relevant_however_sharp_it_is() -> None:
+    """A willow tree is not a couple under a tree, even in 4K and cropped perfectly."""
+    couple = _intent(
+        subject="Sepasang kekasih",
+        action="bertemu saat fajar",
+        setting="padang rumput dengan pohon besar",
+        mood="romantis",
+        search_terms_id=("pasangan di bawah pohon", "siluet pasangan"),
+        search_terms_en=("couple under tree", "silhouette couple"),
+        exclusions=(),
+    )
+    willow = _candidate(
+        provider_asset_id="willow",
+        description="willow tree",
+        tags=("tree", "willow"),
+        query="willow tree",
+        width=2160,
+        height=3840,
+    )
+
+    assert _rank([willow], intent=couple) == ()

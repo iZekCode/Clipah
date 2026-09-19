@@ -88,10 +88,7 @@ class UserAssetRetriever:
             if _tokens(stored.query) & wanted
         ]
         ordered = sorted(matched, key=lambda stored: str(stored.asset_id))
-        return tuple(
-            _candidate(stored, query=request.queries[0] if request.queries else "")
-            for stored in ordered[: request.limit]
-        )
+        return tuple(_candidate(stored) for stored in ordered[: request.limit])
 
 
 def accepted_broll_assets(session: Session, *, workspace_id: UUID) -> tuple[StoredBrollAsset, ...]:
@@ -167,11 +164,13 @@ def _stored(asset: Asset, provenance: AssetProvenance) -> StoredBrollAsset:
     )
 
 
-def _candidate(stored: StoredBrollAsset, *, query: str) -> ExternalAssetCandidate:
+def _candidate(stored: StoredBrollAsset) -> ExternalAssetCandidate:
     """Present one already-stored asset in the same shape a provider result takes.
 
     The download URL is empty because there is nothing left to fetch: this footage is
-    already in Clipah's own storage, which is the entire reason to prefer it.
+    already in Clipah's own storage, which is the entire reason to prefer it. It keeps
+    the phrase it was first found for: offering it under the current beat's phrase would
+    make any stored clip look like a search result for that beat.
     """
     return ExternalAssetCandidate(
         provider=WORKSPACE_PROVIDER,
@@ -191,7 +190,7 @@ def _candidate(stored: StoredBrollAsset, *, query: str) -> ExternalAssetCandidat
         height=stored.height,
         duration_ms=stored.duration_ms,
         attribution_text=stored.attribution_text,
-        query=query or stored.query,
+        query=stored.query,
         safe=True,
         description=stored.query,
         tags=tuple(sorted(_tokens(stored.query))),
