@@ -154,6 +154,41 @@ describe('the Project page', () => {
     )
   })
 
+  test('a failed project offers to retry the stage that failed', async () => {
+    const user = userEvent.setup()
+    let status: 'failed' | 'transcribing' = 'failed'
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [PROJECT]: () => ({ body: project({ status, sourceKind: 'upload' }) }),
+      [TRANSCRIPT]: { status: 404 },
+      [PROXY]: { status: 404 },
+      [`POST /api/v1/projects/${PROJECT_ID}/retry`]: () => {
+        status = 'transcribing'
+        return {
+          status: 202,
+          body: { jobId: '99999999-9999-4999-8999-999999999999', kind: 'transcribe', status: 'queued' },
+        }
+      },
+    })
+    renderProject()
+
+    await user.click(await screen.findByRole('button', { name: 'Retry' }))
+
+    await waitFor(() =>
+      expect(api.calls.some((call) => call.method === 'POST' && call.path.endsWith('/retry'))).toBe(
+        true,
+      ),
+    )
+    // The Project is read again and shows the stage it went back to.
+    await waitFor(() =>
+      expect(screen.getByRole('list', { name: 'Processing stages' })).toHaveTextContent(
+        'Transcribing (in progress)',
+      ),
+    )
+    expect(screen.queryByRole('button', { name: 'Retry' })).not.toBeInTheDocument()
+  })
+
   test('a ready project is its moments beside the source and transcript', async () => {
     readyApi()
     const { container } = renderProject()

@@ -5867,6 +5867,29 @@
         "title": "SourceRange",
         "type": "object"
       },
+      "StageRetryResponse": {
+        "description": "The Job that repeats a failed stage, and which stage it is.",
+        "properties": {
+          "jobId": {
+            "format": "uuid",
+            "title": "Jobid",
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/JobKind"
+          },
+          "status": {
+            "$ref": "#/components/schemas/JobStatus"
+          }
+        },
+        "required": [
+          "jobId",
+          "kind",
+          "status"
+        ],
+        "title": "StageRetryResponse",
+        "type": "object"
+      },
       "StoryboardResponse": {
         "additionalProperties": false,
         "description": "Sheet geometry and signed sheets for one Project.",
@@ -10698,6 +10721,60 @@
         "summary": "Restore",
         "tags": [
           "projects"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/retry": {
+      "post": {
+        "description": "Queue the Project's most recent stage again, when it failed or was cancelled.",
+        "operationId": "retry_stage_api_v1_projects__project_id__retry_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "202": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StageRetryResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Retry Stage",
+        "tags": [
+          "analysis"
         ]
       }
     },

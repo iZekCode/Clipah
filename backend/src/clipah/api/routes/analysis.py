@@ -31,6 +31,11 @@ from clipah.jobs.admission import (
     QuotaExceededError,
     admission_policy,
 )
+from clipah.jobs.pipeline import (
+    NothingToRetryError,
+    RetryProjectNotFoundError,
+    retry_failed_stage,
+)
 from clipah.models import JobKind, JobStatus
 from clipah.source_imports.dispatch import JobDispatcher
 from clipah.workspaces.models import WorkspaceAction
@@ -104,3 +109,66 @@ def create(
                 kind=JobKind.ANALYZE,
             )
     return AnalysisJobResponse(jobId=snapshot.job_id, status=snapshot.status)
+
+
+class StageRetryResponse(BaseModel):
+    """The Job that repeats a failed stage, and which stage it is."""
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    job_id: UUID = Field(alias="jobId")
+    kind: JobKind
+    status: JobStatus
+
+
+@router.post(
+    "/projects/{project_id}/retry",
+    status_code=202,
+    response_model=StageRetryResponse,
+    dependencies=[Depends(require_csrf)],
+)
+def retry_stage(
+    request: Request,
+    project_id: UUID,
+    session: DatabaseSession,
+    workspace: WritableWorkspace,
+) -> StageRetryResponse:
+    """Queue the Project's most recent stage again, when it failed or was cancelled."""
+    dispatcher: JobDispatcher = request.app.state.job_dispatcher
+    try:
+        snapshot = retry_failed_stage(
+            session,
+            policy=admission_policy(settings_for(request), rate_limiter_for(request)),
+            access=workspace.access,
+            project_id=project_id,
+            now=auth_components_for(request).now(),
+        )
+    except RetryProjectNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except NothingToRetryError as error:
+        raise ApiError(status_code=409, code="NOTHING_TO_RETRY") from error
+    except RateLimitExceededError as error:
+        raise ApiError(
+            status_code=429,
+            code="RATE_LIMITED",
+            retry_after_seconds=max(ceil(error.retry_after.total_seconds()), 1),
+        ) from error
+    except QuotaExceededError as error:
+        raise ApiError(
+            status_code=429,
+            code="QUOTA_EXCEEDED",
+            retry_after_seconds=max(ceil(error.retry_after.total_seconds()), 1),
+        ) from error
+    except ConcurrencyLimitError as error:
+        raise ApiError(status_code=429, code="CONCURRENCY_LIMIT") from error
+
+    session.commit()
+    if snapshot.status is JobStatus.QUEUED:
+        with suppress(Exception):
+            dispatcher.dispatch(
+                job_id=snapshot.job_id,
+                workspace_id=workspace.access.workspace_id,
+                user_id=workspace.access.user_id,
+                kind=snapshot.kind,
+            )
+    return StageRetryResponse(jobId=snapshot.job_id, kind=snapshot.kind, status=snapshot.status)

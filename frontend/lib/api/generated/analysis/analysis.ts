@@ -17,7 +17,9 @@ import type {
 import type {
   AnalysisJobResponse,
   CreateApiV1ProjectsProjectIdAnalysisPostParams,
-  HTTPValidationError
+  HTTPValidationError,
+  RetryStageApiV1ProjectsProjectIdRetryPostParams,
+  StageRetryResponse
 } from '.././model';
 
 import { apiFetch } from '../../client';
@@ -104,6 +106,86 @@ export const useCreateApiV1ProjectsProjectIdAnalysisPost = <TError = HTTPValidat
       > => {
 
       const mutationOptions = getCreateApiV1ProjectsProjectIdAnalysisPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Queue the Project's most recent stage again, when it failed or was cancelled.
+ * @summary Retry Stage
+ */
+export const getRetryStageApiV1ProjectsProjectIdRetryPostUrl = (projectId: string,
+    params: RetryStageApiV1ProjectsProjectIdRetryPostParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/retry?${stringifiedParams}` : `/api/v1/projects/${projectId}/retry`
+}
+
+export const retryStageApiV1ProjectsProjectIdRetryPost = async (projectId: string,
+    params: RetryStageApiV1ProjectsProjectIdRetryPostParams, options?: RequestInit): Promise<StageRetryResponse> => {
+  
+  return apiFetch<StageRetryResponse>(getRetryStageApiV1ProjectsProjectIdRetryPostUrl(projectId,params),
+  {      
+    ...options,
+    method: 'POST'
+    
+    
+  }
+);}
+
+
+
+
+export const getRetryStageApiV1ProjectsProjectIdRetryPostMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>, TError,{projectId: string;params: RetryStageApiV1ProjectsProjectIdRetryPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>, TError,{projectId: string;params: RetryStageApiV1ProjectsProjectIdRetryPostParams}, TContext> => {
+
+const mutationKey = ['retryStageApiV1ProjectsProjectIdRetryPost'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>, {projectId: string;params: RetryStageApiV1ProjectsProjectIdRetryPostParams}> = (props) => {
+          const {projectId,params} = props ?? {};
+
+          return  retryStageApiV1ProjectsProjectIdRetryPost(projectId,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryStageApiV1ProjectsProjectIdRetryPostMutationResult = NonNullable<Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>>
+    
+    export type RetryStageApiV1ProjectsProjectIdRetryPostMutationError = HTTPValidationError
+
+    /**
+ * @summary Retry Stage
+ */
+export const useRetryStageApiV1ProjectsProjectIdRetryPost = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>, TError,{projectId: string;params: RetryStageApiV1ProjectsProjectIdRetryPostParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof retryStageApiV1ProjectsProjectIdRetryPost>>,
+        TError,
+        {projectId: string;params: RetryStageApiV1ProjectsProjectIdRetryPostParams},
+        TContext
+      > => {
+
+      const mutationOptions = getRetryStageApiV1ProjectsProjectIdRetryPostMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }

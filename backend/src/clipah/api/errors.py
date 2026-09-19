@@ -40,6 +40,7 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "SERVICE_UNAVAILABLE": "A required service is unavailable.",
         "INTERNAL_ERROR": "An unexpected error occurred.",
         "CONFLICT": "The resource changed.",
+        "NOTHING_TO_RETRY": "Nothing on this project needs retrying. It may already be working.",
         "LAST_OWNER": "Transfer ownership or delete this workspace before continuing.",
         "UNAUTHENTICATED": "Authentication is required.",
         "AUTHENTICATION_FAILED": "Authentication could not be completed.",

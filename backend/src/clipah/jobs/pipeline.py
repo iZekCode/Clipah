@@ -21,7 +21,7 @@ from sqlalchemy.orm import Session
 from clipah.jobs.admission import AdmissionPolicy, ConcurrencyLimitError
 from clipah.jobs.models import JobSnapshot
 from clipah.jobs.use_cases import create_job
-from clipah.models import JobKind, Project, ProjectStatus
+from clipah.models import Job, JobKind, JobStatus, Project, ProjectStatus
 from clipah.workspaces.models import WorkspaceAccess
 
 #: What each stage hands its Project to when it succeeds. Analysis ends the belt.
@@ -168,3 +168,67 @@ def _live_project(session: Session, *, workspace_id: UUID, project_id: UUID) -> 
     if project is None or project.status in _SETTLED:
         return None
     return project
+
+
+#: Stages a member may retry, in the order the belt runs them.
+RETRYABLE_STAGES = (JobKind.INGEST, JobKind.TRANSCRIBE, JobKind.ANALYZE)
+_ENDED_BADLY = frozenset({JobStatus.FAILED, JobStatus.CANCELED})
+
+
+class RetryProjectNotFoundError(Exception):
+    """The Project is missing, archived, or belongs to another Workspace."""
+
+
+class NothingToRetryError(Exception):
+    """The Project's most recent stage did not fail, or is still working."""
+
+
+def retry_failed_stage(
+    session: Session,
+    *,
+    policy: AdmissionPolicy,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    now: datetime,
+) -> JobSnapshot:
+    """Queue the Project's most recent stage again when that stage ended badly.
+
+    The retry is keyed by the Job it repeats, so it is admitted at most once per failure.
+    It leaves `failed` on purpose: this is the one way back onto the belt, and the Project
+    enters the stage's own status as it did the first time. Finding moments is admitted
+    like any analysis, so it spends the monthly allowance again.
+    """
+    project = session.scalar(
+        select(Project)
+        .where(
+            Project.workspace_id == access.workspace_id,
+            Project.id == project_id,
+            Project.archived_at.is_(None),
+        )
+        .with_for_update()
+    )
+    if project is None:
+        raise RetryProjectNotFoundError(str(project_id))
+    latest = session.scalar(
+        select(Job)
+        .where(
+            Job.workspace_id == access.workspace_id,
+            Job.project_id == project_id,
+            Job.kind.in_(RETRYABLE_STAGES),
+        )
+        .order_by(Job.created_at.desc(), Job.id.desc())
+        .limit(1)
+    )
+    if latest is None or latest.status not in _ENDED_BADLY:
+        raise NothingToRetryError(str(project_id))
+    job = create_job(
+        session,
+        policy=policy,
+        access=access,
+        project_id=project_id,
+        kind=latest.kind,
+        idempotency_key=f"retry:{latest.id}",
+        now=now,
+    )
+    project.status = STAGE_STATUS[latest.kind]
+    return job

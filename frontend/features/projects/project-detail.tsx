@@ -150,6 +150,7 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
           onJob={onJob}
           projectStatus={project.status}
           sourceKind={project.sourceKind}
+          onRetried={onChanged}
         />
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(0,420px)]">
@@ -160,6 +161,7 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
             fileInputId={fileInputId}
             projectStatus={project.status}
             sourceKind={project.sourceKind}
+            onRetried={onChanged}
           />
           {processing || requestedMs !== null ? (
             <SourceColumn

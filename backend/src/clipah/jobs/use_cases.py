@@ -156,6 +156,7 @@ def fail_job(
         job.finished_at = now
         _reconcile_analysis_terminal(session, job=job, target=target, now=now)
         _reconcile_import_terminal(session, job=job, target=target)
+        _reconcile_stage_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -173,6 +174,7 @@ def request_job_cancellation(
         job.finished_at = now
         _reconcile_analysis_terminal(session, job=job, target=target, now=now)
         _reconcile_import_terminal(session, job=job, target=target)
+        _reconcile_stage_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -242,6 +244,7 @@ def _finish(
         job.progress = SUCCESS_PROGRESS
     _reconcile_analysis_terminal(session, job=job, target=target, now=now)
     _reconcile_import_terminal(session, job=job, target=target)
+    _reconcile_stage_terminal(session, job=job, target=target)
     return _record(repository, job, EVENT_FOR_STATUS[target])
 
 
@@ -258,6 +261,33 @@ def _reconcile_import_terminal(session: Session, *, job: Job, target: JobStatus)
     release_media_arrival(
         session, workspace_id=job.workspace_id, project_id=job.project_id, ignoring_job_id=job.id
     )
+
+
+#: The Project status each retryable stage holds while it works.
+_STAGE_STATUS = {
+    JobKind.INGEST: ProjectStatus.INGESTING,
+    JobKind.TRANSCRIBE: ProjectStatus.TRANSCRIBING,
+}
+
+
+def _reconcile_stage_terminal(session: Session, *, job: Job, target: JobStatus) -> None:
+    """A preparation or transcription that ended badly fails its Project.
+
+    Only while the Project is still in that stage: a stale Job must never fail a Project
+    that has since moved on. The member can retry the stage from the Project.
+    """
+    stage_status = _STAGE_STATUS.get(job.kind)
+    if stage_status is None or job.project_id is None:
+        return
+    if target not in {JobStatus.FAILED, JobStatus.CANCELED}:
+        return
+    project = session.scalar(
+        select(Project)
+        .where(Project.workspace_id == job.workspace_id, Project.id == job.project_id)
+        .with_for_update()
+    )
+    if project is not None and project.status is stage_status:
+        project.status = ProjectStatus.FAILED
 
 
 def _reconcile_analysis_terminal(

@@ -6,11 +6,15 @@ import { Upload as UploadIcon } from 'lucide-react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { StageBar } from '@/components/media/stage-bar'
+import { Button } from '@/components/ui/button'
 import { projectIsProcessing, projectStatusLabel } from '@/features/projects/status-labels'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import { ApiError } from '@/lib/api/client'
-import { createApiV1ProjectsProjectIdAnalysisPost } from '@/lib/api/generated/analysis/analysis'
+import {
+  createApiV1ProjectsProjectIdAnalysisPost,
+  retryStageApiV1ProjectsProjectIdRetryPost,
+} from '@/lib/api/generated/analysis/analysis'
 import { cancelApiV1JobsJobIdCancelPost } from '@/lib/api/generated/jobs/jobs'
 
 import { UploadRejectedError, uploadSource } from './uploader'
@@ -72,8 +76,11 @@ export function UploadPanel({
   fileInputId,
   projectStatus = null,
   sourceKind = null,
+  onRetried,
 }: {
   projectId: string
+  /** Called once a failed stage has been queued again, so the Project is read afresh. */
+  onRetried?: () => void
   /**
    * The Project's own status, so the stage bar shows where it stands even when no live
    * update has arrived yet, as after a page load or between two stages.
@@ -104,6 +111,7 @@ export function UploadPanel({
       fileInputId={fileInputId}
       projectStatus={projectStatus}
       sourceKind={sourceKind}
+      onRetried={onRetried}
     />
   )
 }
@@ -116,9 +124,11 @@ function SubmissionPanel({
   fileInputId,
   projectStatus,
   sourceKind,
+  onRetried,
 }: {
   projectId: string
   workspaceId: string
+  onRetried?: () => void
   addMedia: boolean
   onJob?: (job: ProjectJob) => void
   fileInputId?: string
@@ -133,6 +143,7 @@ function SubmissionPanel({
   const [job, setJob] = useState<ProjectJob | null>(null)
   const [connected, setConnected] = useState(true)
   const [analysisPending, setAnalysisPending] = useState(false)
+  const [retrying, setRetrying] = useState(false)
   const reportJob = useRef(onJob)
   reportJob.current = onJob
 
@@ -211,6 +222,20 @@ function SubmissionPanel({
     }
   }
 
+  /** Queue the stage that failed again; the backend decides which stage that is. */
+  async function retry() {
+    setRetrying(true)
+    setFailure(null)
+    try {
+      await retryStageApiV1ProjectsProjectIdRetryPost(projectId, { workspace_id: workspaceId })
+      onRetried?.()
+    } catch (error) {
+      setFailure(error)
+    } finally {
+      setRetrying(false)
+    }
+  }
+
   async function stopJob(jobId: string) {
     try {
       await cancelApiV1JobsJobIdCancelPost(jobId, { workspace_id: workspaceId })
@@ -233,6 +258,7 @@ function SubmissionPanel({
     job !== null ||
     uploadId !== null ||
     analysisPending ||
+    projectStatus === 'failed' ||
     (projectStatus !== null && projectIsProcessing(projectStatus))
 
   return (
@@ -286,6 +312,11 @@ function SubmissionPanel({
           <p className="text-xs text-muted-foreground">Reported as {job.errorCode}.</p>
         ) : null}
         <div className="flex flex-wrap gap-2">
+          {projectStatus === 'failed' && !running ? (
+            <Button type="button" size="sm" onClick={() => void retry()} disabled={retrying}>
+              {retrying ? 'Retrying…' : 'Retry'}
+            </Button>
+          ) : null}
           {running ? (
             <button
               type="button"
