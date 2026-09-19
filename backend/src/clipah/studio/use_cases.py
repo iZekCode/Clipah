@@ -520,9 +520,13 @@ def browse_assets(
 def asset_preview(
     session: Session, store: ObjectStore, *, access: WorkspaceAccess, asset_id: UUID
 ) -> MediaPreview:
-    """Sign five minutes of access to one library asset of an active Project."""
+    """Sign five minutes of access to one library asset of an active Project.
+
+    B-roll is previewed from the proxy retrieval made of it when there is one: a stock
+    original can be a 4K file of hundreds of megabytes, and the editor only plays it.
+    """
     row = session.execute(
-        select(Asset.storage_key, Asset.content_type)
+        select(Asset.storage_key, Asset.content_type, Asset.kind, Asset.project_id, Asset.sha256)
         .join(Project, _active_project(Asset.workspace_id, Asset.project_id))
         .where(
             Asset.workspace_id == access.workspace_id,
@@ -532,7 +536,20 @@ def asset_preview(
     ).first()
     if row is None:
         raise StudioNotFoundError(str(asset_id))
-    key, content_type = row
+    key, content_type, kind, project_id, sha256 = row
+    if kind is AssetKind.BROLL:
+        proxy = session.execute(
+            select(Asset.storage_key, Asset.content_type)
+            .where(
+                Asset.workspace_id == access.workspace_id,
+                Asset.project_id == project_id,
+                Asset.kind == AssetKind.BROLL_PROXY,
+                Asset.sha256 == sha256,
+            )
+            .limit(1)
+        ).first()
+        if proxy is not None:
+            key, content_type = proxy
     return MediaPreview(
         download=store.sign_download(key=key, expires_in=SIGNED_URL_TTL),
         content_type=content_type,

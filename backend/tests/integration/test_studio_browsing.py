@@ -297,6 +297,21 @@ def test_an_asset_preview_is_a_short_lived_capability_hidden_from_strangers(
 
 
 @pytest.mark.integration
+def test_a_stock_clip_is_previewed_from_its_small_proxy_rather_than_the_full_download(
+    engine: Engine,
+) -> None:
+    """A 4K stock file can be hundreds of megabytes; the editor plays the proxy made of it."""
+    stage = _staged(engine)
+    broll_id = _broll_asset(stage)
+    proxy_key = _broll_proxy(stage, broll_id)
+
+    preview = stage.browser.get(_path(stage, f"/assets/{broll_id}/preview-url"))
+
+    assert preview.status_code == 200
+    assert proxy_key in preview.json()["url"]
+
+
+@pytest.mark.integration
 def test_a_project_thumbnail_is_signed_when_ingest_made_one_and_absent_otherwise(
     engine: Engine,
 ) -> None:
@@ -440,6 +455,30 @@ def _broll_asset(stage: Stage) -> UUID:
         )
     stage.store.objects[key] = StoredObject(key=key, content_type="video/mp4", content_length=2_048)
     return asset_id
+
+
+def _broll_proxy(stage: Stage, broll_id: UUID) -> str:
+    """Store the playback proxy retrieval makes beside one stock clip."""
+    key = f"workspaces/{stage.workspace_id}/projects/{stage.project_id}/broll/{broll_id}/proxy"
+    with stage.engine.begin() as connection:
+        connection.execute(
+            Asset.__table__.insert().values(
+                id=uuid4(),
+                workspace_id=stage.workspace_id,
+                project_id=stage.project_id,
+                kind=AssetKind.BROLL_PROXY,
+                source_type=AssetSourceType.DERIVED,
+                storage_key=key,
+                content_type="video/mp4",
+                size_bytes=512,
+                duration_ms=8_000,
+                width=720,
+                height=1280,
+                sha256=b"b" * 32,
+            )
+        )
+    stage.store.objects[key] = StoredObject(key=key, content_type="video/mp4", content_length=512)
+    return key
 
 
 def _machinery_asset(stage: Stage, kind: AssetKind) -> UUID:

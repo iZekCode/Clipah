@@ -1,6 +1,6 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import {
   ArrowLeft,
   AudioLines,
@@ -50,6 +50,7 @@ import {
 } from '@/lib/api/generated/edits/edits'
 import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
 import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
+import { previewAssetApiV1AssetsAssetIdPreviewUrlGet } from '@/lib/api/generated/studio/studio'
 import type {
   AccessibilityResponse,
   CompositionV1,
@@ -271,6 +272,7 @@ function LoadedEditor({
   const [ripple, setRipple] = useState(false)
   const composition = state.composition
   const dirty = isDirty(state)
+  const overlayMedia = useOverlayMedia(composition, workspaceId)
 
   const autosave = useMemo(
     () =>
@@ -858,6 +860,7 @@ function LoadedEditor({
                 playing={playing}
                 loop={loop}
                 engine={engine}
+                overlayMedia={overlayMedia}
                 showFullFrame={tool === 'layout' && framed?.crop != null}
                 overlay={
                   tool === 'layout' && framed !== null && framed.crop !== null ? (
@@ -1050,6 +1053,42 @@ function LoadedEditor({
       />
     </main>
   )
+}
+
+/**
+ * A playable link for every picture and clip the composition's overlays draw.
+ *
+ * Links are signed for five minutes and asked for again shortly before they expire, the
+ * same way the preview's own proxy is; one that has not arrived yet is simply not drawn.
+ */
+function useOverlayMedia(
+  composition: CompositionV1,
+  workspaceId: string,
+): Record<string, string | undefined> {
+  const assetIds = useMemo(
+    () => [
+      ...new Set(
+        composition.overlays.flatMap((overlay) =>
+          overlay.type === 'video' || overlay.type === 'image' ? [overlay.assetId] : [],
+        ),
+      ),
+    ],
+    [composition.overlays],
+  )
+  const links = useQueries({
+    queries: assetIds.map((assetId) => ({
+      queryKey: ['/api/v1/assets/preview-url', workspaceId, assetId],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        previewAssetApiV1AssetsAssetIdPreviewUrlGet(
+          assetId,
+          { workspace_id: workspaceId },
+          { signal },
+        ),
+      staleTime: SIGNED_MEDIA_STALE_MS,
+      retry: false,
+    })),
+  })
+  return Object.fromEntries(assetIds.map((assetId, index) => [assetId, links[index]?.data?.url]))
 }
 
 /** One editing tool's panel, kept mounted while another tool is showing. */

@@ -418,6 +418,30 @@ describe('the clip detail page', () => {
   })
 })
 
+describe('the preview', () => {
+  test('an accepted B-roll clip is fetched so the preview can draw it', async () => {
+    const accepted = reduce({ type: 'acceptSuggestion', placement: placement() }).composition
+    const assetId = placement().assetId
+    const api = stubEditor([], {
+      [SHOW_EDIT]: { body: edit({ composition: accepted }) },
+      [`GET /api/v1/assets/${assetId}/preview-url`]: {
+        body: {
+          url: 'https://storage.test/broll-proxy.mp4',
+          expiresAt: '2026-02-01T00:05:00+00:00',
+          contentType: 'video/mp4',
+        },
+      },
+    })
+    await openEditor()
+
+    await waitFor(() => {
+      expect(api.calls.some((call) => call.path === `/api/v1/assets/${assetId}/preview-url`)).toBe(
+        true,
+      )
+    })
+  })
+})
+
 describe('the B-roll panel', () => {
   test('coverage cannot be chosen until a member asks for suggestions', async () => {
     stubEditor([])

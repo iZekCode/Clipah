@@ -11,6 +11,7 @@ import {
 
 import { captionFontStack } from './caption-fonts'
 import { htmlVideoPreviewEngine, type PreviewEngine, type PreviewSource } from './engine'
+import { OverlayLayer } from './OverlayLayer'
 import { timelineItems } from './store'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
@@ -29,6 +30,7 @@ export function Player({
   loop = false,
   showFullFrame = false,
   overlay,
+  overlayMedia = {},
   onSeek,
   onPlayingChange,
   engine: injected,
@@ -43,6 +45,8 @@ export function Player({
   showFullFrame?: boolean
   /** Drawn over the frame, inside the canvas box. */
   overlay?: ReactNode
+  /** A playable link for each asset the composition's overlays draw, once signed. */
+  overlayMedia?: Readonly<Record<string, string | undefined>>
   onSeek: (ms: number) => void
   onPlayingChange: (playing: boolean) => void
   engine?: PreviewEngine
@@ -154,7 +158,16 @@ export function Player({
                 : 'h-full w-full object-cover'
           }
         />
-        {/* Captions sit on the canvas, not on the source frame a crop is chosen from. */}
+        {/* Overlays and captions sit on the canvas, not on the frame a crop is chosen from. */}
+        {showFullFrame ? null : (
+          <OverlayLayer
+            overlays={composition.overlays}
+            playheadMs={playheadMs}
+            playing={playing}
+            canvasWidth={composition.canvas.width}
+            media={overlayMedia}
+          />
+        )}
         {showFullFrame || composition.captions.mode === 'off' || activeWord === undefined ? null : (
           <p
             data-testid="editor-caption"
