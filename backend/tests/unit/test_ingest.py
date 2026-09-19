@@ -175,6 +175,21 @@ def test_write_download_hashes_chunks_and_enforces_the_observed_size(tmp_path: P
 
 
 @pytest.mark.unit
+def test_a_download_of_unknown_size_is_measured_rather_than_compared(tmp_path: Path) -> None:
+    """A stock provider's file has no size Clipah knew beforehand; any length is honest."""
+    with (tmp_path / "stock").open("wb") as target:
+        downloaded = write_download(
+            (b"stock-", b"footage"),
+            target,
+            expected_size=None,
+            max_bytes=MAX_MEDIA_BYTES,
+            cancellation_check=lambda: None,
+        )
+
+    assert downloaded.size_bytes == len(b"stock-footage")
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("chunks", "expected_size", "max_bytes", "code"),
     [

@@ -101,7 +101,7 @@ class SourceDownloader(Protocol):
         url: str,
         destination: BinaryIO,
         *,
-        expected_size: int,
+        expected_size: int | None,
         max_bytes: int,
         cancellation_check: CancellationCheck,
     ) -> DownloadedSource:
@@ -159,7 +159,7 @@ class HttpxSourceDownloader:
         url: str,
         destination: BinaryIO,
         *,
-        expected_size: int,
+        expected_size: int | None,
         max_bytes: int,
         cancellation_check: CancellationCheck,
     ) -> DownloadedSource:
@@ -413,11 +413,15 @@ def write_download(
     chunks: Iterable[bytes],
     destination: BinaryIO,
     *,
-    expected_size: int,
+    expected_size: int | None,
     max_bytes: int,
     cancellation_check: CancellationCheck,
 ) -> DownloadedSource:
-    """Write, count, and hash one response stream under fixed observed-size boundaries."""
+    """Write, count, and hash one response stream under fixed observed-size boundaries.
+
+    `expected_size` is the length Clipah recorded for its own object; a file fetched from
+    a provider has none, and passes `None` to be measured instead of compared.
+    """
     digest = hashlib.sha256()
     size_bytes = 0
     for chunk in chunks:
@@ -431,7 +435,7 @@ def write_download(
         digest.update(chunk)
     if size_bytes == 0:
         raise MediaValidationError("ASSET_INVALID_MEDIA")
-    if size_bytes != expected_size:
+    if expected_size is not None and size_bytes != expected_size:
         raise MediaValidationError("ASSET_SOURCE_CHANGED")
     return DownloadedSource(size_bytes=size_bytes, sha256=digest.digest())
 

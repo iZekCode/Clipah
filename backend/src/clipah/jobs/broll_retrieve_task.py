@@ -306,7 +306,7 @@ class BrollRetrieveStageRunner:
                 downloaded = dependencies.downloader.download(
                     download_url,
                     handle,
-                    expected_size=0,
+                    expected_size=None,
                     max_bytes=MAX_ASSET_BYTES,
                     cancellation_check=context.raise_if_cancelled,
                 )

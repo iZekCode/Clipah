@@ -299,7 +299,7 @@ class BrollGenerateStageRunner:
                 downloaded = dependencies.downloader.download(
                     _safe_output_url(result.output.url.get_secret_value(), dependencies),
                     handle,
-                    expected_size=0,
+                    expected_size=None,
                     max_bytes=context.settings.generation_max_output_bytes,
                     cancellation_check=context.raise_if_cancelled,
                 )

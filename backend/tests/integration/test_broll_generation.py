@@ -1028,7 +1028,7 @@ class _Downloader:
         url: str,
         destination: Any,
         *,
-        expected_size: int,
+        expected_size: int | None,
         max_bytes: int,
         cancellation_check: Any,
     ) -> Any:
