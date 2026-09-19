@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 import pytest
 
 from clipah.editor.models import (
+    MAX_SOURCE_POSITION_MS,
     MIN_ITEM_DURATION_MS,
     CompositionValidationError,
     canonical_json,
@@ -296,6 +297,34 @@ def test_a_reversed_source_range_is_refused() -> None:
     """A clip that ends before it starts describes no media at all."""
     document = composition_document()
     document["sourceRange"] = {"inMs": 42_000, "outMs": 12_000}
+
+    assert rejects(document)
+
+
+@pytest.mark.unit
+def test_a_clip_cut_from_late_in_a_long_source_is_accepted() -> None:
+    """The ten-minute limit is the clip's own length, not where it sits in its source."""
+    offset = 30 * 60 * 1_000
+    document = composition_document()
+    document["sourceRange"] = {"inMs": 12_000 + offset, "outMs": 42_000 + offset}
+    for track in document["tracks"]:
+        for item in track["items"]:
+            item["sourceInMs"] += offset
+            item["sourceOutMs"] += offset
+    document["overlays"][0]["sourceInMs"] += offset
+    document["overlays"][0]["sourceOutMs"] += offset
+
+    composition = parse_composition(document)
+
+    assert composition.source_range.in_ms == 12_000 + offset
+    assert composition.tracks[0].items[0].source_in_ms == 12_000 + offset
+
+
+@pytest.mark.unit
+def test_a_source_position_beyond_the_longest_accepted_source_is_refused() -> None:
+    """No source Clipah accepts runs past four hours, so no clip can be cut from there."""
+    document = composition_document()
+    document["sourceRange"] = {"inMs": MAX_SOURCE_POSITION_MS, "outMs": MAX_SOURCE_POSITION_MS + 1}
 
     assert rejects(document)
 

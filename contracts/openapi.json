@@ -5848,13 +5848,13 @@
         "description": "The span of the source asset this clip was cut from.",
         "properties": {
           "inMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Inms",
             "type": "integer"
           },
           "outMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Outms",
             "type": "integer"
@@ -6489,13 +6489,13 @@
             "type": "string"
           },
           "sourceInMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Sourceinms",
             "type": "integer"
           },
           "sourceOutMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Sourceoutms",
             "type": "integer"
@@ -6767,13 +6767,13 @@
             "type": "boolean"
           },
           "sourceInMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Sourceinms",
             "type": "integer"
           },
           "sourceOutMs": {
-            "maximum": 600000.0,
+            "maximum": 14400000.0,
             "minimum": 0.0,
             "title": "Sourceoutms",
             "type": "integer"

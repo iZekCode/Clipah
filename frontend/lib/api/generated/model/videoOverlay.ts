@@ -34,12 +34,12 @@ export interface VideoOverlay {
   preserveDialogueAudio: boolean;
   /**
    * @minimum 0
-   * @maximum 600000
+   * @maximum 14400000
    */
   sourceInMs: number;
   /**
    * @minimum 0
-   * @maximum 600000
+   * @maximum 14400000
    */
   sourceOutMs: number;
   /**

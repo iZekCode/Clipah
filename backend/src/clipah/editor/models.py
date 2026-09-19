@@ -25,6 +25,9 @@ from pydantic.alias_generators import to_camel
 
 SCHEMA_VERSION = 1
 MAX_COMPOSITION_DURATION_MS = 600_000
+# A clip is at most ten minutes long, but it may be cut from anywhere in a source up to
+# the longest one ingest accepts (`clipah.assets.probe.MAX_DURATION_MS`).
+MAX_SOURCE_POSITION_MS = 4 * 60 * 60 * 1000
 # The editor clamps every trim, resize, and split to this length, so anything shorter
 # arriving here is a mistake rather than an editing decision a member could have made.
 MIN_ITEM_DURATION_MS = 500
@@ -37,6 +40,7 @@ SUPPORTED_FONT_WEIGHTS = (300, 400, 500, 600, 700, 800, 900)
 Finite = Annotated[float, Field(allow_inf_nan=False)]
 Color = Annotated[str, Field(pattern=HEX_COLOR_PATTERN)]
 Milliseconds = Annotated[int, Field(ge=0, le=MAX_COMPOSITION_DURATION_MS)]
+SourceMilliseconds = Annotated[int, Field(ge=0, le=MAX_SOURCE_POSITION_MS)]
 ElementId = Annotated[str, Field(min_length=1, max_length=128, pattern=r"^[A-Za-z0-9._:-]+$")]
 
 
@@ -171,8 +175,8 @@ class Canvas(CompositionModel):
 class SourceRange(CompositionModel):
     """The span of the source asset this clip was cut from."""
 
-    in_ms: Milliseconds
-    out_ms: Milliseconds
+    in_ms: SourceMilliseconds
+    out_ms: SourceMilliseconds
 
     @model_validator(mode="after")
     def _reject_reversed_range(self) -> Self:
@@ -276,8 +280,8 @@ class TrackItem(CompositionModel):
     id: ElementId
     source_asset_id: UUID
     timeline_start_ms: Milliseconds
-    source_in_ms: Milliseconds
-    source_out_ms: Milliseconds
+    source_in_ms: SourceMilliseconds
+    source_out_ms: SourceMilliseconds
     transform: Transform
     crop: Crop | None
     opacity: Annotated[Finite, Field(ge=0, le=1)]
@@ -387,8 +391,8 @@ class VideoOverlay(BaseOverlay):
 
     type: Literal["video"]
     asset_id: UUID
-    source_in_ms: Milliseconds
-    source_out_ms: Milliseconds
+    source_in_ms: SourceMilliseconds
+    source_out_ms: SourceMilliseconds
     blend_mode: BlendMode
     motion: MotionPreset
     preserve_dialogue_audio: bool

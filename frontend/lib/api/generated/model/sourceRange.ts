@@ -11,12 +11,12 @@
 export interface SourceRange {
   /**
    * @minimum 0
-   * @maximum 600000
+   * @maximum 14400000
    */
   inMs: number;
   /**
    * @minimum 0
-   * @maximum 600000
+   * @maximum 14400000
    */
   outMs: number;
 }
