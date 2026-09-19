@@ -11,6 +11,7 @@ import {
   Keyboard,
   Palette,
   Redo2,
+  RotateCcw,
   SlidersHorizontal,
   Type,
   Undo2,
@@ -72,6 +73,7 @@ import { LayoutPanel } from './LayoutPanel'
 import { MotionPanel } from './MotionPanel'
 import { Inspector, type InspectorTarget } from './Inspector'
 import { Player } from './Player'
+import { ResetEditsDialog } from './ResetEditsDialog'
 import { SceneList } from './SceneList'
 import { ShortcutSheet } from './ShortcutSheet'
 import { SourceMonitor } from './SourceMonitor'
@@ -402,6 +404,7 @@ function LoadedEditor({
 
   const [loop, setLoop] = useState(false)
   const [helpOpen, setHelpOpen] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
   const [laneHeight, setLaneHeight] = useState(240)
   const [propertiesOpen, setPropertiesOpen] = useState(false)
   const lanes = useRef<HTMLElement>(null)
@@ -528,6 +531,14 @@ function LoadedEditor({
             className="hidden md:inline-flex"
             disabled={!canRedo(state)}
             onClick={() => dispatch({ type: 'redo' })}
+          />
+          <IconButton
+            label="Reset edits"
+            icon={<RotateCcw strokeWidth={1.75} />}
+            className="hidden md:inline-flex"
+            // Revision 1 with nothing changed is already the clip as it was first opened.
+            disabled={autosave.expectedRevision === 1 && !dirty}
+            onClick={() => setResetOpen(true)}
           />
           <IconButton
             label="Editor shortcuts"
@@ -1014,6 +1025,13 @@ function LoadedEditor({
         </SheetContent>
       </Sheet>
       <ShortcutSheet open={helpOpen} onOpenChange={setHelpOpen} />
+      <ResetEditsDialog
+        open={resetOpen}
+        onOpenChange={setResetOpen}
+        editId={edit.id}
+        workspaceId={workspaceId}
+        onReset={(original) => dispatch({ type: 'reset', composition: original })}
+      />
 
       <ExportDialog
         open={exporting}

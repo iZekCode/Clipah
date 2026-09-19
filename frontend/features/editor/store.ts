@@ -172,6 +172,7 @@ export type EditorAction =
   | { type: 'redo' }
   | { type: 'markSaved'; composition: CompositionV1 }
   | { type: 'replace'; composition: CompositionV1 }
+  | { type: 'reset'; composition: CompositionV1 }
 
 /** Start editing one Revision, with no history behind it and nothing to save. */
 export function initialEditorState(composition: CompositionV1): EditorState {
@@ -451,6 +452,8 @@ export function editorReducer(state: EditorState, action: EditorAction): EditorS
       return { ...state, savedCanonical: canonicalJson(action.composition) }
     case 'replace':
       return initialEditorState(action.composition)
+    case 'reset':
+      return reset(state, action.composition)
     default:
       if (refusedByLock(state, action)) {
         return state
@@ -474,7 +477,11 @@ function targetTrackId(composition: CompositionV1, action: EditorAction): string
 }
 
 /** Apply one document change, keeping the patches that reverse and repeat it. */
-function record(state: EditorState, change: (draft: CompositionV1) => void): EditorState {
+function record(
+  state: EditorState,
+  // A change either edits the draft in place or returns a whole document to replace it.
+  change: (draft: CompositionV1) => void | CompositionV1,
+): EditorState {
   const [composition, redo, undo] = produceWithPatches(state.composition, change)
   if (redo.length === 0) {
     return state
@@ -484,6 +491,27 @@ function record(state: EditorState, change: (draft: CompositionV1) => void): Edi
     composition,
     past: [...state.past, { undo, redo }],
     future: [],
+  }
+}
+
+/**
+ * Put a whole earlier document back as one change.
+ *
+ * Unlike taking the backend's Revision, this is the member's own decision: it lands in
+ * the history, so one undo brings their work back, and it is saved like any other edit.
+ */
+function reset(state: EditorState, original: CompositionV1): EditorState {
+  const next = record(state, () => original)
+  if (next === state) {
+    return state
+  }
+  return {
+    ...next,
+    selectedItemId: firstItemId(original),
+    selectedTrackId: original.tracks[0]?.id ?? null,
+    playheadMs: Math.min(state.playheadMs, original.durationMs),
+    markInMs: null,
+    markOutMs: null,
   }
 }
 

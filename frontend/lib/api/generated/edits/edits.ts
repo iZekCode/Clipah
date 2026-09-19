@@ -31,10 +31,12 @@ import type {
   EditResponse,
   HTTPValidationError,
   HistoryApiV1EditsEditIdRevisionsGetParams,
+  RevisionDetailResponse,
   RevisionHistoryResponse,
   SaveApiV1EditsEditIdPutParams,
   SaveRevisionRequest,
-  ShowApiV1EditsEditIdGetParams
+  ShowApiV1EditsEditIdGetParams,
+  ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams
 } from '.././model';
 
 import { apiFetch } from '../../client';
@@ -429,6 +431,130 @@ export function useHistoryApiV1EditsEditIdRevisionsGet<TData = Awaited<ReturnTyp
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getHistoryApiV1EditsEditIdRevisionsGetQueryOptions(editId,params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * Read one Revision with its composition, so a clip can be put back as it was.
+ * @summary Show Revision
+ */
+export const getShowRevisionApiV1EditsEditIdRevisionsRevisionGetUrl = (editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/edits/${editId}/revisions/${revision}?${stringifiedParams}` : `/api/v1/edits/${editId}/revisions/${revision}`
+}
+
+export const showRevisionApiV1EditsEditIdRevisionsRevisionGet = async (editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options?: RequestInit): Promise<RevisionDetailResponse> => {
+  
+  return apiFetch<RevisionDetailResponse>(getShowRevisionApiV1EditsEditIdRevisionsRevisionGetUrl(editId,revision,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryKey = (editId?: string,
+    revision?: number,
+    params?: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams,) => {
+    return [
+    `/api/v1/edits/${editId}/revisions/${revision}`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryOptions = <TData = Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError = HTTPValidationError>(editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryKey(editId,revision,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>> = ({ signal }) => showRevisionApiV1EditsEditIdRevisionsRevisionGet(editId,revision,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(editId && revision), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryResult = NonNullable<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>>
+export type ShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryError = HTTPValidationError
+
+
+export function useShowRevisionApiV1EditsEditIdRevisionsRevisionGet<TData = Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError = HTTPValidationError>(
+ editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>,
+          TError,
+          Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useShowRevisionApiV1EditsEditIdRevisionsRevisionGet<TData = Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError = HTTPValidationError>(
+ editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>,
+          TError,
+          Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useShowRevisionApiV1EditsEditIdRevisionsRevisionGet<TData = Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError = HTTPValidationError>(
+ editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Show Revision
+ */
+
+export function useShowRevisionApiV1EditsEditIdRevisionsRevisionGet<TData = Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError = HTTPValidationError>(
+ editId: string,
+    revision: number,
+    params: ShowRevisionApiV1EditsEditIdRevisionsRevisionGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof showRevisionApiV1EditsEditIdRevisionsRevisionGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getShowRevisionApiV1EditsEditIdRevisionsRevisionGetQueryOptions(editId,revision,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

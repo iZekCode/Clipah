@@ -84,6 +84,7 @@ PROBES: tuple[tuple[str, str], ...] = (
     ("POST", "/api/v1/jobs/{job_id}/cancel"),
     ("GET", "/api/v1/edits/{edit_id}"),
     ("GET", "/api/v1/edits/{edit_id}/revisions"),
+    ("GET", "/api/v1/edits/{edit_id}/revisions/1"),
     ("GET", "/api/v1/edits/{edit_id}/reviews"),
     ("GET", "/api/v1/edits/{edit_id}/campaign-outputs"),
     ("GET", "/api/v1/projects/{project_id}/candidates/{candidate_id}/variants"),

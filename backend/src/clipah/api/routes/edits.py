@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, Depends, Path, Request, Response
 from pydantic import BaseModel, ConfigDict, Field, field_serializer
 from sqlalchemy.orm import Session
 
@@ -43,6 +43,7 @@ from clipah.editor.use_cases import (
     create_edit_from_candidate,
     decide_on_suggestion,
     get_edit,
+    get_revision,
     list_revisions,
     save_revision,
 )
@@ -116,6 +117,12 @@ class RevisionResponse(BaseModel):
     def serialize_created_at(self, value: datetime) -> str:
         """Preserve the API's established explicit UTC-offset timestamp shape."""
         return value.isoformat()
+
+
+class RevisionDetailResponse(RevisionResponse):
+    """One Revision of an Edit and the exact composition it holds."""
+
+    composition: CompositionV1
 
 
 class RevisionHistoryResponse(BaseModel):
@@ -299,6 +306,28 @@ def history(
         raise ApiError(status_code=404, code="NOT_FOUND") from error
     return RevisionHistoryResponse(
         revisions=tuple(_revision_body(revision) for revision in revisions)
+    )
+
+
+@router.get("/edits/{edit_id}/revisions/{revision}", response_model=RevisionDetailResponse)
+def show_revision(
+    request: Request,
+    edit_id: UUID,
+    revision: Annotated[int, Path(ge=1)],
+    session: DatabaseSession,
+    workspace: ReadableWorkspace,
+) -> RevisionDetailResponse:
+    """Read one Revision with its composition, so a clip can be put back as it was."""
+    try:
+        found = get_revision(
+            EditRepository(session), access=workspace.access, edit_id=edit_id, revision=revision
+        )
+    except EditNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    summary = _revision_body(found.summary)
+    return RevisionDetailResponse(
+        **summary.model_dump(),
+        composition=CompositionV1.model_validate(found.composition),
     )
 
 

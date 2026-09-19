@@ -53,6 +53,7 @@ from clipah.editor.repository import (
     DecidableSuggestion,
     EditDetail,
     EditRepository,
+    RevisionDetail,
     RevisionSummary,
 )
 from clipah.workspaces.models import WorkspaceAccess
@@ -210,6 +211,18 @@ def list_revisions(
     if repository.detail(workspace_id=access.workspace_id, edit_id=edit_id) is None:
         raise EditNotFoundError(str(edit_id))
     return repository.revisions(workspace_id=access.workspace_id, edit_id=edit_id, limit=limit)
+
+
+def get_revision(
+    repository: EditRepository, *, access: WorkspaceAccess, edit_id: UUID, revision: int
+) -> RevisionDetail:
+    """Read one Revision of one Edit, so a member can go back to exactly what it held."""
+    found = repository.revision(
+        workspace_id=access.workspace_id, edit_id=edit_id, revision=revision
+    )
+    if found is None:
+        raise EditNotFoundError(str(edit_id))
+    return found
 
 
 def save_revision(

@@ -284,6 +284,24 @@ describe('editor state', () => {
     )
   })
 
+  test('a reset puts the original document back as one change that can be undone', () => {
+    const original = composition()
+    const edited = reduce(
+      { type: 'select', itemId: 'scene-1' },
+      { type: 'trim', itemId: 'scene-1', sourceInMs: 1_000, sourceOutMs: 21_000 },
+      { type: 'captionStyle', patch: { fontSize: 48 } },
+    )
+
+    const reset = editorReducer(edited, { type: 'reset', composition: original })
+
+    expect(canonicalJson(reset.composition)).toBe(canonicalJson(original))
+    expect(reset.selectedItemId).toBe('scene-1')
+    expect(isDirty(reset)).toBe(false)
+    const undone = editorReducer(reset, { type: 'undo' })
+    expect(canonicalJson(undone.composition)).toBe(canonicalJson(edited.composition))
+    expect(canUndo(undone)).toBe(true)
+  })
+
   test('taking the revision from the backend replaces the document and its history', () => {
     const theirs = composition({ durationMs: 12_000 })
     const state = reduce(
@@ -615,6 +633,46 @@ describe('editor screen', () => {
       background: '#000000',
     })
     expect(saved.composition.sourceAssetId).toBe(composition().sourceAssetId)
+  })
+
+  test('resetting asks first, then puts the clip back as it was first opened', async () => {
+    const user = userEvent.setup()
+    const edited = composition({ canvas: { width: 1920, height: 1080, background: '#000000' } })
+    api.set(SHOW_EDIT, { body: edit({ currentRevision: 3, composition: edited }) })
+    api.set(`GET /api/v1/edits/${EDIT_ID}/revisions/1`, {
+      body: {
+        id: '88888888-8888-4888-8888-888888888888',
+        revision: 1,
+        compositionHash: 'a'.repeat(64),
+        createdBy: currentUser().id,
+        createdAt: '2026-02-01T00:00:00+00:00',
+        composition: composition(),
+      },
+    })
+    await openEditor()
+
+    await user.click(screen.getByRole('button', { name: /reset edits/i }))
+    const dialog = await screen.findByRole('alertdialog', { name: /reset all edits/i })
+    await expectAccessible(dialog)
+    await user.click(within(dialog).getByRole('button', { name: /cancel/i }))
+    expect(api.calls.some((call) => call.path.endsWith('/revisions/1'))).toBe(false)
+
+    await user.click(screen.getByRole('button', { name: /reset edits/i }))
+    await user.click(
+      within(await screen.findByRole('alertdialog')).getByRole('button', { name: /^reset$/i }),
+    )
+    await waitFor(() => expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument())
+    await user.click(screen.getByRole('button', { name: /^save$/i }))
+
+    await waitFor(() => {
+      expect(api.calls.some((call) => call.method === 'PUT')).toBe(true)
+    })
+    const saved = api.calls.find((call) => call.method === 'PUT')?.body as {
+      expectedRevision: number
+      composition: CompositionV1
+    }
+    expect(saved.expectedRevision).toBe(3)
+    expect(canonicalJson(saved.composition)).toBe(canonicalJson(composition()))
   })
 
   test('editing a caption word and undoing it leaves the original text', async () => {

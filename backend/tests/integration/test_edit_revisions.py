@@ -152,6 +152,39 @@ def test_saving_a_revision_appends_immutable_history(engine: Engine) -> None:
 
 
 @pytest.mark.integration
+def test_one_earlier_revision_can_be_read_with_the_composition_it_holds(engine: Engine) -> None:
+    """Resetting a clip needs the exact document it started from, not a rebuilt one."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    created = _create_edit(browser, fixture).json()
+    document = _edited(created["composition"], gain_db=-9.0)
+    _save(browser, fixture, created["id"], expected_revision=1, composition=document)
+
+    first = browser.get(_path(f"/edits/{created['id']}/revisions/1", fixture))
+    second = browser.get(_path(f"/edits/{created['id']}/revisions/2", fixture))
+
+    assert first.status_code == 200
+    assert first.json()["revision"] == 1
+    assert first.json()["composition"] == created["composition"]
+    assert first.json()["compositionHash"] == created["compositionHash"]
+    assert second.json()["composition"]["audio"]["gainDb"] == -9.0
+
+
+@pytest.mark.integration
+def test_a_revision_that_was_never_saved_is_not_found(engine: Engine) -> None:
+    """Asking for a Revision past the newest must not answer with a different one."""
+    stage = _reviewed_project(engine)
+    browser, fixture = stage.browser, stage.fixture
+    created = _create_edit(browser, fixture).json()
+
+    unsaved = browser.get(_path(f"/edits/{created['id']}/revisions/2", fixture))
+    other_edit = browser.get(_path(f"/edits/{uuid4()}/revisions/1", fixture))
+
+    assert_error(unsaved, status_code=404, code="NOT_FOUND")
+    assert_error(other_edit, status_code=404, code="NOT_FOUND")
+
+
+@pytest.mark.integration
 def test_reading_an_edit_returns_the_current_revision_and_its_composition(
     engine: Engine,
 ) -> None:

@@ -97,6 +97,14 @@ class RevisionSummary:
     created_at: datetime
 
 
+@dataclass(frozen=True, slots=True)
+class RevisionDetail:
+    """One Revision of an Edit together with the composition it holds."""
+
+    summary: RevisionSummary
+    composition: dict[str, Any]
+
+
 class EditRepository:
     """Keep Edit and Revision ORM details behind one tenant-scoped boundary."""
 
@@ -412,6 +420,30 @@ class EditRepository:
                 created_at=row.created_at,
             )
             for row in rows
+        )
+
+    def revision(
+        self, *, workspace_id: UUID, edit_id: UUID, revision: int
+    ) -> RevisionDetail | None:
+        """Read one Revision of one Edit, composition included."""
+        row = self._session.scalars(
+            select(ClipEditRevision).where(
+                ClipEditRevision.workspace_id == workspace_id,
+                ClipEditRevision.clip_edit_id == edit_id,
+                ClipEditRevision.revision == revision,
+            )
+        ).first()
+        if row is None:
+            return None
+        return RevisionDetail(
+            summary=RevisionSummary(
+                revision_id=row.id,
+                revision=row.revision,
+                composition_hash=row.composition_hash,
+                created_by_user_id=row.created_by_user_id,
+                created_at=row.created_at,
+            ),
+            composition=dict(row.composition),
         )
 
 

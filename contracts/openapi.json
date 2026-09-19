@@ -5209,6 +5209,47 @@
         "title": "ReviewSummaryResponse",
         "type": "object"
       },
+      "RevisionDetailResponse": {
+        "additionalProperties": false,
+        "description": "One Revision of an Edit and the exact composition it holds.",
+        "properties": {
+          "composition": {
+            "$ref": "#/components/schemas/CompositionV1"
+          },
+          "compositionHash": {
+            "title": "Compositionhash",
+            "type": "string"
+          },
+          "createdAt": {
+            "title": "Createdat",
+            "type": "string"
+          },
+          "createdBy": {
+            "format": "uuid",
+            "title": "Createdby",
+            "type": "string"
+          },
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "revision",
+          "compositionHash",
+          "createdBy",
+          "createdAt",
+          "composition"
+        ],
+        "title": "RevisionDetailResponse",
+        "type": "object"
+      },
       "RevisionHistoryResponse": {
         "additionalProperties": false,
         "description": "One Edit's Revisions, newest first.",
@@ -8912,6 +8953,70 @@
           }
         },
         "summary": "History",
+        "tags": [
+          "edits"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/revisions/{revision}": {
+      "get": {
+        "description": "Read one Revision with its composition, so a clip can be put back as it was.",
+        "operationId": "show_revision_api_v1_edits__edit_id__revisions__revision__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "revision",
+            "required": true,
+            "schema": {
+              "minimum": 1,
+              "title": "Revision",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevisionDetailResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show Revision",
         "tags": [
           "edits"
         ]
