@@ -6,7 +6,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from queue import Queue
 from threading import Barrier, Thread
-from uuid import UUID
+from urllib.parse import quote
+from uuid import UUID, uuid4
 
 import pytest
 from httpx import Cookies
@@ -678,3 +679,86 @@ def _seed_running_source_import(engine: Engine, *, suffix: str) -> tuple[JobCont
         ),
         source_import_id,
     )
+
+
+def _title_path(workspace_id: UUID, url: str) -> str:
+    """Build the title-suggestion URL for an authorized tenant selection."""
+    return f"/api/v1/youtube-imports/title?workspace_id={workspace_id}&url={quote(url, safe='')}"
+
+
+@pytest.mark.integration
+def test_a_youtube_link_suggests_the_videos_title(engine: Engine) -> None:
+    """The lookup is asked about the video ID alone, never the address the member typed."""
+    del engine
+    clock = Clock(NOW)
+    asked: list[str] = []
+
+    def lookup(video_id: str) -> str | None:
+        asked.append(video_id)
+        return "Episode 42: the interview"
+
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), youtube_title_lookup=lookup)
+    browser = Browser(app)
+    sign_in(browser, flow)
+    workspace_id = _workspace_id(browser)
+
+    response = browser.get(_title_path(workspace_id, "https://youtu.be/dQw4w9WgXcQ?si=share"))
+
+    assert response.status_code == 200
+    assert response.json() == {"title": "Episode 42: the interview"}
+    assert asked == ["dQw4w9WgXcQ"]
+
+
+@pytest.mark.integration
+def test_a_video_youtube_will_not_describe_suggests_nothing(engine: Engine) -> None:
+    """No title is an answer, not a failure: the member simply types a name."""
+    del engine
+    clock = Clock(NOW)
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), youtube_title_lookup=lambda _: None)
+    browser = Browser(app)
+    sign_in(browser, flow)
+
+    response = browser.get(
+        _title_path(_workspace_id(browser), "https://www.youtube.com/watch?v=dQw4w9WgXcQ")
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"title": None}
+
+
+@pytest.mark.integration
+def test_a_link_that_is_not_a_youtube_video_is_refused_before_anything_is_asked(
+    engine: Engine,
+) -> None:
+    """Only an allowlisted single-video address ever reaches the lookup."""
+    del engine
+    clock = Clock(NOW)
+    asked: list[str] = []
+    app, flow, _ = build_app(
+        clock,
+        StubGoogleProvider(clock),
+        youtube_title_lookup=lambda video_id: asked.append(video_id) or "never",
+    )
+    browser = Browser(app)
+    sign_in(browser, flow)
+    workspace_id = _workspace_id(browser)
+
+    for url in ("https://example.com/watch?v=dQw4w9WgXcQ", "http://169.254.169.254/latest"):
+        response = browser.get(_title_path(workspace_id, url))
+        assert response.status_code == 422
+        assert response.json()["error"]["code"] == "SOURCE_UNSUPPORTED"
+    assert asked == []
+
+
+@pytest.mark.integration
+def test_a_title_suggestion_needs_a_workspace_the_member_belongs_to(engine: Engine) -> None:
+    """A foreign Workspace is refused exactly like one that does not exist."""
+    del engine
+    clock = Clock(NOW)
+    app, flow, _ = build_app(clock, StubGoogleProvider(clock), youtube_title_lookup=lambda _: "x")
+    browser = Browser(app)
+    sign_in(browser, flow)
+
+    response = browser.get(_title_path(uuid4(), "https://www.youtube.com/watch?v=dQw4w9WgXcQ"))
+
+    assert response.status_code == 404

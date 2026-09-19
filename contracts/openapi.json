@@ -7100,6 +7100,27 @@
         ],
         "title": "YouTubeImportRequest",
         "type": "object"
+      },
+      "YouTubeTitleResponse": {
+        "description": "The video's public title to suggest as a Project name, or null when there is none.",
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "YouTubeTitleResponse",
+        "type": "object"
       }
     }
   },
@@ -13487,6 +13508,61 @@
         "summary": "Start Connection",
         "tags": [
           "social-accounts"
+        ]
+      }
+    },
+    "/api/v1/youtube-imports/title": {
+      "get": {
+        "description": "Suggest a Project name from a YouTube link before the Project exists.\n\nOnly the syntax is checked, not DNS: the lookup never connects to the address the\nmember typed, only to YouTube's own host about the video ID parsed from it.",
+        "operationId": "suggest_title_api_v1_youtube_imports_title_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "url",
+            "required": true,
+            "schema": {
+              "maxLength": 2048,
+              "minLength": 1,
+              "title": "Url",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/YouTubeTitleResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Suggest Title",
+        "tags": [
+          "source-imports"
         ]
       }
     },

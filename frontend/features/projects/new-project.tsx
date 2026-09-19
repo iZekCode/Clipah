@@ -33,7 +33,10 @@ import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import { ApiError } from '@/lib/api/client'
 import type { SourceKind } from '@/lib/api/generated/model'
 import { createApiV1ProjectsPost } from '@/lib/api/generated/projects/projects'
-import { createApiV1ProjectsProjectIdYoutubeImportsPost } from '@/lib/api/generated/source-imports/source-imports'
+import {
+  createApiV1ProjectsProjectIdYoutubeImportsPost,
+  suggestTitleApiV1YoutubeImportsTitleGet,
+} from '@/lib/api/generated/source-imports/source-imports'
 
 import { projectsQueryKey } from './query-keys'
 
@@ -147,6 +150,9 @@ type Phase =
   | { step: 'importing' }
   | { step: 'failed'; error: unknown }
 
+/** How long typing in the link field has to pause before its title is looked up. */
+const TITLE_LOOKUP_DELAY_MS = 400
+
 /**
  * Start a Project the way a creator thinks about it: pick the video, name it, go.
  *
@@ -210,6 +216,34 @@ export function NewProjectDialog({
       setName(suggestedName(picked.name))
     }
   }
+
+  // A pasted YouTube link suggests the video's title, as a picked file suggests its name.
+  // It waits for typing to settle, and a name the member typed always wins, even one typed
+  // while the lookup was on its way.
+  const nameEditedRef = useRef(nameEdited)
+  nameEditedRef.current = nameEdited
+  useEffect(() => {
+    if (source !== 'youtube' || nameEdited || url.trim() === '' || unusableUrl(url) !== null) {
+      return
+    }
+    const controller = new AbortController()
+    const timer = window.setTimeout(() => {
+      suggestTitleApiV1YoutubeImportsTitleGet(
+        { workspace_id: active.id, url: url.trim() },
+        { signal: controller.signal },
+      ).then(
+        (answer) => {
+          if (answer.title !== null && !nameEditedRef.current) setName(answer.title)
+        },
+        // A suggestion is a convenience; without one the member types a name.
+        () => undefined,
+      )
+    }, TITLE_LOOKUP_DELAY_MS)
+    return () => {
+      window.clearTimeout(timer)
+      controller.abort()
+    }
+  }, [active.id, nameEdited, source, url])
 
   useEffect(() => {
     if (open && initialFile !== null) {
@@ -351,7 +385,14 @@ export function NewProjectDialog({
               </Field>
             )}
 
-            <Field label="Project name" help={source === 'upload' ? 'We suggest the file name. You can change it any time.' : undefined}>
+            <Field
+              label="Project name"
+              help={
+                source === 'upload'
+                  ? 'We suggest the file name. You can change it any time.'
+                  : "We suggest the video's title. You can change it any time."
+              }
+            >
               <input
                 type="text"
                 value={name}

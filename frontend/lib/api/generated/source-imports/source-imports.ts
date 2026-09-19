@@ -5,20 +5,31 @@
  * OpenAPI spec version: 0.1.0
  */
 import {
-  useMutation
+  useMutation,
+  useQuery
 } from '@tanstack/react-query';
 import type {
+  DataTag,
+  DefinedInitialDataOptions,
+  DefinedUseQueryResult,
   MutationFunction,
   QueryClient,
+  QueryFunction,
+  QueryKey,
+  UndefinedInitialDataOptions,
   UseMutationOptions,
-  UseMutationResult
+  UseMutationResult,
+  UseQueryOptions,
+  UseQueryResult
 } from '@tanstack/react-query';
 
 import type {
   CreateApiV1ProjectsProjectIdYoutubeImportsPost202,
   CreateApiV1ProjectsProjectIdYoutubeImportsPostParams,
   HTTPValidationError,
-  YouTubeImportRequest
+  SuggestTitleApiV1YoutubeImportsTitleGetParams,
+  YouTubeImportRequest,
+  YouTubeTitleResponse
 } from '.././model';
 
 import { apiFetch } from '../../client';
@@ -110,4 +121,114 @@ export const useCreateApiV1ProjectsProjectIdYoutubeImportsPost = <TError = HTTPV
 
       return useMutation(mutationOptions, queryClient);
     }
+    /**
+ * Suggest a Project name from a YouTube link before the Project exists.
+
+Only the syntax is checked, not DNS: the lookup never connects to the address the
+member typed, only to YouTube's own host about the video ID parsed from it.
+ * @summary Suggest Title
+ */
+export const getSuggestTitleApiV1YoutubeImportsTitleGetUrl = (params: SuggestTitleApiV1YoutubeImportsTitleGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
     
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/youtube-imports/title?${stringifiedParams}` : `/api/v1/youtube-imports/title`
+}
+
+export const suggestTitleApiV1YoutubeImportsTitleGet = async (params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options?: RequestInit): Promise<YouTubeTitleResponse> => {
+  
+  return apiFetch<YouTubeTitleResponse>(getSuggestTitleApiV1YoutubeImportsTitleGetUrl(params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getSuggestTitleApiV1YoutubeImportsTitleGetQueryKey = (params?: SuggestTitleApiV1YoutubeImportsTitleGetParams,) => {
+    return [
+    `/api/v1/youtube-imports/title`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getSuggestTitleApiV1YoutubeImportsTitleGetQueryOptions = <TData = Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError = HTTPValidationError>(params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSuggestTitleApiV1YoutubeImportsTitleGetQueryKey(params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>> = ({ signal }) => suggestTitleApiV1YoutubeImportsTitleGet(params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SuggestTitleApiV1YoutubeImportsTitleGetQueryResult = NonNullable<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>>
+export type SuggestTitleApiV1YoutubeImportsTitleGetQueryError = HTTPValidationError
+
+
+export function useSuggestTitleApiV1YoutubeImportsTitleGet<TData = Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError = HTTPValidationError>(
+ params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>,
+          TError,
+          Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestTitleApiV1YoutubeImportsTitleGet<TData = Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError = HTTPValidationError>(
+ params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>,
+          TError,
+          Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestTitleApiV1YoutubeImportsTitleGet<TData = Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError = HTTPValidationError>(
+ params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Suggest Title
+ */
+
+export function useSuggestTitleApiV1YoutubeImportsTitleGet<TData = Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError = HTTPValidationError>(
+ params: SuggestTitleApiV1YoutubeImportsTitleGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestTitleApiV1YoutubeImportsTitleGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSuggestTitleApiV1YoutubeImportsTitleGetQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+

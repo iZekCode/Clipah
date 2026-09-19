@@ -7,7 +7,7 @@ from contextlib import suppress
 from typing import Annotated
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Depends, Header, Request
+from fastapi import APIRouter, Depends, Header, Query, Request
 from pydantic import BaseModel, ConfigDict, Field
 
 from clipah.api.dependencies import (
@@ -20,6 +20,7 @@ from clipah.api.dependencies import (
     settings_for,
 )
 from clipah.api.errors import ApiError
+from clipah.assets.source_validation import normalize_youtube_syntax
 from clipah.assets.youtube import NormalizedYouTubeUrl, SourceImportError
 from clipah.jobs.admission import ConcurrencyLimitError, admission_policy
 from clipah.models import JobKind, JobStatus, SourceConnectionStatus
@@ -30,6 +31,7 @@ from clipah.source_connectors.connections import (
 )
 from clipah.source_connectors.secrets import local_secret_store
 from clipah.source_imports.dispatch import JobDispatcher
+from clipah.source_imports.titles import YouTubeTitleLookup
 from clipah.source_imports.use_cases import (
     SourceImportConflictError,
     SourceImportProjectNotFoundError,
@@ -41,6 +43,7 @@ router = APIRouter(prefix="/api/v1", tags=["source-imports"])
 WritableWorkspace = Annotated[
     CurrentWorkspace, Depends(require_workspace(WorkspaceAction.PROJECT_WRITE))
 ]
+UrlQuery = Annotated[str, Query(min_length=1, max_length=2048)]
 IdempotencyHeader = Annotated[str, Header(alias="Idempotency-Key", min_length=1, max_length=255)]
 SourceUrlValidator = Callable[[str], NormalizedYouTubeUrl]
 
@@ -54,6 +57,30 @@ class YouTubeImportRequest(BaseModel):
     # Naming a connection makes this an authenticated import. It is only ever accepted
     # while the feature is enabled, and only for a connection this Workspace owns.
     source_connection_id: UUID | None = Field(default=None, alias="sourceConnectionId")
+
+
+class YouTubeTitleResponse(BaseModel):
+    """The video's public title to suggest as a Project name, or null when there is none."""
+
+    title: str | None
+
+
+@router.get("/youtube-imports/title", response_model=YouTubeTitleResponse)
+def suggest_title(
+    request: Request, workspace: WritableWorkspace, url: UrlQuery
+) -> YouTubeTitleResponse:
+    """Suggest a Project name from a YouTube link before the Project exists.
+
+    Only the syntax is checked, not DNS: the lookup never connects to the address the
+    member typed, only to YouTube's own host about the video ID parsed from it.
+    """
+    del workspace
+    try:
+        _, video_id = normalize_youtube_syntax(url)
+    except SourceImportError as error:
+        raise ApiError(status_code=422, code=error.code) from error
+    lookup: YouTubeTitleLookup = request.app.state.youtube_title_lookup
+    return YouTubeTitleResponse(title=lookup(video_id))
 
 
 @router.post(

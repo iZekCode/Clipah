@@ -81,6 +81,7 @@ from clipah.social_accounts.secrets import (
 )
 from clipah.social_accounts.use_cases import FuturePublicationCoordinator
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
+from clipah.source_imports.titles import YouTubeTitleLookup, oembed_title
 from clipah.variants.assessor import ContextSafetyAssessor, configured_context_assessor
 
 VERSION = "0.1.0"
@@ -116,6 +117,7 @@ def create_app(
     job_event_notifier: JobEventNotifier | None = None,
     job_dispatcher: JobDispatcher | None = None,
     source_url_validator: Callable[[str], object] | None = None,
+    youtube_title_lookup: YouTubeTitleLookup | None = None,
     generation_webhook_verifier: FalWebhookVerifier | None = None,
     generation_webhook_sink: GenerationWebhookSink | None = None,
     generation_webhook_clock: Callable[[], datetime] | None = None,
@@ -143,6 +145,7 @@ def create_app(
     app.state.job_event_notifier = job_event_notifier or _configured_job_event_notifier(settings)
     app.state.job_dispatcher = job_dispatcher or CeleryJobDispatcher()
     app.state.source_url_validator = source_url_validator or validate_youtube_url
+    app.state.youtube_title_lookup = youtube_title_lookup or oembed_title
     app.state.generation_webhook_verifier = generation_webhook_verifier
     app.state.generation_webhook_sink = generation_webhook_sink
     app.state.generation_webhook_clock = generation_webhook_clock or _utc_now

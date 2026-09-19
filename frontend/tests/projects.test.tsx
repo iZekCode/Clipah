@@ -488,6 +488,86 @@ describe('starting a project', () => {
     expect(push).toHaveBeenCalledWith(`/dashboard/projects/${project().id}`)
   })
 
+  test("a YouTube link suggests the video's title as the name", async () => {
+    const user = userEvent.setup()
+    const api = stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      'GET /api/v1/youtube-imports/title': { body: { title: 'Episode 42: the interview' } },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <NewProjectButton />
+      </WorkspaceProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.click(screen.getByRole('tab', { name: /youtube link/i }))
+    await user.type(
+      screen.getByRole('textbox', { name: /youtube video link/i }),
+      'https://youtu.be/dQw4w9WgXcQ',
+    )
+
+    await waitFor(() =>
+      expect(screen.getByRole('textbox', { name: /project name/i })).toHaveValue(
+        'Episode 42: the interview',
+      ),
+    )
+    // Asked once, about the whole link, not once per keystroke.
+    const asked = api.calls.filter((call) => call.path === '/api/v1/youtube-imports/title')
+    expect(asked).toHaveLength(1)
+    expect(asked[0]?.params.get('url')).toBe('https://youtu.be/dQw4w9WgXcQ')
+  })
+
+  test('a name the member typed is never replaced by a suggested title', async () => {
+    const user = userEvent.setup()
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      'GET /api/v1/youtube-imports/title': { body: { title: 'Episode 42: the interview' } },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <NewProjectButton />
+      </WorkspaceProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.click(screen.getByRole('tab', { name: /youtube link/i }))
+    await user.type(screen.getByRole('textbox', { name: /project name/i }), 'My own name')
+    await user.type(
+      screen.getByRole('textbox', { name: /youtube video link/i }),
+      'https://youtu.be/dQw4w9WgXcQ',
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    expect(screen.getByRole('textbox', { name: /project name/i })).toHaveValue('My own name')
+  })
+
+  test('a video YouTube will not describe leaves the name for the member to type', async () => {
+    const user = userEvent.setup()
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      'GET /api/v1/youtube-imports/title': { body: { title: null } },
+    })
+
+    renderWithApi(
+      <WorkspaceProvider>
+        <NewProjectButton />
+      </WorkspaceProvider>,
+    )
+    await user.click(await screen.findByRole('button', { name: /new project/i }))
+    await user.click(screen.getByRole('tab', { name: /youtube link/i }))
+    await user.type(
+      screen.getByRole('textbox', { name: /youtube video link/i }),
+      'https://youtu.be/dQw4w9WgXcQ',
+    )
+
+    await new Promise((resolve) => setTimeout(resolve, 700))
+    expect(screen.getByRole('textbox', { name: /project name/i })).toHaveValue('')
+  })
+
   test('suggests the file name and keeps the project when the upload fails', async () => {
     const user = userEvent.setup()
     const api = stubApi({
