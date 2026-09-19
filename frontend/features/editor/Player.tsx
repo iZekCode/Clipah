@@ -90,11 +90,25 @@ export function Player({
   const crop = placed[0]?.item.crop ?? null
   const captionStyle = composition.captions.style
 
+  /** Put freshly loaded media where the playhead is, and keep it playing if it was. */
+  function placeAtPlayhead() {
+    engine.seek(sourceMsAt(placed, playheadMs))
+    if (playing) {
+      engine.play()
+    }
+  }
+
   /** Follow the media element, so the playhead reflects what is actually playing. */
   function follow(event: SyntheticEvent<HTMLVideoElement>) {
     const sourceMs = Math.round(event.currentTarget.currentTime * 1000)
     const clipMs = clipMsAt(placed, sourceMs)
     if (clipMs === null) {
+      // Media before the clip has not been placed yet — a re-signed proxy reloads from
+      // its start — so put it back at the playhead rather than treating it as the end.
+      if (sourceMs < firstSourceInMs(placed)) {
+        engine.seek(sourceMsAt(placed, playheadMs))
+        return
+      }
       onPlayingChange(false)
       return
     }
@@ -129,6 +143,8 @@ export function Player({
           preload="metadata"
           playsInline
           onTimeUpdate={follow}
+          // A new proxy URL (they are re-signed every few minutes) loads from 0:00.
+          onLoadedMetadata={placeAtPlayhead}
           style={crop === null || showFullFrame ? undefined : cropStyle(crop)}
           className={
             crop !== null && !showFullFrame
@@ -187,6 +203,11 @@ function sourceMsAt(placed: ReturnType<typeof timelineItems>, clipMs: number): n
     }
   }
   return placed[0]?.item.sourceInMs ?? 0
+}
+
+/** The earliest moment of the source any item plays. */
+function firstSourceInMs(placed: ReturnType<typeof timelineItems>): number {
+  return Math.min(...placed.map((entry) => entry.item.sourceInMs))
 }
 
 /** Where in the clip one moment of the source lives, or nowhere at all. */

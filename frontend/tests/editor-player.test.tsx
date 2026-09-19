@@ -98,10 +98,12 @@ function Harness({
   engine,
   initialPlaying,
   crop = null,
+  url = 'proxy.mp4',
 }: {
   engine: PreviewEngine
   initialPlaying: boolean
   crop?: CompositionV1['tracks'][number]['items'][number]['crop']
+  url?: string
 }) {
   const [playheadMs, setPlayheadMs] = useState(0)
   const [playing, setPlaying] = useState(initialPlaying)
@@ -109,13 +111,14 @@ function Harness({
     <>
       <Player
         composition={composition(crop)}
-        source={{ url: 'proxy.mp4', durationMs: null, width: 1920, height: 1080 }}
+        source={{ url, durationMs: null, width: 1920, height: 1080 }}
         playheadMs={playheadMs}
         playing={playing}
         onSeek={setPlayheadMs}
         onPlayingChange={setPlaying}
         engine={engine}
       />
+      <p data-testid="state">{playing ? 'playing' : 'paused'}</p>
       <button type="button" onClick={() => setPlayheadMs(12_000)}>
         Jump
       </button>
@@ -136,6 +139,31 @@ describe('Player', () => {
     act(() => recorder.advanceTo(SOURCE_IN_MS + 500))
 
     expect(recorder.seeks.slice(before)).toEqual([])
+  })
+
+  test('a re-signed proxy that reloads from its start is put back at the playhead', () => {
+    const recorder = recordingEngine()
+    const view = render(<Harness engine={recorder.engine} initialPlaying />)
+    act(() => screen.getByRole('button', { name: 'Jump' }).click())
+
+    // Coming back to the tab re-signs the proxy; the new URL loads from 0:00.
+    view.rerender(<Harness engine={recorder.engine} initialPlaying url="proxy.mp4?fresh" />)
+    act(() => recorder.advanceTo(0))
+    act(() => {
+      fireEvent.loadedMetadata(screen.getByTestId('editor-video'))
+    })
+
+    expect(screen.getByTestId('state')).toHaveTextContent('playing')
+    expect(recorder.seeks.at(-1)).toBe(SOURCE_IN_MS + 12_000)
+  })
+
+  test('playback still stops once the media runs past the end of the clip', () => {
+    const recorder = recordingEngine()
+    render(<Harness engine={recorder.engine} initialPlaying />)
+
+    act(() => recorder.advanceTo(SOURCE_IN_MS + 30_000))
+
+    expect(screen.getByTestId('state')).toHaveTextContent('paused')
   })
 
   test('moving the playhead elsewhere still seeks the media there', () => {

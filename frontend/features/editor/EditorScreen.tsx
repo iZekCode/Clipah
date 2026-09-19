@@ -36,7 +36,7 @@ import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { RequireSession } from '@/features/auth/require-session'
 import { useSession } from '@/features/auth/session'
-import { useStoryboard } from '@/features/media/use-storyboard'
+import { SIGNED_MEDIA_STALE_MS, useStoryboard } from '@/features/media/use-storyboard'
 import { useWaveform } from '@/features/media/use-waveform'
 import { ReviewPanel } from '@/features/reviews/ReviewPanel'
 import { useWorkspaceScope, WorkspaceProvider } from '@/features/workspaces/workspace-context'
@@ -175,6 +175,9 @@ function EditorBody({ editId, engine }: { editId: string; engine?: PreviewEngine
         { signal },
       ),
     retry: false,
+    // A new signed URL reloads the preview, so keep this one until it is about to expire
+    // rather than re-signing every time the tab regains focus.
+    staleTime: SIGNED_MEDIA_STALE_MS,
   })
 
   if (loaded.isPending) {
