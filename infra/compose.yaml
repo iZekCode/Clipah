@@ -249,7 +249,8 @@ services:
     deploy: {resources: {limits: {cpus: "2.0", memory: 2g}}}
 
   worker-broll:
-    build: *worker-build
+    # Retrieval and generation probe and transcode the media they fetch.
+    build: *media-build
     <<: *app
     environment:
       CLIPAH_ENVIRONMENT: local

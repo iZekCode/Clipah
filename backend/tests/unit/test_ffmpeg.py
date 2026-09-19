@@ -275,7 +275,8 @@ def test_runner_builds_explicit_probe_proxy_thumbnail_and_audio_commands(tmp_pat
         str(source),
     )
     assert proxy[0:6] == ("/tools/ffmpeg", "-nostdin", "-v", "error", "-i", str(source))
-    assert proxy[6:10] == ("-map", "0:v:0", "-map", "0:a:0")
+    # Audio is mapped when present; stock B-roll is often silent and still needs a proxy.
+    assert proxy[6:10] == ("-map", "0:v:0", "-map", "0:a:0?")
     assert "force_original_aspect_ratio=decrease" in proxy[proxy.index("-vf") + 1]
     assert proxy[proxy.index("-c:v") : proxy.index("-c:v") + 2] == ("-c:v", "libx264")
     assert proxy[proxy.index("-pix_fmt") : proxy.index("-pix_fmt") + 2] == ("-pix_fmt", "yuv420p")

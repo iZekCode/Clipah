@@ -226,8 +226,9 @@ class FFmpegRunner:
             str(source),
             "-map",
             "0:v:0",
+            # Optional: a Project source always has audio, but stock B-roll is often silent.
             "-map",
-            "0:a:0",
+            "0:a:0?",
             "-vf",
             scale,
             "-c:v",

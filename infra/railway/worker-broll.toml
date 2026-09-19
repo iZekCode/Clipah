@@ -1,7 +1,7 @@
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "/infra/docker/backend.Dockerfile"
-dockerfileTarget = "worker"
+dockerfileTarget = "media-worker"
 watchPatterns = ["/backend/**", "/infra/docker/backend.Dockerfile", "/infra/docker/backend-entrypoint.sh"]
 
 [deploy]

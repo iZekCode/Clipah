@@ -40,7 +40,9 @@ APPLICATION_SERVICES = EXPECTED_SERVICES - {"postgres", "redis", "minio", "minio
 WORKER_SERVICES = {
     "source-import": ("source_import", "1", None),
     "worker-ingest-ai": ("ingest,ai,maintenance", "2", "media-worker"),
-    "worker-broll": ("broll_retrieve,broll_generate", "2", "worker"),
+    # Retrieval and generation probe and transcode the media they fetch, so B-roll runs
+    # on the image that carries the pinned FFmpeg toolchain.
+    "worker-broll": ("broll_retrieve,broll_generate", "2", "media-worker"),
     "worker-render": ("render,social_rendition", "1", "media-worker"),
     "worker-social-publish": ("social_publish", "2", "worker"),
     "worker-social-reconcile": ("social_reconcile", "2", "worker"),
@@ -60,7 +62,7 @@ RAILWAY_SERVICES = {
     "api.toml": ("api", None),
     "worker-ingest-ai.toml": ("media-worker", "ingest,ai,maintenance"),
     "worker-source-import.toml": ("runtime", "source_import"),
-    "worker-broll.toml": ("worker", "broll_retrieve,broll_generate"),
+    "worker-broll.toml": ("media-worker", "broll_retrieve,broll_generate"),
     "worker-render.toml": ("media-worker", "render,social_rendition"),
     "worker-social-publish.toml": ("worker", "social_publish"),
     "worker-social-reconcile.toml": ("worker", "social_reconcile"),
