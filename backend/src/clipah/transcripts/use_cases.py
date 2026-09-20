@@ -99,6 +99,8 @@ def _split_punctuation(token: str) -> tuple[str, str]:
     boundary = len(token)
     while boundary > 0 and unicodedata.category(token[boundary - 1]).startswith("P"):
         boundary -= 1
+    if boundary == 0:
+        return token, ""
     return token[:boundary], token[boundary:]
 
 

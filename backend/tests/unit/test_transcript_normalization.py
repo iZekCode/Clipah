@@ -107,6 +107,19 @@ def test_missing_punctuation_and_overlapping_speakers_remain_authoritative() -> 
 
 
 @pytest.mark.unit
+def test_a_provider_mask_token_remains_an_authoritative_timed_word() -> None:
+    """AssemblyAI may emit `***`; masking must not turn a real timed token into empty text."""
+    result = _normalize(
+        words=(RawWord("***", 100, 400, 0.9, "A"),),
+        utterances=(RawUtterance("***", 100, 400, "A"),),
+    )
+
+    assert result.words[0].text == "***"
+    assert result.words[0].punctuation == ""
+    assert result.full_text == "***"
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("words", "code"),
     [
