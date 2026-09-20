@@ -106,8 +106,10 @@ class ObjectStore(Protocol):
     def list_objects(self, *, prefix: str, limit: int, after: str | None = None) -> ObjectListing:
         """List at most ``limit`` keys under one prefix, resuming from ``after``."""
 
-    def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
-        """Sign a time-bounded private object download."""
+    def sign_download(
+        self, *, key: str, expires_in: timedelta, download_name: str | None = None
+    ) -> SignedUrl:
+        """Sign a private object read, optionally forcing a named browser download."""
 
 
 class ObservedObjectStore:
@@ -182,10 +184,14 @@ class ObservedObjectStore:
         with _observed("list_objects"):
             return self._inner.list_objects(prefix=prefix, limit=limit, after=after)
 
-    def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
-        """Sign a time-bounded private object download."""
+    def sign_download(
+        self, *, key: str, expires_in: timedelta, download_name: str | None = None
+    ) -> SignedUrl:
+        """Sign a private object read, optionally forcing a named browser download."""
         with _observed("sign_download"):
-            return self._inner.sign_download(key=key, expires_in=expires_in)
+            return self._inner.sign_download(
+                key=key, expires_in=expires_in, download_name=download_name
+            )
 
 
 def observed_s3_store(
@@ -402,12 +408,17 @@ class S3ObjectStore:
         token = response.get("NextContinuationToken") if response.get("IsTruncated") else None
         return ObjectListing(keys=keys, next_token=None if token is None else str(token))
 
-    def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
-        """Generate a presigned GET URL for the caller-selected bounded lifetime."""
+    def sign_download(
+        self, *, key: str, expires_in: timedelta, download_name: str | None = None
+    ) -> SignedUrl:
+        """Generate a presigned GET URL, optionally forcing a named attachment."""
+        parameters = {"Bucket": self._bucket, "Key": key}
+        if download_name is not None:
+            parameters["ResponseContentDisposition"] = f'attachment; filename="{download_name}"'
         try:
             url = self._signing_client.generate_presigned_url(
                 "get_object",
-                Params={"Bucket": self._bucket, "Key": key},
+                Params=parameters,
                 ExpiresIn=int(expires_in.total_seconds()),
                 HttpMethod="GET",
             )
@@ -517,10 +528,13 @@ class FakeObjectStore:
         remaining = start + limit < len(matching)
         return ObjectListing(keys=tuple(page), next_token=str(start + limit) if remaining else None)
 
-    def sign_download(self, *, key: str, expires_in: timedelta) -> SignedUrl:
-        """Return a fake download URL that preserves requested expiration semantics."""
+    def sign_download(
+        self, *, key: str, expires_in: timedelta, download_name: str | None = None
+    ) -> SignedUrl:
+        """Return a fake capability preserving expiration and attachment semantics."""
         self.head_object(key=key)
-        return SignedUrl(url=f"fake://download/{key}", expires_at=self._now() + expires_in)
+        suffix = "" if download_name is None else f"?download_name={download_name}"
+        return SignedUrl(url=f"fake://download/{key}{suffix}", expires_at=self._now() + expires_in)
 
     def _assert_upload_binding(self, *, upload_id: str, key: str) -> None:
         """Reject accidental cleanup/signing that widens beyond the recorded fake target."""

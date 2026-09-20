@@ -66,6 +66,43 @@ class UnavailableS3Client:
         raise RuntimeError("secret provider diagnostic")
 
 
+class RecordingDownloadSigner:
+    """Record the exact S3 override used for one browser-facing download."""
+
+    def __init__(self) -> None:
+        """Start without a signing request."""
+        self.arguments: dict[str, Any] = {}
+
+    def generate_presigned_url(self, operation: str, **arguments: Any) -> str:
+        """Retain one request and return a harmless deterministic capability."""
+        assert operation == "get_object"
+        self.arguments = arguments
+        return "https://objects.test/signed"
+
+
+@pytest.mark.unit
+def test_s3_sign_download_can_force_a_named_browser_attachment() -> None:
+    """A finished export must download instead of opening as an inline video preview."""
+    client = RecordingDownloadSigner()
+    store = S3ObjectStore(
+        bucket="private",
+        client=client,
+        now=lambda: datetime(2026, 9, 1, tzinfo=UTC),
+    )
+
+    store.sign_download(
+        key="renders/export.mp4",
+        expires_in=timedelta(minutes=5),
+        download_name="clipah-export.mp4",
+    )
+
+    assert client.arguments["Params"] == {
+        "Bucket": "private",
+        "Key": "renders/export.mp4",
+        "ResponseContentDisposition": 'attachment; filename="clipah-export.mp4"',
+    }
+
+
 @pytest.mark.unit
 def test_s3_sign_download_maps_provider_failures_to_a_sanitized_storage_error() -> None:
     """Transient storage failures must be recognizable without leaking provider details."""

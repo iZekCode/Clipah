@@ -159,7 +159,11 @@ def render_download(
     )
     if key is None:
         raise RenderNotFoundError(str(render_id))
-    return store.sign_download(key=key, expires_in=RENDER_DOWNLOAD_TTL)
+    return store.sign_download(
+        key=key,
+        expires_in=RENDER_DOWNLOAD_TTL,
+        download_name=f"clipah-{render_id}.mp4",
+    )
 
 
 def render_target(session: Session, *, workspace_id: UUID, job_id: UUID) -> RenderTarget | None:

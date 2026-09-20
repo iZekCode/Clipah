@@ -155,6 +155,7 @@ def test_an_export_response_never_carries_the_key_the_file_is_stored_under(
     assert "workspaces/" not in shown.text
     assert signed.status_code == 200
     assert signed.json()["url"].startswith("fake://download/")
+    assert signed.json()["url"].endswith(f"?download_name=clipah-{artifact_id}.mp4")
     assert signed.json()["expiresAt"]
 
 
