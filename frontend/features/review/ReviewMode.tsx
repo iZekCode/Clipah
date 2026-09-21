@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   AlertTriangle,
   ArrowLeft,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Keyboard,
@@ -22,6 +23,7 @@ import {
   useMemo,
   useRef,
   useState,
+  type ReactNode,
   type SyntheticEvent,
 } from 'react'
 
@@ -440,6 +442,8 @@ function MomentDetail({
   const transcript = useTranscript(projectId, { enabled: true })
   const words = transcript.data?.words ?? []
   const context = transcriptWindow(words, moment.startMs, moment.endMs)
+  // Shown by default: the evidence is what review is for. It folds away for a long run of moments.
+  const [whyOpen, setWhyOpen] = useState(true)
 
   return (
     <section aria-label="Moment" className="space-y-5 md:col-span-2 xl:col-span-1">
@@ -484,6 +488,7 @@ function MomentDetail({
           </p>
         )}
       </div>
+      <WhyMoment moment={moment} open={whyOpen} onToggle={() => setWhyOpen((value) => !value)} />
       <ScoreBars breakdown={moment.scoreBreakdown} />
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" loading={editing} onClick={onEdit}>
@@ -496,4 +501,79 @@ function MomentDetail({
       {error === null ? null : <ErrorNotice error={error} />}
     </section>
   )
+}
+
+/** Everything the analysis recorded about why this moment was proposed, beyond the one-line reason. */
+function WhyMoment({
+  moment,
+  open,
+  onToggle,
+}: {
+  moment: CandidateResponse
+  open: boolean
+  onToggle: () => void
+}) {
+  const rows: Array<{ label: string; content: ReactNode }> = []
+  if (moment.payoff !== '') rows.push({ label: 'Payoff', content: <p>{moment.payoff}</p> })
+  rows.push({
+    label: 'Category',
+    content: (
+      <p>
+        {label(moment.category)}
+        {moment.tags.length === 0 ? null : (
+          <span className="text-muted-foreground"> · {moment.tags.join(', ')}</span>
+        )}
+      </p>
+    ),
+  })
+  if (moment.contextDependencies.length > 0) {
+    rows.push({ label: 'Depends on earlier context', content: <BulletList items={moment.contextDependencies} /> })
+  }
+  if (moment.visualOpportunities.length > 0) {
+    rows.push({ label: 'Visual opportunities', content: <BulletList items={moment.visualOpportunities} /> })
+  }
+
+  return (
+    <div role="group" aria-label="Why this moment" className="rounded-lg border bg-card">
+      <button
+        type="button"
+        aria-expanded={open}
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-2 p-4 text-left text-small font-medium"
+      >
+        Why this moment
+        <ChevronDown
+          aria-hidden="true"
+          strokeWidth={1.75}
+          className={cn('size-4 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open ? (
+        <dl className="space-y-3 border-t px-4 pb-4 pt-3 text-small">
+          {rows.map((row) => (
+            <div key={row.label} className="space-y-0.5">
+              <dt className="text-caption text-muted-foreground">{row.label}</dt>
+              <dd>{row.content}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
+    </div>
+  )
+}
+
+function BulletList({ items }: { items: string[] }) {
+  return (
+    <ul className="list-disc space-y-0.5 pl-4">
+      {items.map((item) => (
+        <li key={item}>{item}</li>
+      ))}
+    </ul>
+  )
+}
+
+/** `question_answer` as `Question answer`. */
+function label(category: string): string {
+  const spaced = category.replace(/_/g, ' ')
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1)
 }
