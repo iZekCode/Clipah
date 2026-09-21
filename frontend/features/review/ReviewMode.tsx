@@ -7,7 +7,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Keyboard,
+  Pause,
+  Play,
   Repeat,
+  Volume2,
+  VolumeX,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
@@ -28,6 +32,7 @@ import { Poster } from '@/components/media/poster'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IconButton } from '@/components/ui/icon-button'
+import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
 import { ScoreBars } from '@/features/clips/ScoreBars'
 import { useOpenEdit } from '@/features/clips/use-open-edit'
@@ -253,6 +258,10 @@ const MomentPlayer = forwardRef<
   const { active } = useWorkspaceScope()
   const video = useRef<HTMLVideoElement>(null)
   const [loop, setLoop] = useState(false)
+  const [playing, setPlaying] = useState(false)
+  const [muted, setMuted] = useState(false)
+  const [volume, setVolume] = useState(1)
+  const [position, setPosition] = useState(moment.startMs)
   const playback = useQuery<ProxyPlaybackResponse, ApiError>({
     queryKey: ['/api/v1/projects/proxy', active.id, projectId],
     queryFn: ({ signal }) =>
@@ -273,10 +282,43 @@ const MomentPlayer = forwardRef<
 
   // Moving to another moment moves the player to its start once the media is loaded.
   useEffect(() => {
+    setPosition(moment.startMs)
     if (video.current !== null && video.current.readyState > 0) {
       video.current.currentTime = moment.startMs / 1000
     }
   }, [moment.id, moment.startMs])
+
+  /** Play or pause, the same action as a click on the picture or the space bar. */
+  function togglePlayback(): void {
+    const element = video.current
+    if (element === null) return
+    if (element.paused) void element.play()
+    else element.pause()
+  }
+
+  /** Scrub inside the moment; the slider never leaves its range. */
+  function seek(ms: number): void {
+    if (video.current !== null) video.current.currentTime = ms / 1000
+    setPosition(ms)
+  }
+
+  function changeVolume(next: number): void {
+    const element = video.current
+    if (element === null) return
+    element.volume = next
+    element.muted = next === 0
+  }
+
+  function toggleMute(): void {
+    const element = video.current
+    if (element === null) return
+    if (element.muted || element.volume === 0) {
+      element.muted = false
+      if (element.volume === 0) element.volume = 1
+    } else {
+      element.muted = true
+    }
+  }
 
   /** Start at the moment rather than at the beginning of the source. */
   function start(event: SyntheticEvent<HTMLVideoElement>): void {
@@ -291,7 +333,16 @@ const MomentPlayer = forwardRef<
       element.currentTime = moment.startMs / 1000
       if (!loop) element.pause()
     }
+    setPosition(Math.min(moment.endMs, Math.max(moment.startMs, element.currentTime * 1000)))
   }
+
+  /** Keep the controls honest when the picture, a key, or the slider changes the player. */
+  function syncVolume(event: SyntheticEvent<HTMLVideoElement>): void {
+    setMuted(event.currentTarget.muted)
+    setVolume(event.currentTarget.volume)
+  }
+
+  const silent = muted || volume === 0
 
   return (
     <div className="space-y-2">
@@ -309,6 +360,9 @@ const MomentPlayer = forwardRef<
             preload="metadata"
             onLoadedMetadata={start}
             onTimeUpdate={bound}
+            onPlay={() => setPlaying(true)}
+            onPause={() => setPlaying(false)}
+            onVolumeChange={syncVolume}
             onClick={(event) => {
               const element = event.currentTarget
               if (element.paused) void element.play()
@@ -317,6 +371,48 @@ const MomentPlayer = forwardRef<
             className="absolute inset-0 size-full object-cover"
           />
         )}
+      </div>
+      <div className="mx-auto flex items-center gap-2" data-testid="review-controls">
+        <IconButton
+          size="sm"
+          label={playing ? 'Pause' : 'Play'}
+          shortcut="Space"
+          tooltipSide="top"
+          disabled={playback.data === undefined}
+          onClick={togglePlayback}
+          icon={playing ? <Pause aria-hidden="true" /> : <Play aria-hidden="true" />}
+        />
+        <Slider
+          aria-label="Position in this moment"
+          min={moment.startMs}
+          max={moment.endMs}
+          step={100}
+          value={position}
+          disabled={playback.data === undefined}
+          onChange={(event) => seek(Number(event.target.value))}
+          className="min-w-0 flex-1"
+        />
+        <span className="shrink-0 font-mono text-caption tabular-nums text-muted-foreground">
+          {formatClock(position - moment.startMs)} / {formatClock(moment.endMs - moment.startMs)}
+        </span>
+        <IconButton
+          size="sm"
+          label={silent ? 'Unmute' : 'Mute'}
+          tooltipSide="top"
+          disabled={playback.data === undefined}
+          onClick={toggleMute}
+          icon={silent ? <VolumeX aria-hidden="true" /> : <Volume2 aria-hidden="true" />}
+        />
+        <Slider
+          aria-label="Volume"
+          min={0}
+          max={1}
+          step={0.05}
+          value={silent ? 0 : volume}
+          disabled={playback.data === undefined}
+          onChange={(event) => changeVolume(Number(event.target.value))}
+          className="w-20 shrink-0"
+        />
       </div>
       <label className="flex items-center justify-center gap-2 text-caption text-muted-foreground">
         <Repeat aria-hidden="true" strokeWidth={1.75} className="size-3.5" />
