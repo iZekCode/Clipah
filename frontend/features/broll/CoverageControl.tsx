@@ -13,19 +13,16 @@ const COVERAGE_LABELS: Record<BrollCoverage, string> = {
 /**
  * The one choice a member makes about B-roll, and the action that asks for it.
  *
- * The choice is deliberately inert until a member has asked for suggestions at least
- * once: a new clip has no plan, so offering to change the coverage of nothing would be
- * a control that does not control anything.
+ * The coverage is sent with every request, the first included, so it can be chosen before
+ * anything has been asked for; it is only held still while a request is in flight.
  */
 export function CoverageControl({
   coverage,
-  enabled,
   busy,
   onCoverage,
   onSuggest,
 }: {
   coverage: BrollCoverage
-  enabled: boolean
   busy: boolean
   onCoverage: (coverage: BrollCoverage) => void
   onSuggest: () => void
@@ -36,7 +33,7 @@ export function CoverageControl({
         <span className="font-medium">Coverage</span>
         <Select
           value={coverage}
-          disabled={!enabled || busy}
+          disabled={busy}
           onChange={(event) => onCoverage(event.target.value as BrollCoverage)}
           controlSize="sm"
         >

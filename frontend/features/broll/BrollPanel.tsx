@@ -72,7 +72,6 @@ export function BrollPanel({
   onDecide: (request: DecisionRequest) => void
 }) {
   const [coverage, setCoverage] = useState<BrollCoverage>('balanced')
-  const [asked, setAsked] = useState(false)
   const [working, setWorking] = useState(false)
   const [refusal, setRefusal] = useState<string | null>(null)
   const [failure, setFailure] = useState<ApiError | null>(null)
@@ -121,7 +120,6 @@ export function BrollPanel({
         { workspace_id: workspaceId },
         { headers: { 'Idempotency-Key': key } },
       )
-      setAsked(true)
       await suggestions.refetch()
     } catch (error) {
       const refused = error as ApiError
@@ -205,7 +203,6 @@ export function BrollPanel({
 
       <CoverageControl
         coverage={coverage}
-        enabled={asked || found.length > 0}
         busy={busy}
         onCoverage={setCoverage}
         onSuggest={() => {

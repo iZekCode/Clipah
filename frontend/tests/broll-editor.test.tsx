@@ -496,12 +496,19 @@ describe('the preview', () => {
 })
 
 describe('the B-roll panel', () => {
-  test('coverage cannot be chosen until a member asks for suggestions', async () => {
-    stubEditor([])
+  test('the coverage chosen before the first request is the coverage that request asks for', async () => {
+    const api = stubEditor([])
     await openEditor()
 
-    expect(screen.getByRole('combobox', { name: /coverage/i })).toBeDisabled()
-    expect(screen.getByRole('button', { name: /suggest b-roll/i })).toBeEnabled()
+    const coverage = screen.getByRole('combobox', { name: /coverage/i })
+    expect(coverage).toBeEnabled()
+    await userEvent.selectOptions(coverage, 'dynamic')
+    await userEvent.click(screen.getByRole('button', { name: /suggest b-roll/i }))
+
+    await waitFor(() => {
+      const plan = api.calls.find((call) => call.path.endsWith('/broll-plans'))
+      expect(plan?.body).toEqual({ coverage: 'dynamic' })
+    })
   })
 
   test('asking for B-roll plans the clip, and the server searches for its pictures', async () => {
