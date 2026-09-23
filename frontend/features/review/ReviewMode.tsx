@@ -179,11 +179,12 @@ export function ReviewMode({ projectId }: { projectId: string }) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,420px)_minmax(0,1fr)]">
-        {/* The list scrolls on its own and stays put while the page scrolls past it. */}
+        {/* The list scrolls on its own and keeps its own column, spanning both rows where
+            the details sit under the player, so it never floats over them. */}
         <nav
           ref={momentList}
           aria-label="Moments"
-          className="scrollbar-none hidden overscroll-contain md:sticky md:top-[68px] md:block md:max-h-[calc(100vh-136px)] md:self-start md:overflow-y-auto"
+          className="scrollbar-none hidden overscroll-contain md:row-span-2 md:sticky xl:row-span-1 md:top-[68px] md:block md:max-h-[calc(100vh-136px)] md:self-start md:overflow-y-auto"
         >
           <ol className="space-y-2">
             {ordered.map((entry, position) => (
@@ -537,7 +538,7 @@ function MomentDetail({
     <section
       ref={detail}
       aria-label="Moment"
-      className="scrollbar-none space-y-5 overscroll-contain md:col-span-2 xl:sticky xl:top-[68px] xl:col-span-1 xl:max-h-[calc(100vh-136px)] xl:self-start xl:overflow-y-auto"
+      className="scrollbar-none space-y-5 overscroll-contain md:col-start-2 xl:sticky xl:top-[68px] xl:col-start-auto xl:max-h-[calc(100vh-136px)] xl:self-start xl:overflow-y-auto"
     >
       <div className="space-y-2">
         <p className="font-mono text-caption text-primary">
