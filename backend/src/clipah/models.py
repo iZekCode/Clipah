@@ -146,6 +146,8 @@ class AssetKind(StrEnum):
     BROLL_PROXY = "broll_proxy"
     # One sheet of fixed-interval frames drawn from the proxy, for posters and filmstrips.
     STORYBOARD = "storyboard"
+    # One full-resolution portrait frame of one ranked moment, for its card.
+    POSTER = "poster"
 
 
 class AssetSourceType(StrEnum):
@@ -207,6 +209,7 @@ class JobKind(StrEnum):
     SOCIAL_RECONCILE = "social_reconcile"
     CLEANUP = "cleanup"
     PREVIEW_MEDIA = "preview_media"
+    CLIP_POSTERS = "clip_posters"
 
 
 class ClaimVerificationStatus(StrEnum):

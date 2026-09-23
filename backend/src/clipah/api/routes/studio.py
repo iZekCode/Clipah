@@ -43,6 +43,7 @@ from clipah.studio.use_cases import (
     browse_clips,
     clip_detail,
     list_exports,
+    project_posters,
     project_storyboard,
     project_thumbnail,
     project_transcript,
@@ -621,6 +622,57 @@ def storyboard(
             for sheet in view.sheets
         ),
         expiresAt=view.expires_at,
+    )
+
+
+class ClipPosterResponse(BaseModel):
+    """One moment's signed portrait poster."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    candidate_id: UUID = Field(alias="candidateId")
+    width: int
+    height: int
+    url: str
+
+
+class ClipPostersResponse(BaseModel):
+    """Every poster drawn so far for one Project's exposed moments."""
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
+
+    posters: tuple[ClipPosterResponse, ...]
+    expires_at: datetime | None = Field(alias="expiresAt")
+
+    @field_serializer("expires_at")
+    def serialize_expires_at(self, value: datetime | None) -> str | None:
+        """Preserve the API's established explicit UTC-offset timestamp shape."""
+        return None if value is None else _timestamp(value)
+
+
+@router.get("/projects/{project_id}/posters", response_model=ClipPostersResponse)
+def posters(
+    project_id: UUID,
+    session: DatabaseSession,
+    workspace: ReadableWorkspace,
+    store: Annotated[ObjectStore, Depends(object_store_for)],
+) -> ClipPostersResponse:
+    """Sign five minutes of access to every poster drawn for one Project's moments."""
+    try:
+        views = project_posters(session, store, access=workspace.access, project_id=project_id)
+    except StudioNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    return ClipPostersResponse(
+        posters=tuple(
+            ClipPosterResponse(
+                candidateId=view.candidate_id,
+                width=view.width,
+                height=view.height,
+                url=view.download.url,
+            )
+            for view in views
+        ),
+        expiresAt=min((view.download.expires_at for view in views), default=None),
     )
 
 

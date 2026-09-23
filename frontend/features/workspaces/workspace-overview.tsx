@@ -241,10 +241,10 @@ function ReadyToReview({ candidates }: { candidates: DashboardCandidateResponse[
           Ready to review
         </h2>
         <Link
-          href="/dashboard/clips"
+          href="/dashboard/projects"
           className="inline-flex items-center gap-1 text-small font-semibold text-primary hover:underline"
         >
-          All clips <ArrowRight aria-hidden="true" strokeWidth={1.75} className="size-4" />
+          All projects <ArrowRight aria-hidden="true" strokeWidth={1.75} className="size-4" />
         </Link>
       </div>
       <ul

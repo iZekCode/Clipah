@@ -43,7 +43,7 @@ const KIND_LABELS: Record<string, string> = {
 }
 
 /** Work that decorates a Project without being a stage the member is waiting on. */
-const BACKGROUND_KINDS = new Set(['preview_media'])
+const BACKGROUND_KINDS = new Set(['preview_media', 'clip_posters'])
 
 /** One Job of this Project, as the stream last described it. */
 export interface ProjectJob {

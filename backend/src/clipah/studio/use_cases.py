@@ -21,6 +21,7 @@ from uuid import UUID
 from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
+from clipah.assets.clip_posters import poster_candidate_id
 from clipah.assets.preview_media import (
     STORYBOARD_V1,
     WAVEFORM_PEAKS_PER_SECOND,
@@ -682,6 +683,69 @@ def project_storyboard(
         sheets=tuple(sheets),
         expires_at=min(sheet.download.expires_at for sheet in sheets),
     )
+
+
+@dataclass(frozen=True, slots=True)
+class ClipPosterView:
+    """One moment's signed poster and its pixel size."""
+
+    candidate_id: UUID
+    width: int
+    height: int
+    download: SignedUrl
+
+
+def project_posters(
+    session: Session, store: ObjectStore, *, access: WorkspaceAccess, project_id: UUID
+) -> tuple[ClipPosterView, ...]:
+    """Sign every drawn poster of one active Project's exposed moments.
+
+    A Project whose posters are still being drawn answers with fewer, or none: each card
+    keeps its storyboard picture until its own poster exists.
+    """
+    if (
+        session.scalar(
+            select(Project.id).where(
+                Project.workspace_id == access.workspace_id,
+                Project.id == project_id,
+                Project.archived_at.is_(None),
+            )
+        )
+        is None
+    ):
+        raise StudioNotFoundError(str(project_id))
+    exposed = set(
+        session.scalars(
+            select(ClipCandidate.id).where(
+                ClipCandidate.workspace_id == access.workspace_id,
+                ClipCandidate.project_id == project_id,
+                _exposed(),
+            )
+        )
+    )
+    rows = session.execute(
+        select(Asset.storage_key, Asset.width, Asset.height)
+        .where(
+            Asset.workspace_id == access.workspace_id,
+            Asset.project_id == project_id,
+            Asset.kind == AssetKind.POSTER,
+        )
+        .order_by(Asset.storage_key)
+    ).all()
+    posters: list[ClipPosterView] = []
+    for key, width, height in rows:
+        candidate_id = poster_candidate_id(key)
+        if candidate_id is None or candidate_id not in exposed or width is None or height is None:
+            continue
+        posters.append(
+            ClipPosterView(
+                candidate_id=candidate_id,
+                width=width,
+                height=height,
+                download=store.sign_download(key=key, expires_in=SIGNED_URL_TTL),
+            )
+        )
+    return tuple(posters)
 
 
 def project_waveform(

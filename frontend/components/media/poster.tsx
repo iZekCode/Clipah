@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { Film } from 'lucide-react'
+import { Eye, Film } from 'lucide-react'
 import { useContext, useState, type PointerEvent } from 'react'
 
 import { CardFocusContext } from '@/components/media/card-focus'
@@ -35,8 +35,14 @@ export function Poster({
   aspect = 'video',
   hasMedia = true,
   rank,
+  score,
   durationMs,
   hook,
+  fullHook = false,
+  cornerReserved = false,
+  largeBadges = false,
+  imageUrl,
+  hoverOverlay = false,
   className,
 }: {
   projectId: string
@@ -45,8 +51,23 @@ export function Poster({
   aspect?: 'video' | 'portrait'
   hasMedia?: boolean
   rank?: number
+  /** The analysis score from 0 to 1, shown out of 100 beside the rank. */
+  score?: number
   durationMs?: number
   hook?: string
+  /** Show the whole hook rather than three lines of it, for cards wide enough to hold it. */
+  fullHook?: boolean
+  /** The card puts a control on the top-right corner, so the length moves left of it. */
+  cornerReserved?: boolean
+  /** Rank, score, and length as tall as a small icon button, for cards that carry one. */
+  largeBadges?: boolean
+  /** A sharp picture drawn for this clip; the storyboard tile stands in until it loads. */
+  imageUrl?: string
+  /**
+   * Darken the picture and show an eye while the card is hovered, to say it opens. Only the
+   * picture darkens: the badges and the hook are drawn above the wash.
+   */
+  hoverOverlay?: boolean
   className?: string
 }) {
   const { active } = useWorkspaceScope()
@@ -55,6 +76,8 @@ export function Poster({
   const cardFocused = useContext(CardFocusContext)
   const [scrubMs, setScrubMs] = useState<number | null>(null)
   const [brokenThumbnail, setBrokenThumbnail] = useState(false)
+  const [brokenImage, setBrokenImage] = useState<string | null>(null)
+  const sharp = imageUrl !== undefined && brokenImage !== imageUrl
 
   const storyboard = useStoryboard(projectId, { enabled: hasMedia && visible })
   const thumbnail = useQuery<MediaPreviewResponse, ApiError>({
@@ -83,6 +106,11 @@ export function Poster({
   const tile = manifest === null || shownMs === null ? null : tileAt(manifest, shownMs)
   const length =
     durationMs ?? (startMs === undefined && manifest !== null ? manifest.durationMs : undefined)
+
+  const badge = cn(
+    'rounded-sm bg-background/85 font-mono text-caption',
+    largeBadges ? 'flex h-8 items-center rounded-md px-2.5 text-small' : 'px-1.5 py-0.5',
+  )
 
   function scrub(event: PointerEvent<HTMLDivElement>): void {
     if (range === null || reducedMotion) return
@@ -115,19 +143,57 @@ export function Poster({
       ) : (
         <DesignedFrame startMs={startMs} endMs={endMs} durationMs={length} />
       )}
-      {rank === undefined ? null : (
-        <span className="absolute left-2 top-2 rounded-sm bg-background/85 px-1.5 py-0.5 font-mono text-caption text-primary">
-          #{rank}
+      {sharp ? (
+        // Laid over the tile, so the tile shows until the sharp picture has loaded.
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={imageUrl}
+          alt=""
+          loading="lazy"
+          onError={() => setBrokenImage(imageUrl)}
+          className="absolute inset-0 size-full object-cover"
+        />
+      ) : null}
+      {hoverOverlay ? (
+        <span className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/60 opacity-0 transition-opacity duration-fast ease-signal group-hover:opacity-100">
+          <span className="flex size-12 items-center justify-center rounded-full bg-background/85 text-foreground">
+            <Eye strokeWidth={1.75} className="size-6" />
+          </span>
+        </span>
+      ) : null}
+      {rank === undefined && score === undefined ? null : (
+        <span className="absolute left-2 top-2 flex gap-1">
+          {rank === undefined ? null : (
+            <span className={cn(badge, 'text-primary')}>
+              #{rank}
+            </span>
+          )}
+          {score === undefined ? null : (
+            <span
+              data-testid="poster-score"
+              className={cn(badge, 'tabular text-foreground')}
+            >
+              {Math.round(score * 100)}
+            </span>
+          )}
         </span>
       )}
       {length === undefined ? null : (
-        <span className="tabular absolute right-2 top-2 rounded-sm bg-background/85 px-1.5 py-0.5 font-mono text-caption text-foreground">
+        <span
+          className={cn(
+            badge,
+            'tabular absolute top-2 text-foreground',
+            cornerReserved ? 'right-12' : 'right-2',
+          )}
+        >
           {formatClock(length)}
         </span>
       )}
       {hook === undefined ? null : (
-        <p className="font-display absolute inset-x-0 bottom-0 line-clamp-3 bg-background/60 px-3 py-2 text-title leading-tight text-foreground">
-          {hook}
+        // The clamp sits on an inner span: clamping the padded box lets the next line show
+        // through its bottom padding.
+        <p className="font-display absolute inset-x-0 bottom-0 bg-background/60 px-3 py-2 text-title leading-tight text-foreground">
+          <span className={cn('block', !fullHook && 'line-clamp-3')}>{hook}</span>
         </p>
       )}
     </div>

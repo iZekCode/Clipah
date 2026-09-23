@@ -357,6 +357,7 @@ from clipah.jobs.analyze_task import analyze_stage_runner  # noqa: E402
 from clipah.jobs.broll_generate_task import broll_generate_stage_runner  # noqa: E402
 from clipah.jobs.broll_plan_task import broll_plan_stage_runner  # noqa: E402
 from clipah.jobs.broll_retrieve_task import broll_retrieve_stage_runner  # noqa: E402
+from clipah.jobs.clip_posters_task import clip_posters_stage_runner  # noqa: E402
 from clipah.jobs.ingest_task import (  # noqa: E402
     ingest_stage_runner,
     validate_ingest_readiness,
@@ -375,6 +376,7 @@ _STAGE_RUNNERS.setdefault(JobKind.BROLL_RETRIEVE, broll_retrieve_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.BROLL_GENERATE, broll_generate_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.RENDER, render_stage_runner)
 _STAGE_RUNNERS.setdefault(JobKind.PREVIEW_MEDIA, preview_media_stage_runner)
+_STAGE_RUNNERS.setdefault(JobKind.CLIP_POSTERS, clip_posters_stage_runner)
 
 
 def _worker_accepts_ingest(queues: object) -> bool:

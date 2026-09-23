@@ -600,7 +600,7 @@ def test_a_transcript_lists_its_words_in_order_with_speakers(engine: Engine) -> 
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("suffix", ["storyboard", "waveform", "transcript"])
+@pytest.mark.parametrize("suffix", ["storyboard", "waveform", "transcript", "posters"])
 def test_previews_and_transcripts_of_another_workspace_answer_like_missing_ones(
     engine: Engine, suffix: str
 ) -> None:
@@ -620,6 +620,80 @@ def test_previews_and_transcripts_of_another_workspace_answer_like_missing_ones(
     assert_error(guessed, status_code=404, code="NOT_FOUND")
     assert_error(missing, status_code=404, code="NOT_FOUND")
     assert guessed.json()["error"]["message"] == missing.json()["error"]["message"]
+
+
+@pytest.mark.integration
+def test_posters_are_signed_per_shown_moment_and_absent_until_drawn(engine: Engine) -> None:
+    """A card swaps its storyboard tile for the sharp poster only once that poster exists."""
+    stage = _staged(engine)
+    shown, drawn_later = _candidate_id(stage), _second_candidate(stage)
+    hidden = uuid4()
+    table = ClipCandidate.__table__
+    with stage.engine.begin() as connection:
+        row = connection.execute(table.select().where(table.c.id == shown)).one()
+        values: dict[str, Any] = dict(row._mapping)
+        values.update(id=hidden, rank=3, model_metadata={"exposed": False})
+        connection.execute(table.insert().values(**values))
+
+    before = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/posters"))
+    _poster_asset(stage, shown)
+    _poster_asset(stage, hidden)
+    after = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/posters"))
+
+    assert before.status_code == 200
+    assert before.json() == {"posters": [], "expiresAt": None}
+    body = after.json()
+    assert [
+        (poster["candidateId"], poster["width"], poster["height"]) for poster in body["posters"]
+    ] == [(str(shown), 404, 720)]
+    assert body["posters"][0]["url"].startswith("fake://download/")
+    assert body["expiresAt"] is not None
+    assert str(drawn_later) not in str(body)
+    assert "storageKey" not in str(body)
+
+
+@pytest.mark.integration
+def test_the_posters_of_a_deleted_project_answer_like_a_missing_one(engine: Engine) -> None:
+    """Deleted work stays hidden, pictures included."""
+    stage = _staged(engine)
+    _poster_asset(stage, _candidate_id(stage))
+    with stage.engine.begin() as connection:
+        connection.execute(
+            update(Project).where(Project.id == stage.project_id).values(archived_at=NOW)
+        )
+
+    response = stage.browser.get(_path(stage, f"/projects/{stage.project_id}/posters"))
+
+    assert_error(response, status_code=404, code="NOT_FOUND")
+
+
+def _poster_asset(stage: Stage, candidate_id: UUID) -> UUID:
+    """Record one moment's poster the way the poster runner would have."""
+    asset_id = uuid4()
+    key = (
+        f"workspaces/{stage.workspace_id}/projects/{stage.project_id}"
+        f"/derived/{stage.source_asset_id}/posters-v1/{candidate_id}.jpg"
+    )
+    with stage.engine.begin() as connection:
+        connection.execute(
+            Asset.__table__.insert().values(
+                id=asset_id,
+                workspace_id=stage.workspace_id,
+                project_id=stage.project_id,
+                kind=AssetKind.POSTER,
+                source_type=AssetSourceType.DERIVED,
+                storage_key=key,
+                content_type="image/jpeg",
+                size_bytes=90_000,
+                width=404,
+                height=720,
+                sha256=b"q" * 32,
+            )
+        )
+    stage.store.objects[key] = StoredObject(
+        key=key, content_type="image/jpeg", content_length=90_000
+    )
+    return asset_id
 
 
 def _preview_asset(stage: Stage, *, name: str, kind: AssetKind, duration_ms: int) -> UUID:

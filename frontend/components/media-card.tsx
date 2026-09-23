@@ -19,6 +19,7 @@ export function MediaCard({
   subtitle,
   status,
   menu,
+  corner,
   footer,
   aspect = 'video',
   hideTitle = false,
@@ -29,6 +30,8 @@ export function MediaCard({
   subtitle?: ReactNode
   status?: ReactNode
   menu?: ReactNode
+  /** One control on the picture's top-right corner, above the card's link. */
+  corner?: ReactNode
   footer?: ReactNode
   aspect?: 'video' | 'portrait'
   hideTitle?: boolean
@@ -52,19 +55,34 @@ export function MediaCard({
         >
           {thumbnail}
           {status === undefined ? null : <div className="absolute bottom-2 left-2">{status}</div>}
+          {corner === undefined ? null : (
+            <div className="absolute right-2 top-2 z-10">{corner}</div>
+          )}
         </div>
       </CardFocusContext.Provider>
       <div className="flex flex-1 items-start gap-2 p-3">
         <div className="min-w-0 flex-1 space-y-0.5">
-          <h3 className={cn('truncate text-small font-semibold', hideTitle && 'sr-only')}>
+          {/* A hidden title hides only its words: clipping the heading would clip the link's
+              stretched hit area to one pixel, and the card would stop opening. */}
+          <h3 className={cn('truncate text-small font-semibold', hideTitle && 'h-0')}>
             <Link href={href} className="after:absolute after:inset-0 after:content-['']">
-              {title}
+              {hideTitle ? <span className="sr-only">{title}</span> : title}
             </Link>
           </h3>
           {subtitle === undefined ? null : (
             <div className="truncate text-caption text-muted-foreground">{subtitle}</div>
           )}
-          {footer === undefined ? null : <div className="relative z-10 pt-1.5">{footer}</div>}
+          {footer === undefined ? null : (
+            // With nothing visible above it, the footer sits on the card's own padding.
+            <div
+              className={cn(
+                'relative z-10',
+                (!hideTitle || subtitle !== undefined) && 'pt-1.5',
+              )}
+            >
+              {footer}
+            </div>
+          )}
         </div>
         {menu === undefined ? null : <div className="relative z-10 shrink-0">{menu}</div>}
       </div>

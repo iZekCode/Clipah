@@ -131,10 +131,26 @@ def test_preview_media_keys_live_beside_ingest_derivatives_and_accept_only_known
         name="waveform-v1.bin",
     )
 
+    candidate_id = uuid4()
+    poster = preview_media_key(
+        workspace_id=workspace_id,
+        project_id=project_id,
+        source_asset_id=source_id,
+        name=f"posters-v1/{candidate_id}.jpg",
+    )
+
     prefix = f"workspaces/{workspace_id}/projects/{project_id}/derived/{source_id}/"
     assert sheet == f"{prefix}storyboard-v1/sheet-0000.jpg"
     assert peaks == f"{prefix}waveform-v1.bin"
-    for name in ("../escape.jpg", "storyboard-v1/sheet-1.jpg", "waveform-v2.bin", ""):
+    assert poster == f"{prefix}posters-v1/{candidate_id}.jpg"
+    for name in (
+        "../escape.jpg",
+        "storyboard-v1/sheet-1.jpg",
+        "waveform-v2.bin",
+        "posters-v1/not-a-uuid.jpg",
+        f"posters-v1/{candidate_id}.png",
+        "",
+    ):
         with pytest.raises(ValueError):
             preview_media_key(
                 workspace_id=workspace_id,

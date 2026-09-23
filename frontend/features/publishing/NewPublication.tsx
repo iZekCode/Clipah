@@ -96,7 +96,7 @@ function ExportPicker({ onChoose }: { onChoose: (artifact: ChosenArtifact) => vo
         description="Open a clip in the editor and choose Export. Finished exports appear here to publish."
         action={
           <Button asChild variant="secondary">
-            <Link href="/dashboard/clips">Go to clips</Link>
+            <Link href="/dashboard/projects">Go to projects</Link>
           </Button>
         }
       />

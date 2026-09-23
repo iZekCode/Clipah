@@ -92,6 +92,30 @@ def waveform_asset_id(source_asset_id: UUID) -> UUID:
     return uuid5(source_asset_id, "waveform-v1")
 
 
+def download_verified(
+    store: ObjectStore,
+    downloader: SourceDownloader,
+    *,
+    key: str,
+    size: int,
+    sha256: bytes,
+    destination: Path,
+    cancellation_check: CancellationCheck,
+) -> None:
+    """Stream one recorded object into a workspace and refuse it if its bytes changed."""
+    signed = store.sign_download(key=key, expires_in=SIGNED_DOWNLOAD_TTL)
+    with destination.open("wb") as output:
+        downloaded = downloader.download(
+            signed.url,
+            output,
+            expected_size=size,
+            max_bytes=MAX_MEDIA_BYTES,
+            cancellation_check=cancellation_check,
+        )
+    if downloaded.sha256 != sha256:
+        raise IngestIntegrityError("a preview input no longer matches its recorded digest")
+
+
 class PreviewMediaBuilder:
     """Download verified inputs, render sheets and peaks, and upload them verified."""
 
@@ -167,17 +191,15 @@ class PreviewMediaBuilder:
         cancellation_check: CancellationCheck,
     ) -> None:
         """Stream one recorded object into the workspace and refuse it if its bytes changed."""
-        signed = self._store.sign_download(key=key, expires_in=SIGNED_DOWNLOAD_TTL)
-        with destination.open("wb") as output:
-            downloaded = self._downloader.download(
-                signed.url,
-                output,
-                expected_size=size,
-                max_bytes=MAX_MEDIA_BYTES,
-                cancellation_check=cancellation_check,
-            )
-        if downloaded.sha256 != sha256:
-            raise IngestIntegrityError("a preview input no longer matches its recorded digest")
+        download_verified(
+            self._store,
+            self._downloader,
+            key=key,
+            size=size,
+            sha256=sha256,
+            destination=destination,
+            cancellation_check=cancellation_check,
+        )
 
     def _upload_sheet(
         self,

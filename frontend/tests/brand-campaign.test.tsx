@@ -13,7 +13,7 @@ import { describe, expect, test, vi } from 'vitest'
 
 import { BrandKitEditor } from '@/features/brand-kits/BrandKitEditor'
 import { CampaignPanel } from '@/features/campaigns/CampaignPanel'
-import { WhyThisMoment } from '@/features/clips/WhyThisMoment'
+import { ReviewMode } from '@/features/review/ReviewMode'
 import { TemplateLibrary } from '@/features/templates/TemplateLibrary'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import type {
@@ -466,9 +466,13 @@ describe('copy derived from one approved cut', () => {
   })
 })
 
-describe('opening a clip with a look and a brand', () => {
+/** The moments review mode reads before it offers a clip to open. */
+const MOMENTS = `GET /api/v1/projects/${candidate().projectId}/candidates`
+
+describe('opening a clip with a look and a brand, from review mode', () => {
   test('the versions a member picked are what the Edit is created from', async () => {
     const api = stubBrand({
+      [MOMENTS]: { body: { candidates: [candidate()], nextCursor: null } },
       [`POST /api/v1/projects/${candidate().projectId}/candidates/${candidate().id}/edits`]: {
         status: 201,
         body: edit(),
@@ -476,7 +480,7 @@ describe('opening a clip with a look and a brand', () => {
     })
     renderWithApi(
       <WorkspaceProvider>
-        <WhyThisMoment candidate={candidate()} open onOpenChange={() => undefined} />
+        <ReviewMode projectId={candidate().projectId} />
       </WorkspaceProvider>,
     )
 
@@ -493,12 +497,13 @@ describe('opening a clip with a look and a brand', () => {
 
   test('a Workspace that publishes no look is offered no choice to make', async () => {
     stubBrand({
+      [MOMENTS]: { body: { candidates: [candidate()], nextCursor: null } },
       [TEMPLATES]: { body: { templates: [] } },
       [BRAND_KITS]: { body: { brandKits: [] } },
     })
     renderWithApi(
       <WorkspaceProvider>
-        <WhyThisMoment candidate={candidate()} open onOpenChange={() => undefined} />
+        <ReviewMode projectId={candidate().projectId} />
       </WorkspaceProvider>,
     )
 

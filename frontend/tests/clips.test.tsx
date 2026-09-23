@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -136,68 +136,87 @@ describe('the ranked clip list', () => {
     expect(api.calls.filter((call) => call.path.endsWith('/candidates'))).toHaveLength(2)
   })
 
-  test('shows the score, the hook, the payoff, and why the clip was chosen', async () => {
+  test('shows the hook and sends the reviewer to review mode for the reasons behind it', async () => {
     signedInApi([candidate()])
 
     renderClips()
 
     const clip = await firstClip()
+    const review = `/dashboard/projects/${PROJECT_ID}/review?moment=${candidate().id}`
     expect(within(clip).getByRole('heading', { level: 3 })).toHaveTextContent(
       'The surprising opening',
     )
-    expect(clip).toHaveTextContent('A complete and useful moment')
-    expect(clip).toHaveTextContent('91')
-    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
-    expect(await screen.findByRole('dialog', { name: 'Why this moment' })).toHaveTextContent(
-      'The useful resolution',
+    expect(within(clip).getByRole('link', { name: 'The surprising opening' })).toHaveAttribute(
+      'href',
+      review,
     )
+    expect(within(clip).getByRole('link', { name: 'View clip' })).toHaveAttribute('href', review)
+    expect(within(clip).getByRole('button', { name: 'Edit clip' })).toBeInTheDocument()
+    // The card carries no stage: where a clip has got to is not what a reviewer decides on.
+    expect(clip).not.toHaveTextContent(/suggested|in editing|exported/i)
   })
 
-  test('explains the score through every dimension the analysis reported', async () => {
-    signedInApi([candidate()])
 
-    renderClips()
-
-    const clip = await firstClip()
-    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
-    const sheet = await screen.findByRole('dialog', { name: 'Why this moment' })
-    for (const dimension of [
-      /hook/i,
-      /payoff/i,
-      /narrative completeness/i,
-      /context safety/i,
-      /platform fit/i,
-      /transcript confidence/i,
-      /visual opportunity/i,
-    ]) {
-      expect(within(sheet).getByText(dimension)).toBeInTheDocument()
-    }
-  })
-
-  test('puts the context warnings where a reviewer cannot miss them', async () => {
+  test('flags a context warning on the card itself, with every warning behind the flag', async () => {
     signedInApi([
       candidate({ contextWarnings: ['Needs a source overlay.', 'Names an unverified claim.'] }),
     ])
 
     renderClips()
 
-    const warnings = await screen.findByRole('group', { name: /context warnings/i })
-    expect(warnings).toHaveTextContent('Needs a source overlay.')
-    expect(warnings).toHaveTextContent('Names an unverified claim.')
+    const clip = await firstClip()
+    const flag = within(clip).getByText('Check context')
+    expect(flag.closest('[title]')).toHaveAttribute(
+      'title',
+      'Needs a source overlay. Names an unverified claim.',
+    )
   })
 
-  test('shows the category, the tags, and the length a reviewer is deciding on', async () => {
-    signedInApi([candidate({ category: 'question_answer', durationMs: 90_000 })])
+  test('shows the score beside the rank, and says it to assistive technology too', async () => {
+    signedInApi([candidate({ score: 0.91 })])
 
     renderClips()
 
     const clip = await firstClip()
-    expect(clip).toHaveTextContent(/question and answer/i)
-    expect(clip).toHaveTextContent('1:30')
-    await userEvent.click(within(clip).getByRole('button', { name: 'Why this moment' }))
-    expect(await screen.findByRole('dialog', { name: 'Why this moment' })).toHaveTextContent(
-      'creator',
-    )
+    expect(within(clip).getByTestId('poster-score')).toHaveTextContent('91')
+    expect(within(clip).getByText('Score 91')).toHaveClass('sr-only')
+  })
+
+  test('lays the sharp poster over the storyboard tile once it has been drawn', async () => {
+    const first = candidate()
+    const second = candidate({ id: 'aaaaaaa1-0000-4000-8000-000000000002', rank: 2 })
+    signedInApi([first, second], {
+      [`GET /api/v1/projects/${PROJECT_ID}/posters`]: {
+        body: {
+          posters: [
+            {
+              candidateId: first.id,
+              width: 404,
+              height: 720,
+              url: 'https://objects.test/poster.jpg?signature=short',
+            },
+          ],
+          expiresAt: '2026-02-01T00:05:00+00:00',
+        },
+      },
+    })
+
+    renderClips()
+
+    const list = await screen.findByRole('list', { name: /ranked clips/i })
+    const [drawn, waiting] = Array.from(list.querySelectorAll(':scope > li'))
+    await waitFor(() => {
+      expect(drawn!.querySelector('img[src^="https://objects.test/poster.jpg"]')).not.toBeNull()
+    })
+    expect(waiting!.querySelector('img[src^="https://objects.test/poster.jpg"]')).toBeNull()
+  })
+
+  test('shows the length a reviewer is deciding on', async () => {
+    signedInApi([candidate({ durationMs: 90_000 })])
+
+    renderClips()
+
+    expect(await firstClip()).toHaveTextContent('1:30')
   })
 
   test('draws each moment as a poster and lets the page select it', async () => {
@@ -217,14 +236,11 @@ describe('the ranked clip list', () => {
     expect(onSelect).toHaveBeenCalledWith(expect.objectContaining({ id: candidate().id }))
   })
 
-  test('marks a context warning on the card itself', async () => {
-    signedInApi([candidate({ contextWarnings: ['Needs a source overlay.'] })])
+  test('a clip without warnings carries no flag', async () => {
+    signedInApi([candidate({ contextWarnings: [] })])
     renderClips()
 
-    const clip = await firstClip()
-    expect(within(clip).getByRole('group', { name: /context warnings/i })).toHaveTextContent(
-      'Needs a source overlay.',
-    )
+    expect(within(await firstClip()).queryByText('Check context')).toBeNull()
   })
 
   test('shows only the category the reviewer asked for', async () => {
@@ -270,7 +286,7 @@ describe('the ranked clip list', () => {
     signedInApi([
       candidate({
         hook: '<img src=x onerror="alert(1)">',
-        reason: '<script>alert("no")</script>',
+        contextWarnings: ['<script>alert("no")</script>'],
       }),
     ])
 
@@ -280,9 +296,12 @@ describe('the ranked clip list', () => {
     expect(within(clip).getByRole('heading', { level: 3 })).toHaveTextContent(
       '<img src=x onerror="alert(1)">',
     )
-    expect(clip).toHaveTextContent('<script>alert("no")</script>')
+    expect(within(clip).getByText('Check context').closest('[title]')).toHaveAttribute(
+      'title',
+      '<script>alert("no")</script>',
+    )
     expect(clip.querySelector('script')).toBeNull()
-    expect(clip.querySelector('img')).toBeNull()
+    expect(clip.querySelector('img[src="x"]')).toBeNull()
   })
 
   test('says plainly when the analysis produced nothing worth reviewing', async () => {
@@ -310,79 +329,5 @@ describe('the ranked clip list', () => {
     const alert = await screen.findByRole('alert')
     expect(alert).toHaveTextContent(/went wrong/i)
     expect(alert).toHaveTextContent('request-1234')
-  })
-})
-
-describe('clip preview', () => {
-  test('plays the candidate range against the project proxy and stops at its end', async () => {
-    const user = userEvent.setup()
-    const played = vi.fn()
-    const paused = vi.fn()
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(async () => {
-      played()
-    })
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => {
-      paused()
-    })
-    signedInApi([candidate({ startMs: 12_000, endMs: 42_000, durationMs: 30_000 })])
-
-    renderClips()
-    await user.click(await screen.findByRole('button', { name: /preview/i }))
-
-    const video = await screen.findByTestId('clip-preview-video')
-    expect(video).toHaveAttribute('src', 'https://objects.test/proxy.mp4?signature=secret')
-
-    fireEvent.loadedMetadata(video)
-    await waitFor(() => expect(played).toHaveBeenCalled())
-    expect((video as HTMLVideoElement).currentTime).toBe(12)
-    ;(video as HTMLVideoElement).currentTime = 42
-    fireEvent.timeUpdate(video)
-
-    await waitFor(() => expect(paused).toHaveBeenCalled())
-    expect((video as HTMLVideoElement).currentTime).toBe(12)
-  })
-
-  test('is operable from the keyboard alone', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined)
-    signedInApi([candidate()])
-
-    renderClips()
-    const preview = await screen.findByRole('button', { name: /preview/i })
-    preview.focus()
-    await user.keyboard('{Enter}')
-
-    expect(await screen.findByTestId('clip-preview-video')).toBeInTheDocument()
-  })
-
-  test('says the preview is not ready when the project has produced no proxy', async () => {
-    const user = userEvent.setup()
-    signedInApi([candidate()], { [PROXY]: { status: 404 } })
-
-    renderClips()
-    await user.click(await screen.findByRole('button', { name: /preview/i }))
-
-    expect(await screen.findByRole('alert')).toHaveTextContent(/not found/i)
-    expect(screen.queryByTestId('clip-preview-video')).not.toBeInTheDocument()
-  })
-
-  test('asks for a fresh capability every time a preview is opened', async () => {
-    const user = userEvent.setup()
-    vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
-    vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined)
-    const api = signedInApi([candidate()])
-
-    renderClips()
-    const preview = await screen.findByRole('button', { name: /preview/i })
-    await user.click(preview)
-    await screen.findByTestId('clip-preview-video')
-    await user.click(screen.getByRole('button', { name: /preview/i }))
-    await user.click(screen.getByRole('button', { name: /preview/i }))
-    await screen.findByTestId('clip-preview-video')
-
-    await waitFor(() =>
-      expect(api.calls.filter((call) => call.path.endsWith('/proxy')).length).toBeGreaterThan(1),
-    )
   })
 })

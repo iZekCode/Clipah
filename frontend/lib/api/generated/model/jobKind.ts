@@ -24,4 +24,5 @@ export const JobKind = {
   social_reconcile: 'social_reconcile',
   cleanup: 'cleanup',
   preview_media: 'preview_media',
+  clip_posters: 'clip_posters',
 } as const;

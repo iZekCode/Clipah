@@ -407,3 +407,70 @@ def test_runner_tiles_fixed_interval_frames_into_numbered_jpeg_sheets(tmp_path: 
     )
     assert timeout == 12.0
     assert progress_duration is None
+
+
+@pytest.mark.unit
+def test_runner_cuts_one_sharp_portrait_frame_at_the_poster_instant(tmp_path: Path) -> None:
+    """A poster is one exact frame, cropped and never rescaled, from one shell-free command."""
+    executor = RecordingExecutor()
+    runner = FFmpegRunner(executor=executor, ffmpeg_timeout_seconds=12.0)
+
+    runner.extract_poster(
+        tmp_path / "proxy.mp4",
+        tmp_path / "poster.jpg",
+        at_ms=11_250,
+        crop_width=404,
+        crop_height=720,
+        crop_x=438,
+        crop_y=0,
+        cancellation_check=lambda: None,
+    )
+
+    arguments, timeout, _ = executor.calls[-1]
+    assert arguments == (
+        "ffmpeg",
+        "-nostdin",
+        "-v",
+        "error",
+        "-ss",
+        "11.250",
+        "-i",
+        str(tmp_path / "proxy.mp4"),
+        "-map",
+        "0:v:0",
+        "-vf",
+        "crop=404:720:438:0,setsar=1",
+        "-frames:v",
+        "1",
+        "-q:v",
+        "2",
+        "-map_metadata",
+        "-1",
+        "-y",
+        str(tmp_path / "poster.jpg"),
+    )
+    assert timeout == 12.0
+
+
+@pytest.mark.unit
+@pytest.mark.parametrize(
+    ("at_ms", "width", "height", "x"),
+    [(-1, 404, 720, 0), (0, 0, 720, 0), (0, 404, 720, -2)],
+)
+def test_runner_refuses_impossible_poster_geometry(
+    tmp_path: Path, at_ms: int, width: int, height: int, x: int
+) -> None:
+    """A negative instant or an empty box is a caller bug, not an FFmpeg error."""
+    runner = FFmpegRunner(executor=RecordingExecutor(), ffmpeg_timeout_seconds=12.0)
+
+    with pytest.raises(ValueError, match="poster geometry"):
+        runner.extract_poster(
+            tmp_path / "proxy.mp4",
+            tmp_path / "poster.jpg",
+            at_ms=at_ms,
+            crop_width=width,
+            crop_height=height,
+            crop_x=x,
+            crop_y=0,
+            cancellation_check=lambda: None,
+        )

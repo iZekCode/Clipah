@@ -418,6 +418,7 @@ def test_every_job_kind_is_routed_to_its_own_queue() -> None:
     assert QUEUE_FOR_JOB_KIND[JobKind.CLEANUP] == "maintenance"
     assert QUEUE_FOR_JOB_KIND[JobKind.SOURCE_IMPORT] == "source_import"
     assert QUEUE_FOR_JOB_KIND[JobKind.PREVIEW_MEDIA] == "ingest"
+    assert QUEUE_FOR_JOB_KIND[JobKind.CLIP_POSTERS] == "ingest"
 
 
 @pytest.mark.unit

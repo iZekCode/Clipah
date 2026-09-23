@@ -1,6 +1,6 @@
-import { ClipBrowser } from '@/features/clips/ClipBrowser'
+import { redirect } from 'next/navigation'
 
-/** Clips: every moment of this Workspace, browsable before anything is searched for. */
+/** Clips live inside their Project now; the old address lands on the Projects list. */
 export default function ClipsPage() {
-  return <ClipBrowser />
+  redirect('/dashboard/projects')
 }

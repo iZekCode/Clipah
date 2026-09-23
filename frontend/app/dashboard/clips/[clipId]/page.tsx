@@ -1,21 +1,14 @@
-import { ClipDetail } from '@/features/clips/ClipDetail'
+import { ClipRedirect } from '@/features/clips/ClipRedirect'
 
-/** One Clip: its edit versions, B-roll decisions, and exports. */
+/** One clip: resolved to its Project, then shown in review mode on that moment. */
 export default async function ClipPage({
   params,
   searchParams,
 }: {
   params: Promise<{ clipId: string }>
-  searchParams: Promise<{ projectId?: string; editId?: string; revision?: string }>
+  searchParams: Promise<{ tab?: string }>
 }) {
   const { clipId } = await params
-  const { projectId, editId, revision } = await searchParams
-  return (
-    <ClipDetail
-      candidateId={clipId}
-      projectId={projectId ?? null}
-      editId={editId ?? null}
-      revision={revision === undefined ? null : Number(revision)}
-    />
-  )
+  const { tab } = await searchParams
+  return <ClipRedirect candidateId={clipId} tab={tab ?? null} />
 }

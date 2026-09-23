@@ -143,7 +143,8 @@
           "render",
           "broll",
           "broll_proxy",
-          "storyboard"
+          "storyboard",
+          "poster"
         ],
         "title": "AssetKind",
         "type": "string"
@@ -2031,6 +2032,67 @@
         "title": "ClipPageResponse",
         "type": "object"
       },
+      "ClipPosterResponse": {
+        "additionalProperties": false,
+        "description": "One moment's signed portrait poster.",
+        "properties": {
+          "candidateId": {
+            "format": "uuid",
+            "title": "Candidateid",
+            "type": "string"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "candidateId",
+          "width",
+          "height",
+          "url"
+        ],
+        "title": "ClipPosterResponse",
+        "type": "object"
+      },
+      "ClipPostersResponse": {
+        "additionalProperties": false,
+        "description": "Every poster drawn so far for one Project's exposed moments.",
+        "properties": {
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "posters": {
+            "items": {
+              "$ref": "#/components/schemas/ClipPosterResponse"
+            },
+            "title": "Posters",
+            "type": "array"
+          }
+        },
+        "required": [
+          "posters",
+          "expiresAt"
+        ],
+        "title": "ClipPostersResponse",
+        "type": "object"
+      },
       "ClipProjectResponse": {
         "additionalProperties": false,
         "description": "The Project one clip belongs to.",
@@ -3580,7 +3642,8 @@
           "social_publish",
           "social_reconcile",
           "cleanup",
-          "preview_media"
+          "preview_media",
+          "clip_posters"
         ],
         "title": "JobKind",
         "type": "string"
@@ -10723,6 +10786,60 @@
         "summary": "Create Variants",
         "tags": [
           "variants"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/posters": {
+      "get": {
+        "description": "Sign five minutes of access to every poster drawn for one Project's moments.",
+        "operationId": "posters_api_v1_projects__project_id__posters_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ClipPostersResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Posters",
+        "tags": [
+          "studio"
         ]
       }
     },

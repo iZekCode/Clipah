@@ -300,6 +300,50 @@ class FFmpegRunner:
             cancellation_check=cancellation_check,
         )
 
+    def extract_poster(
+        self,
+        source: Path,
+        output: Path,
+        *,
+        at_ms: int,
+        crop_width: int,
+        crop_height: int,
+        crop_x: int,
+        crop_y: int,
+        cancellation_check: CancellationCheck,
+    ) -> None:
+        """Write one high-quality JPEG of the frame at `at_ms`, cropped to the given box."""
+        if at_ms < 0 or min(crop_width, crop_height) <= 0 or min(crop_x, crop_y) < 0:
+            raise ValueError("poster geometry must be positive")
+        arguments = (
+            self._ffmpeg_path,
+            "-nostdin",
+            "-v",
+            "error",
+            # Seeking before the input is exact when decoding, and skips the frames before it.
+            "-ss",
+            f"{at_ms / 1000:.3f}",
+            "-i",
+            str(source),
+            "-map",
+            "0:v:0",
+            "-vf",
+            f"crop={crop_width}:{crop_height}:{crop_x}:{crop_y},setsar=1",
+            "-frames:v",
+            "1",
+            "-q:v",
+            "2",
+            "-map_metadata",
+            "-1",
+            "-y",
+            str(output),
+        )
+        self._executor.run(
+            arguments,
+            timeout_seconds=self._ffmpeg_timeout_seconds,
+            cancellation_check=cancellation_check,
+        )
+
     def generate_storyboard(
         self,
         source: Path,

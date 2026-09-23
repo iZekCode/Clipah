@@ -43,7 +43,12 @@ STAGE_STATUS = MappingProxyType(
 )
 
 #: Work a finished stage adds beside the belt: it decorates a Project and never moves it.
-SIDE_STAGES = MappingProxyType({JobKind.INGEST: (JobKind.PREVIEW_MEDIA,)})
+SIDE_STAGES = MappingProxyType(
+    {
+        JobKind.INGEST: (JobKind.PREVIEW_MEDIA,),
+        JobKind.ANALYZE: (JobKind.CLIP_POSTERS,),
+    }
+)
 
 #: Statuses no completed stage may move a Project out of.
 _SETTLED = frozenset({ProjectStatus.FAILED, ProjectStatus.ARCHIVED})

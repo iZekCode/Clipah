@@ -10,7 +10,9 @@ import { LoadingState } from '@/components/loading-state'
 import { Select } from '@/components/ui/select'
 import { ClipCategory, type CandidateResponse } from '@/lib/api/generated/model'
 
-import { CATEGORY_LABELS, MomentCard } from './MomentCard'
+import { CATEGORY_LABELS } from './categories'
+import { ClipCard } from './ClipCard'
+import { useClipPosters } from './use-clip-posters'
 import { useProjectCandidates } from './use-project-candidates'
 
 /** The orders a reviewer may put the exposed clips in. */
@@ -53,6 +55,7 @@ export function ClipList({
   const [maxDurationMs, setMaxDurationMs] = useState<string>('any')
 
   const { candidates: listed, query: clips } = useProjectCandidates(projectId)
+  const posters = useClipPosters(projectId, clips.hasNextPage ? 0 : listed.length)
   const { hasNextPage } = clips
   const shown = useMemo(
     () => arrange(listed, { sort, category, maxDurationMs }),
@@ -146,9 +149,10 @@ export function ClipList({
           <h2 className="sr-only">Ranked clips</h2>
           <ul aria-label="Ranked clips" className="grid grid-cols-2 gap-3 md:grid-cols-3 2xl:grid-cols-4">
             {shown.map((clip) => (
-              <MomentCard
+              <ClipCard
                 key={clip.id}
                 candidate={clip}
+                posterUrl={posters.get(clip.id)}
                 selected={clip.id === selectedId}
                 onSelect={onSelect === undefined ? undefined : () => onSelect(clip)}
               />

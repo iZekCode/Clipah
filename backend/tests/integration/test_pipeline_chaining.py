@@ -396,15 +396,30 @@ def test_a_full_workspace_refuses_previews_silently_and_still_transcribes(engine
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("finished", [JobKind.SOURCE_IMPORT, JobKind.TRANSCRIBE, JobKind.ANALYZE])
-def test_no_other_stage_admits_previews(engine: Engine, finished: JobKind) -> None:
-    """Only a finished ingest has a proxy and audio to draw from."""
+@pytest.mark.parametrize("finished", [JobKind.SOURCE_IMPORT, JobKind.TRANSCRIBE])
+def test_no_other_stage_admits_decoration(engine: Engine, finished: JobKind) -> None:
+    """Only ingest has media to draw previews from, and only analysis has moments to pose."""
     user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-other")
     completed = _finished_job(workspace_id, user_id, project_id, kind=finished)
 
     _, side = _advance_with_side(workspace_id, user_id, project_id, completed, finished)
 
     assert side == ()
+
+
+@pytest.mark.integration
+def test_finished_analysis_admits_clip_posters_and_nothing_else(engine: Engine) -> None:
+    """Ranked moments get their sharp posters; the belt itself ends at analysis."""
+    user_id, workspace_id, project_id = _workspace_with_project(engine, suffix="side-posters")
+    completed = _finished_job(workspace_id, user_id, project_id, kind=JobKind.ANALYZE)
+
+    following, side = _advance_with_side(
+        workspace_id, user_id, project_id, completed, JobKind.ANALYZE
+    )
+
+    assert following is None
+    assert [entry.kind for entry in side] == [JobKind.CLIP_POSTERS]
+    assert _job_kinds(workspace_id, user_id, project_id).count(JobKind.CLIP_POSTERS) == 1
 
 
 @pytest.mark.integration

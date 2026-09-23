@@ -36,6 +36,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { IconButton } from '@/components/ui/icon-button'
 import { Slider } from '@/components/ui/slider'
 import { Switch } from '@/components/ui/switch'
+import { ClipSections } from '@/features/clips/ClipSections'
+import { LookSelection } from '@/features/clips/LookSelection'
 import { ScoreBars } from '@/features/clips/ScoreBars'
 import { useOpenEdit } from '@/features/clips/use-open-edit'
 import { useProjectCandidates } from '@/features/clips/use-project-candidates'
@@ -68,6 +70,7 @@ const SHORTCUTS = [
  */
 export function ReviewMode({ projectId }: { projectId: string }) {
   const router = useRouter()
+  const { active } = useWorkspaceScope()
   const { candidates, query: moments } = useProjectCandidates(projectId)
   const ordered = useMemo(
     () => [...candidates].sort((left, right) => left.rank - right.rank),
@@ -75,6 +78,9 @@ export function ReviewMode({ projectId }: { projectId: string }) {
   )
   const [currentId, setCurrentId] = useState<string | null>(null)
   const [helpOpen, setHelpOpen] = useState(false)
+  // The look and brand a clip is opened with; kept while moving between moments.
+  const [templateId, setTemplateId] = useState('')
+  const [brandKitId, setBrandKitId] = useState('')
 
   useEffect(() => {
     if (ordered.length === 0 || currentId !== null) return
@@ -97,12 +103,17 @@ export function ReviewMode({ projectId }: { projectId: string }) {
   const player = useRef<{ toggle: () => void } | null>(null)
   // Before a moment is chosen the placeholder is never opened: `onEdit` waits for one.
   const edit = useOpenEdit(current ?? { id: '', projectId })
+  const openEdit = () =>
+    edit.open({
+      templateId: templateId === '' ? null : templateId,
+      brandKitId: brandKitId === '' ? null : brandKitId,
+    })
 
   useReviewKeys({
     onPlayPause: () => player.current?.toggle(),
     onNext: () => go(index + 1),
     onPrevious: () => go(index - 1),
-    onEdit: () => (current === null ? undefined : edit.open()),
+    onEdit: () => (current === null ? undefined : openEdit()),
     onExit: () => router.push(`/dashboard/projects/${projectId}`),
     onHelp: () => setHelpOpen(true),
   })
@@ -206,11 +217,25 @@ export function ReviewMode({ projectId }: { projectId: string }) {
         <MomentDetail
           projectId={projectId}
           moment={current}
-          onEdit={() => edit.open()}
+          onEdit={openEdit}
           editing={edit.isPending}
           error={edit.error}
+          look={
+            <LookSelection
+              workspaceId={active.id}
+              templateId={templateId}
+              brandKitId={brandKitId}
+              onTemplate={setTemplateId}
+              onBrandKit={setBrandKitId}
+            />
+          }
         />
       </div>
+
+      <section aria-label="Clip" className="mt-8">
+        {/* Keyed by moment so each one resolves its own Edit and exports. */}
+        <ClipSections key={current.id} candidateId={current.id} />
+      </section>
 
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent aria-describedby={undefined}>
@@ -432,12 +457,14 @@ function MomentDetail({
   onEdit,
   editing,
   error,
+  look,
 }: {
   projectId: string
   moment: CandidateResponse
   onEdit: () => void
   editing: boolean
   error: ApiError | null
+  look: ReactNode
 }) {
   const transcript = useTranscript(projectId, { enabled: true })
   const words = transcript.data?.words ?? []
@@ -490,6 +517,7 @@ function MomentDetail({
       </div>
       <WhyMoment moment={moment} open={whyOpen} onToggle={() => setWhyOpen((value) => !value)} />
       <ScoreBars breakdown={moment.scoreBreakdown} />
+      <div className="flex flex-wrap items-center gap-3">{look}</div>
       <div className="flex flex-wrap items-center gap-3">
         <Button size="lg" loading={editing} onClick={onEdit}>
           Edit clip

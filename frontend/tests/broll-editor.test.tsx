@@ -10,7 +10,8 @@ import { screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
-import { ClipDetail } from '@/features/clips/ClipDetail'
+import { ClipRedirect } from '@/features/clips/ClipRedirect'
+import { ClipSections } from '@/features/clips/ClipSections'
 import { EditorScreen } from '@/features/editor/EditorScreen'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import {
@@ -44,8 +45,10 @@ const SUGGESTIONS = `GET /api/v1/projects/${PROJECT_ID}/candidates/${CANDIDATE_I
 const PLAN = `POST /api/v1/projects/${PROJECT_ID}/candidates/${CANDIDATE_ID}/broll-plans`
 const RETRIEVE = `POST /api/v1/projects/${PROJECT_ID}/candidates/${CANDIDATE_ID}/broll-retrievals`
 
+const replace = vi.hoisted(() => vi.fn())
+
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: vi.fn(), replace, refresh: vi.fn() }),
   usePathname: () => '/editor',
 }))
 
@@ -299,10 +302,11 @@ function clipDetail() {
 }
 
 /** Render the clip page inside the Workspace the member is viewing. */
-function renderClipDetail() {
+/** The clip's sections, as review mode shows them for the moment on screen. */
+function renderClipSections() {
   renderWithApi(
     <WorkspaceProvider>
-      <ClipDetail candidateId={CANDIDATE_ID} />
+      <ClipSections candidateId={CANDIDATE_ID} />
     </WorkspaceProvider>,
   )
 }
@@ -320,7 +324,7 @@ describe('the clip detail page', () => {
       [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'placed' })] } },
     })
-    renderClipDetail()
+    renderClipSections()
     await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
@@ -333,7 +337,7 @@ describe('the clip detail page', () => {
     expect(within(row).getByText(/on this clip/i)).toBeInTheDocument()
   })
 
-  test('generated media is labelled on the clip page too', async () => {
+  test('generated media is labelled in the clip sections too', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
@@ -350,34 +354,30 @@ describe('the clip detail page', () => {
         },
       },
     })
-    renderClipDetail()
+    renderClipSections()
     await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     const row = await screen.findByRole('article', { name: /a shortened signup form/i })
     expect(within(row).getByText(/ai-generated/i)).toBeInTheDocument()
   })
 
-  test('a clip resolves its own Project from nothing but its identifier', async () => {
+  test('a clip link resolves its own Project and lands on that moment in review mode', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
       [CLIP_DETAIL]: { body: clipDetail() },
-      [SUGGESTIONS]: { body: { suggestions: [] } },
     })
     renderWithApi(
       <WorkspaceProvider>
-        <ClipDetail candidateId={CANDIDATE_ID} />
+        <ClipRedirect candidateId={CANDIDATE_ID} tab="broll" />
       </WorkspaceProvider>,
     )
 
-    expect(await screen.findByRole('link', { name: project().name })).toHaveAttribute(
-      'href',
-      `/dashboard/projects/${PROJECT_ID}`,
-    )
-    expect(screen.getByRole('link', { name: /continue editing/i })).toHaveAttribute(
-      'href',
-      `/editor/${EDIT_ID}`,
-    )
+    await waitFor(() => {
+      expect(replace).toHaveBeenCalledWith(
+        `/dashboard/projects/${PROJECT_ID}/review?moment=${CANDIDATE_ID}&tab=broll`,
+      )
+    })
   })
 
   test('a suggestion nobody accepted contributes no licence to the clip', async () => {
@@ -387,20 +387,20 @@ describe('the clip detail page', () => {
       [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: { body: { suggestions: [suggestion({ status: 'rejected' })] } },
     })
-    renderClipDetail()
+    renderClipSections()
     await userEvent.click(await screen.findByRole('tab', { name: 'B-roll' }))
 
     expect(await screen.findByText(/no b-roll in this clip/i)).toBeInTheDocument()
   })
 
-  test('the clip page opens on its exports and keeps each section one tab away', async () => {
+  test('review opens a clip on its exports and keeps each section one tab away', async () => {
     stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
       [CLIP_DETAIL]: { body: clipDetail() },
       [SUGGESTIONS]: { body: { suggestions: [] } },
     })
-    renderClipDetail()
+    renderClipSections()
 
     const tabs = await screen.findByRole('tablist', { name: 'Clip sections' })
     expect(within(tabs).getAllByRole('tab').map((tab) => tab.textContent)).toEqual([

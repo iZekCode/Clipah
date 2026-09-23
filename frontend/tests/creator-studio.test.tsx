@@ -12,7 +12,6 @@ import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 import { AssetBrowser } from '@/features/assets/AssetBrowser'
-import { ClipBrowser } from '@/features/clips/ClipBrowser'
 import { Autosave, memoryDraftStore } from '@/features/editor/autosave'
 import { EditorScreen } from '@/features/editor/EditorScreen'
 import { ExportDialog } from '@/features/editor/ExportDialog'
@@ -22,7 +21,7 @@ import { NewPublication } from '@/features/publishing/NewPublication'
 import { GeneralSettings } from '@/features/settings/GeneralSettings'
 import { WorkspaceProvider } from '@/features/workspaces/workspace-context'
 import { ApiError } from '@/lib/api/client'
-import type { ClipSummaryResponse, CompositionV1, ExportResponse } from '@/lib/api/generated/model'
+import type { CompositionV1, ExportResponse } from '@/lib/api/generated/model'
 
 import { errorBody, renderWithApi, stubApi } from './support/api'
 import { expectAccessible } from './support/axe'
@@ -38,7 +37,6 @@ import {
 
 const ME = 'GET /api/v1/me'
 const WORKSPACES = 'GET /api/v1/workspaces'
-const CLIPS = 'GET /api/v1/clips'
 const EXPORTS = 'GET /api/v1/exports'
 const PROJECTS = 'GET /api/v1/projects'
 const EDIT_ID = edit().id
@@ -52,29 +50,6 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push, replace: vi.fn(), refresh: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }))
-
-function clip(overrides: Partial<ClipSummaryResponse> = {}): ClipSummaryResponse {
-  return {
-    id: '55555555-5555-4555-8555-555555555551',
-    projectId: PROJECT_ID,
-    projectName: 'Episode 12',
-    rank: 1,
-    score: 0.91,
-    hook: 'The surprising opening',
-    reason: 'A complete and useful moment',
-    category: 'insight',
-    startMs: 1_000,
-    endMs: 31_000,
-    durationMs: 30_000,
-    stage: 'suggested',
-    editId: null,
-    currentRevision: null,
-    exportCount: 0,
-    createdAt: '2026-02-01T00:00:00+00:00',
-    editUpdatedAt: null,
-    ...overrides,
-  }
-}
 
 function exported(overrides: Partial<ExportResponse> = {}): ExportResponse {
   return {
@@ -103,75 +78,6 @@ beforeEach(() => {
   window.sessionStorage.clear()
   FakeEventSource.instances = []
   vi.stubGlobal('EventSource', FakeEventSource)
-})
-
-describe('the clip browser', () => {
-  test('shows every clip before anything is searched, with how far each has got', async () => {
-    stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [PROJECTS]: { body: { projects: [project()], nextCursor: null } },
-      [CLIPS]: {
-        body: {
-          clips: [clip(), clip({ id: '55555555-5555-4555-8555-555555555552', hook: 'Cut two', stage: 'exported', editId: EDIT_ID, exportCount: 1 })],
-          nextCursor: null,
-        },
-      },
-    })
-
-    renderWithApi(
-      <WorkspaceProvider>
-        <ClipBrowser />
-      </WorkspaceProvider>,
-    )
-
-    const list = await screen.findByRole('list', { name: 'Clips' })
-    expect(within(list).getByRole('link', { name: 'The surprising opening' })).toHaveAttribute(
-      'href',
-      '/dashboard/clips/55555555-5555-4555-8555-555555555551',
-    )
-    expect(within(list).getByText('Suggested')).toBeInTheDocument()
-    expect(within(list).getByText('Exported')).toBeInTheDocument()
-    expect(within(list).getByRole('link', { name: /continue editing/i })).toHaveAttribute(
-      'href',
-      `/editor/${EDIT_ID}`,
-    )
-    expect(within(list).getAllByTestId('poster')).toHaveLength(2)
-    const suggested = within(list)
-      .getByRole('link', { name: 'The surprising opening' })
-      .closest('article')!
-    expect(within(suggested).getByRole('link', { name: 'Review' })).toHaveAttribute(
-      'href',
-      `/dashboard/projects/${PROJECT_ID}/review?moment=55555555-5555-4555-8555-555555555551`,
-    )
-  })
-
-  test('asks the backend for one stage and one project rather than hiding rows itself', async () => {
-    const user = userEvent.setup()
-    const api = stubApi({
-      [ME]: { body: currentUser() },
-      [WORKSPACES]: { body: { workspaces: [workspace()] } },
-      [PROJECTS]: { body: { projects: [project()], nextCursor: null } },
-      [CLIPS]: { body: { clips: [], nextCursor: null } },
-    })
-
-    renderWithApi(
-      <WorkspaceProvider>
-        <ClipBrowser />
-      </WorkspaceProvider>,
-    )
-    await screen.findByText(/no clips yet/i)
-
-    await user.click(screen.getByRole('button', { name: 'Exported' }))
-    await user.selectOptions(await screen.findByRole('combobox', { name: 'Project' }), PROJECT_ID)
-
-    await waitFor(() => {
-      const last = api.calls.filter((call) => call.path === '/api/v1/clips').at(-1)
-      expect(last?.params.get('stage')).toBe('exported')
-      expect(last?.params.get('projectId')).toBe(PROJECT_ID)
-    })
-    expect(await screen.findByText(/no clips match these filters/i)).toBeInTheDocument()
-  })
 })
 
 describe('exporting from the editor', () => {

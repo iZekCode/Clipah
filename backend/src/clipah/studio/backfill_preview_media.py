@@ -79,12 +79,14 @@ def backfill_preview_media(
         ).all()
 
     return tuple(
-        _backfill_one(
+        backfill_one(
             settings=settings,
             dispatcher=dispatcher,
             workspace_id=workspace_id,
             user_id=user_id,
             project_id=project_id,
+            kind=JobKind.PREVIEW_MEDIA,
+            key_name="preview-media-v1",
             now=now,
             dry_run=dry_run,
             retry_failed=retry_failed,
@@ -93,13 +95,15 @@ def backfill_preview_media(
     )
 
 
-def _backfill_one(
+def backfill_one(
     *,
     settings: Settings,
     dispatcher: JobDispatcher,
     workspace_id: UUID,
     user_id: UUID,
     project_id: UUID,
+    kind: JobKind,
+    key_name: str,
     now: datetime,
     dry_run: bool,
     retry_failed: bool,
@@ -111,12 +115,12 @@ def _backfill_one(
             .where(
                 Job.workspace_id == workspace_id,
                 Job.project_id == project_id,
-                Job.kind == JobKind.PREVIEW_MEDIA,
+                Job.kind == kind,
             )
             .order_by(Job.created_at.desc(), Job.id.desc())
             .limit(1)
         ).first()
-        key = f"backfill:{project_id}:preview-media-v1"
+        key = f"backfill:{project_id}:{key_name}"
         if latest is not None:
             if latest.status in _UNFINISHED:
                 return BackfillResult(project_id, BackfillOutcome.ALREADY_RUNNING, latest.id)
@@ -134,7 +138,7 @@ def _backfill_one(
                 policy=admission_policy(settings),
                 access=access,
                 project_id=project_id,
-                kind=JobKind.PREVIEW_MEDIA,
+                kind=kind,
                 idempotency_key=key,
                 now=now,
             )
@@ -146,7 +150,7 @@ def _backfill_one(
             job_id=snapshot.job_id,
             workspace_id=workspace_id,
             user_id=user_id,
-            kind=JobKind.PREVIEW_MEDIA,
+            kind=kind,
         )
     return BackfillResult(project_id, BackfillOutcome.ADMITTED, snapshot.job_id)
 

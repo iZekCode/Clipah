@@ -121,6 +121,24 @@ describe('review mode', () => {
     expect(within(excerpt).getByText('After.')).toHaveClass('text-subtle-foreground')
   })
 
+  test('lays out why the analysis proposed the moment, and folds it away on request', async () => {
+    reviewApi()
+    renderReview()
+
+    const why = await screen.findByRole('group', { name: 'Why this moment' })
+    expect(why).toHaveTextContent(FIRST.payoff)
+    expect(why).toHaveTextContent(FIRST.tags.join(', '))
+    expect(why).toHaveTextContent(FIRST.contextDependencies[0]!)
+    expect(why).toHaveTextContent(FIRST.visualOpportunities[0]!)
+    const scores = screen.getByLabelText('Score breakdown')
+    for (const dimension of [/hook/i, /payoff/i, /context safety/i, /visual opportunity/i]) {
+      expect(within(scores).getByText(dimension)).toBeInTheDocument()
+    }
+
+    await userEvent.click(within(why).getByRole('button', { name: 'Why this moment' }))
+    expect(why).not.toHaveTextContent(FIRST.payoff)
+  })
+
   test('opens the moment the address names', async () => {
     window.history.replaceState(
       null,

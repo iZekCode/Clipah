@@ -25,10 +25,12 @@ import type {
   BrowseClipCollectionApiV1ClipsGetParams,
   ClipDetailResponse,
   ClipPageResponse,
+  ClipPostersResponse,
   ExportCollectionApiV1ExportsGetParams,
   ExportPageResponse,
   HTTPValidationError,
   MediaPreviewResponse,
+  PostersApiV1ProjectsProjectIdPostersGetParams,
   PreviewAssetApiV1AssetsAssetIdPreviewUrlGetParams,
   ShowClipApiV1ClipsCandidateIdGetParams,
   StoryboardApiV1ProjectsProjectIdStoryboardGetParams,
@@ -592,6 +594,122 @@ export function useExportCollectionApiV1ExportsGet<TData = Awaited<ReturnType<ty
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 
   const queryOptions = getExportCollectionApiV1ExportsGetQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  query.queryKey = queryOptions.queryKey ;
+
+  return query;
+}
+
+
+
+
+/**
+ * Sign five minutes of access to every poster drawn for one Project's moments.
+ * @summary Posters
+ */
+export const getPostersApiV1ProjectsProjectIdPostersGetUrl = (projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/posters?${stringifiedParams}` : `/api/v1/projects/${projectId}/posters`
+}
+
+export const postersApiV1ProjectsProjectIdPostersGet = async (projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options?: RequestInit): Promise<ClipPostersResponse> => {
+  
+  return apiFetch<ClipPostersResponse>(getPostersApiV1ProjectsProjectIdPostersGetUrl(projectId,params),
+  {      
+    ...options,
+    method: 'GET'
+    
+    
+  }
+);}
+
+
+
+
+
+export const getPostersApiV1ProjectsProjectIdPostersGetQueryKey = (projectId?: string,
+    params?: PostersApiV1ProjectsProjectIdPostersGetParams,) => {
+    return [
+    `/api/v1/projects/${projectId}/posters`, ...(params ? [params]: [])
+    ] as const;
+    }
+
+    
+export const getPostersApiV1ProjectsProjectIdPostersGetQueryOptions = <TData = Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError = HTTPValidationError>(projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getPostersApiV1ProjectsProjectIdPostersGetQueryKey(projectId,params);
+
+  
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>> = ({ signal }) => postersApiV1ProjectsProjectIdPostersGet(projectId,params, { signal, ...requestOptions });
+
+      
+
+      
+
+   return  { queryKey, queryFn, enabled: !!(projectId), ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type PostersApiV1ProjectsProjectIdPostersGetQueryResult = NonNullable<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>>
+export type PostersApiV1ProjectsProjectIdPostersGetQueryError = HTTPValidationError
+
+
+export function usePostersApiV1ProjectsProjectIdPostersGet<TData = Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>,
+          TError,
+          Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostersApiV1ProjectsProjectIdPostersGet<TData = Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>,
+          TError,
+          Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function usePostersApiV1ProjectsProjectIdPostersGet<TData = Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary Posters
+ */
+
+export function usePostersApiV1ProjectsProjectIdPostersGet<TData = Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError = HTTPValidationError>(
+ projectId: string,
+    params: PostersApiV1ProjectsProjectIdPostersGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof postersApiV1ProjectsProjectIdPostersGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient 
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getPostersApiV1ProjectsProjectIdPostersGetQueryOptions(projectId,params,options)
 
   const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
 

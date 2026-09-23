@@ -8,11 +8,11 @@ import { RAIL_PINNED_KEY } from '@/components/shell/navigation'
 import { renderWithApi } from './support/api'
 import { currentUser } from './support/fixtures'
 
-const pathname = vi.hoisted(() => ({ current: '/dashboard/clips' }))
+const pathname = vi.hoisted(() => ({ current: '/dashboard/publishing' }))
 vi.mock('next/navigation', () => ({ usePathname: () => pathname.current }))
 
 beforeEach(() => {
-  pathname.current = '/dashboard/clips'
+  pathname.current = '/dashboard/publishing'
   window.localStorage.clear()
 })
 
@@ -29,10 +29,12 @@ describe('the Signal shell', () => {
     shell()
 
     const rail = screen.getByRole('navigation', { name: 'Workspace' })
-    for (const name of ['Home', 'Projects', 'Clips', 'Publishing', 'Settings']) {
+    for (const name of ['Home', 'Projects', 'Publishing', 'Settings']) {
       expect(within(rail).getByRole('link', { name })).toBeInTheDocument()
     }
-    expect(within(rail).getByRole('link', { name: 'Clips' })).toHaveAttribute('aria-current', 'page')
+    expect(within(rail).getByRole('link', { name: 'Publishing' })).toHaveAttribute('aria-current', 'page')
+    // Clips live inside their Project; the rail no longer offers a separate list of them.
+    expect(within(rail).queryByRole('link', { name: 'Clips' })).toBeNull()
   })
 
   test('the library opens from the rail', async () => {

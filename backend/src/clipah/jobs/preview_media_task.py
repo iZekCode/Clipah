@@ -96,8 +96,8 @@ class PreviewMediaStageRunner:
             if len(sources) != 1:
                 raise TerminalJobError(INPUT_MISSING_CODE)
             source = sources[0]
-            proxy = _derivative(session, context, source.id, AssetKind.PROXY)
-            audio = _derivative(session, context, source.id, AssetKind.TRANSCRIPTION_AUDIO)
+            proxy = derivative(session, context, source.id, AssetKind.PROXY)
+            audio = derivative(session, context, source.id, AssetKind.TRANSCRIPTION_AUDIO)
             if (
                 proxy is None
                 or audio is None
@@ -152,15 +152,15 @@ class PreviewMediaStageRunner:
             }
             for artifact in artifacts:
                 row = existing.get(artifact.asset_id)
-                if row is not None and not _matches(row, artifact):
+                if row is not None and not matches_artifact(row, artifact):
                     raise IngestIntegrityError("preview Asset metadata mismatch")
             for artifact in artifacts:
                 if artifact.asset_id not in existing:
-                    session.add(_asset_row(context, artifact))
+                    session.add(asset_row(context, artifact))
             session.flush()
 
 
-def _derivative(
+def derivative(
     session: Session, context: JobContext, source_id: UUID, kind: AssetKind
 ) -> Asset | None:
     """Find one ingest derivative of a source by the storage key ingest always writes it under.
@@ -187,7 +187,7 @@ def _derivative(
     )
 
 
-def _matches(row: Asset, artifact: IngestArtifact) -> bool:
+def matches_artifact(row: Asset, artifact: IngestArtifact) -> bool:
     """Whether a recorded row describes exactly this artifact."""
     return (
         row.kind is artifact.kind
@@ -201,7 +201,7 @@ def _matches(row: Asset, artifact: IngestArtifact) -> bool:
     )
 
 
-def _asset_row(context: JobContext, artifact: IngestArtifact) -> Asset:
+def asset_row(context: JobContext, artifact: IngestArtifact) -> Asset:
     """Convert one artifact description into its tenant-scoped row."""
     return Asset(
         id=artifact.asset_id,

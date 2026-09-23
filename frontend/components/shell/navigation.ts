@@ -1,5 +1,4 @@
 import {
-  Clapperboard,
   FolderOpen,
   Home,
   Image as ImageIcon,
@@ -20,7 +19,6 @@ export interface NavigationEntry {
 export const PRIMARY_NAVIGATION: NavigationEntry[] = [
   { href: '/dashboard', label: 'Home', icon: Home },
   { href: '/dashboard/projects', label: 'Projects', icon: FolderOpen },
-  { href: '/dashboard/clips', label: 'Clips', icon: Clapperboard },
   { href: '/dashboard/publishing', label: 'Publishing', icon: Send },
 ]
 

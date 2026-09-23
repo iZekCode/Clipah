@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Clapperboard, History, Scissors } from 'lucide-react'
+import { Clapperboard, History } from 'lucide-react'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 
@@ -20,21 +20,14 @@ import { UploadPanel, type ProjectJob } from '@/features/uploads/UploadPanel'
 import { mayWriteProjects } from '@/features/workspaces/roles'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
-import type {
-  CandidateResponse,
-  ClipPageResponse,
-  ProjectResponse,
-} from '@/lib/api/generated/model'
+import type { CandidateResponse, ProjectResponse } from '@/lib/api/generated/model'
 import { showApiV1ProjectsProjectIdGet } from '@/lib/api/generated/projects/projects'
-import { browseClipCollectionApiV1ClipsGet } from '@/lib/api/generated/studio/studio'
-import { formatClock } from '@/lib/media/time'
 
 import { SourceColumn, useRequestedMomentMs } from './source-column'
 import { projectIsProcessing, projectStatusLabel, projectStatusTone } from './status-labels'
 
 const TABS = [
   { id: 'moments', label: 'Moments' },
-  { id: 'edits', label: 'Edits' },
   { id: 'exports', label: 'Exports' },
   { id: 'activity', label: 'Activity' },
 ] as const
@@ -210,9 +203,6 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
             />
           )}
         </TabPanel>
-        <TabPanel idPrefix="project" id="edits" active={tab}>
-          <ProjectEdits projectId={project.id} />
-        </TabPanel>
         <TabPanel idPrefix="project" id="exports" active={tab}>
           <ExportList projectId={project.id} />
         </TabPanel>
@@ -221,68 +211,6 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
         </TabPanel>
       </div>
     </article>
-  )
-}
-
-/** The moments of this Project that already have an Edit, with a way back into each. */
-function ProjectEdits({ projectId }: { projectId: string }) {
-  const { active } = useWorkspaceScope()
-  const clips = useQuery<ClipPageResponse, ApiError>({
-    queryKey: ['/api/v1/clips', active.id, 'project', projectId],
-    queryFn: ({ signal }) =>
-      browseClipCollectionApiV1ClipsGet(
-        { workspace_id: active.id, projectId, limit: 100 },
-        { signal },
-      ),
-    retry: false,
-  })
-
-  if (clips.isPending) {
-    return <LoadingState label="Loading edits…" variant="rows" count={2} />
-  }
-  if (clips.isError) {
-    return <ErrorNotice error={clips.error} onRetry={() => void clips.refetch()} />
-  }
-  const edited = clips.data.clips.filter((clip) => clip.editId !== null)
-  if (edited.length === 0) {
-    return (
-      <EmptyState
-        compact
-        icon={Scissors}
-        title="No edits yet"
-        description="Choose Edit clip on a moment to start editing it. Your edits are saved automatically."
-      />
-    )
-  }
-  return (
-    <ul aria-label="Edits" className="surface divide-y">
-      {edited.map((clip) => (
-        <li key={clip.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{clip.hook}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatClock(clip.durationMs)} · Revision {clip.currentRevision ?? 1}
-              {clip.exportCount === 0 ? '' : ` · ${clip.exportCount} exported`}
-            </p>
-          </div>
-          <StatusBadge tone={clip.stage === 'exported' ? 'success' : 'accent'}>
-            {clip.stage === 'exported' ? 'Exported' : 'In editing'}
-          </StatusBadge>
-          <Link
-            href={`/dashboard/clips/${clip.id}`}
-            className="text-sm font-medium text-muted-foreground hover:text-foreground"
-          >
-            Details
-          </Link>
-          <Link
-            href={`/editor/${clip.editId}`}
-            className="inline-flex h-9 items-center rounded-lg border bg-card px-3 text-sm font-medium hover:bg-secondary"
-          >
-            Continue editing
-          </Link>
-        </li>
-      ))}
-    </ul>
   )
 }
 
