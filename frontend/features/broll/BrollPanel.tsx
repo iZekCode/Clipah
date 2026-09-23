@@ -22,7 +22,7 @@ import type {
   ProjectAssetsResponse,
 } from '@/lib/api/generated/model'
 
-import { BrollSuggestionCard } from './BrollSuggestionCard'
+import { BrollSuggestionCard, WORKING_STATUSES } from './BrollSuggestionCard'
 import { CoverageControl } from './CoverageControl'
 import { GenerationConfirmDialog } from './GenerationConfirmDialog'
 
@@ -88,8 +88,12 @@ export function BrollPanel({
         { signal },
       ),
     retry: false,
-    // Ideas and then pictures arrive in the background; keep looking until both are done.
-    refetchInterval: (query) => (query.state.data?.searching === true ? SEARCH_POLL_MS : false),
+    // Ideas, pictures, and generated pictures arrive in the background; keep looking until
+    // every one of them has landed.
+    refetchInterval: (query) =>
+      query.state.data?.searching === true || isGenerating(query.state.data)
+        ? SEARCH_POLL_MS
+        : false,
   })
 
   // Replacing a picture means naming another asset this Project already holds, so the
@@ -172,7 +176,6 @@ export function BrollPanel({
       )
       setGenerating(null)
       setOffer(null)
-      setRefusal('Generating a picture. This continues in the background; the clip is unchanged.')
       await suggestions.refetch()
     } catch (error) {
       setGenerationRefusal(refusalCopy(error as ApiError))
@@ -210,6 +213,11 @@ export function BrollPanel({
       {searching ? (
         <p role="status" className="text-caption text-muted-foreground">
           Ideas arrive first, then pictures for them. This can take a minute.
+        </p>
+      ) : null}
+      {isGenerating(suggestions.data) ? (
+        <p role="status" className="py-2 text-small">
+          Generating a picture. This continues in the background; the clip is unchanged.
         </p>
       ) : null}
       {refusal === null ? null : (
@@ -282,6 +290,11 @@ const GENERATABLE = new Set(['proposed', 'removed', 'rejected', 'failed'])
 /** Whether this idea may be generated: any idea not on the clip and not already working. */
 function generationOffered(suggestion: BrollSuggestionResponse): boolean {
   return GENERATABLE.has(suggestion.status)
+}
+
+/** Whether a model is still drawing a picture for any of these ideas. */
+function isGenerating(data: BrollSuggestionListResponse | undefined): boolean {
+  return data?.suggestions.some((entry) => WORKING_STATUSES.has(entry.status)) ?? false
 }
 
 /** Say what a refusal means in words a member can act on, or keep the request ID. */

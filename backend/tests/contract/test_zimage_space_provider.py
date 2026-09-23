@@ -249,8 +249,8 @@ def test_transport_failures_map_to_retryable_errors() -> None:
         _provider(slow).submit(request=_request(), idempotency_key="job-1")
     with pytest.raises(GenerationUnavailableError):
         _provider(down).submit(request=_request(), idempotency_key="job-1")
-    with pytest.raises(GenerationTimeoutError):
-        _provider(slow).poll(handle=_handle())
+    # A stream that stalls has forfeited its answer, so reading it again cannot help.
+    assert _provider(slow).poll(handle=_handle()).status is GenerationStatus.REJECTED
     with pytest.raises(GenerationUnavailableError):
         _provider(down).poll(handle=_handle())
 
@@ -306,8 +306,11 @@ def test_a_nonnumeric_seed_is_not_reported() -> None:
 
 
 @pytest.mark.unit
-def test_an_error_event_or_a_stream_with_no_answer_fails_the_call() -> None:
-    """A Space error, exhausted GPU allowance, or an answer already taken is a failed call."""
+def test_an_error_event_or_a_stream_with_no_answer_ends_the_call() -> None:
+    """A Space error, exhausted GPU allowance, or an answer already taken is final.
+
+    Polling the same call again would only wait on heartbeats, so none of these is retried.
+    """
 
     def errored(_: httpx.Request) -> httpx.Response:
         return _stream(("error", "You have exceeded your GPU quota"))
@@ -317,20 +320,20 @@ def test_an_error_event_or_a_stream_with_no_answer_fails_the_call() -> None:
 
     for respond in (errored, empty):
         result = _provider(respond).poll(handle=_handle())
-        assert result.status is GenerationStatus.FAILED
+        assert result.status is GenerationStatus.REJECTED
         assert result.output is None
 
 
 @pytest.mark.unit
 def test_poll_gives_up_once_the_stream_deadline_passes() -> None:
-    """A Space that never answers cannot hold a worker forever."""
+    """A Space that never answers cannot hold a worker forever, nor send it back to wait."""
     ticks = iter([0.0, 61.0])
 
     def respond(_: httpx.Request) -> httpx.Response:
         return _stream(("heartbeat", None), _complete())
 
-    with pytest.raises(GenerationTimeoutError):
-        _provider(respond, clock=lambda: next(ticks)).poll(handle=_handle())
+    result = _provider(respond, clock=lambda: next(ticks)).poll(handle=_handle())
+    assert result.status is GenerationStatus.REJECTED
 
 
 @pytest.mark.unit

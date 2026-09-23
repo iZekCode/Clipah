@@ -9,7 +9,7 @@ import { ProvenancePopover } from './ProvenancePopover'
 const ON_TIMELINE = new Set(['placed', 'replaced'])
 
 /** The statuses in which a model is already drawing something for this beat. */
-const WORKING_STATUSES = new Set(['generation_requested', 'generating'])
+export const WORKING_STATUSES = new Set(['generation_requested', 'generating'])
 
 /**
  * One proposal, with enough evidence beside it to disagree with the planner.

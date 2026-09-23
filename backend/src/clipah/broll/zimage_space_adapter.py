@@ -163,7 +163,13 @@ class ZImageSpaceProvider:
         return handle
 
     def poll(self, *, handle: GenerationHandle) -> GenerationResult:
-        """Hold the event stream open until the call finishes, fails, or runs out of time."""
+        """Hold the event stream open until the call finishes, fails, or runs out of time.
+
+        Every way a stream can end without a picture is final. Gradio hands a result over
+        once and forfeits it when the stream closes early, and a stream on a call that
+        already answered only ever sends heartbeats, so reading it again would wait for an
+        answer that can no longer come.
+        """
         self._validate_handle(handle)
         url = f"{self._call_url()}/{quote(handle.provider_request_id, safe='')}"
         deadline = self._monotonic() + self._config.stream_seconds
@@ -178,16 +184,13 @@ class ZImageSpaceProvider:
                 for event, data in _events(response.iter_lines()):
                     if event == "complete":
                         return self._decode_success(handle=handle, data=data)
-                    if event == "error":
-                        return _failed()
-                    if self._monotonic() >= deadline:
-                        raise GenerationTimeoutError
+                    if event == "error" or self._monotonic() >= deadline:
+                        return _ended()
         except httpx.TimeoutException:
-            raise GenerationTimeoutError from None
+            return _ended()
         except httpx.HTTPError:
             raise GenerationUnavailableError from None
-        # The stream ended without an answer: the result was already taken or never existed.
-        return _failed()
+        return _ended()
 
     def cancel(self, *, handle: GenerationHandle) -> None:
         """A queued Gradio call cannot be withdrawn over HTTP; letting it finish costs nothing."""
@@ -319,10 +322,14 @@ def _events(lines: Iterator[str]) -> Iterator[tuple[str, str]]:
             event = ""
 
 
-def _failed() -> GenerationResult:
-    """A call that ended without a picture: the Space errored, or the answer is gone."""
+def _ended() -> GenerationResult:
+    """A call that ended without a picture: the Space errored, or the answer is gone.
+
+    It is reported as a refusal rather than a failure, because a failure is retried by
+    polling the same call again, and this call has nothing left to give.
+    """
     return GenerationResult(
-        status=GenerationStatus.FAILED,
+        status=GenerationStatus.REJECTED,
         output=None,
         usage=GenerationUsage.zero(),
         seed=None,

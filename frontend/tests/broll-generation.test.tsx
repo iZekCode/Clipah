@@ -298,22 +298,42 @@ describe('generated video, which is never one click away', () => {
 
 describe('what a member sees while a model is working', () => {
   test('an admitted generation reports that it continues in the background', async () => {
-    stubPanel([suggestion()])
+    let admitted = false
+    let reads = 0
+    stubPanel([], {
+      [GENERATE]: () => {
+        admitted = true
+        return { status: 202, body: { jobId: 'job-generate-1', status: 'queued' } }
+      },
+      // Proposed until admitted, generating on the next read, and drawn after that.
+      [SUGGESTIONS]: () => {
+        if (!admitted) return { body: { suggestions: [suggestion()] } }
+        reads += 1
+        const status = reads === 1 ? 'generating' : 'placed'
+        return { body: { suggestions: [suggestion({ status })] } }
+      },
+    })
     const user = userEvent.setup()
     await openPanel()
 
     await user.click(await screen.findByRole('button', { name: /generate still/i }))
     await user.click(await screen.findByRole('button', { name: /generate for \$0\.08/i }))
 
-    expect(await screen.findByRole('status')).toHaveTextContent(/background/i)
-  })
+    expect(await screen.findByText(/continues in the background; the clip/i)).toBeVisible()
+    // The panel keeps looking until the picture lands, then stops saying it is working.
+    await waitFor(
+      () => expect(screen.queryByText(/continues in the background; the clip/i)).toBeNull(),
+      { timeout: 5_000 },
+    )
+  }, 10_000)
 
   test('a suggestion already generating offers no second generation', async () => {
     stubPanel([suggestion({ status: 'generating' })])
     await openPanel()
 
     expect(screen.queryByRole('button', { name: /generate still/i })).toBeNull()
-    expect(await screen.findByText(/generating/i)).toBeVisible()
+    expect(await screen.findByText(/generating a picture for this beat/i)).toBeVisible()
+    expect(screen.getByText(/continues in the background; the clip/i)).toBeVisible()
   })
 
   test('provider and planner text is rendered as text, never as markup', async () => {
