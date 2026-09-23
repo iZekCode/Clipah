@@ -1,4 +1,5 @@
-import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+import { focusManager } from '@tanstack/react-query'
+import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -181,6 +182,40 @@ describe('review mode', () => {
 
     await waitFor(() => expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled())
     expect(video.currentTime).toBe(12)
+  })
+
+  test('coming back to the tab neither re-signs the player nor starts it again', async () => {
+    const api = reviewApi()
+    renderReview()
+
+    const video = (await screen.findByTestId('review-video')) as HTMLVideoElement
+    fireEvent.loadedMetadata(video)
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+    act(() => {
+      focusManager.setFocused(false)
+      focusManager.setFocused(true)
+    })
+
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(api.calls.filter((call) => call.path.endsWith('/proxy'))).toHaveLength(1)
+    focusManager.setFocused(undefined)
+  })
+
+  test('a player reloaded for an expired URL returns to where it was, paused', async () => {
+    const api = reviewApi()
+    renderReview()
+
+    const video = (await screen.findByTestId('review-video')) as HTMLVideoElement
+    fireEvent.loadedMetadata(video)
+    video.currentTime = 15
+    fireEvent.error(video)
+    await waitFor(() =>
+      expect(api.calls.filter((call) => call.path.endsWith('/proxy'))).toHaveLength(2),
+    )
+    fireEvent.loadedMetadata(video)
+
+    expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(1)
+    expect(video.currentTime).toBe(15)
   })
 
   test('E opens the moment in the editor', async () => {

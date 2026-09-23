@@ -61,6 +61,9 @@ export function SourceColumn({
     retry: false,
     gcTime: 0,
     staleTime: 0,
+    // A new signed URL reloads the player; coming back to the tab must not reset it.
+    // An expired URL is asked for again when the player reports the error instead.
+    refetchOnWindowFocus: false,
     enabled: ready || projectIsProcessing(status) || requestedMs !== null,
   })
   const transcript = useTranscript(projectId, { enabled: ready })

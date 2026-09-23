@@ -296,7 +296,13 @@ const MomentPlayer = forwardRef<
     retry: false,
     gcTime: 0,
     staleTime: 0,
+    // A new signed URL reloads the player; coming back to the tab must not restart it.
+    // An expired URL is asked for again when the player reports the error instead.
+    refetchOnWindowFocus: false,
   })
+  // A moment plays by itself once, when it is first opened; a reload keeps where it was.
+  const autoplayed = useRef<string | null>(null)
+  const resumeAt = useRef<number | null>(null)
 
   useImperativeHandle(ref, () => ({
     toggle: () => {
@@ -347,10 +353,25 @@ const MomentPlayer = forwardRef<
     }
   }
 
-  /** Start at the moment rather than at the beginning of the source. */
+  /**
+   * Start at the moment rather than at the beginning of the source, and play it the first
+   * time it is opened. A reload of the same moment returns to where it was, paused.
+   */
   function start(event: SyntheticEvent<HTMLVideoElement>): void {
-    event.currentTarget.currentTime = moment.startMs / 1000
-    void event.currentTarget.play()
+    const element = event.currentTarget
+    if (autoplayed.current === moment.id) {
+      element.currentTime = (resumeAt.current ?? moment.startMs) / 1000
+      return
+    }
+    autoplayed.current = moment.id
+    element.currentTime = moment.startMs / 1000
+    void element.play()
+  }
+
+  /** Remember the position and ask for a fresh URL when the signed one has expired. */
+  function recover(event: SyntheticEvent<HTMLVideoElement>): void {
+    resumeAt.current = event.currentTarget.currentTime * 1000
+    void playback.refetch()
   }
 
   /** Stop where the moment ends, or go round again when looping. */
@@ -386,6 +407,7 @@ const MomentPlayer = forwardRef<
             playsInline
             preload="metadata"
             onLoadedMetadata={start}
+            onError={recover}
             onTimeUpdate={bound}
             onPlay={() => setPlaying(true)}
             onPause={() => setPlaying(false)}
