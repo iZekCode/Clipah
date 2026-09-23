@@ -189,6 +189,11 @@ all three of `CLIPAH_RUNWAY_API_SECRET`, `CLIPAH_RUNWAY_VIDEO_MODEL_ALIAS`, and
 `CLIPAH_RUNWAY_VIDEO_MODEL_ID`, or none of them. `docs/operations/generative-media.md`
 covers costs, quotas, safety, and how to turn generation off in a hurry.
 
+For development without paying for stills, set `CLIPAH_GENERATED_IMAGE_PROVIDER=hf_space`.
+Stills then come from the Z-Image Turbo Hugging Face Space for free, bounded by a daily
+ZeroGPU allowance (`CLIPAH_HF_TOKEN`'s account, or the anonymous one). A Space is shared and
+can change or disappear, so it is not a production provider.
+
 **No configuration path accepts a model alias or provider model ID containing `sora`, in any
 capitalization.** Startup fails rather than accepting one.
 
@@ -442,7 +447,7 @@ requires HTTPS origins.
 | --- | --- | --- |
 | `CLIPAH_GENERATIVE_VIDEO_ENABLED` | `False` | |
 | `CLIPAH_GENERATED_AUDIO_ENABLED` | `False` | |
-| `CLIPAH_GENERATED_IMAGE_PROVIDER` | `fal` | |
+| `CLIPAH_GENERATED_IMAGE_PROVIDER` | `fal` | `fal`, or `hf_space` for the free Space below. |
 | `CLIPAH_GENERATED_VIDEO_PROVIDER` | `fal` | |
 | `CLIPAH_FAL_API_KEY` | — | Requires the webhook origin. |
 | `CLIPAH_FAL_WEBHOOK_BASE_URL` | — | Bare HTTPS origin. |
@@ -453,6 +458,9 @@ requires HTTPS origins.
 | `CLIPAH_RUNWAY_API_SECRET` | — | All three Runway values or none. |
 | `CLIPAH_RUNWAY_VIDEO_MODEL_ALIAS` | — | |
 | `CLIPAH_RUNWAY_VIDEO_MODEL_ID` | — | |
+| `CLIPAH_HF_SPACE_IMAGE_ID` | `Tongyi-MAI/Z-Image-Turbo` | The Space `hf_space` calls, as `owner/name`. |
+| `CLIPAH_HF_TOKEN` | — | Spends this account's ZeroGPU allowance; unset uses the anonymous one. |
+| `CLIPAH_HF_SPACE_STREAM_SECONDS` | `180.0` | How long one still may take, queue included. |
 | `CLIPAH_GENERATION_MAX_DURATION_MS` | `5000` | |
 | `CLIPAH_GENERATION_MAX_OUTPUT_BYTES` | `100000000` | |
 | `CLIPAH_GENERATION_ESTIMATE_TOKEN_TTL_SECONDS` | `300` | Confirmation token lifetime. |

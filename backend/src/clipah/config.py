@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import date
 from enum import StrEnum
 from typing import Any, Literal, Self
@@ -149,7 +150,7 @@ class Settings(BaseSettings):
     broll_repetition_penalty: float = Field(default=0.15, ge=0, le=1)
     pexels_api_key: SecretStr | None = None
     pixabay_api_key: SecretStr | None = None
-    generated_image_provider: Literal["fal"] = "fal"
+    generated_image_provider: Literal["fal", "hf_space"] = "fal"
     generated_video_provider: Literal["fal", "runway"] = "fal"
     fal_api_key: SecretStr | None = None
     fal_webhook_base_url: str | None = None
@@ -160,6 +161,11 @@ class Settings(BaseSettings):
     runway_api_secret: SecretStr | None = None
     runway_video_model_alias: str | None = None
     runway_video_model_id: str | None = None
+    # A free Hugging Face Space for stills, for development: shared, and bounded by the
+    # token's ZeroGPU allowance (or the anonymous one when no token is set).
+    hf_space_image_id: str = "Tongyi-MAI/Z-Image-Turbo"
+    hf_token: SecretStr | None = None
+    hf_space_stream_seconds: float = Field(default=180.0, gt=0, allow_inf_nan=False)
     generation_max_duration_ms: int = Field(default=5_000, gt=0)
     generation_max_output_bytes: int = Field(default=100_000_000, gt=0)
     generation_http_timeout_seconds: float = Field(default=30.0, gt=0, allow_inf_nan=False)
@@ -312,6 +318,7 @@ class Settings(BaseSettings):
         "fal_api_key",
         "fal_webhook_base_url",
         "runway_api_secret",
+        "hf_token",
         mode="before",
     )
     @classmethod
@@ -429,6 +436,11 @@ class Settings(BaseSettings):
             _is_blank(value) for value in runway_values
         ):
             raise ValueError("Runway credentials require complete video model configuration")
+
+        if self.generated_image_provider == "hf_space" and not re.fullmatch(
+            r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*", self.hf_space_image_id
+        ):
+            raise ValueError("CLIPAH_HF_SPACE_IMAGE_ID must name a Space as owner/name")
 
         if self.generated_video_provider == "runway" and any(
             _is_blank(value) for value in runway_values

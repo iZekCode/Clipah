@@ -27,6 +27,7 @@ from clipah.broll.generation import (
 )
 from clipah.broll.models import BrollSuggestionStatus, VisualIntent
 from clipah.broll.runway_adapter import RunwayAdapterConfig, RunwayGenerativeMediaProvider
+from clipah.broll.zimage_space_adapter import ZImageSpaceConfig, ZImageSpaceProvider
 from clipah.config import Settings
 
 GENERATED_IMAGE_WIDTH = 1080
@@ -176,6 +177,20 @@ def _build_provider(
             ),
             client=httpx.Client(),
             utc_clock=_utc_clock,
+        )
+
+    if media_kind is GenerationMediaKind.IMAGE and settings.generated_image_provider == "hf_space":
+        return ZImageSpaceProvider(
+            config=ZImageSpaceConfig(
+                space_id=settings.hf_space_image_id,
+                model_alias=settings.fal_image_model_alias,
+                http_timeout_seconds=settings.generation_http_timeout_seconds,
+                stream_seconds=settings.hf_space_stream_seconds,
+                token=settings.hf_token,
+            ),
+            client=httpx.Client(),
+            utc_clock=_utc_clock,
+            monotonic=monotonic,
         )
 
     if settings.fal_api_key is None or settings.fal_webhook_base_url is None:
