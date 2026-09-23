@@ -43,7 +43,9 @@ export function TabList<T extends string>({
   idPrefix: string
 }) {
   return (
-    <div role="tablist" aria-label={label} className="flex gap-1 overflow-x-auto border-b">
+    // Tabs wrap instead of scrolling: a scroll box clips the underline that overlaps the
+    // border by a pixel, and that overflow alone would make the row scroll.
+    <div role="tablist" aria-label={label} className="flex flex-wrap gap-1 border-b">
       {tabs.map((entry) => (
         <button
           key={entry.id}
