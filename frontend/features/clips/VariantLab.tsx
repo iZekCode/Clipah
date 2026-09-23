@@ -35,11 +35,14 @@ export function VariantLab({
   candidateId,
   workspaceId,
   proxyUrl,
+  onPlaybackError,
 }: {
   projectId: string
   candidateId: string
   workspaceId: string
+  /** A playable media URL for the Project's proxy, not the API route that signs one. */
   proxyUrl: string | null
+  onPlaybackError?: () => void
 }) {
   const player = useRef<HTMLVideoElement>(null)
   const [durations, setDurations] = useState<number[]>([])
@@ -91,7 +94,14 @@ export function VariantLab({
 
       {proxyUrl === null ? null : (
         // One proxy for every variant: a variant is a boundary, not another copy.
-        <video ref={player} src={proxyUrl} controls preload="metadata" className="w-full" />
+        <video
+          ref={player}
+          src={proxyUrl}
+          controls
+          preload="metadata"
+          onError={onPlaybackError}
+          className="w-full"
+        />
       )}
 
       <fieldset className="flex flex-wrap items-center gap-2">

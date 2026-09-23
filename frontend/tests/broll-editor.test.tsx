@@ -393,6 +393,34 @@ describe('the clip detail page', () => {
     expect(await screen.findByText(/no b-roll in this clip/i)).toBeInTheDocument()
   })
 
+  test('the variants player plays the signed proxy, not the route that signs it', async () => {
+    stubApi({
+      [ME]: { body: currentUser() },
+      [WORKSPACES]: { body: { workspaces: [workspace()] } },
+      [CLIP_DETAIL]: { body: clipDetail() },
+      [`GET /api/v1/projects/${PROJECT_ID}/proxy`]: {
+        body: {
+          url: 'https://objects.test/proxy.mp4?signature=short',
+          expiresAt: '2026-02-01T00:05:00+00:00',
+          contentType: 'video/mp4',
+          durationMs: 60_000,
+          width: 1280,
+          height: 720,
+        },
+      },
+    })
+    renderClipSections()
+    await userEvent.click(await screen.findByRole('tab', { name: 'Variants' }))
+
+    const variants = await screen.findByRole('region', { name: 'Variants' })
+    await waitFor(() =>
+      expect(variants.querySelector('video')).toHaveAttribute(
+        'src',
+        'https://objects.test/proxy.mp4?signature=short',
+      ),
+    )
+  })
+
   test('review opens a clip on its exports and keeps each section one tab away', async () => {
     stubApi({
       [ME]: { body: currentUser() },

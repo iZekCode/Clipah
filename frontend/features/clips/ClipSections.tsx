@@ -12,7 +12,12 @@ import { ExportRow, ReadyActions } from '@/features/exports/export-list'
 import { useWorkspaceScope } from '@/features/workspaces/workspace-context'
 import type { ApiError } from '@/lib/api/client'
 import { historyApiV1EditsEditIdRevisionsGet } from '@/lib/api/generated/edits/edits'
-import type { ClipDetailResponse, RevisionHistoryResponse } from '@/lib/api/generated/model'
+import type {
+  ClipDetailResponse,
+  ProxyPlaybackResponse,
+  RevisionHistoryResponse,
+} from '@/lib/api/generated/model'
+import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
 import { showClipApiV1ClipsCandidateIdGet } from '@/lib/api/generated/studio/studio'
 import { cn } from '@/lib/utils'
 
@@ -108,12 +113,7 @@ function ResolvedSections({ detail }: { detail: ClipDetailResponse }) {
           <BrollProvenanceList projectId={project.id} candidateId={candidate.id} />
         </TabPanel>
         <TabPanel idPrefix="clip" id="variants" active={section}>
-          <VariantLab
-            projectId={project.id}
-            candidateId={candidate.id}
-            workspaceId={active.id}
-            proxyUrl={`/api/v1/projects/${project.id}/proxy?workspace_id=${active.id}`}
-          />
+          <VariantsTab projectId={project.id} candidateId={candidate.id} />
         </TabPanel>
         <TabPanel idPrefix="clip" id="evidence" active={section}>
           <EvidencePanel projectId={project.id} candidateId={candidate.id} workspaceId={active.id} />
@@ -130,6 +130,34 @@ function ResolvedSections({ detail }: { detail: ClipDetailResponse }) {
         </TabPanel>
       </div>
     </div>
+  )
+}
+
+/**
+ * Variants over the Project's proxy, played from its signed URL.
+ *
+ * The proxy route answers with a short-lived capability, not the media itself, so the player
+ * needs the URL inside that answer. An expired one is asked for again when the player fails.
+ */
+function VariantsTab({ projectId, candidateId }: { projectId: string; candidateId: string }) {
+  const { active } = useWorkspaceScope()
+  const playback = useQuery<ProxyPlaybackResponse, ApiError>({
+    queryKey: ['/api/v1/projects/proxy', active.id, projectId],
+    queryFn: ({ signal }) =>
+      showApiV1ProjectsProjectIdProxyGet(projectId, { workspace_id: active.id }, { signal }),
+    retry: false,
+    gcTime: 0,
+    staleTime: 0,
+    refetchOnWindowFocus: false,
+  })
+  return (
+    <VariantLab
+      projectId={projectId}
+      candidateId={candidateId}
+      workspaceId={active.id}
+      proxyUrl={playback.data?.url ?? null}
+      onPlaybackError={() => void playback.refetch()}
+    />
   )
 }
 
