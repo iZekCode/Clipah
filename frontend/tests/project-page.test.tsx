@@ -1,4 +1,4 @@
-import { screen, waitFor, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -228,6 +228,24 @@ describe('the Project page', () => {
     )
     const video = screen.getByTestId('transcript-moment-video') as HTMLVideoElement
     expect(video.currentTime).toBe(10)
+  })
+
+  test('marks the line being spoken as the source plays, and moves with it', async () => {
+    readyApi()
+    renderProject()
+
+    const transcript = await screen.findByRole('list', { name: 'Transcript' })
+    await within(transcript).findByText('Middle.')
+    const video = screen.getByTestId('transcript-moment-video') as HTMLVideoElement
+    const speaking = () => transcript.querySelector('[data-speaking="true"]')?.textContent ?? null
+
+    expect(speaking()).toBeNull()
+    video.currentTime = 6
+    fireEvent.timeUpdate(video)
+    await waitFor(() => expect(speaking()).toContain('Middle.'))
+    video.currentTime = 10.6
+    fireEvent.timeUpdate(video)
+    await waitFor(() => expect(speaking()).toContain('Second.'))
   })
 
   test('tabs keep Moments, Edits, Exports, and Activity in the address', async () => {

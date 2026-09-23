@@ -2,7 +2,7 @@
 
 import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useMemo, useRef, type SyntheticEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { DesignedFrame } from '@/components/media/poster'
@@ -12,7 +12,7 @@ import type { ApiError } from '@/lib/api/client'
 import type { CandidateResponse, ProxyPlaybackResponse } from '@/lib/api/generated/model'
 import { showApiV1ProjectsProjectIdProxyGet } from '@/lib/api/generated/playback/playback'
 import { formatClock } from '@/lib/media/time'
-import { overlaps, transcriptSegments } from '@/lib/media/transcript'
+import { overlaps, segmentIndexAt, transcriptSegments } from '@/lib/media/transcript'
 import { cn } from '@/lib/utils'
 
 import { projectIsProcessing } from './status-labels'
@@ -68,6 +68,22 @@ export function SourceColumn({
     () => transcriptSegments(transcript.data?.words ?? []),
     [transcript.data],
   )
+  // Where the player is, once it has been played or moved; nothing is marked before that.
+  const [playheadMs, setPlayheadMs] = useState<number | null>(null)
+  const speaking = playheadMs === null ? -1 : segmentIndexAt(segments, playheadMs)
+
+  // Keep the spoken line in the middle of the transcript whenever it changes, scrolling only
+  // the transcript itself so the page stays where the member put it. The line only changes
+  // while playing or on a seek, so a paused member can read ahead without being pulled back.
+  useEffect(() => {
+    if (speaking < 0) return
+    const list = transcriptList.current
+    const line = list?.children[speaking]
+    if (list === null || list === undefined || !(line instanceof HTMLElement)) return
+    if (typeof list.scrollTo !== 'function') return
+    const middle = line.offsetTop - list.offsetTop - (list.clientHeight - line.offsetHeight) / 2
+    list.scrollTo({ top: middle, behavior: 'smooth' })
+  }, [speaking])
 
   useEffect(() => {
     if (selected === null) return
@@ -103,6 +119,8 @@ export function SourceColumn({
             controls
             preload="metadata"
             onLoadedMetadata={start}
+            onTimeUpdate={(event) => setPlayheadMs(event.currentTarget.currentTime * 1000)}
+            onSeeked={(event) => setPlayheadMs(event.currentTarget.currentTime * 1000)}
             onError={() => void playback.refetch()}
             className="absolute inset-0 size-full object-contain"
           />
@@ -121,7 +139,8 @@ export function SourceColumn({
           aria-label="Transcript"
           className="max-h-[50vh] space-y-1 overflow-y-auto rounded-lg border bg-card p-2 lg:max-h-[calc(100vh-24rem)]"
         >
-          {segments.map((segment) => {
+          {segments.map((segment, index) => {
+            const now = index === speaking
             const inSelected =
               selected !== null && overlaps(segment, selected.startMs, selected.endMs)
             const inAny = candidates.some((entry) =>
@@ -131,6 +150,7 @@ export function SourceColumn({
               <li
                 key={`${segment.startMs}-${segment.speaker}`}
                 aria-current={inSelected ? 'true' : undefined}
+                data-speaking={now ? 'true' : undefined}
               >
                 <button
                   type="button"
@@ -139,19 +159,26 @@ export function SourceColumn({
                   }}
                   className={cn(
                     'grid w-full grid-cols-[3rem_minmax(0,1fr)] gap-2 rounded-md px-2 py-1.5 text-left text-small transition-colors duration-fast ease-signal',
-                    inSelected
+                    now
+                      ? 'bg-primary text-primary-foreground'
+                      : inSelected
                       ? 'bg-primary-soft text-foreground'
                       : inAny
                         ? 'text-foreground hover:bg-secondary'
                         : 'text-muted-foreground hover:bg-secondary',
                   )}
                 >
-                  <span className="tabular font-mono text-caption text-subtle-foreground">
+                  <span
+                    className={cn(
+                      'tabular font-mono text-caption',
+                      now ? 'text-primary-foreground/70' : 'text-subtle-foreground',
+                    )}
+                  >
                     {formatClock(segment.startMs)}
                   </span>
                   <span
                     className={cn(
-                      inAny && !inSelected && 'underline decoration-line-strong underline-offset-4',
+                      inAny && !inSelected && !now && 'underline decoration-line-strong underline-offset-4',
                     )}
                   >
                     {segment.text}

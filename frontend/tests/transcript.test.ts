@@ -4,6 +4,7 @@ import type { TranscriptWordResponse } from '@/lib/api/generated/model'
 import {
   joinWords,
   overlaps,
+  segmentIndexAt,
   transcriptSegments,
   transcriptWindow,
 } from '@/lib/media/transcript'
@@ -60,5 +61,25 @@ describe('transcript text', () => {
       inside: 'it is. Really?',
       after: 'Yes.',
     })
+  })
+})
+
+describe('the line being spoken', () => {
+  const lines = [
+    { startMs: 1_000, endMs: 1_500, speaker: 'A', text: 'One.' },
+    { startMs: 5_000, endMs: 5_500, speaker: 'A', text: 'Two.' },
+    { startMs: 10_500, endMs: 11_000, speaker: 'B', text: 'Three.' },
+  ]
+
+  test('is the last line that has started, and stays through the pause after it', () => {
+    expect(segmentIndexAt(lines, 1_000)).toBe(0)
+    expect(segmentIndexAt(lines, 3_000)).toBe(0)
+    expect(segmentIndexAt(lines, 5_000)).toBe(1)
+    expect(segmentIndexAt(lines, 60_000)).toBe(2)
+  })
+
+  test('is none before the first line starts, or in an empty transcript', () => {
+    expect(segmentIndexAt(lines, 999)).toBe(-1)
+    expect(segmentIndexAt([], 5_000)).toBe(-1)
   })
 })
