@@ -35,7 +35,6 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { IconButton } from '@/components/ui/icon-button'
 import { Slider } from '@/components/ui/slider'
-import { Switch } from '@/components/ui/switch'
 import { ClipSections } from '@/features/clips/ClipSections'
 import { LookSelection } from '@/features/clips/LookSelection'
 import { ScoreBars } from '@/features/clips/ScoreBars'
@@ -51,6 +50,15 @@ import { transcriptWindow } from '@/lib/media/transcript'
 import { cn } from '@/lib/utils'
 
 import { useReviewKeys } from './use-review-keys'
+
+/**
+ * Everything above review's columns — the application bar, this page's padding, and its
+ * header row — and the player's one row of controls, which together decide how tall the
+ * picture may be on one screen.
+ */
+const ABOVE_COLUMNS = '136px'
+const CONTROLS = '40px'
+const PLAYER_WIDTH = `min(100%, calc((100vh - ${ABOVE_COLUMNS} - ${CONTROLS}) * 9 / 16))`
 
 const SHORTCUTS = [
   ['Space', 'Play or pause'],
@@ -101,6 +109,21 @@ export function ReviewMode({ projectId }: { projectId: string }) {
   }
 
   const player = useRef<{ toggle: () => void } | null>(null)
+  const momentList = useRef<HTMLElement>(null)
+
+  // Keep the chosen moment visible in the list, scrolling only the list itself.
+  useEffect(() => {
+    const list = momentList.current
+    const chosen = list?.querySelector<HTMLElement>('[aria-current="true"]')
+    if (list === null || list === undefined || chosen === null || chosen === undefined) return
+    if (typeof list.scrollTo !== 'function') return
+    const top = chosen.getBoundingClientRect().top - list.getBoundingClientRect().top + list.scrollTop
+    const bottom = top + chosen.offsetHeight
+    if (top < list.scrollTop) list.scrollTo({ top, behavior: 'smooth' })
+    else if (bottom > list.scrollTop + list.clientHeight) {
+      list.scrollTo({ top: bottom - list.clientHeight, behavior: 'smooth' })
+    }
+  }, [currentId])
   // Before a moment is chosen the placeholder is never opened: `onEdit` waits for one.
   const edit = useOpenEdit(current ?? { id: '', projectId })
   const openEdit = () =>
@@ -156,7 +179,12 @@ export function ReviewMode({ projectId }: { projectId: string }) {
       </div>
 
       <div className="grid gap-6 md:grid-cols-[200px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,420px)_minmax(0,1fr)]">
-        <nav aria-label="Moments" className="hidden md:block">
+        {/* The list scrolls on its own and stays put while the page scrolls past it. */}
+        <nav
+          ref={momentList}
+          aria-label="Moments"
+          className="scrollbar-none hidden overscroll-contain md:sticky md:top-[68px] md:block md:max-h-[calc(100vh-136px)] md:self-start md:overflow-y-auto"
+        >
           <ol className="space-y-2">
             {ordered.map((entry, position) => (
               <li key={entry.id}>
@@ -229,13 +257,10 @@ export function ReviewMode({ projectId }: { projectId: string }) {
               onBrandKit={setBrandKitId}
             />
           }
+          // Keyed by moment so each one resolves its own Edit and exports.
+          sections={<ClipSections key={current.id} candidateId={current.id} />}
         />
       </div>
-
-      <section aria-label="Clip" className="mt-8">
-        {/* Keyed by moment so each one resolves its own Edit and exports. */}
-        <ClipSections key={current.id} candidateId={current.id} />
-      </section>
 
       <Dialog open={helpOpen} onOpenChange={setHelpOpen}>
         <DialogContent aria-describedby={undefined}>
@@ -393,8 +418,10 @@ const MomentPlayer = forwardRef<
   const silent = muted || volume === 0
 
   return (
-    <div className="space-y-2">
-      <div className="relative mx-auto aspect-[9/16] max-h-[calc(100vh-10rem)] overflow-hidden rounded-lg bg-background">
+    // As wide as the picture, and the picture as tall as the screen allows beside its one row
+    // of controls, so the controls line up with its edges and nothing needs the page to scroll.
+    <div className="mx-auto space-y-2" style={{ width: PLAYER_WIDTH }}>
+      <div className="relative aspect-[9/16] overflow-hidden rounded-lg bg-background">
         {playback.data === undefined ? (
           playback.isError ? (
             <ErrorNotice error={playback.error} />
@@ -421,7 +448,7 @@ const MomentPlayer = forwardRef<
           />
         )}
       </div>
-      <div className="mx-auto flex items-center gap-2" data-testid="review-controls">
+      <div className="flex items-center gap-2" data-testid="review-controls">
         <IconButton
           size="sm"
           label={playing ? 'Pause' : 'Play'}
@@ -460,14 +487,17 @@ const MomentPlayer = forwardRef<
           value={silent ? 0 : volume}
           disabled={playback.data === undefined}
           onChange={(event) => changeVolume(Number(event.target.value))}
-          className="w-20 shrink-0"
+          className="w-16 shrink-0"
+        />
+        <IconButton
+          size="sm"
+          label="Loop this moment"
+          tooltipSide="top"
+          aria-pressed={loop}
+          onClick={() => setLoop((value) => !value)}
+          icon={<Repeat aria-hidden="true" />}
         />
       </div>
-      <label className="flex items-center justify-center gap-2 text-caption text-muted-foreground">
-        <Repeat aria-hidden="true" strokeWidth={1.75} className="size-3.5" />
-        Loop
-        <Switch checked={loop} onCheckedChange={setLoop} aria-label="Loop this moment" />
-      </label>
     </div>
   )
 })
@@ -480,6 +510,7 @@ function MomentDetail({
   editing,
   error,
   look,
+  sections,
 }: {
   projectId: string
   moment: CandidateResponse
@@ -487,7 +518,14 @@ function MomentDetail({
   editing: boolean
   error: ApiError | null
   look: ReactNode
+  /** The clip's exports, revisions, and the rest, below the decision they follow from. */
+  sections: ReactNode
 }) {
+  const detail = useRef<HTMLElement>(null)
+  // A new moment is read from its top, not from wherever the last one was scrolled to.
+  useEffect(() => {
+    detail.current?.scrollTo?.({ top: 0 })
+  }, [moment.id])
   const transcript = useTranscript(projectId, { enabled: true })
   const words = transcript.data?.words ?? []
   const context = transcriptWindow(words, moment.startMs, moment.endMs)
@@ -495,7 +533,12 @@ function MomentDetail({
   const [whyOpen, setWhyOpen] = useState(true)
 
   return (
-    <section aria-label="Moment" className="space-y-5 md:col-span-2 xl:col-span-1">
+    // On wide screens the details scroll on their own beside the player and the list.
+    <section
+      ref={detail}
+      aria-label="Moment"
+      className="scrollbar-none space-y-5 overscroll-contain md:col-span-2 xl:sticky xl:top-[68px] xl:col-span-1 xl:max-h-[calc(100vh-136px)] xl:self-start xl:overflow-y-auto"
+    >
       <div className="space-y-2">
         <p className="font-mono text-caption text-primary">
           #{moment.rank} · {formatClock(moment.startMs)}–{formatClock(moment.endMs)} ·{' '}
@@ -549,6 +592,9 @@ function MomentDetail({
         </span>
       </div>
       {error === null ? null : <ErrorNotice error={error} />}
+      <section aria-label="Clip" className="pt-3">
+        {sections}
+      </section>
     </section>
   )
 }

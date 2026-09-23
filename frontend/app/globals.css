@@ -194,6 +194,13 @@
   .tabular {
     font-variant-numeric: tabular-nums;
   }
+  /* Scrolls by wheel, touch, and keyboard, but draws no bar. */
+  .scrollbar-none {
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
