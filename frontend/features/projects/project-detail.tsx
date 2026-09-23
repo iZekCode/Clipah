@@ -124,14 +124,9 @@ function LoadedProject({ project, onChanged }: { project: ProjectResponse; onCha
               Add media
             </Button>
           ) : ready ? (
-            <>
-              <Button asChild size="lg">
-                <Link href={`/dashboard/projects/${project.id}/review`}>Review moments</Link>
-              </Button>
-              <Button variant="secondary" size="lg" onClick={() => choose('exports')}>
-                Open exports
-              </Button>
-            </>
+            <Button asChild size="lg">
+              <Link href={`/dashboard/projects/${project.id}/review`}>Review moments</Link>
+            </Button>
           ) : undefined
         }
       />
