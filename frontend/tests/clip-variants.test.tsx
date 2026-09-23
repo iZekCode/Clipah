@@ -6,9 +6,9 @@
  * words, or typed by a member citing a source. So all of it is rendered as React children,
  * and every external link leaves isolated.
  */
-import { screen, within } from '@testing-library/react'
+import { fireEvent, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test } from 'vitest'
+import { describe, expect, test, vi } from 'vitest'
 
 import { ContextWarnings } from '@/features/clips/ContextWarnings'
 import { EvidencePanel } from '@/features/clips/EvidencePanel'
@@ -221,6 +221,47 @@ describe('comparing readings of the same moment', () => {
     const media = document.querySelector('video')
     expect(media).not.toBeNull()
     expect(media?.currentTime).toBe(0)
+  })
+
+  test('a preview plays only the chosen variant and stops at its end', async () => {
+    stubReview({
+      [VARIANTS]: {
+        body: {
+          variants: [
+            variant(),
+            variant({ id: 'b', startMs: 40_000, endMs: 60_000, durationMs: 20_000 }),
+          ],
+          supportedDurationsMs: [20_000, 30_000],
+        },
+      },
+    })
+    const play = vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined)
+    const pause = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(() => undefined)
+    const user = userEvent.setup()
+    renderWithApi(
+      <VariantLab
+        projectId={PROJECT_ID}
+        candidateId={CANDIDATE_ID}
+        workspaceId={WORKSPACE_ID}
+        proxyUrl="https://cdn.test/proxy.mp4"
+      />,
+    )
+
+    const buttons = await screen.findAllByRole('button', { name: /preview/i })
+    await user.click(buttons[1]!)
+    const media = document.querySelector('video')!
+    expect(media.currentTime).toBe(40)
+    expect(play).toHaveBeenCalled()
+    expect(screen.getByText(/0:40–1:00 of the source/)).toBeInTheDocument()
+
+    media.currentTime = 61
+    fireEvent.timeUpdate(media)
+    expect(pause).toHaveBeenCalled()
+    expect(media.currentTime).toBe(40)
+
+    media.currentTime = 5
+    fireEvent.seeking(media)
+    expect(media.currentTime).toBe(40)
   })
 
   test('only the supported lengths may be asked for', async () => {

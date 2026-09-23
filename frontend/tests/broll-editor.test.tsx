@@ -398,6 +398,31 @@ describe('the clip detail page', () => {
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
       [CLIP_DETAIL]: { body: clipDetail() },
+      // The player appears once there is a variant to hold it to.
+      [`GET /api/v1/projects/${PROJECT_ID}/candidates/${CANDIDATE_ID}/variants`]: {
+        body: {
+          variants: [
+            {
+              id: 'variant-1',
+              candidateId: CANDIDATE_ID,
+              platform: 'tiktok',
+              targetDurationMs: 30_000,
+              durationMs: 30_000,
+              startMs: 0,
+              endMs: 30_000,
+              startWordId: 'w1',
+              endWordId: 'w2',
+              hookStrategy: 'cold_open',
+              title: 'Title',
+              rationale: 'Reason',
+              warnings: [],
+              packaging: {},
+              createdAt: '2026-02-01T00:00:00+00:00',
+            },
+          ],
+          supportedDurationsMs: [30_000],
+        },
+      },
       [`GET /api/v1/projects/${PROJECT_ID}/proxy`]: {
         body: {
           url: 'https://objects.test/proxy.mp4?signature=short',
