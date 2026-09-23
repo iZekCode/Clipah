@@ -276,8 +276,8 @@ class FalGenerativeMediaProvider:
         value = prices[0]
         if value.get("endpoint_id") != endpoint_id or value.get("currency") != "USD":
             raise GenerationInvalidResponseError
-        unit = value.get("unit")
-        if unit not in {"image", "megapixel", "second", "video"}:
+        unit = _BILLING_UNITS.get(str(value.get("unit")))
+        if unit is None:
             raise GenerationInvalidResponseError
         unit_price = _decimal(value.get("unit_price"))
         if unit_price < 0:
@@ -461,6 +461,14 @@ def _aspect_ratio(*, width: int, height: int, media_kind: GenerationMediaKind) -
         if width * ratio_height == height * ratio_width:
             return label
     raise GenerationRejectedError
+
+
+#: fal's billing units, singular or plural as its pricing API happens to spell them.
+_BILLING_UNITS = {
+    spelling: unit
+    for unit in ("image", "megapixel", "second", "video")
+    for spelling in (unit, f"{unit}s")
+}
 
 
 def _estimated_billing_units(*, request: GenerationRequest, unit: str) -> Decimal:

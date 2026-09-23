@@ -316,20 +316,18 @@ def test_generation_is_unavailable_without_a_configured_provider(
 
 
 @pytest.mark.integration
-def test_a_sufficiently_relevant_stock_picture_suppresses_generation(
+def test_a_good_stock_picture_may_still_be_replaced_by_generation(
     engine: Engine, clean_database: None
 ) -> None:
-    """Generation is the fallback for a beat stock could not illustrate, never the default."""
+    """Stock is searched first, but a member may still prefer a generated picture."""
     del clean_database
     fixture = _signed_in_with_proposal(engine)
     _attach_stock_asset(engine, fixture, relevance=0.91)
 
     estimate = _estimate(fixture)
-    admission = _generate(fixture, key="generate-suppressed", token="unused")
 
-    assert estimate.json()["available"] is False
-    assert estimate.json()["reason"] == "stock_sufficient"
-    assert_error(admission, status_code=409, code="GENERATION_NOT_ELIGIBLE")
+    assert estimate.json()["available"] is True
+    assert estimate.json()["reason"] is None
 
 
 @pytest.mark.integration
@@ -357,11 +355,19 @@ def test_a_still_estimate_says_whether_a_clip_may_even_be_priced(
 
 
 @pytest.mark.integration
-@pytest.mark.parametrize("status", (BrollSuggestionStatus.ACCEPTED, BrollSuggestionStatus.REMOVED))
-def test_a_decided_suggestion_cannot_start_another_generation(
+@pytest.mark.parametrize(
+    "status",
+    (
+        BrollSuggestionStatus.ACCEPTED,
+        BrollSuggestionStatus.PLACED,
+        BrollSuggestionStatus.GENERATION_REQUESTED,
+        BrollSuggestionStatus.GENERATING,
+    ),
+)
+def test_an_idea_on_the_clip_or_in_generation_cannot_start_another(
     engine: Engine, clean_database: None, status: BrollSuggestionStatus
 ) -> None:
-    """Only a proposal still under review may be sent to a generative provider."""
+    """An idea already on the clip, or already being generated, is not sent again."""
     del clean_database
     fixture = _signed_in_with_proposal(engine)
     with engine.begin() as connection:
@@ -372,6 +378,27 @@ def test_a_decided_suggestion_cannot_start_another_generation(
         )
 
     assert _estimate(fixture).json()["reason"] == "not_reviewable"
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    "status",
+    (BrollSuggestionStatus.REMOVED, BrollSuggestionStatus.REJECTED, BrollSuggestionStatus.FAILED),
+)
+def test_an_idea_taken_off_the_clip_or_turned_down_may_be_generated(
+    engine: Engine, clean_database: None, status: BrollSuggestionStatus
+) -> None:
+    """A member who removed or rejected an idea may still want a generated picture for it."""
+    del clean_database
+    fixture = _signed_in_with_proposal(engine)
+    with engine.begin() as connection:
+        connection.execute(
+            update(BrollSuggestion)
+            .where(BrollSuggestion.id == fixture.suggestion_id)
+            .values(status=status)
+        )
+
+    assert _estimate(fixture).json()["available"] is True
 
 
 @pytest.mark.integration

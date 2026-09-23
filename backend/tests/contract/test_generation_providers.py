@@ -488,9 +488,47 @@ def test_fal_estimate_uses_current_unit_price_and_a_bounded_cache() -> None:
 
 
 @pytest.mark.unit
+def test_fal_image_estimate_reads_the_plural_unit_its_pricing_api_returns() -> None:
+    """fal's pricing API spells its units in the plural; an estimate must not refuse that."""
+
+    def respond(_: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "prices": [
+                    {
+                        "endpoint_id": "fal-ai/nano-banana-2",
+                        "unit_price": 0.08,
+                        "unit": "images",
+                        "currency": "USD",
+                    }
+                ],
+                "next_cursor": None,
+                "has_more": False,
+            },
+        )
+
+    provider = FalGenerativeMediaProvider(
+        config=_fal_config(),
+        client=httpx.Client(transport=httpx.MockTransport(respond)),
+        utc_clock=lambda: NOW,
+        monotonic=lambda: 0.0,
+    )
+
+    estimate = provider.estimate(request=_image_request())
+
+    assert estimate.cost_usd == Decimal("0.08")
+
+
+@pytest.mark.unit
 @pytest.mark.parametrize(
     ("unit", "expected_cost"),
-    (("second", Decimal("0.50")), ("video", Decimal("0.10"))),
+    (
+        ("second", Decimal("0.50")),
+        ("seconds", Decimal("0.50")),
+        ("video", Decimal("0.10")),
+        ("videos", Decimal("0.10")),
+    ),
 )
 def test_fal_video_estimate_normalizes_supported_billing_units(
     unit: str, expected_cost: Decimal

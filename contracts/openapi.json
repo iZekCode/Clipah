@@ -3475,7 +3475,6 @@
         "description": "Why a suggestion cannot be sent to a generative provider right now.",
         "enum": [
           "not_reviewable",
-          "stock_sufficient",
           "provider_unavailable",
           "video_disabled"
         ],

@@ -14,7 +14,6 @@ export type GenerationUnavailableReason = typeof GenerationUnavailableReason[key
 // eslint-disable-next-line @typescript-eslint/no-redeclare
 export const GenerationUnavailableReason = {
   not_reviewable: 'not_reviewable',
-  stock_sufficient: 'stock_sufficient',
   provider_unavailable: 'provider_unavailable',
   video_disabled: 'video_disabled',
 } as const;

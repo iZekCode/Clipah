@@ -248,9 +248,9 @@ accepts it; accepted B-roll stays editable, preserves dialogue audio by default,
 complete provenance — which provider, which licence, which retrieval.
 
 Stock retrieval always precedes generation, and retrieval stops early when it already has
-enough. Generation is a last resort and is heavily gated: a generated-video job cannot start
-without an estimate, a quota reservation, moderation, and an explicit confirmation from a
-member. Default Workspace budgets are 30 analyses, 200 stock requests, 50 generated images,
+enough. Generation stays on offer for every idea still under review, and is heavily
+gated: a generated-video job cannot start without an estimate, a quota reservation,
+moderation, and an explicit confirmation from a member. Default Workspace budgets are 30 analyses, 200 stock requests, 50 generated images,
 10 generated videos, 300 generated seconds, and 100 publications per month. Generated video
 stays off behind its own flag. `docs/operations/generative-media.md` covers cost, safety,
 and how to stop generation quickly.

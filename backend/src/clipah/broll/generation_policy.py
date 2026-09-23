@@ -37,12 +37,22 @@ RUNWAY_CREDITS_PER_SECOND = Decimal(5)
 
 GenerationProviders = Callable[[GenerationMediaKind], GenerativeMediaProvider | None]
 
+#: Ideas that are off the clip and not already being generated. A finished generation
+#: always returns its idea to `proposed`, so starting from any of these is safe.
+GENERATABLE_STATUSES = frozenset(
+    {
+        BrollSuggestionStatus.PROPOSED,
+        BrollSuggestionStatus.REMOVED,
+        BrollSuggestionStatus.REJECTED,
+        BrollSuggestionStatus.FAILED,
+    }
+)
+
 
 class GenerationUnavailableReason(StrEnum):
     """Why a suggestion cannot be sent to a generative provider right now."""
 
     NOT_REVIEWABLE = "not_reviewable"
-    STOCK_SUFFICIENT = "stock_sufficient"
     PROVIDER_UNAVAILABLE = "provider_unavailable"
     VIDEO_DISABLED = "video_disabled"
 
@@ -74,15 +84,13 @@ def suggestion_generation_refusal(
 
     Admission checks this first so a suggestion nobody may generate answers with why,
     rather than with a complaint about the confirmation that accompanied the request.
+    Stock is still searched first, but a good stock picture no longer rules generation
+    out: a member may prefer a generated one, and pays for it from the same allowance. An
+    idea on the clip, or already being generated, is refused; any other may be tried again.
     """
-    if target.status is not BrollSuggestionStatus.PROPOSED:
+    del settings
+    if target.status not in GENERATABLE_STATUSES:
         return GenerationUnavailableReason.NOT_REVIEWABLE
-    if (
-        target.asset_id is not None
-        and target.relevance_score is not None
-        and target.relevance_score >= settings.broll_min_relevance
-    ):
-        return GenerationUnavailableReason.STOCK_SUFFICIENT
     return None
 
 

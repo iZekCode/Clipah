@@ -8,7 +8,6 @@ import type { GenerationEstimateResponse, GenerationOfferResponse } from '@/lib/
 const UNAVAILABLE_COPY: Record<string, string> = {
   provider_unavailable: 'Generated media is not available on this deployment.',
   video_disabled: 'Generated video is not available on this deployment.',
-  stock_sufficient: 'This beat already has a picture good enough to use.',
   not_reviewable: 'This suggestion is no longer waiting for a decision.',
 }
 

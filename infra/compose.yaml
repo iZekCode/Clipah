@@ -143,6 +143,8 @@ services:
       CLIPAH_FAL_IMAGE_MODEL_ID: "${CLIPAH_FAL_IMAGE_MODEL_ID:-fal-ai/nano-banana-2}"
       CLIPAH_FAL_VIDEO_MODEL_ALIAS: "${CLIPAH_FAL_VIDEO_MODEL_ALIAS:-video-default}"
       CLIPAH_FAL_VIDEO_MODEL_ID: "${CLIPAH_FAL_VIDEO_MODEL_ID:-fal-ai/kling-video/v2.6/pro/text-to-video}"
+      # Generated video stays off unless backend/.env turns it on.
+      CLIPAH_GENERATIVE_VIDEO_ENABLED: "${CLIPAH_GENERATIVE_VIDEO_ENABLED:-false}"
     ports: ["127.0.0.1:58000:8000"]
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/ready', timeout=3).read()"]
@@ -274,6 +276,8 @@ services:
       CLIPAH_FAL_IMAGE_MODEL_ID: "${CLIPAH_FAL_IMAGE_MODEL_ID:-fal-ai/nano-banana-2}"
       CLIPAH_FAL_VIDEO_MODEL_ALIAS: "${CLIPAH_FAL_VIDEO_MODEL_ALIAS:-video-default}"
       CLIPAH_FAL_VIDEO_MODEL_ID: "${CLIPAH_FAL_VIDEO_MODEL_ID:-fal-ai/kling-video/v2.6/pro/text-to-video}"
+      # Generated video stays off unless backend/.env turns it on.
+      CLIPAH_GENERATIVE_VIDEO_ENABLED: "${CLIPAH_GENERATIVE_VIDEO_ENABLED:-false}"
     depends_on: *dependencies
     healthcheck: *worker-health
     deploy: {resources: {limits: {cpus: "1.0", memory: 1g}}}

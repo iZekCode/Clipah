@@ -165,16 +165,23 @@ describe('offering to generate a picture', () => {
     expect(await screen.findByRole('button', { name: /generate still/i })).toBeVisible()
   })
 
-  test('a good stock picture suppresses the offer entirely', async () => {
+  test('a good stock picture still leaves the choice to generate one', async () => {
     stubPanel([suggestion({ assetId: GENERATED_ASSET, relevanceScore: 0.91, sourceType: 'stock' })])
     await openPanel()
 
     await screen.findByRole('button', { name: /accept/i })
-    expect(screen.queryByRole('button', { name: /generate still/i })).toBeNull()
+    expect(screen.getByRole('button', { name: /generate still/i })).toBeVisible()
   })
 
-  test('a decided suggestion is never offered another generation', async () => {
-    stubPanel([suggestion({ status: 'rejected' })])
+  test('an idea taken off the clip may still be generated', async () => {
+    stubPanel([suggestion({ status: 'removed' })])
+    await openPanel()
+
+    expect(await screen.findByRole('button', { name: /generate still/i })).toBeVisible()
+  })
+
+  test('an idea already on the clip is not offered another generation', async () => {
+    stubPanel([suggestion({ status: 'placed' })])
     await openPanel()
 
     expect(screen.queryByRole('button', { name: /generate still/i })).toBeNull()

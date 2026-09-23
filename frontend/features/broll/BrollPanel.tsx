@@ -26,9 +26,6 @@ import { BrollSuggestionCard } from './BrollSuggestionCard'
 import { CoverageControl } from './CoverageControl'
 import { GenerationConfirmDialog } from './GenerationConfirmDialog'
 
-/** The relevance at or above which a retrieved picture answers the beat well enough. */
-const SUFFICIENT_RELEVANCE = 0.5
-
 /** What a member decided about one suggestion, in the words the backend records. */
 export type BrollAction = 'accept' | 'replace' | 'remove' | 'reject'
 
@@ -279,20 +276,12 @@ export function BrollPanel({
   )
 }
 
-/**
- * Whether this proposal is one generation could still help with.
- *
- * The server decides this too, and refuses admission either way; the panel mirrors the
- * same rule so a member is never offered a button whose only answer is a refusal.
- */
+/** Ideas off the clip and not already being generated; the server holds the same set. */
+const GENERATABLE = new Set(['proposed', 'removed', 'rejected', 'failed'])
+
+/** Whether this idea may be generated: any idea not on the clip and not already working. */
 function generationOffered(suggestion: BrollSuggestionResponse): boolean {
-  if (suggestion.status !== 'proposed') {
-    return false
-  }
-  if (suggestion.assetId === null || suggestion.assetId === undefined) {
-    return true
-  }
-  return (suggestion.relevanceScore ?? 0) < SUFFICIENT_RELEVANCE
+  return GENERATABLE.has(suggestion.status)
 }
 
 /** Say what a refusal means in words a member can act on, or keep the request ID. */
