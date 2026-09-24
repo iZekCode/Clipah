@@ -107,6 +107,18 @@
     text-transform: uppercase;
   }
 
+  /* A picture with transparency, shown over the checks every image editor uses. */
+  .checkerboard {
+    background-color: rgb(var(--secondary));
+    background-image: conic-gradient(
+      rgb(255 255 255 / 0.06) 25%,
+      transparent 0 50%,
+      rgb(255 255 255 / 0.06) 0 75%,
+      transparent 0
+    );
+    background-size: 12px 12px;
+  }
+
   .signal-checkbox,
   .signal-radio {
     appearance: none;

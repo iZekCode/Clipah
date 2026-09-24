@@ -15,6 +15,7 @@ from uuid import UUID, uuid4
 from sqlalchemy import CursorResult, select, text, update
 from sqlalchemy.orm import Session
 
+from clipah.assets.library import not_removed
 from clipah.broll.models import BrollSuggestionStatus
 from clipah.models import (
     Asset,
@@ -176,7 +177,9 @@ class EditRepository:
         return frozenset(
             self._session.scalars(
                 select(Asset.id).where(
-                    Asset.workspace_id == workspace_id, Asset.project_id == project_id
+                    Asset.workspace_id == workspace_id,
+                    Asset.project_id == project_id,
+                    not_removed(),
                 )
             )
         )

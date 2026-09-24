@@ -178,6 +178,7 @@ export * from './dashboardUsageResponse';
 export * from './dashboardWorkspaceResponse';
 export * from './decideApiV1EditsEditIdBrollDecisionsPostParams';
 export * from './deleteApiV1ProjectsProjectIdDeleteParams';
+export * from './deleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams';
 export * from './disconnectApiV1SocialAccountsSocialAccountIdDeleteParams';
 export * from './downloadApiV1RendersRenderIdDownloadUrlGetParams';
 export * from './easing';

@@ -1,20 +1,23 @@
 'use client'
 
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Upload } from 'lucide-react'
+import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Plus, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
-import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberScrub } from '@/components/ui/number-scrub'
 import { SegmentedControl } from '@/components/ui/segmented-control'
-import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { SIGNED_MEDIA_STALE_MS } from '@/features/media/use-storyboard'
 import { apiFetch, type ApiError } from '@/lib/api/client'
 import { indexApiV1ProjectsProjectIdAssetsGet } from '@/lib/api/generated/assets/assets'
 import type { ProjectAssetResponse, ProjectAssetsResponse } from '@/lib/api/generated/model'
-import { getCreateApiV1ProjectsProjectIdPicturesPostUrl } from '@/lib/api/generated/pictures/pictures'
+import {
+  deleteApiV1ProjectsProjectIdPicturesAssetIdDelete,
+  getCreateApiV1ProjectsProjectIdPicturesPostUrl,
+} from '@/lib/api/generated/pictures/pictures'
+import { previewAssetApiV1AssetsAssetIdPreviewUrlGet } from '@/lib/api/generated/studio/studio'
 import { cn } from '@/lib/utils'
 
 import type { CompositionWatermark } from './store'
@@ -78,6 +81,16 @@ export function WatermarkPanel({
   const pictures = (assets.data?.assets ?? []).filter((asset) =>
     asset.contentType.startsWith('image/'),
   )
+  // Each picture is shown as itself, so a member chooses by sight rather than by number.
+  const thumbnails = useQueries({
+    queries: (watermark?.kind === 'image' ? pictures : []).map((asset) => ({
+      queryKey: ['/api/v1/assets/preview-url', workspaceId, asset.id],
+      queryFn: ({ signal }: { signal: AbortSignal }) =>
+        previewAssetApiV1AssetsAssetIdPreviewUrlGet(asset.id, { workspace_id: workspaceId }, { signal }),
+      staleTime: SIGNED_MEDIA_STALE_MS,
+      retry: false,
+    })),
+  })
   // Text is saved as it is typed only once it has something in it; a blank line is no mark.
   const [draft, setDraft] = useState(watermark?.text ?? '')
   useEffect(() => {
@@ -100,6 +113,19 @@ export function WatermarkPanel({
       if (watermark === null) return
       const size = watermark.kind === 'image' ? watermark.size : STARTING_SIZE.image
       onChange({ ...watermark, kind: 'image', size, assetId: picture.id, text: null })
+    },
+  })
+
+  const remove = useMutation<void, ApiError, string>({
+    mutationFn: (assetId) =>
+      deleteApiV1ProjectsProjectIdPicturesAssetIdDelete(projectId, assetId, {
+        workspace_id: workspaceId,
+      }),
+    onSuccess: (_nothing, assetId) => {
+      client.setQueryData<ProjectAssetsResponse>(assetsKey, (current) => ({
+        assets: (current?.assets ?? []).filter((asset) => asset.id !== assetId),
+      }))
+      void client.invalidateQueries({ queryKey: assetsKey })
     },
   })
 
@@ -159,42 +185,76 @@ export function WatermarkPanel({
               if (file !== undefined) upload.mutate(file)
             }}
           />
-          {watermark.kind === 'image' && pictures.length > 0 ? (
-            <label className="block space-y-1.5">
-              <span className="text-caption text-muted-foreground">Picture</span>
-              <Select
+          {watermark.kind === 'image' ? (
+            <div className="space-y-2">
+              <div
+                role="radiogroup"
                 aria-label="Watermark picture"
-                value={watermark.assetId ?? ''}
-                onChange={(event) => onChange({ ...watermark, assetId: event.target.value })}
+                className="grid grid-cols-3 gap-2"
               >
-                {pictures.map((asset, index) => (
-                  <option key={asset.id} value={asset.id}>
-                    {asset.kind === 'picture' ? 'Uploaded picture' : 'B-roll picture'} {index + 1}
-                    {asset.width === null || asset.height === null
-                      ? ''
-                      : ` · ${asset.width}×${asset.height}`}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          ) : null}
-          {watermark.kind === 'image' || pictures.length === 0 ? (
-            <div className="space-y-1.5">
-              <Button
-                size="sm"
-                variant="secondary"
-                loading={upload.isPending}
-                onClick={() => picker.current?.click()}
-              >
-                <Upload aria-hidden="true" strokeWidth={1.75} />
-                Upload picture
-              </Button>
+                {pictures.map((asset, index) => {
+                  const uploaded = asset.kind === 'picture'
+                  const name = `${uploaded ? 'Uploaded' : 'B-roll'} picture ${index + 1}`
+                  const chosen = watermark.assetId === asset.id
+                  const url = thumbnails[index]?.data?.url
+                  return (
+                    <div key={asset.id} className="group relative">
+                      <button
+                        type="button"
+                        role="radio"
+                        aria-checked={chosen}
+                        aria-label={
+                          asset.width === null || asset.height === null
+                            ? name
+                            : `${name}, ${asset.width}×${asset.height}`
+                        }
+                        onClick={() => onChange({ ...watermark, assetId: asset.id })}
+                        className={cn(
+                          'checkerboard flex aspect-square w-full items-center justify-center overflow-hidden rounded-md border p-1.5 transition-colors duration-fast ease-signal',
+                          chosen
+                            ? 'border-primary ring-1 ring-primary'
+                            : 'border-line-strong hover:border-input',
+                        )}
+                      >
+                        {url === undefined ? null : (
+                          // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived link
+                          <img src={url} alt="" className="max-h-full max-w-full object-contain" />
+                        )}
+                      </button>
+                      {uploaded && !chosen ? (
+                        <button
+                          type="button"
+                          aria-label={`Delete ${name.toLowerCase()}`}
+                          disabled={remove.isPending}
+                          onClick={() => remove.mutate(asset.id)}
+                          className="absolute right-1 top-1 rounded-sm bg-background/85 p-1 text-muted-foreground opacity-0 transition-opacity duration-fast hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 disabled:opacity-50"
+                        >
+                          <Trash2 aria-hidden="true" className="size-3.5" strokeWidth={1.75} />
+                        </button>
+                      ) : null}
+                    </div>
+                  )
+                })}
+                <button
+                  type="button"
+                  aria-label="Upload picture"
+                  aria-busy={upload.isPending}
+                  disabled={upload.isPending}
+                  onClick={() => picker.current?.click()}
+                  className="flex aspect-square w-full flex-col items-center justify-center gap-1 rounded-md border border-dashed border-line-strong text-caption text-muted-foreground transition-colors duration-fast ease-signal hover:border-input hover:text-foreground disabled:opacity-60"
+                >
+                  <Plus aria-hidden="true" className="size-4" strokeWidth={1.75} />
+                  {upload.isPending ? 'Uploading…' : 'Upload'}
+                </button>
+              </div>
               <p className="text-caption text-muted-foreground">
-                PNG, JPEG, or WebP up to 5 MB. A PNG with a transparent background looks best.
+                PNG, JPEG, or WebP, up to 5 MB. Transparent PNGs look best. The picture this clip
+                uses can&apos;t be deleted.
               </p>
             </div>
           ) : null}
           {upload.error === null ? null : <ErrorNotice error={upload.error} />}
+          {remove.error === null ? null : <ErrorNotice error={remove.error} />}
 
           {watermark.kind === 'text' ? (
             <label className="block space-y-1.5">

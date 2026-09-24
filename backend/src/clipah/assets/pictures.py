@@ -12,16 +12,27 @@ import hashlib
 import io
 import warnings
 from dataclasses import dataclass
+from datetime import datetime
 from uuid import UUID, uuid4
 
 from PIL import Image, UnidentifiedImageError
-from sqlalchemy import select
+from sqlalchemy import String, cast, select
 from sqlalchemy.orm import Session
 
 from clipah.assets.keys import picture_asset_key
-from clipah.assets.library import LibraryAsset, ProjectNotFoundError
+from clipah.assets.library import LibraryAsset, ProjectNotFoundError, not_removed
 from clipah.assets.storage import ObjectStore
-from clipah.models import Asset, AssetKind, AssetSourceType, Project
+from clipah.models import (
+    Asset,
+    AssetKind,
+    AssetSourceType,
+    ClipCandidate,
+    ClipEdit,
+    ClipEditRevision,
+    Project,
+)
+from clipah.retention.policy import RetentionEntityKind
+from clipah.retention.use_cases import schedule_tombstone
 from clipah.workspaces.models import WorkspaceAccess
 
 MAX_PICTURE_BYTES = 5 * 1024 * 1024
@@ -36,6 +47,14 @@ class PictureInvalidError(Exception):
 
 class PictureTooLargeError(Exception):
     """The upload is more bytes than a picture may be."""
+
+
+class PictureNotFoundError(Exception):
+    """No picture of this Project by that identifier, or the caller may not learn of one."""
+
+
+class PictureInUseError(Exception):
+    """A clip's current version still draws this picture, so it cannot be removed."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -141,4 +160,67 @@ def store_picture(
         width=asset.width,
         height=asset.height,
         created_at=asset.created_at,
+    )
+
+
+def remove_picture(
+    session: Session,
+    *,
+    access: WorkspaceAccess,
+    project_id: UUID,
+    asset_id: UUID,
+    now: datetime,
+) -> None:
+    """Remove one uploaded picture from its Project, unless a clip still draws it.
+
+    Only the current version of each clip is checked: an older Revision that named the
+    picture stays in history, but can no longer be saved again as it was. The picture
+    stops being offered at once, and retention deletes its bytes on its next sweep.
+    """
+    picture = session.scalars(
+        select(Asset)
+        .join(
+            Project,
+            (Project.workspace_id == Asset.workspace_id) & (Project.id == Asset.project_id),
+        )
+        .where(
+            Asset.workspace_id == access.workspace_id,
+            Asset.project_id == project_id,
+            Asset.id == asset_id,
+            Asset.kind == AssetKind.PICTURE,
+            Project.archived_at.is_(None),
+            not_removed(),
+        )
+    ).first()
+    if picture is None:
+        raise PictureNotFoundError(str(asset_id))
+    in_use = session.scalar(
+        select(ClipEditRevision.id)
+        .join(
+            ClipEdit,
+            (ClipEdit.workspace_id == ClipEditRevision.workspace_id)
+            & (ClipEdit.id == ClipEditRevision.clip_edit_id)
+            & (ClipEdit.current_revision == ClipEditRevision.revision),
+        )
+        .join(
+            ClipCandidate,
+            (ClipCandidate.workspace_id == ClipEdit.workspace_id)
+            & (ClipCandidate.id == ClipEdit.candidate_id),
+        )
+        .where(
+            ClipEditRevision.workspace_id == access.workspace_id,
+            ClipCandidate.project_id == project_id,
+            cast(ClipEditRevision.composition, String).contains(str(asset_id)),
+        )
+        .limit(1)
+    )
+    if in_use is not None:
+        raise PictureInUseError(str(asset_id))
+    schedule_tombstone(
+        session,
+        workspace_id=access.workspace_id,
+        entity_kind=RetentionEntityKind.REMOVED_PICTURE,
+        entity_id=picture.id,
+        storage_prefix=picture.storage_key,
+        eligible_at=now,
     )

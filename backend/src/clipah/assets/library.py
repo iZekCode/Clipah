@@ -12,10 +12,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import ColumnElement, exists, select
 from sqlalchemy.orm import Session
 
-from clipah.models import Asset, AssetKind, Project
+from clipah.models import Asset, AssetKind, Project, RetentionTombstone
+from clipah.retention.policy import RetentionEntityKind
 from clipah.workspaces.models import WorkspaceAccess
 
 # Proxies, thumbnails, waveforms, transcription audio, and renders are produced by the
@@ -26,6 +27,20 @@ from clipah.workspaces.models import WorkspaceAccess
 PLACEABLE_KINDS: frozenset[AssetKind] = frozenset(
     {AssetKind.SOURCE, AssetKind.BROLL, AssetKind.PICTURE}
 )
+
+
+def not_removed(asset: type[Asset] = Asset) -> ColumnElement[bool]:
+    """Say, in SQL, that an Asset is not a picture its member removed.
+
+    Removal leaves the row as the record of what was kept, and schedules its bytes for
+    deletion; every query that offers, signs, or authorizes media excludes it through
+    this one predicate.
+    """
+    return ~exists().where(
+        RetentionTombstone.workspace_id == asset.workspace_id,
+        RetentionTombstone.entity_kind == RetentionEntityKind.REMOVED_PICTURE.value,
+        RetentionTombstone.entity_id == asset.id,
+    )
 
 
 class ProjectNotFoundError(Exception):
@@ -70,6 +85,7 @@ def project_assets(
             Asset.workspace_id == access.workspace_id,
             Asset.project_id == project_id,
             Asset.kind.in_(PLACEABLE_KINDS),
+            not_removed(),
         )
         .order_by(Asset.created_at.asc(), Asset.id.asc())
     )

@@ -5,11 +5,12 @@ from __future__ import annotations
 from typing import Annotated
 from uuid import UUID
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 
 from clipah.api.dependencies import (
     CurrentWorkspace,
     DatabaseSession,
+    auth_components_for,
     object_store_for,
     require_csrf,
     require_workspace,
@@ -19,8 +20,11 @@ from clipah.api.routes.assets import ProjectAssetResponse
 from clipah.assets.library import ProjectNotFoundError
 from clipah.assets.pictures import (
     MAX_PICTURE_BYTES,
+    PictureInUseError,
     PictureInvalidError,
+    PictureNotFoundError,
     PictureTooLargeError,
+    remove_picture,
     store_picture,
 )
 from clipah.assets.storage import ObjectStore
@@ -92,3 +96,32 @@ def create(
         height=asset.height,
         createdAt=asset.created_at,
     )
+
+
+@router.delete(
+    "/projects/{project_id}/pictures/{asset_id}",
+    status_code=204,
+    dependencies=[Depends(require_csrf)],
+)
+def delete(
+    request: Request,
+    project_id: UUID,
+    asset_id: UUID,
+    session: DatabaseSession,
+    workspace: EditableWorkspace,
+) -> Response:
+    """Remove one uploaded picture, unless a clip still draws it."""
+    try:
+        remove_picture(
+            session,
+            access=workspace.access,
+            project_id=project_id,
+            asset_id=asset_id,
+            now=auth_components_for(request).now(),
+        )
+    except PictureNotFoundError as error:
+        raise ApiError(status_code=404, code="NOT_FOUND") from error
+    except PictureInUseError as error:
+        raise ApiError(status_code=409, code="PICTURE_IN_USE") from error
+    session.commit()
+    return Response(status_code=204)

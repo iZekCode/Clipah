@@ -22,6 +22,7 @@ from sqlalchemy import ColumnElement, and_, func, or_, select
 from sqlalchemy.orm import Session
 
 from clipah.assets.clip_posters import poster_candidate_id
+from clipah.assets.library import not_removed
 from clipah.assets.preview_media import (
     STORYBOARD_V1,
     WAVEFORM_PEAKS_PER_SECOND,
@@ -488,6 +489,7 @@ def browse_assets(
     conditions: list[ColumnElement[bool]] = [
         Asset.workspace_id == access.workspace_id,
         Asset.kind.in_(kinds),
+        not_removed(),
     ]
     if project_id is not None:
         conditions.append(Asset.project_id == project_id)
@@ -536,6 +538,7 @@ def asset_preview(
             Asset.workspace_id == access.workspace_id,
             Asset.id == asset_id,
             Asset.kind.in_(BROWSABLE_ASSET_KINDS),
+            not_removed(),
         )
     ).first()
     if row is None:

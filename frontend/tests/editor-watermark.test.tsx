@@ -25,6 +25,16 @@ const SAVE_EDIT = `PUT /api/v1/edits/${EDIT_ID}`
 const PROXY = `GET /api/v1/projects/${PROJECT_ID}/proxy`
 const ASSETS = `GET /api/v1/projects/${PROJECT_ID}/assets`
 const UPLOAD = `POST /api/v1/projects/${PROJECT_ID}/pictures`
+const SPARE = {
+  id: '99999999-0000-4000-8000-00000000000c',
+  kind: 'picture',
+  contentType: 'image/png',
+  sizeBytes: 900,
+  durationMs: null,
+  width: 400,
+  height: 100,
+  createdAt: '2026-01-31T00:00:00+00:00',
+}
 const UPLOADED = {
   id: '99999999-0000-4000-8000-00000000000b',
   kind: 'picture',
@@ -93,6 +103,7 @@ describe('the watermark panel', () => {
 
   /** Open the editor on the Watermark tool, over a Project holding one picture unless told. */
   async function openWatermark(document: CompositionV1, pictures = true): Promise<void> {
+    let spareDeleted = false
     api = stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
@@ -108,10 +119,14 @@ describe('the watermark panel', () => {
         },
       },
       [UPLOAD]: { status: 201, body: UPLOADED },
+      [`DELETE /api/v1/projects/${PROJECT_ID}/pictures/${SPARE.id}`]: () => {
+        spareDeleted = true
+        return { status: 204 }
+      },
       [`GET /api/v1/assets/${UPLOADED.id}/preview-url`]: {
         body: { url: 'https://storage.test/mine.png', expiresAt: '2026-02-01T00:05:00+00:00' },
       },
-      [ASSETS]: {
+      [ASSETS]: () => ({
         body: {
           assets: pictures ? [
             {
@@ -124,9 +139,10 @@ describe('the watermark panel', () => {
               height: 512,
               createdAt: '2026-02-01T00:00:00+00:00',
             },
+            ...(spareDeleted ? [] : [SPARE]),
           ] : [],
         },
-      },
+      }),
       [`GET /api/v1/assets/${LOGO_ID}/preview-url`]: {
         body: { url: 'https://storage.test/logo.png', expiresAt: '2026-02-01T00:05:00+00:00' },
       },
@@ -190,6 +206,29 @@ describe('the watermark panel', () => {
       'src',
       'https://storage.test/mine.png',
     )
+  })
+
+  test('an uploaded picture no clip mark uses can be deleted; the one in use cannot', async () => {
+    const user = userEvent.setup()
+    await openWatermark(composition({ watermark: { ...CLIPAH_WATERMARK, kind: 'image', assetId: LOGO_ID } }))
+    const panel = screen.getByRole('region', { name: 'Watermark' })
+    const grid = await within(panel).findByRole('radiogroup', { name: 'Watermark picture' })
+
+    await user.click(await within(grid).findByRole('button', { name: 'Delete uploaded picture 2' }))
+
+    await waitFor(() =>
+      expect(api.calls.some((call) => call.method === 'DELETE' && call.path.endsWith(SPARE.id))).toBe(true),
+    )
+    await waitFor(() => expect(within(grid).queryByRole('radio', { name: /uploaded picture 2/i })).toBeNull())
+  })
+
+  test('the uploaded picture this clip is marked with offers no delete', async () => {
+    await openWatermark(composition({ watermark: { ...CLIPAH_WATERMARK, kind: 'image', assetId: SPARE.id } }))
+    const panel = screen.getByRole('region', { name: 'Watermark' })
+    const grid = await within(panel).findByRole('radiogroup', { name: 'Watermark picture' })
+
+    expect(within(grid).getByRole('radio', { name: /uploaded picture 2/i })).toHaveAttribute('aria-checked', 'true')
+    expect(within(grid).queryByRole('button', { name: 'Delete uploaded picture 2' })).toBeNull()
   })
 
   test('a line of text replaces the logo', async () => {

@@ -37,6 +37,7 @@ class RetentionEntityKind(StrEnum):
     SOCIAL_ACCOUNT = "social_account"
     GENERATED_DRAFT = "generated_draft"
     STOCK_PREVIEW = "stock_preview"
+    REMOVED_PICTURE = "removed_picture"
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,6 +75,9 @@ class RetentionPolicy:
                     RetentionEntityKind.GENERATED_DRAFT: timedelta(
                         hours=settings.retention_rejected_generated_draft_hours
                     ),
+                    # A picture its member removed is theirs to have gone at once; no clip
+                    # still uses it, because removal is refused while one does.
+                    RetentionEntityKind.REMOVED_PICTURE: timedelta(0),
                     RetentionEntityKind.STOCK_PREVIEW: timedelta(
                         hours=settings.retention_unselected_stock_preview_hours
                     ),

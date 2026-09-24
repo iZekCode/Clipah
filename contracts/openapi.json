@@ -11205,6 +11205,63 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/pictures/{asset_id}": {
+      "delete": {
+        "description": "Remove one uploaded picture, unless a clip still draws it.",
+        "operationId": "delete_api_v1_projects__project_id__pictures__asset_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "asset_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Asset Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete",
+        "tags": [
+          "pictures"
+        ]
+      }
+    },
     "/api/v1/projects/{project_id}/posters": {
       "get": {
         "description": "Sign five minutes of access to every poster drawn for one Project's moments.",

@@ -16,6 +16,7 @@ import type {
 
 import type {
   CreateApiV1ProjectsProjectIdPicturesPostParams,
+  DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams,
   HTTPValidationError,
   ProjectAssetResponse
 } from '.././model';
@@ -106,6 +107,88 @@ export const useCreateApiV1ProjectsProjectIdPicturesPost = <TError = HTTPValidat
       > => {
 
       const mutationOptions = getCreateApiV1ProjectsProjectIdPicturesPostMutationOptions(options);
+
+      return useMutation(mutationOptions, queryClient);
+    }
+    /**
+ * Remove one uploaded picture, unless a clip still draws it.
+ * @summary Delete
+ */
+export const getDeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteUrl = (projectId: string,
+    assetId: string,
+    params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+    
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : value.toString())
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/v1/projects/${projectId}/pictures/${assetId}?${stringifiedParams}` : `/api/v1/projects/${projectId}/pictures/${assetId}`
+}
+
+export const deleteApiV1ProjectsProjectIdPicturesAssetIdDelete = async (projectId: string,
+    assetId: string,
+    params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams, options?: RequestInit): Promise<void> => {
+  
+  return apiFetch<void>(getDeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteUrl(projectId,assetId,params),
+  {      
+    ...options,
+    method: 'DELETE'
+    
+    
+  }
+);}
+
+
+
+
+export const getDeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteMutationOptions = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>, TError,{projectId: string;assetId: string;params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>, TError,{projectId: string;assetId: string;params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams}, TContext> => {
+
+const mutationKey = ['deleteApiV1ProjectsProjectIdPicturesAssetIdDelete'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+      
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>, {projectId: string;assetId: string;params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams}> = (props) => {
+          const {projectId,assetId,params} = props ?? {};
+
+          return  deleteApiV1ProjectsProjectIdPicturesAssetIdDelete(projectId,assetId,params,requestOptions)
+        }
+
+        
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteMutationResult = NonNullable<Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>>
+    
+    export type DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteMutationError = HTTPValidationError
+
+    /**
+ * @summary Delete
+ */
+export const useDeleteApiV1ProjectsProjectIdPicturesAssetIdDelete = <TError = HTTPValidationError,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>, TError,{projectId: string;assetId: string;params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteApiV1ProjectsProjectIdPicturesAssetIdDelete>>,
+        TError,
+        {projectId: string;assetId: string;params: DeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteParams},
+        TContext
+      > => {
+
+      const mutationOptions = getDeleteApiV1ProjectsProjectIdPicturesAssetIdDeleteMutationOptions(options);
 
       return useMutation(mutationOptions, queryClient);
     }
