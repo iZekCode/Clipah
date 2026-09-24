@@ -321,10 +321,13 @@ export const useRefreshApiV1SocialAccountsSocialAccountIdRefreshPost = <TError =
     }
     /**
  * Redeem one exact single-use callback and return to Workspace Connections.
+
+A member who declines on the provider's consent screen comes back with no code at
+all; that is a choice, not an attack, so it returns to Connections to say so.
  * @summary Callback
  */
 export const getCallbackApiV1SocialOauthProviderCallbackGetUrl = (provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams,) => {
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams,) => {
   const normalizedParams = new URLSearchParams();
 
   Object.entries(params || {}).forEach(([key, value]) => {
@@ -340,7 +343,7 @@ export const getCallbackApiV1SocialOauthProviderCallbackGetUrl = (provider: Soci
 }
 
 export const callbackApiV1SocialOauthProviderCallbackGet = async (provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: RequestInit): Promise<unknown> => {
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: RequestInit): Promise<unknown> => {
   
   return apiFetch<unknown>(getCallbackApiV1SocialOauthProviderCallbackGetUrl(provider,params),
   {      
@@ -364,7 +367,7 @@ export const getCallbackApiV1SocialOauthProviderCallbackGetQueryKey = (provider?
 
     
 export const getCallbackApiV1SocialOauthProviderCallbackGetQueryOptions = <TData = Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError = HTTPValidationError>(provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
 ) => {
 
 const {query: queryOptions, request: requestOptions} = options ?? {};
@@ -388,7 +391,7 @@ export type CallbackApiV1SocialOauthProviderCallbackGetQueryError = HTTPValidati
 
 export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError = HTTPValidationError>(
  provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>> & Pick<
+    params: undefined |  CallbackApiV1SocialOauthProviderCallbackGetParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>> & Pick<
         DefinedInitialDataOptions<
           Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>,
           TError,
@@ -399,7 +402,7 @@ export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<R
   ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError = HTTPValidationError>(
  provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>> & Pick<
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>> & Pick<
         UndefinedInitialDataOptions<
           Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>,
           TError,
@@ -410,7 +413,7 @@ export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<R
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError = HTTPValidationError>(
  provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
@@ -419,7 +422,7 @@ export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<R
 
 export function useCallbackApiV1SocialOauthProviderCallbackGet<TData = Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError = HTTPValidationError>(
  provider: SocialProvider,
-    params: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+    params?: CallbackApiV1SocialOauthProviderCallbackGetParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof callbackApiV1SocialOauthProviderCallbackGet>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient 
  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
 

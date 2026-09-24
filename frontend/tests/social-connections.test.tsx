@@ -153,6 +153,25 @@ describe('connection health', () => {
   })
 })
 
+describe('coming back from the provider', () => {
+  test('a declined consent screen is explained and dropped from the address', async () => {
+    window.history.replaceState(null, '', '/dashboard/settings/connections?connectionProblem=declined')
+    stub({ accounts: [] })
+    open()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/cancelled on the provider/i)
+    expect(window.location.search).toBe('')
+  })
+
+  test('a Google account without a channel is told to create one', async () => {
+    window.history.replaceState(null, '', '/dashboard/settings/connections?connectionProblem=no_channel')
+    stub({ accounts: [] })
+    open()
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/no YouTube channel/i)
+  })
+})
+
 describe('rollout gates and roles', () => {
   test('a provider whose gate is closed cannot be connected', async () => {
     stub({ accounts: [], user: currentUser({ capabilities: gates({ tiktokPublishing: false }) }) })

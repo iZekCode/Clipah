@@ -28,6 +28,7 @@ from clipah.social_accounts.models import PublishingCapabilities, SocialProvider
 from clipah.social_accounts.oauth import (
     ProviderPolicy,
     SocialAuthorizationError,
+    SocialDestinationMissingError,
     SocialProviderUnavailableError,
     SocialScopeMissingError,
     open_social_oauth_cookie,
@@ -166,15 +167,21 @@ def start_connection(
 def callback(
     request: Request,
     provider: SocialProvider,
-    code: str,
-    state: str,
     session: DatabaseSession,
     user: CurrentUserDependency,
+    code: str | None = None,
+    state: str | None = None,
 ) -> Response:
-    """Redeem one exact single-use callback and return to Workspace Connections."""
+    """Redeem one exact single-use callback and return to Workspace Connections.
+
+    A member who declines on the provider's consent screen comes back with no code at
+    all; that is a choice, not an attack, so it returns to Connections to say so.
+    """
     _require_enabled_provider(request, provider)
     settings = settings_for(request)
     request_id = request_id_for(request)
+    if code is None or state is None:
+        return _back_to_connections(settings, problem="declined")
     sealed = request.cookies.get(settings.social_oauth_cookie_name)
     if sealed is None:
         raise ApiError(status_code=400, code="SOCIAL_OAUTH_INVALID")
@@ -205,6 +212,12 @@ def callback(
         )
         refusal.delete_cookie(settings.social_oauth_cookie_name, path="/")
         return refusal
+    except SocialDestinationMissingError:
+        session.commit()
+        return _back_to_connections(settings, problem="no_channel")
+    except SocialProviderUnavailableError:
+        session.commit()
+        return _back_to_connections(settings, problem="unavailable")
     except (SocialAuthorizationError, SocialOAuthInvalidError):
         session.commit()
         refusal = error_response(
@@ -218,7 +231,17 @@ def callback(
         refusal.delete_cookie(settings.social_oauth_cookie_name, path="/")
         return refusal
     session.commit()
+    return _back_to_connections(settings, problem=None)
+
+
+def _back_to_connections(settings: Settings, *, problem: str | None) -> Response:
+    """Return the browser to Workspace Connections, naming a fixed problem if there was one.
+
+    The ceremony cookie goes either way: a ceremony is one attempt, whatever its end.
+    """
     destination = f"{settings.frontend_origin or ''}/dashboard/settings/connections"
+    if problem is not None:
+        destination = f"{destination}?connectionProblem={problem}"
     response = RedirectResponse(destination, status_code=303)
     response.delete_cookie(settings.social_oauth_cookie_name, path="/")
     return response

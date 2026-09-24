@@ -58,6 +58,10 @@ class SocialScopeMissingError(SocialAuthorizationError):
     """The provider result omitted permission required for the requested connection."""
 
 
+class SocialDestinationMissingError(SocialAuthorizationError):
+    """The authorized account has nowhere to publish to, such as no YouTube channel."""
+
+
 class SocialProviderGrantRejectedError(Exception):
     """The provider reports that this reusable authorization is no longer valid."""
 
@@ -76,6 +80,9 @@ class ProviderPolicy:
     api_version: str
     authorization_endpoint: str
     minimum_scopes: frozenset[str]
+    # Provider-specific parameters the authorization request must carry, such as Google's
+    # request for a refresh token.
+    extra_parameters: tuple[tuple[str, str], ...] = ()
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,6 +155,9 @@ def provider_policy(
         SocialProvider.INSTAGRAM: INSTAGRAM_SCOPES,
         SocialProvider.TIKTOK: TIKTOK_SCOPES,
     }
+    # Google issues a refresh token only for offline access, and only when it asks for
+    # consent; without one a connection would end with its first hour-long access token.
+    extra = {SocialProvider.YOUTUBE: (("access_type", "offline"), ("prompt", "consent"))}
     return ProviderPolicy(
         provider=provider,
         client_id=client_id,
@@ -155,6 +165,7 @@ def provider_policy(
         api_version=api_version,
         authorization_endpoint=endpoints[provider],
         minimum_scopes=scopes[provider],
+        extra_parameters=extra.get(provider, ()),
     )
 
 
@@ -185,6 +196,7 @@ def start_authorization(
             "state": state,
             "code_challenge": challenge,
             "code_challenge_method": "S256",
+            **dict(policy.extra_parameters),
         }
     )
     separator = "&" if "?" in policy.authorization_endpoint else "?"

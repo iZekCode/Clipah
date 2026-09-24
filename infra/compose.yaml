@@ -129,6 +129,14 @@ services:
       CLIPAH_GOOGLE_OIDC_CLIENT_ID: "${CLIPAH_GOOGLE_OIDC_CLIENT_ID:-}"
       CLIPAH_GOOGLE_OIDC_CLIENT_SECRET: "${CLIPAH_GOOGLE_OIDC_CLIENT_SECRET:-}"
       CLIPAH_GOOGLE_OIDC_REDIRECT_URI: "${CLIPAH_GOOGLE_OIDC_REDIRECT_URI:-http://localhost:3000/api/v1/auth/google/callback}"
+      # YouTube publishing stays off unless backend/.env switches it on and names a Google
+      # OAuth client of its own; the login client above is a different credential family.
+      CLIPAH_SOCIAL_PUBLISHING_ENABLED: "${CLIPAH_SOCIAL_PUBLISHING_ENABLED:-false}"
+      CLIPAH_YOUTUBE_PUBLISHING_ENABLED: "${CLIPAH_YOUTUBE_PUBLISHING_ENABLED:-false}"
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_ID:-}"
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET:-}"
+      CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI: "${CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI:-http://localhost:3000/api/v1/social-oauth/youtube/callback}"
+      CLIPAH_YOUTUBE_AUDIT_APPROVED: "${CLIPAH_YOUTUBE_AUDIT_APPROVED:-false}"
       CLIPAH_FORWARDED_ALLOW_IPS: "127.0.0.1"
       # The context-safety check on clip variants runs in the API. Without a usable key a
       # variant still gets every warning the deterministic rules can establish.
@@ -325,8 +333,8 @@ services:
       CLIPAH_WORKER_QUEUES: social_publish
       CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_SOCIAL_PUBLISH_CONCURRENCY:-2}"
       CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
-      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: fake-youtube
-      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: fake-youtube-secret
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_ID:-fake-youtube}"
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET:-fake-youtube-secret}"
       CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID: fake-instagram
       CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET: fake-instagram-secret
       CLIPAH_TIKTOK_CLIENT_KEY: fake-tiktok
@@ -347,8 +355,8 @@ services:
       CLIPAH_WORKER_QUEUES: social_reconcile
       CLIPAH_WORKER_CONCURRENCY: "${CLIPAH_SOCIAL_RECONCILE_CONCURRENCY:-2}"
       CLIPAH_SECRET_ENCRYPTION_KEY: local-secret-wrapping-key-at-least-32-bytes
-      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: fake-youtube
-      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: fake-youtube-secret
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_ID: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_ID:-fake-youtube}"
+      CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET: "${CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET:-fake-youtube-secret}"
       CLIPAH_INSTAGRAM_OAUTH_CLIENT_ID: fake-instagram
       CLIPAH_INSTAGRAM_OAUTH_CLIENT_SECRET: fake-instagram-secret
       CLIPAH_TIKTOK_CLIENT_KEY: fake-tiktok

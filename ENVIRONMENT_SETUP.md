@@ -205,6 +205,37 @@ Post stays behind `CLIPAH_TIKTOK_AUDIT_APPROVED` and falls back to an official d
 until a real audit approves it. `docs/operations/social-publishing.md` holds the consent,
 privacy, disclosure, and review obligations that no flag may bypass.
 
+#### Connecting a YouTube channel on the local stack
+
+The YouTube publishing client is a Google OAuth client of its own, separate from the sign-in
+client, because publishing asks for YouTube scopes that sign-in never should.
+
+1. In Google Cloud Console, pick or create a project and enable **YouTube Data API v3**
+   (APIs & Services › Library).
+2. Configure the **OAuth consent screen** as *External*, leave it in *Testing*, and add the
+   Google account that owns your channel under **Test users**. Add the scopes
+   `.../auth/youtube.upload` and `.../auth/youtube.readonly`.
+3. Create an **OAuth client ID** of type *Web application* with the authorized redirect URI
+   `http://localhost:3000/api/v1/social-oauth/youtube/callback`.
+4. Put the client in `backend/.env`:
+
+   ```bash
+   CLIPAH_SOCIAL_PUBLISHING_ENABLED=true
+   CLIPAH_YOUTUBE_PUBLISHING_ENABLED=true
+   CLIPAH_YOUTUBE_OAUTH_CLIENT_ID=<client id>
+   CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET=<client secret>
+   ```
+
+5. Recreate the API (`docker compose --env-file backend/.env -f infra/compose.yaml up -d api`)
+   and connect the channel from **Settings › Connections**. Changing connections needs a
+   sign-in from the last ten minutes.
+
+Until YouTube audits the API project, every video it accepts from it is private, whatever
+was requested; Clipah only offers *Private* while `CLIPAH_YOUTUBE_AUDIT_APPROVED` is false.
+A consent screen left in *Testing* also expires its refresh tokens after seven days, so a
+local connection needs reconnecting weekly. The local profile accepts the plain-HTTP
+loopback redirect and an unaudited project; production requires HTTPS and the audit.
+
 Secrets are encrypted at rest. `CLIPAH_SOCIAL_SECRET_BACKEND` chooses between a local
 wrapping key (`CLIPAH_SECRET_ENCRYPTION_KEY`) and AWS KMS (`CLIPAH_AWS_KMS_KEY_ARN` and
 `CLIPAH_AWS_REGION`). Production requires `CLIPAH_SECRET_ENCRYPTION_ENABLED`.

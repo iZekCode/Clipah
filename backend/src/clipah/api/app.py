@@ -82,6 +82,7 @@ from clipah.social_accounts.secrets import (
     social_secret_store_for,
 )
 from clipah.social_accounts.use_cases import FuturePublicationCoordinator
+from clipah.social_accounts.youtube_provider import YouTubeOAuthProvider
 from clipah.source_imports.dispatch import CeleryJobDispatcher, JobDispatcher
 from clipah.source_imports.titles import YouTubeTitleLookup, oembed_title
 from clipah.variants.assessor import ContextSafetyAssessor, configured_context_assessor
@@ -161,7 +162,9 @@ def create_app(
         settings
     )
     app.state.context_assessor = context_assessor or configured_context_assessor(settings)
-    app.state.social_providers = dict(social_providers or {})
+    app.state.social_providers = dict(
+        social_providers if social_providers is not None else _configured_social_providers(settings)
+    )
     app.state.social_secret_store = social_secret_store or _configured_social_secret_store(settings)
     app.state.future_publications = future_publications
 
@@ -352,6 +355,33 @@ def _configured_rate_limiter(settings: Settings, app: FastAPI) -> RateLimiter | 
         return None
     components: AuthComponents = app.state.auth_components
     return RedisRateLimiter(Redis.from_url(settings.redis_url), now=components.now)
+
+
+def _configured_social_providers(
+    settings: Settings,
+) -> dict[SocialProvider, SocialOAuthProvider]:
+    """Build the OAuth provider of every destination this deployment has switched on.
+
+    A provider that is off, or whose client registration is incomplete, is simply absent,
+    and its routes answer as if they did not exist.
+    """
+    providers: dict[SocialProvider, SocialOAuthProvider] = {}
+    if not settings.social_publishing_enabled:
+        return providers
+    secret = settings.youtube_oauth_client_secret
+    if (
+        settings.youtube_publishing_enabled
+        and settings.youtube_oauth_client_id
+        and secret is not None
+        and secret.get_secret_value()
+    ):
+        providers[SocialProvider.YOUTUBE] = YouTubeOAuthProvider(
+            client_id=settings.youtube_oauth_client_id,
+            client_secret=secret.get_secret_value(),
+            audit_approved=settings.youtube_audit_approved,
+            clock=_utc_now,
+        )
+    return providers
 
 
 def _configured_social_secret_store(settings: Settings) -> SocialSecretStore | None:

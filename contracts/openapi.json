@@ -12973,7 +12973,7 @@
     },
     "/api/v1/social-oauth/{provider}/callback": {
       "get": {
-        "description": "Redeem one exact single-use callback and return to Workspace Connections.",
+        "description": "Redeem one exact single-use callback and return to Workspace Connections.\n\nA member who declines on the provider's consent screen comes back with no code at\nall; that is a choice, not an attack, so it returns to Connections to say so.",
         "operationId": "callback_api_v1_social_oauth__provider__callback_get",
         "parameters": [
           {
@@ -12987,19 +12987,33 @@
           {
             "in": "query",
             "name": "code",
-            "required": true,
+            "required": false,
             "schema": {
-              "title": "Code",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Code"
             }
           },
           {
             "in": "query",
             "name": "state",
-            "required": true,
+            "required": false,
             "schema": {
-              "title": "State",
-              "type": "string"
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "State"
             }
           }
         ],

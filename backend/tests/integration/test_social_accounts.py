@@ -24,7 +24,11 @@ from clipah.social_accounts.models import (
     SocialAccountIdentity,
     SocialProvider,
 )
-from clipah.social_accounts.oauth import SocialProviderGrantRejectedError
+from clipah.social_accounts.oauth import (
+    SocialDestinationMissingError,
+    SocialProviderGrantRejectedError,
+    SocialProviderUnavailableError,
+)
 from clipah.social_accounts.secrets import (
     EncryptedOAuthGrant,
     OAuthSecretContext,
@@ -1008,3 +1012,90 @@ def test_two_refreshes_of_one_grant_never_reach_the_provider_at_once(
 def _refresh(browser: Browser, path: str) -> Any:
     """Ask for one refresh from its own thread, as a second process would."""
     return browser.request("POST", path)
+
+
+class ChannelMissingProvider(StubSocialProvider):
+    """A Google account that authorized Clipah but owns no YouTube channel."""
+
+    def account_identity(self, *, grant: OAuthGrantMaterial) -> SocialAccountIdentity:
+        """Say there is no channel to publish to."""
+        del grant
+        raise SocialDestinationMissingError("no channel")
+
+
+class UnavailableExchangeProvider(StubSocialProvider):
+    """A provider whose token endpoint is down when the member comes back."""
+
+    def exchange_code(
+        self, *, code: str, code_verifier: str, redirect_uri: str
+    ) -> OAuthTokenResult:
+        """Fail the way an outage does."""
+        del code, code_verifier, redirect_uri
+        raise SocialProviderUnavailableError("down")
+
+
+def _count(engine: Engine, table: str) -> int:
+    """Rows in one social table."""
+    with engine.connect() as connection:
+        return int(connection.execute(text(f"SELECT count(*) FROM {table}")).scalar_one())
+
+
+@pytest.mark.integration
+def test_a_youtube_ceremony_asks_google_for_a_refresh_token(
+    engine: Engine, clean_database: None
+) -> None:
+    """Without offline access and a consent prompt, Google issues no refresh token."""
+    del clean_database, engine
+    browser, workspace_id, _ = social_browser(Clock(NOW), StubSocialProvider())
+
+    response = browser.request(
+        "POST", f"/api/v1/workspaces/{workspace_id}/social-accounts/youtube/connect"
+    )
+
+    query = parse_qs(urlsplit(response.json()["authorizationUrl"]).query)
+    assert query["access_type"] == ["offline"]
+    assert query["prompt"] == ["consent"]
+
+
+@pytest.mark.integration
+def test_declining_on_the_consent_screen_returns_to_connections_and_connects_nothing(
+    engine: Engine, clean_database: None
+) -> None:
+    """Google comes back with an error and no code; that is a choice, said plainly."""
+    del clean_database
+    browser, workspace_id, _ = social_browser(Clock(NOW), StubSocialProvider())
+    state, _ = begin_social_connection(browser, workspace_id)
+
+    declined = browser.get(
+        f"/api/v1/social-oauth/youtube/callback?error=access_denied&state={state}"
+    )
+
+    assert declined.status_code == 303
+    assert declined.headers["location"].endswith(
+        "/dashboard/settings/connections?connectionProblem=declined"
+    )
+    assert browser.cookies.get("clipah_social_oauth") is None
+    assert _count(engine, "social_accounts") == 0
+
+
+@pytest.mark.integration
+@pytest.mark.parametrize(
+    ("provider", "problem"),
+    [(ChannelMissingProvider(), "no_channel"), (UnavailableExchangeProvider(), "unavailable")],
+)
+def test_a_connection_the_provider_cannot_complete_says_why_and_stores_nothing(
+    engine: Engine, clean_database: None, provider: StubSocialProvider, problem: str
+) -> None:
+    """No channel, or no Google, must end on Connections with a reason, not a blank error."""
+    del clean_database
+    browser, workspace_id, _ = social_browser(Clock(NOW), provider)
+    state, _ = begin_social_connection(browser, workspace_id)
+
+    response = browser.get(
+        f"/api/v1/social-oauth/youtube/callback?code={AUTHORIZATION_CODE}&state={state}"
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"].endswith(f"?connectionProblem={problem}")
+    assert _count(engine, "social_accounts") == 0
+    assert _count(engine, "oauth_grants") == 0

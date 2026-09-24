@@ -1,7 +1,7 @@
 'use client'
 
 import { useQuery } from '@tanstack/react-query'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 import { ErrorNotice } from '@/components/error-notice'
 import { useSession } from '@/features/auth/session'
@@ -17,11 +17,30 @@ import {
 } from '@/lib/api/generated/social-accounts/social-accounts'
 import type { SocialAccountResponse, SocialAccountsResponse } from '@/lib/api/generated/model'
 
+/** What went wrong on the provider's side of a connection, named by the callback. */
+const CONNECTION_PROBLEMS: Record<string, string> = {
+  declined: 'The connection was cancelled on the provider’s consent screen. Nothing was connected.',
+  no_channel:
+    'That Google account has no YouTube channel. Create a channel on YouTube, then connect again.',
+  unavailable: 'The provider could not be reached. Nothing was connected; try again in a moment.',
+}
+
 /** The Social Accounts this Workspace may publish through, and how healthy each one is. */
 export function SocialConnections() {
   const { active } = useWorkspaceScope()
   const session = useSession()
   const [failure, setFailure] = useState<{ message: string; error: unknown } | null>(null)
+  // The callback names what went wrong in the address it returns to; say it once, then
+  // drop it from the address so a reload does not say it again.
+  useEffect(() => {
+    const url = new URL(window.location.href)
+    const problem = url.searchParams.get('connectionProblem')
+    if (problem === null) return
+    const message = CONNECTION_PROBLEMS[problem]
+    if (message !== undefined) setFailure({ message, error: null })
+    url.searchParams.delete('connectionProblem')
+    window.history.replaceState(window.history.state, '', url.toString())
+  }, [])
   const [ending, setEnding] = useState<SocialAccountResponse | null>(null)
 
   const accounts = useQuery<SocialAccountsResponse, ApiError>({

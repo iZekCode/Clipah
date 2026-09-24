@@ -6,6 +6,6 @@
  */
 
 export type CallbackApiV1SocialOauthProviderCallbackGetParams = {
-code: string;
-state: string;
+code?: string | null;
+state?: string | null;
 };

@@ -954,3 +954,26 @@ def test_a_blank_stock_or_generation_credential_means_the_provider_is_not_config
     assert settings.fal_api_key is None
     assert settings.fal_webhook_base_url is None
     assert settings.runway_api_secret is None
+
+
+@pytest.mark.unit
+def test_a_local_stack_can_publish_to_youtube_over_loopback_before_any_audit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Google accepts a loopback HTTP redirect; YouTube keeps unaudited uploads private."""
+    for name, value in {
+        "CLIPAH_ENVIRONMENT": "local",
+        "CLIPAH_SOCIAL_PUBLISHING_ENABLED": "true",
+        "CLIPAH_YOUTUBE_PUBLISHING_ENABLED": "true",
+        "CLIPAH_YOUTUBE_OAUTH_CLIENT_ID": "youtube-client-id",
+        "CLIPAH_YOUTUBE_OAUTH_CLIENT_SECRET": "youtube-client-secret",
+        "CLIPAH_YOUTUBE_OAUTH_REDIRECT_URI": (
+            "http://localhost:3000/api/v1/social-oauth/youtube/callback"
+        ),
+    }.items():
+        monkeypatch.setenv(name, value)
+
+    settings = Settings()
+
+    assert settings.youtube_publishing_enabled
+    assert not settings.youtube_audit_approved
