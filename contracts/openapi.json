@@ -145,7 +145,8 @@
           "broll_proxy",
           "storyboard",
           "poster",
-          "cover"
+          "cover",
+          "picture"
         ],
         "title": "AssetKind",
         "type": "string"
@@ -11136,6 +11137,71 @@
         "summary": "Create Variants",
         "tags": [
           "variants"
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/pictures": {
+      "post": {
+        "description": "Keep one picture in this Project, so its clips can be marked with it.",
+        "operationId": "create_api_v1_projects__project_id__pictures_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Project Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/octet-stream": {
+              "schema": {
+                "format": "binary",
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectAssetResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "pictures"
         ]
       }
     },

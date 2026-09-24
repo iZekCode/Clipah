@@ -24,6 +24,17 @@ const SHOW_EDIT = `GET /api/v1/edits/${EDIT_ID}`
 const SAVE_EDIT = `PUT /api/v1/edits/${EDIT_ID}`
 const PROXY = `GET /api/v1/projects/${PROJECT_ID}/proxy`
 const ASSETS = `GET /api/v1/projects/${PROJECT_ID}/assets`
+const UPLOAD = `POST /api/v1/projects/${PROJECT_ID}/pictures`
+const UPLOADED = {
+  id: '99999999-0000-4000-8000-00000000000b',
+  kind: 'picture',
+  contentType: 'image/png',
+  sizeBytes: 1_024,
+  durationMs: null,
+  width: 800,
+  height: 300,
+  createdAt: '2026-02-01T00:01:00+00:00',
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
@@ -80,8 +91,8 @@ describe('the watermark drawn over the preview', () => {
 describe('the watermark panel', () => {
   let api: StubbedApi
 
-  /** Open the editor on the Watermark tool, over a Project holding one picture. */
-  async function openWatermark(document: CompositionV1): Promise<void> {
+  /** Open the editor on the Watermark tool, over a Project holding one picture unless told. */
+  async function openWatermark(document: CompositionV1, pictures = true): Promise<void> {
     api = stubApi({
       [ME]: { body: currentUser() },
       [WORKSPACES]: { body: { workspaces: [workspace()] } },
@@ -96,9 +107,13 @@ describe('the watermark panel', () => {
           height: 1080,
         },
       },
+      [UPLOAD]: { status: 201, body: UPLOADED },
+      [`GET /api/v1/assets/${UPLOADED.id}/preview-url`]: {
+        body: { url: 'https://storage.test/mine.png', expiresAt: '2026-02-01T00:05:00+00:00' },
+      },
       [ASSETS]: {
         body: {
-          assets: [
+          assets: pictures ? [
             {
               id: LOGO_ID,
               kind: 'broll',
@@ -109,7 +124,7 @@ describe('the watermark panel', () => {
               height: 512,
               createdAt: '2026-02-01T00:00:00+00:00',
             },
-          ],
+          ] : [],
         },
       },
       [`GET /api/v1/assets/${LOGO_ID}/preview-url`]: {
@@ -153,6 +168,27 @@ describe('the watermark panel', () => {
     expect(await screen.findByTestId('editor-watermark')).toHaveAttribute(
       'src',
       'https://storage.test/logo.png',
+    )
+  })
+
+  test('a Project without pictures asks for one, and the upload becomes the mark', async () => {
+    const user = userEvent.setup()
+    await openWatermark(composition({ watermark: CLIPAH_WATERMARK }), false)
+    const panel = screen.getByRole('region', { name: 'Watermark' })
+    const picker = within(panel).getByLabelText('Upload a watermark picture') as HTMLInputElement
+    const opened = vi.spyOn(picker, 'click')
+
+    await user.click(within(within(panel).getByRole('group', { name: 'Watermark kind' })).getByRole('button', { name: 'Image' }))
+    expect(opened).toHaveBeenCalled()
+    await user.upload(picker, new File([new Uint8Array([137, 80, 78, 71])], 'logo.png', { type: 'image/png' }))
+
+    const document = await saved((saving) => saving.watermark?.assetId === UPLOADED.id)
+    expect(document.watermark).toMatchObject({ kind: 'image', size: 0.16, text: null })
+    const upload = api.calls.find((call) => call.method === 'POST' && call.path.endsWith('/pictures'))
+    expect(upload).toBeDefined()
+    expect(await screen.findByTestId('editor-watermark')).toHaveAttribute(
+      'src',
+      'https://storage.test/mine.png',
     )
   })
 

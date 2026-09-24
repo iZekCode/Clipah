@@ -21,4 +21,5 @@ export const AssetKind = {
   storyboard: 'storyboard',
   poster: 'poster',
   cover: 'cover',
+  picture: 'picture',
 } as const;

@@ -21,8 +21,11 @@ from clipah.workspaces.models import WorkspaceAccess
 # Proxies, thumbnails, waveforms, transcription audio, and renders are produced by the
 # pipeline for the pipeline. A member never places one on a timeline. Retrieved B-roll is
 # the exception among non-source media: a member chose it, and replacing an accepted
-# suggestion's picture means naming another asset this Project already holds.
-PLACEABLE_KINDS: frozenset[AssetKind] = frozenset({AssetKind.SOURCE, AssetKind.BROLL})
+# suggestion's picture means naming another asset this Project already holds. A picture
+# the member uploaded, such as a logo, is placed as a watermark.
+PLACEABLE_KINDS: frozenset[AssetKind] = frozenset(
+    {AssetKind.SOURCE, AssetKind.BROLL, AssetKind.PICTURE}
+)
 
 
 class ProjectNotFoundError(Exception):

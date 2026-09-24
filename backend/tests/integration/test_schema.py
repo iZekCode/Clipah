@@ -274,6 +274,7 @@ EXPECTED_ENUMS = {
         "storyboard",
         "poster",
         "cover",
+        "picture",
     ),
     "asset_source_type": (
         "user_upload",

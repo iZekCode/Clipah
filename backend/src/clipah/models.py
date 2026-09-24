@@ -150,6 +150,8 @@ class AssetKind(StrEnum):
     POSTER = "poster"
     # One clip Revision's designed cover: a framed still with its title drawn on.
     COVER = "cover"
+    # A still a member uploaded to mark their clips with, such as a logo.
+    PICTURE = "picture"
 
 
 class AssetSourceType(StrEnum):

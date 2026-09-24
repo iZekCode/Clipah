@@ -78,6 +78,17 @@ def generated_asset_key(
     return f"workspaces/{workspace_id}/projects/{project_id}/generated/{asset_id}/{kind.value}"
 
 
+def picture_asset_key(*, workspace_id: UUID, project_id: UUID, asset_id: UUID) -> str:
+    """Return the private key one uploaded picture is stored under, beside nothing else.
+
+    A picture is always stored as the PNG the server re-encoded, so the key names that
+    format rather than anything the browser declared.
+    """
+    if not all(isinstance(value, UUID) for value in (workspace_id, project_id, asset_id)):
+        raise TypeError("storage identifiers must be UUID values")
+    return f"workspaces/{workspace_id}/projects/{project_id}/pictures/{asset_id}.png"
+
+
 def preview_media_key(
     *, workspace_id: UUID, project_id: UUID, source_asset_id: UUID, name: str
 ) -> str:

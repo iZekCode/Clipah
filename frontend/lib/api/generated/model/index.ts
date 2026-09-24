@@ -148,6 +148,7 @@ export * from './createApiV1ProjectsPostParams';
 export * from './createApiV1ProjectsProjectIdAnalysisPostParams';
 export * from './createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostBody';
 export * from './createApiV1ProjectsProjectIdCandidatesCandidateIdEditsPostParams';
+export * from './createApiV1ProjectsProjectIdPicturesPostParams';
 export * from './createApiV1ProjectsProjectIdUploadsPost201';
 export * from './createApiV1ProjectsProjectIdUploadsPostParams';
 export * from './createApiV1ProjectsProjectIdYoutubeImportsPost202';

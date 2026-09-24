@@ -69,6 +69,8 @@ _PUBLIC_MESSAGES = MappingProxyType(
         "GENERATION_REQUEST_REFUSED": "This suggestion cannot be sent to a generative model.",
         "VARIANT_REQUEST_INVALID": "That combination of lengths and platforms is not supported.",
         "EVIDENCE_INVALID": "That source could not be accepted. Check the link and the text.",
+        "PICTURE_INVALID": "This picture could not be read. Use a PNG, JPEG, or WebP image.",
+        "PICTURE_TOO_LARGE": "This picture is too large. Use one under 5 MB.",
         "BRAND_DEFINITION_INVALID": "This brand definition could not be saved.",
         "BRAND_ASSET_FORBIDDEN": "This brand uses media that is not available here.",
         "BRAND_KIT_ARCHIVED": "This brand kit has been archived.",

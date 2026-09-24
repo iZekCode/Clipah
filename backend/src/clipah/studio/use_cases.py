@@ -53,7 +53,7 @@ from clipah.workspaces.models import WorkspaceAccess
 # and B-roll proxies exist for the pipeline, and a thumbnail is shown on its Project's
 # card rather than listed as a file of its own.
 BROWSABLE_ASSET_KINDS: frozenset[AssetKind] = frozenset(
-    {AssetKind.SOURCE, AssetKind.BROLL, AssetKind.RENDER}
+    {AssetKind.SOURCE, AssetKind.BROLL, AssetKind.PICTURE, AssetKind.RENDER}
 )
 
 _IN_PROGRESS_JOB_STATUSES = (

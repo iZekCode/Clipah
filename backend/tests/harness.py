@@ -163,18 +163,22 @@ class Browser:
         path: str,
         *,
         json: Any = None,
+        content: bytes | None = None,
         headers: dict[str, str] | None = None,
         origin: str | None = None,
         csrf_token: str | None = None,
     ) -> Response:
-        """Send one request, echoing the double-submit token as a first-party client would."""
+        """Send one request, echoing the double-submit token as a first-party client would.
+
+        ``content`` sends raw bytes instead of a JSON body, the way a file upload does.
+        """
         request_headers = dict(headers or {})
         if method not in {"GET", "HEAD", "OPTIONS"}:
             request_headers.setdefault("Origin", origin or self.origin)
             token = csrf_token if csrf_token is not None else self.cookies.get("clipah_csrf")
             if token:
                 request_headers.setdefault(CSRF_HEADER, token)
-        return asyncio.run(self._request(method, path, request_headers, json))
+        return asyncio.run(self._request(method, path, request_headers, json, content))
 
     def stream(
         self,
@@ -256,14 +260,24 @@ class Browser:
         }
 
     async def _request(
-        self, method: str, path: str, headers: dict[str, str], json: Any
+        self,
+        method: str,
+        path: str,
+        headers: dict[str, str],
+        json: Any,
+        content: bytes | None = None,
     ) -> Response:
         transport = ASGITransport(app=self.app)
         async with AsyncClient(
             transport=transport, base_url=self.origin, cookies=self.cookies
         ) as client:
             response = await client.request(
-                method, path, headers=headers, json=json, follow_redirects=False
+                method,
+                path,
+                headers=headers,
+                json=json,
+                content=content,
+                follow_redirects=False,
             )
         self.cookies.extract_cookies(response)
         return response

@@ -1,16 +1,20 @@
 'use client'
 
-import { useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Upload } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
 
+import { ErrorNotice } from '@/components/error-notice'
+import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NumberScrub } from '@/components/ui/number-scrub'
 import { SegmentedControl } from '@/components/ui/segmented-control'
 import { Select } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
-import type { ApiError } from '@/lib/api/client'
+import { apiFetch, type ApiError } from '@/lib/api/client'
 import { indexApiV1ProjectsProjectIdAssetsGet } from '@/lib/api/generated/assets/assets'
-import type { ProjectAssetsResponse } from '@/lib/api/generated/model'
+import type { ProjectAssetResponse, ProjectAssetsResponse } from '@/lib/api/generated/model'
+import { getCreateApiV1ProjectsProjectIdPicturesPostUrl } from '@/lib/api/generated/pictures/pictures'
 import { cn } from '@/lib/utils'
 
 import type { CompositionWatermark } from './store'
@@ -44,6 +48,9 @@ export const CLIPAH_WATERMARK: CompositionWatermark = {
 /** A share of the frame width a newly chosen kind starts at: pictures wide, text short. */
 const STARTING_SIZE: Record<Kind, number> = { clipah: 0.2, image: 0.16, text: 0.04 }
 
+/** The stills the server reads; anything else is refused before it is sent. */
+const PICTURE_TYPES = 'image/png,image/jpeg,image/webp'
+
 /**
  * The clip's watermark: Clipah's own mark, one of this Project's pictures, or a line of
  * text, in any of nine places over the frame. Whatever is chosen here is what the export
@@ -60,8 +67,10 @@ export function WatermarkPanel({
   workspaceId: string
   onChange: (watermark: CompositionWatermark | null) => void
 }) {
+  const client = useQueryClient()
+  const assetsKey = ['/api/v1/projects/assets', workspaceId, projectId]
   const assets = useQuery<ProjectAssetsResponse, ApiError>({
-    queryKey: ['/api/v1/projects/assets', workspaceId, projectId],
+    queryKey: assetsKey,
     queryFn: ({ signal }) =>
       indexApiV1ProjectsProjectIdAssetsGet(projectId, { workspace_id: workspaceId }, { signal }),
     retry: false,
@@ -75,6 +84,25 @@ export function WatermarkPanel({
     if (watermark?.kind === 'text') setDraft(watermark.text ?? '')
   }, [watermark?.kind, watermark?.text])
 
+  const picker = useRef<HTMLInputElement>(null)
+  const upload = useMutation<ProjectAssetResponse, ApiError, File>({
+    // The file goes as its own bytes; the server decodes it and keeps a PNG of its own.
+    mutationFn: (file) =>
+      apiFetch<ProjectAssetResponse>(
+        getCreateApiV1ProjectsProjectIdPicturesPostUrl(projectId, { workspace_id: workspaceId }),
+        { method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body: file },
+      ),
+    onSuccess: (picture) => {
+      client.setQueryData<ProjectAssetsResponse>(assetsKey, (current) => ({
+        assets: [...(current?.assets ?? []), picture],
+      }))
+      void client.invalidateQueries({ queryKey: assetsKey })
+      if (watermark === null) return
+      const size = watermark.kind === 'image' ? watermark.size : STARTING_SIZE.image
+      onChange({ ...watermark, kind: 'image', size, assetId: picture.id, text: null })
+    },
+  })
+
   /** Switch what the mark draws, keeping where it sits and how opaque it is. */
   function chooseKind(kind: Kind) {
     if (watermark === null || kind === watermark.kind) return
@@ -83,7 +111,9 @@ export function WatermarkPanel({
     if (kind === 'text') onChange({ ...base, kind, assetId: null, text: draft.trim() || 'Clipah' })
     if (kind === 'image') {
       const first = pictures[0]
-      if (first !== undefined) onChange({ ...base, kind, assetId: first.id, text: null })
+      // A Project with no picture yet asks for one, rather than ignoring the tap.
+      if (first === undefined) picker.current?.click()
+      else onChange({ ...base, kind, assetId: first.id, text: null })
     }
   }
 
@@ -116,7 +146,20 @@ export function WatermarkPanel({
             onChange={chooseKind}
           />
 
-          {watermark.kind === 'image' ? (
+          <input
+            ref={picker}
+            type="file"
+            accept={PICTURE_TYPES}
+            className="sr-only"
+            tabIndex={-1}
+            aria-label="Upload a watermark picture"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ''
+              if (file !== undefined) upload.mutate(file)
+            }}
+          />
+          {watermark.kind === 'image' && pictures.length > 0 ? (
             <label className="block space-y-1.5">
               <span className="text-caption text-muted-foreground">Picture</span>
               <Select
@@ -126,7 +169,7 @@ export function WatermarkPanel({
               >
                 {pictures.map((asset, index) => (
                   <option key={asset.id} value={asset.id}>
-                    Picture {index + 1}
+                    {asset.kind === 'picture' ? 'Uploaded picture' : 'B-roll picture'} {index + 1}
                     {asset.width === null || asset.height === null
                       ? ''
                       : ` · ${asset.width}×${asset.height}`}
@@ -135,11 +178,23 @@ export function WatermarkPanel({
               </Select>
             </label>
           ) : null}
-          {pictures.length > 0 || assets.isPending ? null : (
-            <p className="text-caption text-muted-foreground">
-              Upload a logo to this project to use it as a watermark.
-            </p>
-          )}
+          {watermark.kind === 'image' || pictures.length === 0 ? (
+            <div className="space-y-1.5">
+              <Button
+                size="sm"
+                variant="secondary"
+                loading={upload.isPending}
+                onClick={() => picker.current?.click()}
+              >
+                <Upload aria-hidden="true" strokeWidth={1.75} />
+                Upload picture
+              </Button>
+              <p className="text-caption text-muted-foreground">
+                PNG, JPEG, or WebP up to 5 MB. A PNG with a transparent background looks best.
+              </p>
+            </div>
+          ) : null}
+          {upload.error === null ? null : <ErrorNotice error={upload.error} />}
 
           {watermark.kind === 'text' ? (
             <label className="block space-y-1.5">

@@ -33,6 +33,7 @@ from clipah.api.routes import edits as edit_routes
 from clipah.api.routes import generation_webhooks as generation_webhook_routes
 from clipah.api.routes import instagram_webhooks as instagram_webhook_routes
 from clipah.api.routes import jobs as job_routes
+from clipah.api.routes import pictures as picture_routes
 from clipah.api.routes import playback as playback_routes
 from clipah.api.routes import projects as project_routes
 from clipah.api.routes import publications as publication_routes
@@ -281,6 +282,7 @@ def create_app(
     app.include_router(edit_review_routes.router)
     app.include_router(render_routes.router)
     app.include_router(cover_routes.router)
+    app.include_router(picture_routes.router)
     app.include_router(generation_webhook_routes.router)
     app.include_router(instagram_webhook_routes.router)
     app.include_router(tiktok_webhook_routes.router)

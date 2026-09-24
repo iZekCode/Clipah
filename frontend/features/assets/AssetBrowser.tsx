@@ -42,12 +42,14 @@ const KINDS: { value: AssetKind | ''; label: string }[] = [
   { value: '', label: 'All media' },
   { value: 'source', label: 'Source videos' },
   { value: 'broll', label: 'B-roll' },
+  { value: 'picture', label: 'Pictures' },
   { value: 'render', label: 'Exports' },
 ]
 
 const KIND_LABELS: Record<string, string> = {
   source: 'Source video',
   broll: 'B-roll',
+  picture: 'Picture',
   render: 'Export',
 }
 
