@@ -459,7 +459,7 @@ def default_watermark() -> Watermark:
     return Watermark(
         kind=WatermarkKind.CLIPAH,
         position=WatermarkPosition.BOTTOM_RIGHT,
-        size=0.12,
+        size=0.2,
         opacity=0.9,
     )
 

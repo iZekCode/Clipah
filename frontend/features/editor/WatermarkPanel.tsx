@@ -35,14 +35,14 @@ const POSITIONS: ReadonlyArray<{ value: Position; label: string }> = [
 export const CLIPAH_WATERMARK: CompositionWatermark = {
   kind: 'clipah',
   position: 'bottomRight',
-  size: 0.12,
+  size: 0.2,
   opacity: 0.9,
   assetId: null,
   text: null,
 }
 
 /** A share of the frame width a newly chosen kind starts at: pictures wide, text short. */
-const STARTING_SIZE: Record<Kind, number> = { clipah: 0.12, image: 0.16, text: 0.04 }
+const STARTING_SIZE: Record<Kind, number> = { clipah: 0.2, image: 0.16, text: 0.04 }
 
 /**
  * The clip's watermark: Clipah's own mark, one of this Project's pictures, or a line of

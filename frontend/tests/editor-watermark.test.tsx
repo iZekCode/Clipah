@@ -36,7 +36,7 @@ describe('the watermark drawn over the preview', () => {
 
     const mark = screen.getByTestId('editor-watermark')
     expect(mark).toHaveAttribute('src', CLIPAH_LOGO_URL)
-    expect(mark.style.width).toBe('calc(12cqw)')
+    expect(mark.style.width).toBe('calc(20cqw)')
     expect(mark.style.right).toBe('calc(4cqw)')
     expect(mark.style.bottom).toBe('calc(4cqw)')
   })

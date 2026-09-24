@@ -120,8 +120,8 @@ def clipah_logo_asset() -> RenderAsset:
         kind=AssetKind.BROLL,
         content_type="image/png",
         duration_ms=None,
-        width=497,
-        height=502,
+        width=829,
+        height=346,
     )
 
 
