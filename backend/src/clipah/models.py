@@ -148,6 +148,8 @@ class AssetKind(StrEnum):
     STORYBOARD = "storyboard"
     # One full-resolution portrait frame of one ranked moment, for its card.
     POSTER = "poster"
+    # One clip Revision's designed cover: a framed still with its title drawn on.
+    COVER = "cover"
 
 
 class AssetSourceType(StrEnum):
@@ -210,6 +212,7 @@ class JobKind(StrEnum):
     CLEANUP = "cleanup"
     PREVIEW_MEDIA = "preview_media"
     CLIP_POSTERS = "clip_posters"
+    CLIP_COVER = "clip_cover"
 
 
 class ClaimVerificationStatus(StrEnum):

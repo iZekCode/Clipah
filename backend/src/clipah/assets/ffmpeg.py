@@ -344,6 +344,57 @@ class FFmpegRunner:
             cancellation_check=cancellation_check,
         )
 
+    def extract_cover_frame(
+        self,
+        source: Path,
+        output: Path,
+        *,
+        at_ms: int,
+        window: tuple[int, int, int, int] | None,
+        width: int,
+        height: int,
+        cancellation_check: CancellationCheck,
+    ) -> None:
+        """Write the frame at `at_ms` as a PNG exactly `width` by `height`.
+
+        The frame is cut to the item's window first, when it has one, then scaled to cover
+        the canvas and cropped at its centre — the framing the export gives every frame.
+        """
+        if at_ms < 0 or min(width, height) <= 0:
+            raise ValueError("cover geometry must be positive")
+        crop = ""
+        if window is not None:
+            box_width, box_height, x, y = window
+            if min(box_width, box_height) <= 0 or min(x, y) < 0:
+                raise ValueError("cover geometry must be positive")
+            crop = f"crop={box_width}:{box_height}:{x}:{y},"
+        arguments = (
+            self._ffmpeg_path,
+            "-nostdin",
+            "-v",
+            "error",
+            "-ss",
+            f"{at_ms / 1000:.3f}",
+            "-i",
+            str(source),
+            "-map",
+            "0:v:0",
+            "-vf",
+            f"{crop}scale={width}:{height}:force_original_aspect_ratio=increase,"
+            f"crop={width}:{height},setsar=1",
+            "-frames:v",
+            "1",
+            "-map_metadata",
+            "-1",
+            "-y",
+            str(output),
+        )
+        self._executor.run(
+            arguments,
+            timeout_seconds=self._ffmpeg_timeout_seconds,
+            cancellation_check=cancellation_check,
+        )
+
     def generate_storyboard(
         self,
         source: Path,

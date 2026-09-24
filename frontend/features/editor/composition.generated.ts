@@ -16,6 +16,10 @@ export type TextDecoration = "none" | "underline" | "strikethrough";
 export type FontFamily =
   "Inter" | "Montserrat" | "Poppins" | "Roboto" | "Open Sans" | "Bebas Neue" | "Anton" | "Nunito";
 /**
+ * The designs a clip's cover picture can be drawn in.
+ */
+export type CoverPreset = "bold" | "clean" | "topTitle" | "minimal";
+/**
  * The compositing modes both the browser preview and FFmpeg can reproduce.
  */
 export type BlendMode = "normal" | "multiply" | "screen" | "overlay" | "darken" | "lighten";
@@ -66,6 +70,7 @@ export interface CompositionV1 {
   brandKit: BrandKitReference | null;
   canvas: Canvas;
   captions: Captions;
+  cover?: Cover | null;
   durationMs: number;
   overlays: (VideoOverlay | ImageOverlay | TextOverlay | CitationOverlay)[];
   schemaVersion: 1;
@@ -140,6 +145,17 @@ export interface CaptionWord {
   speaker: string | null;
   startMs: number;
   text: string;
+}
+/**
+ * The still a clip is shown by before it plays: one frame of it, titled in a design.
+ *
+ * ``at_ms`` is clip time, so the frame is the one the member sees at that instant, framed
+ * the way the export frames it. A minimal cover draws no title.
+ */
+export interface Cover {
+  atMs: number;
+  preset: CoverPreset;
+  title?: string | null;
 }
 /**
  * A B-roll or supporting video placed over the main timeline.

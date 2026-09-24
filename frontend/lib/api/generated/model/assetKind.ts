@@ -20,4 +20,5 @@ export const AssetKind = {
   broll_proxy: 'broll_proxy',
   storyboard: 'storyboard',
   poster: 'poster',
+  cover: 'cover',
 } as const;

@@ -9,7 +9,8 @@ from clipah.models import AssetKind
 
 _PREVIEW_MEDIA_NAME = re.compile(
     r"(?:storyboard-v1/sheet-\d{4}\.jpg|waveform-v1\.bin"
-    r"|posters-v1/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg)"
+    r"|posters-v1/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg"
+    r"|covers-v1/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.jpg)"
 )
 
 

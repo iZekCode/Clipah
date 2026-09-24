@@ -25,4 +25,5 @@ export const JobKind = {
   cleanup: 'cleanup',
   preview_media: 'preview_media',
   clip_posters: 'clip_posters',
+  clip_cover: 'clip_cover',
 } as const;

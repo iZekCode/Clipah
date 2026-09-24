@@ -144,7 +144,8 @@
           "broll",
           "broll_proxy",
           "storyboard",
-          "poster"
+          "poster",
+          "cover"
         ],
         "title": "AssetKind",
         "type": "string"
@@ -2455,6 +2456,16 @@
           "captions": {
             "$ref": "#/components/schemas/Captions"
           },
+          "cover": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Cover"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "durationMs": {
             "exclusiveMinimum": 0.0,
             "maximum": 600000.0,
@@ -2597,6 +2608,131 @@
         ],
         "title": "ContextWarningResponse",
         "type": "object"
+      },
+      "Cover": {
+        "additionalProperties": false,
+        "description": "The still a clip is shown by before it plays: one frame of it, titled in a design.\n\n``at_ms`` is clip time, so the frame is the one the member sees at that instant, framed\nthe way the export frames it. A minimal cover draws no title.",
+        "properties": {
+          "atMs": {
+            "maximum": 600000.0,
+            "minimum": 0.0,
+            "title": "Atms",
+            "type": "integer"
+          },
+          "preset": {
+            "$ref": "#/components/schemas/CoverPreset"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 120,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "required": [
+          "atMs",
+          "preset"
+        ],
+        "title": "Cover",
+        "type": "object"
+      },
+      "CoverPreset": {
+        "description": "The designs a clip's cover picture can be drawn in.",
+        "enum": [
+          "bold",
+          "clean",
+          "topTitle",
+          "minimal"
+        ],
+        "title": "CoverPreset",
+        "type": "string"
+      },
+      "CoverResponse": {
+        "additionalProperties": false,
+        "description": "One clip's cover for its current Revision, with a short-lived link once it exists.",
+        "properties": {
+          "errorCode": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Errorcode"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Expiresat"
+          },
+          "jobId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Jobid"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/CoverStatus"
+          },
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Url"
+          }
+        },
+        "required": [
+          "status",
+          "revision",
+          "jobId",
+          "errorCode",
+          "url",
+          "expiresAt"
+        ],
+        "title": "CoverResponse",
+        "type": "object"
+      },
+      "CoverStatus": {
+        "description": "The five states a clip's cover picture can be in.",
+        "enum": [
+          "none",
+          "missing",
+          "drawing",
+          "failed",
+          "ready"
+        ],
+        "title": "CoverStatus",
+        "type": "string"
       },
       "CreateUploadRequest": {
         "additionalProperties": false,
@@ -3657,7 +3793,8 @@
           "social_reconcile",
           "cleanup",
           "preview_media",
-          "clip_posters"
+          "clip_posters",
+          "clip_cover"
         ],
         "title": "JobKind",
         "type": "string"
@@ -8811,6 +8948,122 @@
         "summary": "Create",
         "tags": [
           "campaigns"
+        ]
+      }
+    },
+    "/api/v1/edits/{edit_id}/cover": {
+      "get": {
+        "description": "Read where the current Revision's cover stands, signing its picture when it exists.",
+        "operationId": "show_api_v1_edits__edit_id__cover_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "download",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Download",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Show",
+        "tags": [
+          "covers"
+        ]
+      },
+      "post": {
+        "description": "Draw the current Revision's cover, unless it already exists or is being drawn.",
+        "operationId": "create_api_v1_edits__edit_id__cover_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "edit_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Edit Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "workspace_id",
+            "required": true,
+            "schema": {
+              "format": "uuid",
+              "title": "Workspace Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CoverResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Create",
+        "tags": [
+          "covers"
         ]
       }
     },

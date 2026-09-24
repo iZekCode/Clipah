@@ -30,6 +30,8 @@ from clipah.editor.models import (
     CaptionStyle,
     CaptionWord,
     CompositionV1,
+    Cover,
+    CoverPreset,
     FontFamily,
     ImageOverlay,
     MotionPreset,
@@ -415,7 +417,37 @@ def initial_composition(seed: CandidateSeed) -> CompositionV1:
         audio=AudioMix(gain_db=0.0, music_gain_db=-18.0),
         bookmarks=(),
         watermark=default_watermark(),
+        cover=default_cover(seed.hook, duration_ms),
     )
+
+
+def default_cover(hook: str, duration_ms: int) -> Cover:
+    """Return the cover a first Edit starts with: the moment's headline, boldly, one second in.
+
+    One second in is where the moment's card poster is drawn, so the cover a member first
+    sees matches the picture they chose the clip from.
+    """
+    title = _cover_title(hook)
+    return Cover(
+        at_ms=min(1_000, duration_ms // 2),
+        preset=CoverPreset.BOLD if title is not None else CoverPreset.MINIMAL,
+        title=title,
+    )
+
+
+def _cover_title(hook: str) -> str | None:
+    """The hook cut to a cover's length at a word boundary, or nothing when it is blank."""
+    text = " ".join(hook.split())
+    if not text:
+        return None
+    if len(text) <= COVER_TITLE_LIMIT:
+        return text
+    cut = text[: COVER_TITLE_LIMIT - 1].rsplit(" ", 1)[0].rstrip(",.;:")
+    return f"{cut}…"
+
+
+#: The longest title a cover accepts, as the composition schema bounds it.
+COVER_TITLE_LIMIT = 120
 
 
 def default_watermark() -> Watermark:

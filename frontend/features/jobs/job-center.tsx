@@ -56,6 +56,7 @@ export const JOB_KIND_LABELS: Record<string, string> = {
   cleanup: 'Cleaning up',
   preview_media: 'Preparing previews',
   clip_posters: 'Preparing posters',
+  clip_cover: 'Drawing a cover',
 }
 
 const STATUS_LABELS: Record<string, string> = {

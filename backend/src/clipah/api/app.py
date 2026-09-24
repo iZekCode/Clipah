@@ -26,6 +26,7 @@ from clipah.api.routes import broll as broll_routes
 from clipah.api.routes import campaigns as campaign_routes
 from clipah.api.routes import candidates as candidate_routes
 from clipah.api.routes import claim_evidence as claim_evidence_routes
+from clipah.api.routes import covers as cover_routes
 from clipah.api.routes import dashboard as dashboard_routes
 from clipah.api.routes import edit_reviews as edit_review_routes
 from clipah.api.routes import edits as edit_routes
@@ -279,6 +280,7 @@ def create_app(
     app.include_router(edit_routes.router)
     app.include_router(edit_review_routes.router)
     app.include_router(render_routes.router)
+    app.include_router(cover_routes.router)
     app.include_router(generation_webhook_routes.router)
     app.include_router(instagram_webhook_routes.router)
     app.include_router(tiktok_webhook_routes.router)

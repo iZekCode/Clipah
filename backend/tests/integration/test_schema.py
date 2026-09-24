@@ -273,6 +273,7 @@ EXPECTED_ENUMS = {
         "broll_proxy",
         "storyboard",
         "poster",
+        "cover",
     ),
     "asset_source_type": (
         "user_upload",
@@ -297,6 +298,7 @@ EXPECTED_ENUMS = {
         "cleanup",
         "preview_media",
         "clip_posters",
+        "clip_cover",
     ),
     "job_status": (
         "queued",

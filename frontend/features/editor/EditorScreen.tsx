@@ -13,6 +13,7 @@ import {
   Redo2,
   RotateCcw,
   SlidersHorizontal,
+  ImageIcon,
   Stamp,
   Type,
   Undo2,
@@ -101,6 +102,8 @@ import {
 } from './store'
 import { useEditorKeys } from './use-editor-keys'
 import { WatermarkPanel } from './WatermarkPanel'
+import { CoverOverlay } from './CoverOverlay'
+import { CoverPanel } from './CoverPanel'
 
 /** The editing tools, in the order a creator usually reaches for them. */
 const TOOLS = [
@@ -111,6 +114,7 @@ const TOOLS = [
   { id: 'audio', label: 'Audio', icon: AudioLines },
   { id: 'text', label: 'Text', icon: Type },
   { id: 'watermark', label: 'Watermark', icon: Stamp },
+  { id: 'cover', label: 'Cover', icon: ImageIcon },
   { id: 'review', label: 'Review', icon: ClipboardCheck },
 ] as const
 
@@ -641,7 +645,13 @@ function LoadedEditor({
                   id={`editor-tool-${entry.id}`}
                   aria-selected={tool === entry.id}
                   aria-controls={`editor-panel-${entry.id}`}
-                  onClick={() => setTool(entry.id)}
+                  onClick={() => {
+                    setTool(entry.id)
+                    // Opening the cover shows the frame it is designed on.
+                    if (entry.id === 'cover' && composition.cover != null) {
+                      dispatch({ type: 'seek', ms: composition.cover.atMs })
+                    }
+                  }}
                   className={cn(
                     'flex w-12 flex-col items-center gap-0.5 rounded-md py-2 text-[11px] font-medium transition-colors duration-fast ease-signal',
                     tool === entry.id
@@ -809,6 +819,18 @@ function LoadedEditor({
               onChange={(watermark) => dispatch({ type: 'watermark', watermark })}
             />
           </ToolPanel>
+          <ToolPanel id="cover" active={tool}>
+            <CoverPanel
+              cover={composition.cover ?? null}
+              editId={edit.id}
+              workspaceId={workspaceId}
+              playheadMs={state.playheadMs}
+              durationMs={composition.durationMs}
+              dirty={dirty}
+              onChange={(cover) => dispatch({ type: 'cover', cover })}
+              onShowFrame={(ms) => dispatch({ type: 'seek', ms })}
+            />
+          </ToolPanel>
           <ToolPanel id="review" active={tool}>
             <SceneList
               composition={composition}
@@ -874,7 +896,9 @@ function LoadedEditor({
                 overlayMedia={overlayMedia}
                 showFullFrame={tool === 'layout' && framed?.crop != null}
                 overlay={
-                  tool === 'layout' && framed !== null && framed.crop !== null ? (
+                  tool === 'cover' && composition.cover != null ? (
+                    <CoverOverlay cover={composition.cover} />
+                  ) : tool === 'layout' && framed !== null && framed.crop !== null ? (
                     <CropOverlay
                       crop={previewCrop ?? framed.crop}
                       onPreview={setPreviewCrop}

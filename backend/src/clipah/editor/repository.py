@@ -51,6 +51,8 @@ class CandidateSeed:
     start_ms: int
     end_ms: int
     words: tuple[SeedWord, ...]
+    # The moment's own headline, which a first cover is titled with.
+    hook: str = ""
 
 
 @dataclass(frozen=True, slots=True)
@@ -166,6 +168,7 @@ class EditRepository:
             start_ms=candidate.start_ms,
             end_ms=candidate.end_ms,
             words=_seed_words(transcript.words, candidate.start_ms, candidate.end_ms),
+            hook=candidate.hook,
         )
 
     def project_asset_ids(self, *, workspace_id: UUID, project_id: UUID) -> frozenset[UUID]:

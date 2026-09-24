@@ -334,6 +334,50 @@
       "title": "CitationOverlay",
       "type": "object"
     },
+    "Cover": {
+      "additionalProperties": false,
+      "description": "The still a clip is shown by before it plays: one frame of it, titled in a design.\n\n``at_ms`` is clip time, so the frame is the one the member sees at that instant, framed\nthe way the export frames it. A minimal cover draws no title.",
+      "properties": {
+        "atMs": {
+          "maximum": 600000,
+          "minimum": 0,
+          "type": "integer"
+        },
+        "preset": {
+          "$ref": "#/$defs/CoverPreset"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "maxLength": 120,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "atMs",
+        "preset"
+      ],
+      "title": "Cover",
+      "type": "object"
+    },
+    "CoverPreset": {
+      "description": "The designs a clip's cover picture can be drawn in.",
+      "enum": [
+        "bold",
+        "clean",
+        "topTitle",
+        "minimal"
+      ],
+      "title": "CoverPreset",
+      "type": "string"
+    },
     "Crop": {
       "additionalProperties": false,
       "description": "A normalized crop rectangle inside the source frame.",
@@ -1122,6 +1166,17 @@
     },
     "captions": {
       "$ref": "#/$defs/Captions"
+    },
+    "cover": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Cover"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "durationMs": {
       "exclusiveMinimum": 0,

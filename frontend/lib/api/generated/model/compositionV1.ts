@@ -9,6 +9,7 @@ import type { Bookmark } from './bookmark';
 import type { CompositionV1BrandKit } from './compositionV1BrandKit';
 import type { Canvas } from './canvas';
 import type { Captions } from './captions';
+import type { CompositionV1Cover } from './compositionV1Cover';
 import type { CompositionV1OverlaysItem } from './compositionV1OverlaysItem';
 import type { SourceRange } from './sourceRange';
 import type { CompositionV1Template } from './compositionV1Template';
@@ -24,6 +25,7 @@ export interface CompositionV1 {
   brandKit: CompositionV1BrandKit;
   canvas: Canvas;
   captions: Captions;
+  cover?: CompositionV1Cover;
   /**
    * @maximum 600000
    */

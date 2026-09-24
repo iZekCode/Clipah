@@ -520,6 +520,34 @@ class Watermark(CompositionModel):
         return self
 
 
+class CoverPreset(StrEnum):
+    """The designs a clip's cover picture can be drawn in."""
+
+    BOLD = "bold"
+    CLEAN = "clean"
+    TOP_TITLE = "topTitle"
+    MINIMAL = "minimal"
+
+
+class Cover(CompositionModel):
+    """The still a clip is shown by before it plays: one frame of it, titled in a design.
+
+    ``at_ms`` is clip time, so the frame is the one the member sees at that instant, framed
+    the way the export frames it. A minimal cover draws no title.
+    """
+
+    at_ms: Milliseconds
+    preset: CoverPreset
+    title: Annotated[str, Field(min_length=1, max_length=120)] | None = None
+
+    @model_validator(mode="after")
+    def _reject_a_blank_title(self) -> Self:
+        """A title of spaces would draw an empty band rather than no title."""
+        if self.title is not None and not self.title.strip():
+            raise ValueError("a cover title cannot be blank")
+        return self
+
+
 class CompositionV1(CompositionModel):
     """One immutable editing decision set, valid on its own terms."""
 
@@ -539,6 +567,8 @@ class CompositionV1(CompositionModel):
     bookmarks: tuple[Bookmark, ...]
     # Absent on documents written before watermarks existed, which keep rendering as they did.
     watermark: Watermark | None = None
+    # Absent until a cover is designed; documents without one keep their stored bytes.
+    cover: Cover | None = None
 
     @model_validator(mode="after")
     def _reject_an_inconsistent_document(self) -> Self:
@@ -576,6 +606,8 @@ class CompositionV1(CompositionModel):
         for bookmark in self.bookmarks:
             if bookmark.timeline_ms > self.duration_ms:
                 raise ValueError("a bookmark may not sit past the composition duration")
+        if self.cover is not None and self.cover.at_ms >= self.duration_ms:
+            raise ValueError("a cover frame must come from inside the clip")
 
 
 def _reject_unordered_keyframes(keyframes: Sequence[Keyframe], duration_ms: int) -> None:
@@ -601,12 +633,13 @@ def parse_composition(document: Mapping[str, Any]) -> CompositionV1:
 def canonical_json(composition: CompositionV1) -> bytes:
     """Serialize one composition to the exact bytes its hash is taken over.
 
-    A document with no watermark omits the key, so a Revision written before watermarks
-    existed keeps the bytes, and the hash, it was stored with.
+    A document with no watermark or cover omits the key, so a Revision written before
+    either existed keeps the bytes, and the hash, it was stored with.
     """
     document = composition.model_dump(mode="json", by_alias=True)
-    if document.get("watermark") is None:
-        document.pop("watermark", None)
+    for optional in ("watermark", "cover"):
+        if document.get(optional) is None:
+            document.pop(optional, None)
     return json.dumps(
         document,
         sort_keys=True,

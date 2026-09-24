@@ -59,7 +59,7 @@ describe('the studio layout', () => {
       within(screen.getByRole('navigation', { name: 'Editing tools' }))
         .getAllByRole('tab')
         .map((tab) => tab.textContent),
-    ).toEqual(['Captions', 'Style', 'Layout', 'Media', 'Audio', 'Text', 'Watermark', 'Review'])
+    ).toEqual(['Captions', 'Style', 'Layout', 'Media', 'Audio', 'Text', 'Watermark', 'Cover', 'Review'])
     const stage = screen.getByRole('region', { name: 'Stage' })
     expect(within(stage).getByRole('group', { name: 'Canvas shape' })).toBeInTheDocument()
     expect(within(stage).getByRole('group', { name: 'Transport' })).toBeInTheDocument()

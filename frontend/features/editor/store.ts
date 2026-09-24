@@ -70,6 +70,8 @@ type MotionPreset = TrackItem['motion']
 type TextOverlay = Extract<Overlay, { type: 'text' }>
 /** The mark drawn over the whole clip, in one cell of a three-by-three grid. */
 export type CompositionWatermark = NonNullable<CompositionV1['watermark']>
+/** The still a clip is shown by: one of its frames, titled in one design. */
+export type CompositionCover = NonNullable<CompositionV1['cover']>
 type TextStyle = TextOverlay['style']
 type AudioMix = CompositionV1['audio']
 
@@ -155,6 +157,7 @@ export type EditorAction =
     }
   | { type: 'audio'; patch: Partial<AudioMix> }
   | { type: 'watermark'; watermark: CompositionWatermark | null }
+  | { type: 'cover'; cover: CompositionCover | null }
   | { type: 'addText'; text: string }
   | { type: 'updateOverlay'; overlayId: string; patch: Partial<Pick<TextOverlay, 'text'>> & { style?: Partial<TextStyle>; placement?: TextOverlay['placement'] } }
   | { type: 'moveOverlay'; overlayId: string; startMs: number; endMs: number }
@@ -574,6 +577,9 @@ function edit(draft: CompositionV1, action: EditorAction, state: EditorState): v
       return
     case 'watermark':
       draft.watermark = action.watermark
+      return
+    case 'cover':
+      draft.cover = action.cover
       return
     case 'addText':
       return addText(draft, action.text, state.playheadMs)

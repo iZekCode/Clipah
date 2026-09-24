@@ -21,6 +21,8 @@ QUEUE_FOR_JOB_KIND: Mapping[JobKind, str] = {
     JobKind.INGEST: "ingest",
     JobKind.PREVIEW_MEDIA: "ingest",
     JobKind.CLIP_POSTERS: "ingest",
+    # Covers are drawn where exports are, beside the fonts the renderer ships with.
+    JobKind.CLIP_COVER: "render",
     JobKind.TRANSCRIBE: "ai",
     JobKind.ANALYZE: "ai",
     JobKind.BROLL_PLAN: "ai",

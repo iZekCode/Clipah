@@ -46,6 +46,7 @@ from clipah.models import (
     RenderRequest,
     Transcript,
 )
+from clipah.renders.cover import cover_asset_id
 from clipah.workspaces.models import WorkspaceAccess
 
 # What a creator recognizes as their own media. Proxies, waveforms, transcription audio,
@@ -747,7 +748,54 @@ def project_posters(
                 download=store.sign_download(key=key, expires_in=SIGNED_URL_TTL),
             )
         )
-    return tuple(posters)
+    covers = _designed_covers(session, access=access, project_id=project_id, exposed=exposed)
+    for candidate_id, (key, width, height) in covers.items():
+        posters = [poster for poster in posters if poster.candidate_id != candidate_id]
+        posters.append(
+            ClipPosterView(
+                candidate_id=candidate_id,
+                width=width,
+                height=height,
+                download=store.sign_download(key=key, expires_in=SIGNED_URL_TTL),
+            )
+        )
+    return tuple(sorted(posters, key=lambda poster: str(poster.candidate_id)))
+
+
+def _designed_covers(
+    session: Session, *, access: WorkspaceAccess, project_id: UUID, exposed: set[UUID]
+) -> dict[UUID, tuple[str, int, int]]:
+    """The drawn cover of each exposed clip's current Revision, which its card shows first.
+
+    A member who designed a cover chose the picture their clip is known by, so it takes
+    the place of the frame analysis picked. A cover of an older Revision is not shown.
+    """
+    current = session.execute(
+        select(ClipEdit.candidate_id, ClipEditRevision.id)
+        .join(
+            ClipEditRevision,
+            (ClipEditRevision.workspace_id == ClipEdit.workspace_id)
+            & (ClipEditRevision.clip_edit_id == ClipEdit.id)
+            & (ClipEditRevision.revision == ClipEdit.current_revision),
+        )
+        .where(ClipEdit.workspace_id == access.workspace_id, ClipEdit.candidate_id.in_(exposed))
+    ).all()
+    wanted = {cover_asset_id(revision_id): candidate_id for candidate_id, revision_id in current}
+    if not wanted:
+        return {}
+    rows = session.execute(
+        select(Asset.id, Asset.storage_key, Asset.width, Asset.height).where(
+            Asset.workspace_id == access.workspace_id,
+            Asset.project_id == project_id,
+            Asset.kind == AssetKind.COVER,
+            Asset.id.in_(list(wanted)),
+        )
+    ).all()
+    return {
+        wanted[row.id]: (row.storage_key, row.width, row.height)
+        for row in rows
+        if row.width is not None and row.height is not None
+    }
 
 
 def project_waveform(
