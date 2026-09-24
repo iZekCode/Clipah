@@ -514,6 +514,7 @@ requires HTTPS origins.
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `CLIPAH_SOCIAL_PUBLISHING_ENABLED` | `False` | The master gate. |
+| `CLIPAH_PUBLICATION_RELAY_INTERVAL_SECONDS` | `15` | How often approved and due publications move to delivery, and uploaded videos are checked. |
 | `CLIPAH_MULTI_DESTINATION_SCHEDULING_ENABLED` | `False` | Requires the master gate. |
 | `CLIPAH_YOUTUBE_PUBLISHING_ENABLED` | `False` | |
 | `CLIPAH_YOUTUBE_OAUTH_CLIENT_ID` | — | |

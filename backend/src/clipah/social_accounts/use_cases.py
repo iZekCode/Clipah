@@ -9,6 +9,7 @@ from datetime import datetime, timedelta
 from typing import Any, Protocol
 from uuid import UUID, uuid4
 
+from pydantic import SecretStr
 from sqlalchemy.orm import Session
 
 from clipah.models import OAuthGrant, SocialAccount
@@ -43,6 +44,8 @@ from clipah.social_accounts.secrets import (
 from clipah.workspaces.models import WorkspaceAccess
 
 LEASE_TTL = timedelta(minutes=5)
+# A worker refreshes any token closer than this to expiry before provider work begins.
+ACCESS_TOKEN_MARGIN = timedelta(minutes=15)
 
 
 class SocialAccountNotFoundError(Exception):
@@ -477,6 +480,41 @@ class SocialAccountService:
         ):
             raise SocialAccountReconnectRequiredError("Social Account must reconnect")
         return self._grant_lease(account=account, grant=grant, now=now, operation_id=operation_id)
+
+    def access_token(
+        self,
+        *,
+        access: WorkspaceAccess,
+        social_account_id: UUID,
+        now: datetime,
+        request_id: str,
+        fresh_for: timedelta = ACCESS_TOKEN_MARGIN,
+    ) -> SecretStr:
+        """Hand one provider operation an access token that outlives it.
+
+        A token that expires within ``fresh_for`` is refreshed first, under the same
+        serialization as a member's own refresh, so a long upload never starts on a token
+        that dies halfway through it. The plaintext leaves the lease only as a SecretStr.
+        """
+        grant = self._repository.grant(
+            workspace_id=access.workspace_id, social_account_id=social_account_id
+        )
+        expires_at = None if grant is None else grant.access_token_expires_at
+        if expires_at is None or expires_at <= now + fresh_for:
+            self.refresh(
+                access=access,
+                social_account_id=social_account_id,
+                now=now,
+                request_id=request_id,
+            )
+        lease = self.lease(
+            workspace_id=access.workspace_id,
+            social_account_id=social_account_id,
+            operation_id=self._id_factory(),
+            now=now,
+        )
+        with lease.open(now=now) as document:
+            return SecretStr(_decode_material(document).access_token)
 
     def _grant_lease(
         self,

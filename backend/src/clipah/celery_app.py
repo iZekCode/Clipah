@@ -37,6 +37,9 @@ QUEUE_FOR_JOB_KIND: Mapping[JobKind, str] = {
 }
 QUEUE_NAMES: tuple[str, ...] = tuple(dict.fromkeys(QUEUE_FOR_JOB_KIND.values()))
 RETENTION_SWEEP_TASK = "clipah.retention.sweep"
+PUBLICATION_RELAY_TASK = "clipah.publishing.relay"
+PUBLICATION_DELIVERY_TASK = "clipah.publishing.deliver"
+PUBLISHING_QUEUE = QUEUE_FOR_JOB_KIND[JobKind.SOCIAL_PUBLISH]
 
 
 def create_celery_app() -> Celery:
@@ -74,6 +77,14 @@ def configure_celery(app: Celery, settings: Settings) -> Celery:
             "options": {"queue": DEFAULT_QUEUE},
         }
     }
+    if settings.social_publishing_enabled:
+        # Approved and due publications wait in an outbox; this moves them to delivery
+        # and asks the provider how uploaded videos are getting on.
+        app.conf.beat_schedule["publication-relay"] = {
+            "task": PUBLICATION_RELAY_TASK,
+            "schedule": settings.publication_relay_interval_seconds,
+            "options": {"queue": PUBLISHING_QUEUE},
+        }
     app.conf[SETTINGS_KEY] = settings
     return app
 

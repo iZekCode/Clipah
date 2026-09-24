@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import replace
@@ -65,8 +66,14 @@ def _seed_publication(
     workspace_id: UUID | None = None,
     watermark_text: str | None = None,
     render_duration_ms: int = 1_000,
+    render_bytes: bytes | None = None,
+    render_key: str = "render.mp4",
 ) -> dict[str, Any]:
-    """Create the smallest real graph ending in one draft Publication."""
+    """Create the smallest real graph ending in one draft Publication.
+
+    ``render_bytes`` gives the export real content, so its checksum and size can be
+    proven by a test that downloads it; otherwise both are placeholders.
+    """
     if user_id is None or workspace_id is None:
         user_id, workspace_id = provision_identity(engine, suffix=suffix)
     ids = {
@@ -85,7 +92,10 @@ def _seed_publication(
             "publication",
         )
     }
-    digest = bytes.fromhex("42" * 32)
+    digest = (
+        bytes.fromhex("42" * 32) if render_bytes is None else hashlib.sha256(render_bytes).digest()
+    )
+    render_size = 100 if render_bytes is None else len(render_bytes)
     with engine.begin() as connection:
         connection.execute(
             text(
@@ -174,7 +184,7 @@ def _seed_publication(
                     (id, workspace_id, clip_edit_revision_id, preset, composition_hash, sha256,
                      watermark_text, storage_key, size_bytes, duration_ms)
                 VALUES (:render, :workspace, :revision, '1080x1920', :digest, :digest,
-                        :watermark_text, 'render.mp4', 100, :render_duration_ms)
+                        :watermark_text, :render_key, :render_size, :render_duration_ms)
                 """
             ),
             {
@@ -183,6 +193,8 @@ def _seed_publication(
                 "digest": digest,
                 "watermark_text": watermark_text,
                 "render_duration_ms": render_duration_ms,
+                "render_key": render_key,
+                "render_size": render_size,
             },
         )
         connection.execute(

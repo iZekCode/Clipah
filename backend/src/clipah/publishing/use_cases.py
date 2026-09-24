@@ -390,7 +390,11 @@ def youtube_policy_evidence(
     *, publication: Publication, now: datetime, audit_approved: bool
 ) -> dict[str, str | None]:
     """Build reproducible YouTube visibility evidence from frozen Publication choices."""
-    raw_privacy = publication.provider_options.get("privacy", YouTubePrivacy.PRIVATE.value)
+    # The composer records visibility as ``privacyStatus``, YouTube's own field name.
+    options = publication.provider_options
+    raw_privacy = (
+        options.get("privacyStatus") or options.get("privacy") or YouTubePrivacy.PRIVATE.value
+    )
     try:
         requested = YouTubePrivacy(raw_privacy)
         return YouTubePolicy(audit_approved=audit_approved, now=now).confirmation_evidence_for(

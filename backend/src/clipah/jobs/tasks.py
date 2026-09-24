@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import random
+import tempfile
 from collections.abc import Callable, Iterator, MutableMapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from functools import lru_cache
+from pathlib import Path
 from time import perf_counter
 from uuid import UUID
 
@@ -18,6 +20,9 @@ from sqlalchemy.orm import Session
 from clipah.broll.use_cases import start_retrieval_after_plan
 from clipah.celery_app import (
     MAX_ATTEMPTS,
+    PUBLICATION_DELIVERY_TASK,
+    PUBLICATION_RELAY_TASK,
+    PUBLISHING_QUEUE,
     RETENTION_SWEEP_TASK,
     RETRY_BASE_SECONDS,
     RETRY_MAX_SECONDS,
@@ -47,6 +52,7 @@ from clipah.models import JobKind, JobStatus
 from clipah.observability.logging import get_logger, log_context
 from clipah.observability.metrics import count, observe
 from clipah.observability.tracing import span
+from clipah.publishing.runtime import deliver, poll, production_runtime, relay
 from clipah.retention.tasks import sweep
 from clipah.workspaces.authorization import DatabaseWorkspaceAuthorizer
 from clipah.workspaces.models import WorkspaceAction
@@ -279,6 +285,43 @@ def run_retention_sweep(self: Task) -> dict[str, int]:
         "deferred": report.deferred,
         "failed": report.failed,
     }
+
+
+@celery_app.task(bind=True, name=PUBLICATION_RELAY_TASK)  # type: ignore[untyped-decorator]
+def run_publication_relay(self: Task) -> dict[str, int]:
+    """Move due publications to delivery and record how uploaded videos are getting on.
+
+    Like retention it is scheduled, not requested: nothing comes from a message, and what
+    it moves comes from the outbox and the scheduled Publications it finds.
+    """
+    settings = settings_for(self.app)
+    runtime = production_runtime(settings, store=production_object_store(settings))
+    now = _now()
+
+    def send(workspace_id: UUID, publication_id: UUID) -> None:
+        run_publication_delivery.apply_async(
+            args=(str(workspace_id), str(publication_id)), queue=PUBLISHING_QUEUE
+        )
+
+    sent = relay(runtime, now=now, send=send)
+    polled = poll(runtime, now=now)
+    return {"sent": sent, "polled": polled}
+
+
+@celery_app.task(bind=True, name=PUBLICATION_DELIVERY_TASK)  # type: ignore[untyped-decorator]
+def run_publication_delivery(self: Task, workspace_id: str, publication_id: str) -> str:
+    """Deliver one Publication named only by its identifiers, in a private scratch folder."""
+    settings = settings_for(self.app)
+    runtime = production_runtime(settings, store=production_object_store(settings))
+    with tempfile.TemporaryDirectory(prefix="clipah-publication-") as scratch:
+        outcome = deliver(
+            runtime,
+            workspace_id=UUID(workspace_id),
+            publication_id=UUID(publication_id),
+            now=_now(),
+            workspace=Path(scratch),
+        )
+    return "skipped" if outcome is None else outcome.value
 
 
 def _dispatch_next(*, job_id: UUID, workspace_id: UUID, user_id: UUID, kind: JobKind) -> None:

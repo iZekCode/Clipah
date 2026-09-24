@@ -214,6 +214,8 @@ class Settings(BaseSettings):
     collaboration_enabled: bool = False
     generative_video_enabled: bool = False
     social_publishing_enabled: bool = False
+    # How often approved and due publications are moved to delivery.
+    publication_relay_interval_seconds: int = Field(default=15, ge=5, le=3600)
     multi_destination_scheduling_enabled: bool = False
 
     youtube_publishing_enabled: bool = False
