@@ -61,6 +61,7 @@ function exported(overrides: Partial<ExportResponse> = {}): ExportResponse {
     projectId: PROJECT_ID,
     projectName: 'Episode 12',
     candidateId: edit().candidateId,
+    clipTitle: 'The hook that opens the clip',
     editId: EDIT_ID,
     revisionId: '88888888-0000-4000-8000-000000000003',
     revision: 2,
@@ -278,7 +279,10 @@ describe('one project', () => {
 
     await user.click(screen.getByRole('tab', { name: 'Exports' }))
 
-    expect(await screen.findByRole('list', { name: 'Exports' })).toHaveTextContent('Vertical 9:16')
+    const exports = await screen.findByRole('list', { name: 'Exports' })
+    expect(exports).toHaveTextContent('Vertical 9:16')
+    // A Project exports many clips, so each file is named by its clip's title.
+    expect(exports).toHaveTextContent('The hook that opens the clip')
   })
 })
 

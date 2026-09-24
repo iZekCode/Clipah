@@ -149,6 +149,7 @@ class ExportSummary:
     project_id: UUID
     project_name: str
     candidate_id: UUID
+    clip_title: str
     edit_id: UUID
     revision_id: UUID
     revision: int
@@ -428,6 +429,7 @@ def list_exports(
             ClipEditRevision.revision,
             ClipEdit.id,
             ClipEdit.candidate_id,
+            ClipCandidate.hook,
             Project.id,
             Project.name,
             RenderArtifact,
@@ -901,6 +903,7 @@ def _export_summary(
     revision: int,
     edit_id: UUID,
     candidate_id: UUID,
+    clip_title: str,
     project_id: UUID,
     project_name: str,
     artifact: RenderArtifact | None,
@@ -915,6 +918,7 @@ def _export_summary(
         project_id=project_id,
         project_name=project_name,
         candidate_id=candidate_id,
+        clip_title=clip_title,
         edit_id=edit_id,
         revision_id=request.clip_edit_revision_id,
         revision=revision,

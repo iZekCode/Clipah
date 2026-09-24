@@ -15,6 +15,7 @@ import type { ExportResponseSizeBytes } from './exportResponseSizeBytes';
  */
 export interface ExportResponse {
   candidateId: string;
+  clipTitle: string;
   completedAt: ExportResponseCompletedAt;
   createdAt: string;
   durationMs: ExportResponseDurationMs;

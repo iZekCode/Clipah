@@ -354,6 +354,27 @@ def test_captions_are_written_as_a_subtitle_file_the_graph_reads() -> None:
 
 
 @pytest.mark.unit
+def test_karaoke_lights_each_word_when_it_is_said_even_after_a_pause() -> None:
+    """A short pause inside a line delays the next highlight rather than pulling it early.
+
+    The editor preview lights a word at its own start time, so the export must too, or the
+    highlight a member approved runs ahead of the speaker once exported.
+    """
+    words = [
+        {"id": "w1", "startMs": 0, "endMs": 500, "text": "Terus", "speaker": None},
+        {"id": "w2", "startMs": 800, "endMs": 1_200, "text": "titik", "speaker": None},
+        {"id": "w3", "startMs": 1_200, "endMs": 1_700, "text": "baliknya", "speaker": None},
+    ]
+    plan = plan_for(
+        composition_document(captions={"mode": "karaoke", "words": words, "style": caption_style()})
+    )
+
+    subtitles = next(entry for entry in plan.files if entry.path.suffix == ".ass")
+    dialogue = next(line for line in subtitles.contents.splitlines() if line.startswith("Dialogue"))
+    assert dialogue.endswith("{\\k80}Terus {\\k40}titik {\\k50}baliknya")
+
+
+@pytest.mark.unit
 def test_karaoke_captions_carry_the_highlight_colour_and_block_captions_do_not() -> None:
     """Karaoke is a caption mode, not a second caption document."""
     karaoke = plan_for()

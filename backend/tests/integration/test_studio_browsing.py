@@ -175,6 +175,8 @@ def test_exports_list_the_render_in_progress_and_then_the_finished_file(engine: 
     assert waiting["revision"] == 1
     assert waiting["preset"] == RenderPreset.PORTRAIT.value
     assert waiting["projectName"] == "Render project"
+    # The clip's own title names the file, since one Project exports many clips.
+    assert waiting["clipTitle"] == "Hook"
     ready = finished["exports"][0]
     assert ready["status"] == "ready"
     assert ready["renderId"] is not None

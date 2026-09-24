@@ -154,12 +154,16 @@ export function ExportRow({ entry, showProject }: { entry: ExportResponse; showP
   return (
     <li className="flex flex-wrap items-center gap-3 px-4 py-3">
       <span className="relative aspect-video w-20 shrink-0 overflow-hidden rounded-sm">
-        <Poster projectId={entry.projectId} />
+        {/* The row states the export's own length; the source's would only mislead. */}
+        <Poster projectId={entry.projectId} hideLength />
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-small font-medium">
-          {preset === undefined ? entry.preset : `${preset.name} ${preset.ratio}`}
-          <span className="font-normal text-muted-foreground"> · Revision {entry.revision}</span>
+        <p className="truncate text-small font-medium" title={entry.clipTitle}>
+          {entry.clipTitle}
+        </p>
+        <p className="text-caption text-muted-foreground">
+          {preset === undefined ? entry.preset : `${preset.name} ${preset.ratio}`} · Revision{' '}
+          {entry.revision}
         </p>
         <p className="truncate font-mono text-caption text-muted-foreground">
           {showProject ? `${entry.projectName} · ` : ''}

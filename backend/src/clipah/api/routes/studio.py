@@ -119,6 +119,7 @@ class ExportResponse(BaseModel):
     project_id: UUID = Field(alias="projectId")
     project_name: str = Field(alias="projectName")
     candidate_id: UUID = Field(alias="candidateId")
+    clip_title: str = Field(alias="clipTitle")
     edit_id: UUID = Field(alias="editId")
     revision_id: UUID = Field(alias="revisionId")
     revision: int
@@ -423,6 +424,7 @@ def _export_body(export: ExportSummary) -> ExportResponse:
         projectId=export.project_id,
         projectName=export.project_name,
         candidateId=export.candidate_id,
+        clipTitle=export.clip_title,
         editId=export.edit_id,
         revisionId=export.revision_id,
         revision=export.revision,

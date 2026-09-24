@@ -206,3 +206,48 @@ describe('Player', () => {
     expect(parseFloat(video.style.top)).toBeCloseTo(0, 3)
   })
 })
+
+describe('the caption the preview draws', () => {
+  const words = [
+    { id: 'w1', startMs: 0, endMs: 400, text: 'Terus', speaker: null },
+    { id: 'w2', startMs: 400, endMs: 800, text: 'titik', speaker: null },
+    { id: 'w3', startMs: 800, endMs: 1_300, text: 'baliknya', speaker: null },
+    { id: 'w4', startMs: 1_300, endMs: 1_600, text: 'tuh', speaker: null },
+    { id: 'w5', startMs: 1_600, endMs: 2_000, text: 'kapan', speaker: null },
+    { id: 'w6', startMs: 2_000, endMs: 2_400, text: 'lagi', speaker: null },
+  ]
+
+  /** A still Player at one instant, with the given caption mode. */
+  function drawAt(playheadMs: number, mode: CompositionV1['captions']['mode']) {
+    const base = composition(null)
+    const recorder = recordingEngine()
+    render(
+      <Player
+        composition={{ ...base, captions: { ...base.captions, mode, words } }}
+        source={{ url: 'proxy.mp4', durationMs: null, width: 1920, height: 1080 }}
+        playheadMs={playheadMs}
+        playing={false}
+        onSeek={() => {}}
+        onPlayingChange={() => {}}
+        engine={recorder.engine}
+      />,
+    )
+    return screen.getByTestId('editor-caption')
+  }
+
+  test('shows the whole line the export draws, not only the word being said', () => {
+    // The export draws at most five words a line, so the sixth starts the next one.
+    expect(drawAt(900, 'block')).toHaveTextContent('Terus titik baliknya tuh kapan')
+  })
+
+  test('karaoke lights the words already said and leaves the rest', () => {
+    const caption = drawAt(900, 'karaoke')
+
+    const lit = [...caption.querySelectorAll('[data-said="true"]')].map((word) => word.textContent)
+    expect(lit.map((text) => text?.trim())).toEqual(['Terus', 'titik', 'baliknya'])
+  })
+
+  test('the next line begins once the first is full', () => {
+    expect(drawAt(2_100, 'block')).toHaveTextContent(/^lagi$/)
+  })
+})

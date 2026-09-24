@@ -3149,6 +3149,10 @@
             "title": "Candidateid",
             "type": "string"
           },
+          "clipTitle": {
+            "title": "Cliptitle",
+            "type": "string"
+          },
           "completedAt": {
             "anyOf": [
               {
@@ -3260,6 +3264,7 @@
           "projectId",
           "projectName",
           "candidateId",
+          "clipTitle",
           "editId",
           "revisionId",
           "revision",

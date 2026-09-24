@@ -10,6 +10,7 @@ import {
 } from 'react'
 
 import { captionFontStack } from './caption-fonts'
+import { captionLines } from './caption-phrases'
 import { htmlVideoPreviewEngine, type PreviewEngine, type PreviewSource } from './engine'
 import { OverlayLayer } from './OverlayLayer'
 import { timelineItems } from './store'
@@ -83,9 +84,10 @@ export function Player({
     }
   }, [engine, playing])
 
-  const activeWord = composition.captions.words.find(
-    (word) => playheadMs >= word.startMs && playheadMs < word.endMs,
-  )
+  const lines = useMemo(() => captionLines(composition.captions.words), [composition.captions.words])
+  // The whole line a viewer reads, as the export draws it — not just the word being said.
+  const activeLine = lines.find((line) => playheadMs >= line.startMs && playheadMs < line.endMs)
+  const karaoke = composition.captions.mode === 'karaoke'
   const sourceKnown = source.width !== null && source.height !== null && source.height > 0
   const aspect =
     showFullFrame && sourceKnown
@@ -168,7 +170,7 @@ export function Player({
             media={overlayMedia}
           />
         )}
-        {showFullFrame || composition.captions.mode === 'off' || activeWord === undefined ? null : (
+        {showFullFrame || composition.captions.mode === 'off' || activeLine === undefined ? null : (
           <p
             data-testid="editor-caption"
             // Caption sizes are canvas pixels; `cqw` scales them to the frame's drawn width.
@@ -191,7 +193,21 @@ export function Player({
               }}
               className="block px-[0.2em]"
             >
-              {activeWord.text}
+              {activeLine.words.map((word, index) => (
+                <span
+                  key={word.id}
+                  // Karaoke lights each word from the moment it is said and keeps it lit.
+                  data-said={karaoke && playheadMs >= word.startMs ? 'true' : undefined}
+                  style={
+                    karaoke && playheadMs >= word.startMs
+                      ? { color: captionStyle.highlightColor }
+                      : undefined
+                  }
+                >
+                  {index === 0 ? '' : ' '}
+                  {word.text}
+                </span>
+              ))}
             </span>
           </p>
         )}

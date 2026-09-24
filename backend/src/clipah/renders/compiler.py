@@ -576,9 +576,16 @@ def _caption_lines(captions: Captions) -> list[tuple[_CaptionLine, str]]:
             group.append(words.pop(0))
         line = _CaptionLine(start_ms=group[0].start_ms, end_ms=group[-1].end_ms)
         if captions.mode is CaptionMode.KARAOKE:
+            # A \k tag lights its word after the durations before it have elapsed, so each
+            # word owns the time up to the next word's start: a pause inside the line then
+            # delays the next highlight instead of pulling every later word early.
             text = "".join(
-                f"{{\\k{max(round((word.end_ms - word.start_ms) / 10), 1)}}}{_ass_text(word.text)} "
-                for word in group
+                f"{{\\k{max(round((until - word.start_ms) / 10), 1)}}}{_ass_text(word.text)} "
+                for word, until in zip(
+                    group,
+                    [*(following.start_ms for following in group[1:]), group[-1].end_ms],
+                    strict=True,
+                )
             ).strip()
         else:
             text = " ".join(_ass_text(word.text) for word in group)

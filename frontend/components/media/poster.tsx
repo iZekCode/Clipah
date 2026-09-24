@@ -43,6 +43,7 @@ export function Poster({
   largeBadges = false,
   imageUrl,
   hoverOverlay = false,
+  hideLength = false,
   className,
 }: {
   projectId: string
@@ -68,6 +69,8 @@ export function Poster({
    * picture darkens: the badges and the hook are drawn above the wash.
    */
   hoverOverlay?: boolean
+  /** Leave the length off, where the row beside the picture already says how long it is. */
+  hideLength?: boolean
   className?: string
 }) {
   const { active } = useWorkspaceScope()
@@ -178,7 +181,7 @@ export function Poster({
           )}
         </span>
       )}
-      {length === undefined ? null : (
+      {length === undefined || hideLength ? null : (
         <span
           className={cn(
             badge,
