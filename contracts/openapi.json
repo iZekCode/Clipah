@@ -2519,6 +2519,16 @@
             },
             "title": "Tracks",
             "type": "array"
+          },
+          "watermark": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Watermark"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6975,6 +6985,89 @@
         ],
         "title": "VisualIntentResponse",
         "type": "object"
+      },
+      "Watermark": {
+        "additionalProperties": false,
+        "description": "A mark drawn over the whole clip, in one corner or edge of the frame.\n\n``size`` is a share of the canvas width: the width a picture is drawn at, or the height\nof a line of text, so one setting reads the same at every export size.",
+        "properties": {
+          "assetId": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Assetid"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/WatermarkKind"
+          },
+          "opacity": {
+            "maximum": 1.0,
+            "minimum": 0.1,
+            "title": "Opacity",
+            "type": "number"
+          },
+          "position": {
+            "$ref": "#/components/schemas/WatermarkPosition"
+          },
+          "size": {
+            "maximum": 0.5,
+            "minimum": 0.02,
+            "title": "Size",
+            "type": "number"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "required": [
+          "kind",
+          "position",
+          "size",
+          "opacity"
+        ],
+        "title": "Watermark",
+        "type": "object"
+      },
+      "WatermarkKind": {
+        "description": "What a watermark draws: Clipah's own mark, a Workspace picture, or a line of text.",
+        "enum": [
+          "clipah",
+          "image",
+          "text"
+        ],
+        "title": "WatermarkKind",
+        "type": "string"
+      },
+      "WatermarkPosition": {
+        "description": "One cell of the three-by-three grid a watermark sits in.",
+        "enum": [
+          "topLeft",
+          "topCenter",
+          "topRight",
+          "middleLeft",
+          "center",
+          "middleRight",
+          "bottomLeft",
+          "bottomCenter",
+          "bottomRight"
+        ],
+        "title": "WatermarkPosition",
+        "type": "string"
       },
       "WaveformResponse": {
         "additionalProperties": false,

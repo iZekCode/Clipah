@@ -13,6 +13,7 @@ import {
   Redo2,
   RotateCcw,
   SlidersHorizontal,
+  Stamp,
   Type,
   Undo2,
   Upload,
@@ -99,6 +100,7 @@ import {
   type EditorAction,
 } from './store'
 import { useEditorKeys } from './use-editor-keys'
+import { WatermarkPanel } from './WatermarkPanel'
 
 /** The editing tools, in the order a creator usually reaches for them. */
 const TOOLS = [
@@ -108,6 +110,7 @@ const TOOLS = [
   { id: 'media', label: 'Media', icon: Film },
   { id: 'audio', label: 'Audio', icon: AudioLines },
   { id: 'text', label: 'Text', icon: Type },
+  { id: 'watermark', label: 'Watermark', icon: Stamp },
   { id: 'review', label: 'Review', icon: ClipboardCheck },
 ] as const
 
@@ -798,6 +801,14 @@ function LoadedEditor({
               onRemove={(overlayId) => dispatch({ type: 'deleteOverlay', overlayId })}
             />
           </ToolPanel>
+          <ToolPanel id="watermark" active={tool}>
+            <WatermarkPanel
+              watermark={composition.watermark ?? null}
+              projectId={edit.projectId}
+              workspaceId={workspaceId}
+              onChange={(watermark) => dispatch({ type: 'watermark', watermark })}
+            />
+          </ToolPanel>
           <ToolPanel id="review" active={tool}>
             <SceneList
               composition={composition}
@@ -1067,13 +1078,15 @@ function useOverlayMedia(
 ): Record<string, string | undefined> {
   const assetIds = useMemo(
     () => [
-      ...new Set(
-        composition.overlays.flatMap((overlay) =>
+      ...new Set([
+        ...composition.overlays.flatMap((overlay) =>
           overlay.type === 'video' || overlay.type === 'image' ? [overlay.assetId] : [],
         ),
-      ),
+        // A Workspace picture used as the watermark is signed like any overlay picture.
+        ...(composition.watermark?.assetId ? [composition.watermark.assetId] : []),
+      ]),
     ],
-    [composition.overlays],
+    [composition.overlays, composition.watermark],
   )
   const links = useQueries({
     queries: assetIds.map((assetId) => ({

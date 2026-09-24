@@ -8,6 +8,7 @@ hash it was produced from, so two deliveries converge on one file.
 
 from __future__ import annotations
 
+import shutil
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -30,6 +31,7 @@ from clipah.db import RuntimeRole, session_scope
 from clipah.editor.models import (
     CompositionV1,
     CompositionValidationError,
+    WatermarkKind,
     collect_asset_ids,
     parse_composition,
 )
@@ -47,12 +49,15 @@ from clipah.observability.tracing import span
 from clipah.renders.compiler import compile_render_plan, input_path
 from clipah.renders.ffmpeg_renderer import FFmpegRenderer, RenderExecutionError
 from clipah.renders.models import (
+    CLIPAH_LOGO_ASSET_ID,
     RENDER_FAILED,
     RenderAsset,
     RenderCompilationError,
     RenderOutput,
     RenderPlan,
     Watermark,
+    clipah_logo_asset,
+    clipah_logo_path,
 )
 from clipah.renders.use_cases import RenderTarget, healthy_artifact, render_target
 from clipah.runtime.readiness import validate_media_runtime
@@ -195,9 +200,14 @@ class RenderStageRunner:
                     max_bytes=MAX_RENDER_INPUT_BYTES,
                     cancellation_check=context.raise_if_cancelled,
                 )
+        assets = {asset_id: entry[0] for asset_id, entry in table.items()}
+        if composition.watermark is not None and composition.watermark.kind is WatermarkKind.CLIPAH:
+            # Clipah's own mark ships with the renderer, so it is copied in, not downloaded.
+            shutil.copyfile(clipah_logo_path(), input_path(workspace, CLIPAH_LOGO_ASSET_ID))
+            assets[CLIPAH_LOGO_ASSET_ID] = clipah_logo_asset()
         return compile_render_plan(
             composition,
-            assets={asset_id: entry[0] for asset_id, entry in table.items()},
+            assets=assets,
             preset=target.preset,
             workspace=workspace,
             watermark=_watermark(context.settings),

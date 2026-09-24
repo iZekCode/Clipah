@@ -35,11 +35,13 @@ from clipah.editor.models import (
     TrackItem,
     TrackType,
     VideoOverlay,
+    WatermarkKind,
 )
 from clipah.editor.models import CitationOverlay as CitationOverlayModel
 from clipah.renders.models import (
     ASSET_MISSING,
     BRAND_VIOLATION,
+    CLIPAH_LOGO_ASSET_ID,
     FEATURE_UNSUPPORTED,
     PRESET_CANVAS,
     RENDER_AUDIO_SAMPLE_RATE,
@@ -162,6 +164,7 @@ class _Compiler:
         video, audio = self._base_chains()
         video, mixes = self._apply_overlays(video)
         video = self._apply_captions(video)
+        video = self._apply_composition_watermark(video)
         video = self._apply_watermark(video)
         audio = self._mix_audio(audio, mixes)
         self._stages.append(f"{video}null[{VIDEO_OUTPUT_LABEL}]")
@@ -362,6 +365,46 @@ class _Compiler:
         path = self._write("captions.ass", self._subtitle_document())
         self._stages.append(f"{video}subtitles=filename={_escape(path)}[vcap]")
         return "[vcap]"
+
+    def _apply_composition_watermark(self, video: str) -> str:
+        """Draw the member's own mark over the whole clip, where the preview shows it.
+
+        A picture — Clipah's packaged mark or a Workspace image — is scaled to its share of
+        the frame width; text is written from a file at its share of the width in height.
+        Both keep the same margin from the edges they sit against.
+        """
+        mark = self._composition.watermark
+        if mark is None:
+            return video
+        margin = round(self._width * WATERMARK_MARGIN)
+        x, y = _WATERMARK_AXES[mark.position.value]
+        if mark.kind is WatermarkKind.TEXT:
+            path = self._write("composition-watermark.txt", mark.text or "")
+            size = max(round(self._width * mark.size), 12)
+            self._stages.append(
+                f"{video}drawtext=textfile={_escape(path)}:fontsize={size}"
+                f":fontcolor=0xFFFFFF@{mark.opacity:.2f}:shadowcolor=0x000000@0.5"
+                f":shadowx=2:shadowy=2:x={_mark_offset(x, 'w', 'tw', margin)}"
+                f":y={_mark_offset(y, 'h', 'th', margin)}[vwm]"
+            )
+            return "[vwm]"
+        asset_id = CLIPAH_LOGO_ASSET_ID if mark.kind is WatermarkKind.CLIPAH else mark.asset_id
+        if asset_id is None:  # pragma: no cover - the composition validator requires it
+            raise RenderCompilationError(ASSET_MISSING, "an image watermark names no asset")
+        asset = self._asset(asset_id)
+        if not asset.is_image:
+            raise RenderCompilationError(FEATURE_UNSUPPORTED, "a watermark must be a still")
+        stream = self._open(asset, duration_ms=self._composition.duration_ms)
+        width = max(round(self._width * mark.size / 2) * 2, 2)
+        self._stages.append(
+            f"[{stream}:v]scale={width}:-2,format=rgba,"
+            f"colorchannelmixer=aa={mark.opacity:.3f}[wmimg]"
+        )
+        self._stages.append(
+            f"{video}[wmimg]overlay=x={_mark_offset(x, 'W', 'w', margin)}"
+            f":y={_mark_offset(y, 'H', 'h', margin)}:eof_action=repeat:format=auto[vwm]"
+        )
+        return "[vwm]"
 
     def _apply_watermark(self, video: str) -> str:
         """Draw the brand mark, which is text and follows the same rule as any other."""
@@ -564,6 +607,31 @@ class _Compiler:
         path = self._workspace / "text" / name
         self._files.append(RenderFile(path=path, contents=contents))
         return path
+
+
+#: The gap between a watermark and the edges it sits against, as a share of frame width.
+WATERMARK_MARGIN = 0.04
+#: Where each grid cell anchors a watermark along x and along y.
+_WATERMARK_AXES: dict[str, tuple[str, str]] = {
+    "topLeft": ("start", "start"),
+    "topCenter": ("middle", "start"),
+    "topRight": ("end", "start"),
+    "middleLeft": ("start", "middle"),
+    "center": ("middle", "middle"),
+    "middleRight": ("end", "middle"),
+    "bottomLeft": ("start", "end"),
+    "bottomCenter": ("middle", "end"),
+    "bottomRight": ("end", "end"),
+}
+
+
+def _mark_offset(anchor: str, frame: str, mark: str, margin: int) -> str:
+    """The offset of a mark along one axis, from the frame and mark sizes FFmpeg knows."""
+    if anchor == "start":
+        return str(margin)
+    if anchor == "middle":
+        return f"({frame}-{mark})/2"
+    return f"{frame}-{mark}-{margin}"
 
 
 def _caption_lines(captions: Captions) -> list[tuple[_CaptionLine, str]]:

@@ -39,6 +39,23 @@ export type Placement = "cover" | "pictureInPicture" | "lowerThird" | "top" | "c
  * The kinds of timeline lane a composition may carry.
  */
 export type TrackType = "video" | "audio" | "music" | "extractedAudio";
+/**
+ * What a watermark draws: Clipah's own mark, a Workspace picture, or a line of text.
+ */
+export type WatermarkKind = "clipah" | "image" | "text";
+/**
+ * One cell of the three-by-three grid a watermark sits in.
+ */
+export type WatermarkPosition =
+  | "topLeft"
+  | "topCenter"
+  | "topRight"
+  | "middleLeft"
+  | "center"
+  | "middleRight"
+  | "bottomLeft"
+  | "bottomCenter"
+  | "bottomRight";
 
 /**
  * One immutable editing decision set, valid on its own terms.
@@ -56,6 +73,7 @@ export interface CompositionV1 {
   sourceRange: SourceRange;
   template: TemplateReference | null;
   tracks: Track[];
+  watermark?: Watermark | null;
 }
 /**
  * The two gains a version 1 composition can set.
@@ -278,4 +296,18 @@ export interface Crop {
   width: number;
   x: number;
   y: number;
+}
+/**
+ * A mark drawn over the whole clip, in one corner or edge of the frame.
+ *
+ * ``size`` is a share of the canvas width: the width a picture is drawn at, or the height
+ * of a line of text, so one setting reads the same at every export size.
+ */
+export interface Watermark {
+  assetId?: string | null;
+  kind: WatermarkKind;
+  opacity: number;
+  position: WatermarkPosition;
+  size: number;
+  text?: string | null;
 }

@@ -45,7 +45,14 @@ from clipah.models import (
 )
 from clipah.renders.compiler import compile_render_plan, input_path
 from clipah.renders.ffmpeg_renderer import FFmpegRenderer
-from clipah.renders.models import RenderAsset, RenderCompilationError, RenderPreset
+from clipah.renders.models import (
+    CLIPAH_LOGO_ASSET_ID,
+    RenderAsset,
+    RenderCompilationError,
+    RenderPreset,
+    clipah_logo_asset,
+    clipah_logo_path,
+)
 from harness import NOW, Browser, Clock, StubGoogleProvider, assert_error, build_app, sign_in
 from support import runtime_settings
 
@@ -502,6 +509,75 @@ def test_real_ffmpeg_renders_each_fixture_composition_into_a_playable_export(
 
 
 @pytest.mark.integration
+@pytest.mark.parametrize(
+    "mark",
+    [
+        {"kind": "clipah", "position": "bottomRight", "size": 0.2, "opacity": 1.0},
+        {"kind": "text", "text": "@clipah", "position": "topLeft", "size": 0.06, "opacity": 1.0},
+    ],
+)
+def test_real_ffmpeg_burns_the_watermark_into_its_corner(
+    tmp_path: Path, mark: dict[str, Any]
+) -> None:
+    """The mark has to survive FFmpeg and land where the preview drew it, not elsewhere."""
+    _require_media_tools()
+    if mark["kind"] == "text":
+        _require_filter("drawtext")
+
+    def frame(document: dict[str, Any], name: str) -> bytes:
+        workspace = tmp_path / name
+        (workspace / "inputs").mkdir(parents=True)
+        assets = _stage_inputs(workspace, "no-broll", tmp_path)
+        shutil.copyfile(clipah_logo_path(), input_path(workspace, CLIPAH_LOGO_ASSET_ID))
+        assets[CLIPAH_LOGO_ASSET_ID] = clipah_logo_asset()
+        output = FFmpegRenderer(duration_probe=_probe_duration_ms).render(
+            compile_render_plan(
+                parse_composition(document),
+                assets=assets,
+                preset=RenderPreset.PORTRAIT,
+                workspace=workspace,
+            ),
+            workspace=workspace,
+            cancellation_check=lambda: None,
+            progress=lambda _ratio: None,
+        )
+        return _corner_pixels(output.path, mark["position"])
+
+    plain = _fixture_composition("no-broll")
+    marked = {**plain, "watermark": mark}
+
+    assert frame(marked, "marked") != frame(plain, "plain")
+
+
+def _corner_pixels(path: Path, position: str) -> bytes:
+    """The raw pixels of the frame corner a watermark in that cell would cover."""
+    x = "0" if position.endswith("Left") else "iw*3/4"
+    y = "0" if position.startswith("top") else "ih*7/8"
+    return subprocess.run(
+        [
+            "ffmpeg",
+            "-v",
+            "error",
+            "-ss",
+            "0.5",
+            "-i",
+            str(path),
+            "-frames:v",
+            "1",
+            "-vf",
+            f"crop=iw/4:ih/8:{x}:{y}",
+            "-f",
+            "rawvideo",
+            "-pix_fmt",
+            "rgb24",
+            "-",
+        ],
+        check=True,
+        capture_output=True,
+    ).stdout
+
+
+@pytest.mark.integration
 def test_cancelling_a_render_stops_the_ffmpeg_process_group(tmp_path: Path) -> None:
     """Cancellation is only real if the encoder actually stops when a member asks."""
     _require_media_tools()
@@ -924,6 +1000,15 @@ def _require_media_tools() -> None:
     """Skip a real render when this host has no FFmpeg to run it with."""
     if shutil.which("ffmpeg") is None or shutil.which("ffprobe") is None:
         pytest.skip("real media tools are unavailable")
+
+
+def _require_filter(name: str) -> None:
+    """Skip a real render this host's FFmpeg was built without the filter for."""
+    listing = subprocess.run(
+        ["ffmpeg", "-hide_banner", "-filters"], check=True, capture_output=True, text=True
+    ).stdout
+    if not any(line.split()[1:2] == [name] for line in listing.splitlines() if line.strip()):
+        pytest.skip(f"this FFmpeg has no {name} filter")
 
 
 def _stage_inputs(workspace: Path, scenario: str, tmp_path: Path) -> dict[UUID, RenderAsset]:

@@ -13,6 +13,7 @@ import type { CompositionV1OverlaysItem } from './compositionV1OverlaysItem';
 import type { SourceRange } from './sourceRange';
 import type { CompositionV1Template } from './compositionV1Template';
 import type { Track } from './track';
+import type { CompositionV1Watermark } from './compositionV1Watermark';
 
 /**
  * One immutable editing decision set, valid on its own terms.
@@ -33,4 +34,5 @@ export interface CompositionV1 {
   sourceRange: SourceRange;
   template: CompositionV1Template;
   tracks: Track[];
+  watermark?: CompositionV1Watermark;
 }

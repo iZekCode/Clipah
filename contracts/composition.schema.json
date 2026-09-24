@@ -1010,6 +1010,87 @@
       ],
       "title": "VideoOverlay",
       "type": "object"
+    },
+    "Watermark": {
+      "additionalProperties": false,
+      "description": "A mark drawn over the whole clip, in one corner or edge of the frame.\n\n``size`` is a share of the canvas width: the width a picture is drawn at, or the height\nof a line of text, so one setting reads the same at every export size.",
+      "properties": {
+        "assetId": {
+          "anyOf": [
+            {
+              "format": "uuid",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "kind": {
+          "$ref": "#/$defs/WatermarkKind"
+        },
+        "opacity": {
+          "maximum": 1,
+          "minimum": 0.1,
+          "type": "number"
+        },
+        "position": {
+          "$ref": "#/$defs/WatermarkPosition"
+        },
+        "size": {
+          "maximum": 0.5,
+          "minimum": 0.02,
+          "type": "number"
+        },
+        "text": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "kind",
+        "position",
+        "size",
+        "opacity"
+      ],
+      "title": "Watermark",
+      "type": "object"
+    },
+    "WatermarkKind": {
+      "description": "What a watermark draws: Clipah's own mark, a Workspace picture, or a line of text.",
+      "enum": [
+        "clipah",
+        "image",
+        "text"
+      ],
+      "title": "WatermarkKind",
+      "type": "string"
+    },
+    "WatermarkPosition": {
+      "description": "One cell of the three-by-three grid a watermark sits in.",
+      "enum": [
+        "topLeft",
+        "topCenter",
+        "topRight",
+        "middleLeft",
+        "center",
+        "middleRight",
+        "bottomLeft",
+        "bottomCenter",
+        "bottomRight"
+      ],
+      "title": "WatermarkPosition",
+      "type": "string"
     }
   },
   "$id": "https://clipah.com/contracts/composition.schema.json",
@@ -1101,6 +1182,17 @@
         "$ref": "#/$defs/Track"
       },
       "type": "array"
+    },
+    "watermark": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Watermark"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     }
   },
   "required": [

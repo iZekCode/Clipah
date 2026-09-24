@@ -13,7 +13,7 @@ import { captionFontStack } from './caption-fonts'
 import { captionLines } from './caption-phrases'
 import { htmlVideoPreviewEngine, type PreviewEngine, type PreviewSource } from './engine'
 import { OverlayLayer } from './OverlayLayer'
-import { timelineItems } from './store'
+import { timelineItems, type CompositionWatermark } from './store'
 import type { CompositionV1 } from '@/lib/api/generated/model'
 
 /**
@@ -211,11 +211,78 @@ export function Player({
             </span>
           </p>
         )}
+        {showFullFrame || composition.watermark == null ? null : (
+          <WatermarkMark watermark={composition.watermark} media={overlayMedia} />
+        )}
         {overlay}
       </div>
     </section>
   )
 }
+
+/** The gap the export keeps between a watermark and the edges it sits against. */
+const WATERMARK_MARGIN = 'calc(4cqw)'
+
+/** Where each grid cell anchors a watermark, as the export's overlay offsets do. */
+const WATERMARK_PLACEMENT: Record<CompositionWatermark['position'], CSSProperties> = {
+  topLeft: { top: WATERMARK_MARGIN, left: WATERMARK_MARGIN },
+  topCenter: { top: WATERMARK_MARGIN, left: '50%', transform: 'translateX(-50%)' },
+  topRight: { top: WATERMARK_MARGIN, right: WATERMARK_MARGIN },
+  middleLeft: { top: '50%', left: WATERMARK_MARGIN, transform: 'translateY(-50%)' },
+  center: { top: '50%', left: '50%', transform: 'translate(-50%, -50%)' },
+  middleRight: { top: '50%', right: WATERMARK_MARGIN, transform: 'translateY(-50%)' },
+  bottomLeft: { bottom: WATERMARK_MARGIN, left: WATERMARK_MARGIN },
+  bottomCenter: { bottom: WATERMARK_MARGIN, left: '50%', transform: 'translateX(-50%)' },
+  bottomRight: { bottom: WATERMARK_MARGIN, right: WATERMARK_MARGIN },
+}
+
+/**
+ * The member's mark, drawn where and how large the export burns it. Its size is a share of
+ * the frame width: a picture's width, or a line of text's height.
+ */
+export function WatermarkMark({
+  watermark,
+  media,
+}: {
+  watermark: CompositionWatermark
+  media: Readonly<Record<string, string | undefined>>
+}) {
+  const place: CSSProperties = {
+    ...WATERMARK_PLACEMENT[watermark.position],
+    opacity: watermark.opacity,
+  }
+  if (watermark.kind === 'text') {
+    return (
+      <span
+        data-testid="editor-watermark"
+        style={{
+          ...place,
+          fontSize: `calc(${watermark.size * 100}cqw)`,
+          textShadow: '2px 2px 0 rgb(0 0 0 / 0.5)',
+        }}
+        className="pointer-events-none absolute whitespace-nowrap font-sans leading-none text-white"
+      >
+        {watermark.text}
+      </span>
+    )
+  }
+  const url =
+    watermark.kind === 'clipah' ? CLIPAH_LOGO_URL : media[watermark.assetId ?? ''] ?? undefined
+  if (url === undefined) return null
+  return (
+    // eslint-disable-next-line @next/next/no-img-element -- a signed, short-lived media link
+    <img
+      data-testid="editor-watermark"
+      src={url}
+      alt=""
+      style={{ ...place, width: `calc(${watermark.size * 100}cqw)` }}
+      className="pointer-events-none absolute h-auto"
+    />
+  )
+}
+
+/** Clipah's own mark, the same picture the renderer ships with. */
+export const CLIPAH_LOGO_URL = '/clipah-logo.png'
 
 /** The CSS decoration that draws each composition text decoration. */
 const DECORATIONS = {

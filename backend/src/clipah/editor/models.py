@@ -470,6 +470,56 @@ class BrandKitReference(CompositionModel):
     logo_asset_id: UUID | None
 
 
+class WatermarkKind(StrEnum):
+    """What a watermark draws: Clipah's own mark, a Workspace picture, or a line of text."""
+
+    CLIPAH = "clipah"
+    IMAGE = "image"
+    TEXT = "text"
+
+
+class WatermarkPosition(StrEnum):
+    """One cell of the three-by-three grid a watermark sits in."""
+
+    TOP_LEFT = "topLeft"
+    TOP_CENTER = "topCenter"
+    TOP_RIGHT = "topRight"
+    MIDDLE_LEFT = "middleLeft"
+    CENTER = "center"
+    MIDDLE_RIGHT = "middleRight"
+    BOTTOM_LEFT = "bottomLeft"
+    BOTTOM_CENTER = "bottomCenter"
+    BOTTOM_RIGHT = "bottomRight"
+
+
+class Watermark(CompositionModel):
+    """A mark drawn over the whole clip, in one corner or edge of the frame.
+
+    ``size`` is a share of the canvas width: the width a picture is drawn at, or the height
+    of a line of text, so one setting reads the same at every export size.
+    """
+
+    kind: WatermarkKind
+    position: WatermarkPosition
+    size: Annotated[Finite, Field(ge=0.02, le=0.5)]
+    opacity: Annotated[Finite, Field(ge=0.1, le=1)]
+    asset_id: UUID | None = None
+    text: Annotated[str, Field(min_length=1, max_length=64)] | None = None
+
+    @model_validator(mode="after")
+    def _require_what_the_kind_draws(self) -> Self:
+        """A picture needs its asset, text needs its words, and neither carries the other."""
+        wants_asset = self.kind is WatermarkKind.IMAGE
+        wants_text = self.kind is WatermarkKind.TEXT
+        if (self.asset_id is not None) != wants_asset:
+            raise ValueError("only an image watermark names an asset, and it must")
+        if (self.text is not None) != wants_text:
+            raise ValueError("only a text watermark carries text, and it must")
+        if self.text is not None and not self.text.strip():
+            raise ValueError("a text watermark cannot be blank")
+        return self
+
+
 class CompositionV1(CompositionModel):
     """One immutable editing decision set, valid on its own terms."""
 
@@ -487,6 +537,8 @@ class CompositionV1(CompositionModel):
     overlays: tuple[Overlay, ...]
     audio: AudioMix
     bookmarks: tuple[Bookmark, ...]
+    # Absent on documents written before watermarks existed, which keep rendering as they did.
+    watermark: Watermark | None = None
 
     @model_validator(mode="after")
     def _reject_an_inconsistent_document(self) -> Self:
@@ -547,9 +599,16 @@ def parse_composition(document: Mapping[str, Any]) -> CompositionV1:
 
 
 def canonical_json(composition: CompositionV1) -> bytes:
-    """Serialize one composition to the exact bytes its hash is taken over."""
+    """Serialize one composition to the exact bytes its hash is taken over.
+
+    A document with no watermark omits the key, so a Revision written before watermarks
+    existed keeps the bytes, and the hash, it was stored with.
+    """
+    document = composition.model_dump(mode="json", by_alias=True)
+    if document.get("watermark") is None:
+        document.pop("watermark", None)
     return json.dumps(
-        composition.model_dump(mode="json", by_alias=True),
+        document,
         sort_keys=True,
         separators=(",", ":"),
         ensure_ascii=False,
@@ -573,6 +632,8 @@ def collect_asset_ids(composition: CompositionV1) -> frozenset[UUID]:
     )
     if composition.brand_kit is not None and composition.brand_kit.logo_asset_id is not None:
         assets.add(composition.brand_kit.logo_asset_id)
+    if composition.watermark is not None and composition.watermark.asset_id is not None:
+        assets.add(composition.watermark.asset_id)
     return frozenset(assets)
 
 

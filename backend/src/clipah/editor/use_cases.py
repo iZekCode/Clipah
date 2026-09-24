@@ -43,6 +43,9 @@ from clipah.editor.models import (
     TrackType,
     Transform,
     VideoOverlay,
+    Watermark,
+    WatermarkKind,
+    WatermarkPosition,
     canonical_json,
     collect_asset_ids,
     composition_hash,
@@ -411,6 +414,21 @@ def initial_composition(seed: CandidateSeed) -> CompositionV1:
         overlays=(),
         audio=AudioMix(gain_db=0.0, music_gain_db=-18.0),
         bookmarks=(),
+        watermark=default_watermark(),
+    )
+
+
+def default_watermark() -> Watermark:
+    """Return the mark a first Edit starts with: Clipah's own, small, bottom right.
+
+    It is only a starting point. The member can move it, swap it for their own picture or
+    words, or remove it, and the choice travels with the Revision like any other.
+    """
+    return Watermark(
+        kind=WatermarkKind.CLIPAH,
+        position=WatermarkPosition.BOTTOM_RIGHT,
+        size=0.12,
+        opacity=0.9,
     )
 
 

@@ -103,6 +103,28 @@ class RenderFile:
     contents: str
 
 
+#: The stand-in identity Clipah's own mark is opened under. It is shipped with the renderer
+#: rather than stored as a Workspace asset, so no tenant owns it and none can replace it.
+CLIPAH_LOGO_ASSET_ID = UUID("c11fa000-0000-4000-8000-00000000c1a0")
+
+
+def clipah_logo_path() -> Path:
+    """Where the packaged Clipah mark lives, for a worker to stage beside the other inputs."""
+    return Path(__file__).with_name("clipah_logo.png")
+
+
+def clipah_logo_asset() -> RenderAsset:
+    """Describe the packaged Clipah mark the way the compiler describes any other still."""
+    return RenderAsset(
+        asset_id=CLIPAH_LOGO_ASSET_ID,
+        kind=AssetKind.BROLL,
+        content_type="image/png",
+        duration_ms=None,
+        width=497,
+        height=502,
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class Watermark:
     """The brand mark a plan may burn into the corner of an export."""
